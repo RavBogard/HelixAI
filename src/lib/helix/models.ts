@@ -58,7 +58,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Fender Deluxe Reverb (Normal)",
     category: "clean",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 1.0, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.45, Bass: 0.35, Mid: 0.60, Treble: 0.55, ChVol: 0.7, Master: 1.0, Presence: 0.35, Sag: 0.7, Hum: 0.1, Ripple: 0.1, Bias: 0.65, BiasX: 0.5 },
   },
   "US Deluxe Vib": {
     id: "HD2_AmpUSDeluxeVib",
@@ -66,7 +66,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Fender Deluxe Reverb (Vibrato)",
     category: "clean",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 1.0, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.45, Bass: 0.35, Mid: 0.60, Treble: 0.55, ChVol: 0.7, Master: 1.0, Presence: 0.35, Sag: 0.7, Hum: 0.1, Ripple: 0.1, Bias: 0.65, BiasX: 0.5 },
   },
   "US Double Nrm": {
     id: "HD2_AmpUSDoubleNrm",
@@ -74,7 +74,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Fender Twin Reverb (Normal)",
     category: "clean",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 1.0, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.50, Bass: 0.50, Mid: 0.55, Treble: 0.55, ChVol: 0.7, Master: 1.0, Presence: 0.35, Sag: 0.65, Hum: 0.05, Ripple: 0.05, Bias: 0.65, BiasX: 0.5 },
   },
   "US Small Tweed": {
     id: "HD2_AmpUSSmallTweed",
@@ -82,7 +82,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Fender Champ",
     category: "clean",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 1.0, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.50, Bass: 0.50, Mid: 0.50, Treble: 0.55, ChVol: 0.7, Master: 1.0, Presence: 0.40, Sag: 0.75, Hum: 0.15, Ripple: 0.15, Bias: 0.70, BiasX: 0.5 },
   },
   "Essex A30": {
     id: "HD2_AmpEssexA30",
@@ -90,7 +90,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Vox AC30 (Top Boost)",
     category: "clean",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 0.5, Presence: 0.5, Cut: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.40, Bass: 0.50, Mid: 0.50, Treble: 0.55, ChVol: 0.7, Master: 1.0, Presence: 0.0, Cut: 0.50, Sag: 0.65, Hum: 0.15, Ripple: 0.1, Bias: 0.70, BiasX: 0.70 },
   },
   "Essex A15": {
     id: "HD2_AmpEssexA15",
@@ -98,7 +98,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Vox AC15",
     category: "clean",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 0.5, Presence: 0.5, Cut: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.40, Bass: 0.50, Mid: 0.50, Treble: 0.55, ChVol: 0.7, Master: 1.0, Presence: 0.0, Cut: 0.50, Sag: 0.70, Hum: 0.15, Ripple: 0.1, Bias: 0.70, BiasX: 0.70 },
   },
   "Matchstick Ch1": {
     id: "HD2_AmpMatchstickCh1",
@@ -106,7 +106,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Matchless DC-30 (Ch1)",
     category: "clean",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.40, Bass: 0.50, Mid: 0.55, Treble: 0.55, ChVol: 0.7, Master: 0.90, Sag: 0.65, Hum: 0.1, Ripple: 0.1, Bias: 0.70, BiasX: 0.60 },
   },
   "WhoWatt 100": {
     id: "HD2_AmpWhoWatt100",
@@ -114,7 +114,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Hiwatt DR103",
     category: "clean",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 0.5, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.40, Bass: 0.50, Mid: 0.55, Treble: 0.55, ChVol: 0.7, Master: 0.90, Presence: 0.50, Sag: 0.60, Hum: 0.05, Ripple: 0.05, Bias: 0.60, BiasX: 0.50 },
   },
   "Grammatico Nrm": {
     id: "HD2_AmpGrammaticoNrm",
@@ -122,7 +122,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Grammatico LaGrange (Normal)",
     category: "clean",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 0.5, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.40, Bass: 0.45, Mid: 0.55, Treble: 0.55, ChVol: 0.7, Master: 0.90, Presence: 0.45, Sag: 0.65, Hum: 0.1, Ripple: 0.1, Bias: 0.65, BiasX: 0.50 },
   },
   "Fullerton Nrm": {
     id: "HD2_AmpFullertonNrm",
@@ -130,7 +130,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Fender Bassman (Normal)",
     category: "clean",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 1.0, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.45, Bass: 0.40, Mid: 0.55, Treble: 0.55, ChVol: 0.7, Master: 1.0, Presence: 0.40, Sag: 0.70, Hum: 0.15, Ripple: 0.15, Bias: 0.70, BiasX: 0.50 },
   },
 
   // --- Crunch / Classic Rock ---
@@ -140,7 +140,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Marshall Super Lead 100 (Normal)",
     category: "crunch",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 0.5, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.55, Bass: 0.20, Mid: 0.80, Treble: 0.75, ChVol: 0.7, Master: 1.0, Presence: 0.40, Sag: 0.60, Hum: 0.20, Ripple: 0.15, Bias: 0.70, BiasX: 0.50 },
   },
   "Brit Plexi Brt": {
     id: "HD2_AmpBritPlexiBrt",
@@ -148,7 +148,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Marshall Super Lead 100 (Bright)",
     category: "crunch",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 0.5, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.60, Bass: 0.20, Mid: 0.80, Treble: 0.60, ChVol: 0.7, Master: 1.0, Presence: 0.35, Sag: 0.60, Hum: 0.20, Ripple: 0.15, Bias: 0.70, BiasX: 0.50 },
   },
   "Brit Plexi Jump": {
     id: "HD2_AmpBritPlexiJump",
@@ -156,7 +156,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Marshall Super Lead 100 (Jumped)",
     category: "crunch",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 0.5, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.55, Bass: 0.20, Mid: 0.80, Treble: 0.70, ChVol: 0.7, Master: 1.0, Presence: 0.40, Sag: 0.60, Hum: 0.20, Ripple: 0.15, Bias: 0.70, BiasX: 0.50 },
   },
   "Line 6 2204 Mod": {
     id: "HD2_AmpLine62204Mod",
@@ -164,7 +164,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Marshall JCM-800 (Modified by Line 6)",
     category: "crunch",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 0.5, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.50, Bass: 0.40, Mid: 0.55, Treble: 0.65, ChVol: 0.7, Master: 0.45, Presence: 0.50, Sag: 0.45, Hum: 0.15, Ripple: 0.1, Bias: 0.65, BiasX: 0.50 },
   },
   "Derailed Ingrid": {
     id: "HD2_AmpDerailedIngrid",
@@ -172,7 +172,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Hiwatt DR103 (Cranked)",
     category: "crunch",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 0.5, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.55, Bass: 0.45, Mid: 0.55, Treble: 0.60, ChVol: 0.7, Master: 0.80, Presence: 0.50, Sag: 0.55, Hum: 0.1, Ripple: 0.1, Bias: 0.65, BiasX: 0.50 },
   },
   "Placater Clean": {
     id: "HD2_AmpPlacaterClean",
@@ -180,7 +180,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Friedman BE-100 (Clean)",
     category: "crunch",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 0.5, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.25, Bass: 0.45, Mid: 0.55, Treble: 0.55, ChVol: 0.7, Master: 0.45, Presence: 0.50, Sag: 0.50, Hum: 0.05, Ripple: 0.05, Bias: 0.65, BiasX: 0.50 },
   },
   "Placater Dirty": {
     id: "HD2_AmpPlacaterDirty",
@@ -188,7 +188,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Friedman BE-100 (BE/HBE)",
     category: "high_gain",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.63, Bass: 0.5, Mid: 0.5, Treble: 0.62, ChVol: 0.7, Master: 0.5, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.30, Bass: 0.40, Mid: 0.65, Treble: 0.63, ChVol: 0.7, Master: 0.36, Presence: 0.55, Sag: 0.35, Hum: 0.1, Ripple: 0.05, Bias: 0.75, BiasX: 0.50 },
   },
 
   // --- High Gain ---
@@ -198,7 +198,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Mesa/Boogie Dual Rectifier",
     category: "high_gain",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.6, Bass: 0.5, Mid: 0.5, Treble: 0.6, ChVol: 0.7, Master: 0.5, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.53, Bass: 0.46, Mid: 0.62, Treble: 0.55, ChVol: 0.7, Master: 0.45, Presence: 0.33, Sag: 0.25, Hum: 0.1, Ripple: 0.05, Bias: 0.60, BiasX: 0.45 },
   },
   "Cali IV Lead": {
     id: "HD2_AmpCaliIVLead",
@@ -206,7 +206,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Mesa/Boogie Mark IV (Lead)",
     category: "high_gain",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.6, Bass: 0.5, Mid: 0.6, Treble: 0.6, ChVol: 0.7, Master: 0.5, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.70, Bass: 0.25, Mid: 0.45, Treble: 0.55, ChVol: 0.7, Master: 0.45, Presence: 0.55, Sag: 0.25, Hum: 0.1, Ripple: 0.05, Bias: 0.60, BiasX: 0.45 },
   },
   "PV Panama": {
     id: "HD2_AmpPVPanama",
@@ -214,7 +214,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "EVH 5150III",
     category: "high_gain",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.6, Bass: 0.5, Mid: 0.5, Treble: 0.6, ChVol: 0.7, Master: 0.5, Presence: 0.5, Resonance: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.40, Bass: 0.64, Mid: 0.40, Treble: 0.55, ChVol: 0.7, Master: 1.0, Presence: 0.55, Resonance: 0.50, Sag: 0.20, Hum: 0.05, Ripple: 0.05, Bias: 0.65, BiasX: 0.45 },
   },
   "Archetype Lead": {
     id: "HD2_AmpArchetypeLead",
@@ -222,7 +222,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "PRS Archon (Lead)",
     category: "high_gain",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.6, Bass: 0.5, Mid: 0.6, Treble: 0.6, ChVol: 0.7, Master: 0.5, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.60, Bass: 0.45, Mid: 0.55, Treble: 0.60, ChVol: 0.7, Master: 0.50, Presence: 0.50, Sag: 0.25, Hum: 0.05, Ripple: 0.05, Bias: 0.60, BiasX: 0.45 },
   },
   "Das Benzin Mega": {
     id: "HD2_AmpDasBenzinMega",
@@ -230,7 +230,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Diezel VH4 (Mega Channel)",
     category: "high_gain",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.6, Bass: 0.5, Mid: 0.5, Treble: 0.6, ChVol: 0.7, Master: 0.5, Presence: 0.5, Deep: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.60, Bass: 0.50, Mid: 0.50, Treble: 0.45, ChVol: 0.7, Master: 0.45, Presence: 0.45, Deep: 0.55, Sag: 0.20, Hum: 0.05, Ripple: 0.05, Bias: 0.60, BiasX: 0.45 },
   },
   "Revv Gen Purple": {
     id: "HD2_AmpRevvGenPurple",
@@ -238,7 +238,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Revv Generator 120 (Purple/Ch3)",
     category: "high_gain",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.6, Bass: 0.5, Mid: 0.5, Treble: 0.6, ChVol: 0.7, Master: 0.5, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.55, Bass: 0.45, Mid: 0.55, Treble: 0.55, ChVol: 0.7, Master: 0.55, Presence: 0.55, Sag: 0.25, Hum: 0.05, Ripple: 0.05, Bias: 0.65, BiasX: 0.50 },
   },
   "Revv Gen Red": {
     id: "HD2_AmpRevvGenRed",
@@ -246,7 +246,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Revv Generator 120 (Red/Ch4)",
     category: "high_gain",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.6, Bass: 0.5, Mid: 0.5, Treble: 0.6, ChVol: 0.7, Master: 0.5, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.60, Bass: 0.45, Mid: 0.55, Treble: 0.55, ChVol: 0.7, Master: 0.55, Presence: 0.55, Sag: 0.20, Hum: 0.05, Ripple: 0.05, Bias: 0.65, BiasX: 0.65 },
   },
   "Solo Lead Clean": {
     id: "HD2_AmpSoloLeadClean",
@@ -254,7 +254,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Soldano SLO-100 (Clean)",
     category: "clean",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 0.5, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.35, Bass: 0.50, Mid: 0.55, Treble: 0.50, ChVol: 0.7, Master: 0.80, Presence: 0.40, Sag: 0.60, Hum: 0.05, Ripple: 0.05, Bias: 0.65, BiasX: 0.50 },
   },
   "Solo Lead Crunch": {
     id: "HD2_AmpSoloLeadCrunch",
@@ -262,7 +262,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Soldano SLO-100 (Crunch)",
     category: "crunch",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 0.5, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.45, Bass: 0.50, Mid: 0.55, Treble: 0.50, ChVol: 0.7, Master: 0.75, Presence: 0.35, Sag: 0.50, Hum: 0.1, Ripple: 0.05, Bias: 0.65, BiasX: 0.50 },
   },
   "Solo Lead OD": {
     id: "HD2_AmpSoloLeadOD",
@@ -270,7 +270,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Soldano SLO-100 (Overdrive)",
     category: "high_gain",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.6, Bass: 0.5, Mid: 0.5, Treble: 0.6, ChVol: 0.7, Master: 0.5, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.50, Bass: 0.50, Mid: 0.57, Treble: 0.48, ChVol: 0.7, Master: 0.80, Presence: 0.30, Sag: 0.40, Hum: 0.1, Ripple: 0.05, Bias: 0.65, BiasX: 0.50 },
   },
   "German Ubersonic": {
     id: "HD2_AmpGermanUbersonic",
@@ -278,7 +278,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Bogner Uberschall",
     category: "high_gain",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.6, Bass: 0.5, Mid: 0.5, Treble: 0.6, ChVol: 0.7, Master: 0.5, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.60, Bass: 0.60, Mid: 0.60, Treble: 0.60, ChVol: 0.7, Master: 0.40, Presence: 0.60, Sag: 0.20, Hum: 0.05, Ripple: 0.05, Bias: 0.60, BiasX: 0.45 },
   },
   "Das Benzin Lead": {
     id: "HD2_AmpDasBenzinLead",
@@ -286,7 +286,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Diezel VH4 (Lead Channel)",
     category: "high_gain",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.6, Bass: 0.5, Mid: 0.5, Treble: 0.6, ChVol: 0.7, Master: 0.5, Presence: 0.5, Deep: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.65, Bass: 0.50, Mid: 0.50, Treble: 0.45, ChVol: 0.7, Master: 0.45, Presence: 0.45, Deep: 0.55, Sag: 0.20, Hum: 0.05, Ripple: 0.05, Bias: 0.60, BiasX: 0.50 },
   },
   "ANGL Meteor": {
     id: "HD2_AmpANGLMeteor",
@@ -294,7 +294,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "ENGL Fireball 100",
     category: "high_gain",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.6, Bass: 0.5, Mid: 0.5, Treble: 0.6, ChVol: 0.7, Master: 0.5, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.55, Bass: 0.48, Mid: 0.38, Treble: 0.65, ChVol: 0.7, Master: 0.50, Presence: 0.50, Sag: 0.20, Hum: 0.05, Ripple: 0.05, Bias: 0.60, BiasX: 0.45 },
   },
 
   // --- Crunch / British ---
@@ -304,7 +304,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Fender Twin Reverb (Vibrato)",
     category: "clean",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 1.0, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.50, Bass: 0.50, Mid: 0.55, Treble: 0.55, ChVol: 0.7, Master: 1.0, Presence: 0.35, Sag: 0.65, Hum: 0.05, Ripple: 0.05, Bias: 0.65, BiasX: 0.50 },
   },
   "US Princess": {
     id: "HD2_AmpUSPrincess",
@@ -312,7 +312,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Fender Princeton Reverb",
     category: "clean",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 1.0, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.45, Bass: 0.40, Mid: 0.60, Treble: 0.55, ChVol: 0.7, Master: 1.0, Presence: 0.35, Sag: 0.75, Hum: 0.10, Ripple: 0.10, Bias: 0.65, BiasX: 0.50 },
   },
   "Brit J45 Brt": {
     id: "HD2_AmpBritJ45Brt",
@@ -320,7 +320,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Marshall JTM45 (Bright)",
     category: "crunch",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 0.5, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.55, Bass: 0.25, Mid: 0.75, Treble: 0.65, ChVol: 0.7, Master: 0.95, Presence: 0.40, Sag: 0.65, Hum: 0.20, Ripple: 0.15, Bias: 0.70, BiasX: 0.50 },
   },
   "Brit J45 Nrm": {
     id: "HD2_AmpBritJ45Nrm",
@@ -328,7 +328,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Marshall JTM45 (Normal)",
     category: "crunch",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 0.5, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.55, Bass: 0.30, Mid: 0.75, Treble: 0.70, ChVol: 0.7, Master: 0.95, Presence: 0.45, Sag: 0.65, Hum: 0.20, Ripple: 0.15, Bias: 0.70, BiasX: 0.50 },
   },
   "Brit P75 Nrm": {
     id: "HD2_AmpBritP75Nrm",
@@ -336,7 +336,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Park 75 (Normal)",
     category: "crunch",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 0.5, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.55, Bass: 0.25, Mid: 0.75, Treble: 0.70, ChVol: 0.7, Master: 0.95, Presence: 0.40, Sag: 0.60, Hum: 0.20, Ripple: 0.15, Bias: 0.70, BiasX: 0.50 },
   },
   "Brit Trem Brt": {
     id: "HD2_AmpBritTremBrt",
@@ -344,7 +344,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Marshall JTM50 (Bright/Tremolo)",
     category: "crunch",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 0.5, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.55, Bass: 0.25, Mid: 0.75, Treble: 0.65, ChVol: 0.7, Master: 0.95, Presence: 0.35, Sag: 0.60, Hum: 0.20, Ripple: 0.15, Bias: 0.70, BiasX: 0.50 },
   },
   "Brit Trem Nrm": {
     id: "HD2_AmpBritTremNrm",
@@ -352,7 +352,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Marshall JTM50 (Normal/Tremolo)",
     category: "crunch",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 0.5, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.55, Bass: 0.30, Mid: 0.75, Treble: 0.70, ChVol: 0.7, Master: 0.95, Presence: 0.40, Sag: 0.60, Hum: 0.20, Ripple: 0.15, Bias: 0.70, BiasX: 0.50 },
   },
   "Brit Trem Jump": {
     id: "HD2_AmpBritTremJump",
@@ -360,7 +360,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Marshall JTM50 (Jumped/Tremolo)",
     category: "crunch",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 0.5, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.55, Bass: 0.25, Mid: 0.75, Treble: 0.68, ChVol: 0.7, Master: 0.95, Presence: 0.38, Sag: 0.60, Hum: 0.20, Ripple: 0.15, Bias: 0.70, BiasX: 0.50 },
   },
   "Matchstick Ch2": {
     id: "HD2_AmpMatchstickCh2",
@@ -368,7 +368,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Matchless DC-30 (Ch2)",
     category: "crunch",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.50, Bass: 0.50, Mid: 0.55, Treble: 0.60, ChVol: 0.7, Master: 0.85, Sag: 0.55, Hum: 0.15, Ripple: 0.1, Bias: 0.70, BiasX: 0.60 },
   },
   "Matchstick Jump": {
     id: "HD2_AmpMatchstickJump",
@@ -376,7 +376,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Matchless DC-30 (Jumped)",
     category: "crunch",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.50, Bass: 0.50, Mid: 0.55, Treble: 0.58, ChVol: 0.7, Master: 0.85, Sag: 0.55, Hum: 0.15, Ripple: 0.1, Bias: 0.70, BiasX: 0.60 },
   },
   "A30 Fawn Brt": {
     id: "HD2_AmpA30FawnBrt",
@@ -384,7 +384,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Vox AC30 Fawn (Bright)",
     category: "crunch",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Treble: 0.5, ChVol: 0.7, Master: 0.5, Cut: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.50, Bass: 0.50, Treble: 0.55, ChVol: 0.7, Master: 1.0, Cut: 0.50, Sag: 0.65, Hum: 0.15, Ripple: 0.1, Bias: 0.70, BiasX: 0.70 },
   },
   "A30 Fawn Nrm": {
     id: "HD2_AmpA30FawnNrm",
@@ -392,7 +392,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Vox AC30 Fawn (Normal)",
     category: "crunch",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Treble: 0.5, ChVol: 0.7, Master: 0.5, Cut: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.50, Bass: 0.50, Treble: 0.55, ChVol: 0.7, Master: 1.0, Cut: 0.50, Sag: 0.65, Hum: 0.15, Ripple: 0.1, Bias: 0.70, BiasX: 0.70 },
   },
   "Fullerton Brt": {
     id: "HD2_AmpFullertonBrt",
@@ -400,7 +400,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Fender Bassman (Bright)",
     category: "crunch",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 1.0, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.50, Bass: 0.40, Mid: 0.55, Treble: 0.55, ChVol: 0.7, Master: 1.0, Presence: 0.40, Sag: 0.70, Hum: 0.15, Ripple: 0.15, Bias: 0.70, BiasX: 0.50 },
   },
   "Fullerton Jump": {
     id: "HD2_AmpFullertonJump",
@@ -408,7 +408,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Fender Bassman (Jumped)",
     category: "crunch",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 1.0, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.50, Bass: 0.40, Mid: 0.55, Treble: 0.55, ChVol: 0.7, Master: 1.0, Presence: 0.40, Sag: 0.70, Hum: 0.15, Ripple: 0.15, Bias: 0.70, BiasX: 0.50 },
   },
   "Grammatico Brt": {
     id: "HD2_AmpGrammaticoBrt",
@@ -416,7 +416,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Grammatico LaGrange (Bright)",
     category: "crunch",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 0.5, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.50, Bass: 0.45, Mid: 0.55, Treble: 0.60, ChVol: 0.7, Master: 0.85, Presence: 0.45, Sag: 0.60, Hum: 0.1, Ripple: 0.1, Bias: 0.65, BiasX: 0.50 },
   },
   "Grammatico Jump": {
     id: "HD2_AmpGrammaticoJump",
@@ -424,7 +424,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Grammatico LaGrange (Jumped)",
     category: "crunch",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 0.5, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.50, Bass: 0.45, Mid: 0.55, Treble: 0.58, ChVol: 0.7, Master: 0.85, Presence: 0.45, Sag: 0.60, Hum: 0.1, Ripple: 0.1, Bias: 0.65, BiasX: 0.50 },
   },
   "Tweed Blues Brt": {
     id: "HD2_AmpTweedBluesBrt",
@@ -432,7 +432,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Fender Tweed Blues (Bright)",
     category: "crunch",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 1.0, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.50, Bass: 0.35, Mid: 0.55, Treble: 0.55, ChVol: 0.7, Master: 1.0, Presence: 0.40, Sag: 0.75, Hum: 0.20, Ripple: 0.15, Bias: 0.70, BiasX: 0.50 },
   },
   "Tweed Blues Nrm": {
     id: "HD2_AmpTweedBluesNrm",
@@ -440,7 +440,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Fender Tweed Blues (Normal)",
     category: "crunch",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 1.0, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.50, Bass: 0.35, Mid: 0.55, Treble: 0.60, ChVol: 0.7, Master: 1.0, Presence: 0.40, Sag: 0.75, Hum: 0.20, Ripple: 0.15, Bias: 0.70, BiasX: 0.50 },
   },
   "Mail Order Twin": {
     id: "HD2_AmpMailOrderTwin",
@@ -448,7 +448,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Silvertone 1484",
     category: "crunch",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 1.0, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.50, Bass: 0.50, Mid: 0.50, Treble: 0.55, ChVol: 0.7, Master: 1.0, Sag: 0.70, Hum: 0.20, Ripple: 0.15, Bias: 0.70, BiasX: 0.50 },
   },
   "Voltage Queen": {
     id: "HD2_AmpVoltageQueen",
@@ -456,7 +456,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Victoria Electro King",
     category: "clean",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Treble: 0.5, ChVol: 0.7, Master: 1.0, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.45, Bass: 0.50, Treble: 0.55, ChVol: 0.7, Master: 1.0, Sag: 0.75, Hum: 0.20, Ripple: 0.15, Bias: 0.70, BiasX: 0.50 },
   },
   "Soup Pro": {
     id: "HD2_AmpSoupPro",
@@ -464,7 +464,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Supro S6616",
     category: "clean",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Treble: 0.5, ChVol: 0.7, Master: 1.0, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.45, Bass: 0.50, Treble: 0.55, ChVol: 0.7, Master: 1.0, Sag: 0.75, Hum: 0.20, Ripple: 0.15, Bias: 0.70, BiasX: 0.50 },
   },
   "Stone Age 185": {
     id: "HD2_AmpStoneAge185",
@@ -472,7 +472,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Gibson EH-185",
     category: "clean",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Treble: 0.5, ChVol: 0.7, Master: 1.0, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.40, Bass: 0.50, Treble: 0.50, ChVol: 0.7, Master: 1.0, Sag: 0.75, Hum: 0.25, Ripple: 0.20, Bias: 0.70, BiasX: 0.50 },
   },
   "EV Panama Blue": {
     id: "HD2_AmpEVPanamaBlue",
@@ -480,7 +480,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "EVH 5150III (Blue/Clean)",
     category: "clean",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 0.5, Presence: 0.5, Resonance: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.35, Bass: 0.50, Mid: 0.50, Treble: 0.55, ChVol: 0.7, Master: 0.50, Presence: 0.50, Resonance: 0.50, Sag: 0.50, Hum: 0.05, Ripple: 0.05, Bias: 0.65, BiasX: 0.50 },
   },
   "EV Panama Red": {
     id: "HD2_AmpEVPanamaRed",
@@ -488,7 +488,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "EVH 5150III (Red/High Gain)",
     category: "high_gain",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.6, Bass: 0.5, Mid: 0.5, Treble: 0.6, ChVol: 0.7, Master: 0.5, Presence: 0.5, Resonance: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.45, Bass: 0.60, Mid: 0.40, Treble: 0.55, ChVol: 0.7, Master: 0.90, Presence: 0.55, Resonance: 0.50, Sag: 0.20, Hum: 0.05, Ripple: 0.05, Bias: 0.65, BiasX: 0.45 },
   },
   "Mandarin 80": {
     id: "HD2_AmpMandarin80",
@@ -496,7 +496,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Orange OR80",
     category: "crunch",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.50, Bass: 0.50, Mid: 0.55, Treble: 0.55, ChVol: 0.7, Master: 0.50, Sag: 0.55, Hum: 0.15, Ripple: 0.1, Bias: 0.65, BiasX: 0.50 },
   },
   "Mandarin Rocker": {
     id: "HD2_AmpMandarinRocker",
@@ -504,7 +504,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Orange Rockerverb 100 MKIII",
     category: "high_gain",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.6, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.60, Bass: 0.50, Mid: 0.55, Treble: 0.55, ChVol: 0.7, Master: 0.50, Sag: 0.30, Hum: 0.1, Ripple: 0.05, Bias: 0.60, BiasX: 0.50 },
   },
   "Cali Texas Ch1": {
     id: "HD2_AmpCaliTexasCh1",
@@ -512,7 +512,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Mesa/Boogie Lone Star (Clean)",
     category: "clean",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 0.5, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.40, Bass: 0.50, Mid: 0.55, Treble: 0.55, ChVol: 0.7, Master: 0.50, Presence: 0.45, Sag: 0.60, Hum: 0.05, Ripple: 0.05, Bias: 0.65, BiasX: 0.50 },
   },
   "Jazz Rivet 120": {
     id: "HD2_AmpJazzRivet120",
@@ -520,7 +520,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Roland JC-120",
     category: "clean",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 1.0, BrightSwitch: 0, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.28, Bass: 0.56, Mid: 0.27, Treble: 0.53, ChVol: 0.7, Master: 1.0, BrightSwitch: 0, Sag: 0.0, Hum: 0.0, Ripple: 0.0, Bias: 0.40, BiasX: 0.50 },
   },
   "Interstate Zed": {
     id: "HD2_AmpInterstateZed",
@@ -528,7 +528,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Dr. Z Route 66",
     category: "crunch",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.50, Bass: 0.50, Mid: 0.55, Treble: 0.55, ChVol: 0.7, Master: 0.80, Sag: 0.60, Hum: 0.15, Ripple: 0.1, Bias: 0.65, BiasX: 0.50 },
   },
   "Divided Duo": {
     id: "HD2_AmpDividedDuo",
@@ -536,7 +536,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Divided by 13 9/15",
     category: "crunch",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.50, Bass: 0.50, Mid: 0.55, Treble: 0.55, ChVol: 0.7, Master: 0.80, Sag: 0.60, Hum: 0.15, Ripple: 0.1, Bias: 0.65, BiasX: 0.50 },
   },
 
   // --- Line 6 Originals ---
@@ -546,7 +546,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Line 6 Original (Blackface Clean)",
     category: "clean",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.40, Bass: 0.45, Mid: 0.55, Treble: 0.55, ChVol: 0.7, Master: 0.90, Sag: 0.65, Hum: 0.1, Ripple: 0.1, Bias: 0.65, BiasX: 0.50 },
   },
   "Badonk": {
     id: "HD2_AmpLine6Badonk",
@@ -554,7 +554,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Line 6 Original (Modern High Gain)",
     category: "high_gain",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.6, Bass: 0.5, Mid: 0.5, Treble: 0.6, ChVol: 0.7, Master: 0.5, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.60, Bass: 0.50, Mid: 0.50, Treble: 0.60, ChVol: 0.7, Master: 0.50, Presence: 0.50, Sag: 0.20, Hum: 0.05, Ripple: 0.05, Bias: 0.60, BiasX: 0.45 },
   },
   "Doom": {
     id: "HD2_AmpLine6Doom",
@@ -562,7 +562,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Line 6 Original (Doom Metal)",
     category: "high_gain",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.7, Bass: 0.6, Mid: 0.4, Treble: 0.5, ChVol: 0.7, Master: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.70, Bass: 0.65, Mid: 0.40, Treble: 0.50, ChVol: 0.7, Master: 0.55, Sag: 0.35, Hum: 0.20, Ripple: 0.15, Bias: 0.70, BiasX: 0.55 },
   },
   "Elektrik": {
     id: "HD2_AmpLine6Elektrik",
@@ -570,7 +570,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Line 6 Original (British High Gain)",
     category: "high_gain",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.6, Bass: 0.5, Mid: 0.5, Treble: 0.6, ChVol: 0.7, Master: 0.5, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.60, Bass: 0.45, Mid: 0.55, Treble: 0.60, ChVol: 0.7, Master: 0.55, Presence: 0.50, Sag: 0.30, Hum: 0.1, Ripple: 0.05, Bias: 0.65, BiasX: 0.50 },
   },
   "Epic": {
     id: "HD2_AmpLine6Epic",
@@ -578,7 +578,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Line 6 Original (80s Metal)",
     category: "high_gain",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.6, Bass: 0.5, Mid: 0.5, Treble: 0.6, ChVol: 0.7, Master: 0.5, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.60, Bass: 0.50, Mid: 0.55, Treble: 0.60, ChVol: 0.7, Master: 0.55, Presence: 0.55, Sag: 0.25, Hum: 0.05, Ripple: 0.05, Bias: 0.60, BiasX: 0.45 },
   },
 
   // Additional useful amps
@@ -588,7 +588,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Fender Super Reverb (Normal)",
     category: "clean",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 1.0, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.45, Bass: 0.40, Mid: 0.55, Treble: 0.55, ChVol: 0.7, Master: 1.0, Presence: 0.35, Sag: 0.70, Hum: 0.10, Ripple: 0.10, Bias: 0.65, BiasX: 0.50 },
   },
   "US Super Vib": {
     id: "HD2_AmpUSSuperVib",
@@ -596,7 +596,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Fender Super Reverb (Vibrato)",
     category: "clean",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.5, Bass: 0.5, Mid: 0.5, Treble: 0.5, ChVol: 0.7, Master: 1.0, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.45, Bass: 0.40, Mid: 0.55, Treble: 0.55, ChVol: 0.7, Master: 1.0, Presence: 0.35, Sag: 0.70, Hum: 0.10, Ripple: 0.10, Bias: 0.65, BiasX: 0.50 },
   },
   "Cartographer": {
     id: "HD2_AmpCartographer",
@@ -604,7 +604,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Ben Adrian Cartographer",
     category: "high_gain",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.6, Bass: 0.5, Mid: 0.5, Treble: 0.6, ChVol: 0.7, Master: 0.5, Presence: 0.5, Sag: 0.5, Hum: 0.5, Ripple: 0.5, Bias: 0.5, BiasX: 0.5 },
+    defaultParams: { Drive: 0.55, Bass: 0.50, Mid: 0.55, Treble: 0.58, ChVol: 0.7, Master: 0.50, Presence: 0.50, Sag: 0.30, Hum: 0.05, Ripple: 0.05, Bias: 0.60, BiasX: 0.50 },
   },
 };
 
@@ -612,36 +612,36 @@ export const AMP_MODELS: Record<string, HelixModel> = {
 // CAB MODELS
 // ============================================================
 export const CAB_MODELS: Record<string, HelixModel> = {
-  "1x8 Small Tweed": { id: "HD2_CabMicIr_1x8SmallTweed", name: "1x8 Small Tweed", basedOn: "Fender Champ 1x8", category: "small", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 19.9, HighCut: 20100, Position: 0.24, Angle: 0 } },
-  "1x12 US Deluxe": { id: "HD2_CabMicIr_1x12USDeluxe", name: "1x12 US Deluxe", basedOn: "Fender Deluxe Reverb 1x12", category: "small", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 19.9, HighCut: 20100, Position: 0.24, Angle: 0 } },
-  "1x12 Blue Bell": { id: "HD2_CabMicIr_1x12BlueBell", name: "1x12 Blue Bell", basedOn: "1x12 Celestion Blue", category: "small", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 19.9, HighCut: 20100, Position: 0.24, Angle: 0 } },
-  "1x12 Fullerton": { id: "HD2_CabMicIr_1x12Fullerton", name: "1x12 Fullerton", basedOn: "Fender Bassman 1x12", category: "small", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 19.9, HighCut: 20100, Position: 0.24, Angle: 0 } },
-  "1x12 Grammatico": { id: "HD2_CabMicIr_1x12Grammatico", name: "1x12 Grammatico", basedOn: "Grammatico LaGrange 1x12", category: "small", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 19.9, HighCut: 20100, Position: 0.24, Angle: 0 } },
-  "2x12 Blue Bell": { id: "HD2_CabMicIr_2x12BlueBell", name: "2x12 Blue Bell", basedOn: "Vox AC30 2x12 Blue", category: "medium", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 19.9, HighCut: 20100, Position: 0.24, Angle: 0 } },
-  "2x12 Double C12N": { id: "HD2_CabMicIr_2x12DoubleC12N", name: "2x12 Double C12N", basedOn: "Fender Twin 2x12", category: "medium", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 19.9, HighCut: 20100, Position: 0.24, Angle: 0 } },
-  "2x12 Silver Bell": { id: "HD2_CabMicIr_2x12SilverBell", name: "2x12 Silver Bell", basedOn: "Vox 2x12 Silver", category: "medium", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 19.9, HighCut: 20100, Position: 0.24, Angle: 0 } },
-  "2x12 Interstate": { id: "HD2_CabMicIr_2x12Interstate", name: "2x12 Interstate", basedOn: "Dr. Z 2x12", category: "medium", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 19.9, HighCut: 20100, Position: 0.24, Angle: 0 } },
-  "2x12 Match H30": { id: "HD2_CabMicIr_2x12MatchH30", name: "2x12 Match H30", basedOn: "Matchless 2x12 G12H30", category: "medium", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 19.9, HighCut: 20100, Position: 0.24, Angle: 0 } },
-  "2x12 Jazz Rivet": { id: "HD2_CabMicIr_2x12JazzRivet", name: "2x12 Jazz Rivet", basedOn: "Roland JC-120 2x12", category: "medium", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 19.9, HighCut: 20100, Position: 0.24, Angle: 0 } },
-  "4x10 Tweed P10R": { id: "HD2_CabMicIr_4x10TweedP10R", name: "4x10 Tweed P10R", basedOn: "Fender Bassman 4x10", category: "medium", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 19.9, HighCut: 20100, Position: 0.24, Angle: 0 } },
-  "4x12 Greenback25": { id: "HD2_CabMicIr_4x12Greenback25", name: "4x12 Greenback25", basedOn: "Marshall 4x12 Greenback 25W", category: "large", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 19.9, HighCut: 20100, Position: 0.24, Angle: 0 } },
-  "4x12 Greenback20": { id: "HD2_CabMicIr_4x12Greenback20", name: "4x12 Greenback20", basedOn: "Marshall 4x12 Greenback 20W", category: "large", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 19.9, HighCut: 20100, Position: 0.24, Angle: 0 } },
-  "4x12 Blackback H30": { id: "HD2_CabMicIr_4x12BlackbackH30", name: "4x12 Blackback H30", basedOn: "Marshall 4x12 Blackback H30", category: "large", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 19.9, HighCut: 20100, Position: 0.24, Angle: 0 } },
-  "4x12 Cali V30": { id: "HD2_CabMicIr_4x12CaliV30", name: "4x12 Cali V30", basedOn: "Mesa 4x12 Vintage 30", category: "large", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 19.9, HighCut: 20100, Position: 0.24, Angle: 0 } },
-  "4x12 Uber V30": { id: "HD2_CabMicIr_4x12UberV30", name: "4x12 Uber V30", basedOn: "Bogner 4x12 V30", category: "large", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 19.9, HighCut: 20100, Position: 0.24, Angle: 0 } },
-  "4x12 XXL V30": { id: "HD2_CabMicIr_4x12XXLV30", name: "4x12 XXL V30", basedOn: "Engl 4x12 V30", category: "large", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 19.9, HighCut: 20100, Position: 0.24, Angle: 0 } },
-  "4x12 WhoWatt 100": { id: "HD2_CabMicIr_4x12WhoWatt100", name: "4x12 WhoWatt 100", basedOn: "Hiwatt 4x12 Fane", category: "large", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 19.9, HighCut: 20100, Position: 0.24, Angle: 0 } },
-  "4x12 Solo Lead EM": { id: "HD2_CabMicIr_4x12SoloLeadEM", name: "4x12 Solo Lead EM", basedOn: "Soldano 4x12 Eminence", category: "large", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 19.9, HighCut: 20100, Position: 0.24, Angle: 0 } },
-  "4x12 Brit V30": { id: "HD2_CabMicIr_4x12BritV30", name: "4x12 Brit V30", basedOn: "Marshall 4x12 V30", category: "large", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 19.9, HighCut: 20100, Position: 0.24, Angle: 0 } },
-  "Soup Pro Ellipse": { id: "HD2_CabMicIr_SoupProEllipse", name: "Soup Pro Ellipse", basedOn: "Supro 1x6/1x8 Elliptical", category: "small", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 19.9, HighCut: 20100, Position: 0.24, Angle: 0 } },
+  "1x8 Small Tweed": { id: "HD2_CabMicIr_1x8SmallTweed", name: "1x8 Small Tweed", basedOn: "Fender Champ 1x8", category: "small", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 0.18, HighCut: 0.80, Position: 0.24, Angle: 0 } },
+  "1x12 US Deluxe": { id: "HD2_CabMicIr_1x12USDeluxe", name: "1x12 US Deluxe", basedOn: "Fender Deluxe Reverb 1x12", category: "small", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 0.18, HighCut: 0.80, Position: 0.24, Angle: 0 } },
+  "1x12 Blue Bell": { id: "HD2_CabMicIr_1x12BlueBell", name: "1x12 Blue Bell", basedOn: "1x12 Celestion Blue", category: "small", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 0.18, HighCut: 0.80, Position: 0.24, Angle: 0 } },
+  "1x12 Fullerton": { id: "HD2_CabMicIr_1x12Fullerton", name: "1x12 Fullerton", basedOn: "Fender Bassman 1x12", category: "small", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 0.18, HighCut: 0.80, Position: 0.24, Angle: 0 } },
+  "1x12 Grammatico": { id: "HD2_CabMicIr_1x12Grammatico", name: "1x12 Grammatico", basedOn: "Grammatico LaGrange 1x12", category: "small", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 0.18, HighCut: 0.80, Position: 0.24, Angle: 0 } },
+  "2x12 Blue Bell": { id: "HD2_CabMicIr_2x12BlueBell", name: "2x12 Blue Bell", basedOn: "Vox AC30 2x12 Blue", category: "medium", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 0.18, HighCut: 0.80, Position: 0.24, Angle: 0 } },
+  "2x12 Double C12N": { id: "HD2_CabMicIr_2x12DoubleC12N", name: "2x12 Double C12N", basedOn: "Fender Twin 2x12", category: "medium", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 0.18, HighCut: 0.80, Position: 0.24, Angle: 0 } },
+  "2x12 Silver Bell": { id: "HD2_CabMicIr_2x12SilverBell", name: "2x12 Silver Bell", basedOn: "Vox 2x12 Silver", category: "medium", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 0.18, HighCut: 0.80, Position: 0.24, Angle: 0 } },
+  "2x12 Interstate": { id: "HD2_CabMicIr_2x12Interstate", name: "2x12 Interstate", basedOn: "Dr. Z 2x12", category: "medium", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 0.18, HighCut: 0.80, Position: 0.24, Angle: 0 } },
+  "2x12 Match H30": { id: "HD2_CabMicIr_2x12MatchH30", name: "2x12 Match H30", basedOn: "Matchless 2x12 G12H30", category: "medium", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 0.18, HighCut: 0.80, Position: 0.24, Angle: 0 } },
+  "2x12 Jazz Rivet": { id: "HD2_CabMicIr_2x12JazzRivet", name: "2x12 Jazz Rivet", basedOn: "Roland JC-120 2x12", category: "medium", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 0.18, HighCut: 0.80, Position: 0.24, Angle: 0 } },
+  "4x10 Tweed P10R": { id: "HD2_CabMicIr_4x10TweedP10R", name: "4x10 Tweed P10R", basedOn: "Fender Bassman 4x10", category: "medium", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 0.18, HighCut: 0.80, Position: 0.24, Angle: 0 } },
+  "4x12 Greenback25": { id: "HD2_CabMicIr_4x12Greenback25", name: "4x12 Greenback25", basedOn: "Marshall 4x12 Greenback 25W", category: "large", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 0.18, HighCut: 0.80, Position: 0.24, Angle: 0 } },
+  "4x12 Greenback20": { id: "HD2_CabMicIr_4x12Greenback20", name: "4x12 Greenback20", basedOn: "Marshall 4x12 Greenback 20W", category: "large", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 0.18, HighCut: 0.80, Position: 0.24, Angle: 0 } },
+  "4x12 Blackback H30": { id: "HD2_CabMicIr_4x12BlackbackH30", name: "4x12 Blackback H30", basedOn: "Marshall 4x12 Blackback H30", category: "large", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 0.18, HighCut: 0.80, Position: 0.24, Angle: 0 } },
+  "4x12 Cali V30": { id: "HD2_CabMicIr_4x12CaliV30", name: "4x12 Cali V30", basedOn: "Mesa 4x12 Vintage 30", category: "large", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 0.18, HighCut: 0.80, Position: 0.24, Angle: 0 } },
+  "4x12 Uber V30": { id: "HD2_CabMicIr_4x12UberV30", name: "4x12 Uber V30", basedOn: "Bogner 4x12 V30", category: "large", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 0.18, HighCut: 0.80, Position: 0.24, Angle: 0 } },
+  "4x12 XXL V30": { id: "HD2_CabMicIr_4x12XXLV30", name: "4x12 XXL V30", basedOn: "Engl 4x12 V30", category: "large", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 0.18, HighCut: 0.80, Position: 0.24, Angle: 0 } },
+  "4x12 WhoWatt 100": { id: "HD2_CabMicIr_4x12WhoWatt100", name: "4x12 WhoWatt 100", basedOn: "Hiwatt 4x12 Fane", category: "large", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 0.18, HighCut: 0.80, Position: 0.24, Angle: 0 } },
+  "4x12 Solo Lead EM": { id: "HD2_CabMicIr_4x12SoloLeadEM", name: "4x12 Solo Lead EM", basedOn: "Soldano 4x12 Eminence", category: "large", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 0.18, HighCut: 0.80, Position: 0.24, Angle: 0 } },
+  "4x12 Brit V30": { id: "HD2_CabMicIr_4x12BritV30", name: "4x12 Brit V30", basedOn: "Marshall 4x12 V30", category: "large", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 0.18, HighCut: 0.80, Position: 0.24, Angle: 0 } },
+  "Soup Pro Ellipse": { id: "HD2_CabMicIr_SoupProEllipse", name: "Soup Pro Ellipse", basedOn: "Supro 1x6/1x8 Elliptical", category: "small", blockType: BLOCK_TYPES.CAB, defaultParams: { Mic: 0, Distance: 1.0, Level: 0.0, LowCut: 0.18, HighCut: 0.80, Position: 0.24, Angle: 0 } },
 };
 
 // ============================================================
 // DISTORTION / OVERDRIVE MODELS
 // ============================================================
 export const DISTORTION_MODELS: Record<string, HelixModel> = {
-  "Scream 808": { id: "HD2_DistScream808", name: "Scream 808", basedOn: "Ibanez TS808 Tube Screamer", category: "overdrive", blockType: BLOCK_TYPES.DISTORTION, defaultParams: { Drive: 0.5, Tone: 0.5, Level: 0.5 } },
-  "Minotaur": { id: "HD2_DistMinotaur", name: "Minotaur", basedOn: "Klon Centaur", category: "overdrive", blockType: BLOCK_TYPES.DISTORTION, defaultParams: { Gain: 0.5, Treble: 0.5, Output: 0.5 } },
+  "Scream 808": { id: "HD2_DistScream808", name: "Scream 808", basedOn: "Ibanez TS808 Tube Screamer", category: "overdrive", blockType: BLOCK_TYPES.DISTORTION, defaultParams: { Drive: 0.10, Tone: 0.45, Level: 0.65 } },
+  "Minotaur": { id: "HD2_DistMinotaur", name: "Minotaur", basedOn: "Klon Centaur", category: "overdrive", blockType: BLOCK_TYPES.DISTORTION, defaultParams: { Gain: 0.20, Treble: 0.50, Output: 0.60 } },
   "Teemah!": { id: "HD2_DistTeemah", name: "Teemah!", basedOn: "Paul Cochrane Timmy", category: "overdrive", blockType: BLOCK_TYPES.DISTORTION, defaultParams: { Gain: 0.5, Bass: 0.5, Treble: 0.5, Volume: 0.5 } },
   "Kinky Boost": { id: "HD2_DistKinkyBoost", name: "Kinky Boost", basedOn: "Xotic EP Booster", category: "boost", blockType: BLOCK_TYPES.DISTORTION, defaultParams: { Boost: 0.5 } },
   "Compulsive Drive": { id: "HD2_DistCompulsiveDrive", name: "Compulsive Drive", basedOn: "Fulltone OCD", category: "overdrive", blockType: BLOCK_TYPES.DISTORTION, defaultParams: { Drive: 0.5, Tone: 0.5, Volume: 0.5 } },

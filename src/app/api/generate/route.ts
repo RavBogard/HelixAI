@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
       config: {
         systemInstruction: getPresetGenerationPrompt(),
         responseMimeType: "application/json",
+        temperature: 0.3,
       },
     });
 

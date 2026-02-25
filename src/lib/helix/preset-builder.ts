@@ -93,8 +93,8 @@ function buildDsp(blocks: BlockSpec[], dspIndex: number): HlxDsp {
       "@input": 1, // 1 = Guitar In
       "@model": dspIndex === 0 ? "HD2_AppDSPFlow1Input" : "HD2_AppDSPFlow2Input",
       noiseGate: dspIndex === 0,
-      decay: 0.1,
-      threshold: -48.0,
+      decay: dspIndex === 0 ? 0.5 : 0.1,
+      threshold: dspIndex === 0 ? -48.0 : -48.0,
     },
     outputA: {
       "@model": "HD2_AppDSPFlowOutput",
@@ -104,17 +104,30 @@ function buildDsp(blocks: BlockSpec[], dspIndex: number): HlxDsp {
     },
   };
 
+  // Pre-compute cab indices so amp blocks can reference the correct cab
+  const cabIndexMap = new Map<BlockSpec, number>();
+  let preCabIdx = 0;
+  for (const block of blocks) {
+    if (block.type === "cab") {
+      cabIndexMap.set(block, preCabIdx++);
+    }
+  }
+
   let blockIndex = 0;
   let cabIndex = 0;
 
   for (const block of blocks) {
     if (block.type === "cab") {
       const cabKey = `cab${cabIndex}`;
+      // Determine mic from parameters or use smart default (0=SM57, 6=Ribbon121)
+      const mic = block.parameters["Mic"] ?? 0;
+      const cabParams = { ...block.parameters };
+      delete cabParams["Mic"]; // Mic is a top-level @mic, not a parameter
       dsp[cabKey] = {
         "@model": block.modelId,
         "@enabled": block.enabled,
-        "@mic": 0,
-        ...block.parameters,
+        "@mic": mic,
+        ...cabParams,
       };
       cabIndex++;
     } else {
@@ -136,9 +149,12 @@ function buildDsp(blocks: BlockSpec[], dspIndex: number): HlxDsp {
       // Add amp-specific fields and cab reference
       if (block.type === "amp") {
         hlxBlock["@bypassvolume"] = 1;
-        const associatedCab = blocks.find(b => b.type === "cab");
+        // Find the first cab after this amp in signal chain order
+        const ampIdx = blocks.indexOf(block);
+        const associatedCab = blocks.slice(ampIdx + 1).find(b => b.type === "cab")
+          || blocks.find(b => b.type === "cab"); // fallback to any cab
         if (associatedCab) {
-          hlxBlock["@cab"] = `cab${cabIndex}`;
+          hlxBlock["@cab"] = `cab${cabIndexMap.get(associatedCab) ?? 0}`;
         }
       }
 
