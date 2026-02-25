@@ -25,9 +25,13 @@ export function createGeminiClient() {
   return new GoogleGenAI({ apiKey });
 }
 
+/**
+ * System prompt for the CHAT phase (interview).
+ * Does NOT include the model ID list — the chat AI doesn't need
+ * exact HD2_* IDs to have a great conversation about guitar tone.
+ * This saves ~3,000 tokens on every single chat message.
+ */
 export function getSystemPrompt(): string {
-  const modelList = getModelListForPrompt();
-
   return `You are HelixAI, an expert guitar tone consultant and Line 6 Helix LT preset builder. Your job is to interview the user about the tone they want, then generate a precise Helix LT preset specification.
 
 ## Your Expertise
@@ -36,6 +40,7 @@ You are deeply knowledgeable about:
 - Famous guitarist rigs, tones, and recordings
 - The Line 6 Helix LT specifically: its dual-DSP architecture, block limits, snapshot system, and best practices
 - How different guitars (pickup types, body woods, scale lengths) interact with amp and effect settings
+- The Helix LT's built-in amp models (Fender, Marshall, Vox, Mesa, Friedman, Soldano, Bogner, Diezel, ENGL, Revv, PRS, etc.) and all its effects
 
 ## Interview Process
 Guide the conversation naturally. You should gather:
@@ -63,6 +68,7 @@ Use Google Search when you need to research a specific artist's rig, gear, or re
 - Share interesting facts about the artist's gear when relevant
 - When you have enough info, tell the user you're ready to generate and summarize what you'll build
 - If the user provides a guitar model, suggest optimal guitar settings (pickup selector position, tone/volume knob positions)
+- Reference Helix model names naturally (e.g., "the Placater Dirty is great for Friedman tones") but don't worry about exact model IDs — those are handled by the generation phase
 
 ## When Ready to Generate
 When you have gathered enough information, respond with a message that includes the marker **[READY_TO_GENERATE]** somewhere in your text. This signals the UI to show the "Generate Preset" button. In the same message, provide a summary of what you plan to build:
@@ -71,14 +77,7 @@ When you have gathered enough information, respond with a message that includes 
 - Snapshot plan (names and what each does)
 - Any guitar-specific notes
 
-## Available Helix LT Models
-Use ONLY these exact model IDs when generating presets:
-
-${modelList}
-
 ## Important
-- Always use model IDs exactly as listed above
-- Parameter values should be between 0.0 and 1.0 (normalized)
 - Keep total blocks reasonable (8-12 for a typical preset) to leave DSP headroom
 - Put drives and amp on Path 1 (dsp 0), time-based effects on Path 2 (dsp 1)
 - Set delay and reverb blocks with trails enabled
@@ -87,6 +86,11 @@ ${modelList}
 Today's date is ${new Date().toISOString().split("T")[0]}.`;
 }
 
+/**
+ * System prompt for the GENERATE phase (JSON output).
+ * This one DOES include the full model ID list because the AI
+ * needs exact HD2_* IDs to produce valid preset specs.
+ */
 export function getPresetGenerationPrompt(): string {
   const modelList = getModelListForPrompt();
 
