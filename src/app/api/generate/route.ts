@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createGeminiClient, getPresetGenerationPrompt, MODEL_ID } from "@/lib/gemini";
-import { buildHlxFile, summarizePreset } from "@/lib/helix";
+import { buildHlxFile, summarizePreset, validateAndFixPresetSpec } from "@/lib/helix";
 import type { PresetSpec } from "@/lib/helix";
 
 export async function POST(req: NextRequest) {
@@ -38,16 +38,28 @@ export async function POST(req: NextRequest) {
       presetSpec = JSON.parse(cleaned);
     }
 
+    // Validate and fix the AI's output — catches hallucinated model IDs and wrong block references
+    const validation = validateAndFixPresetSpec(presetSpec);
+    if (validation.errors.length > 0) {
+      console.warn("Preset validation issues:", validation.errors);
+    }
+    const finalSpec = validation.fixedSpec || presetSpec;
+
     // Build the .hlx file
-    const hlxFile = buildHlxFile(presetSpec);
+    const hlxFile = buildHlxFile(finalSpec);
 
     // Generate summary
-    const summary = summarizePreset(presetSpec);
+    const summary = summarizePreset(finalSpec);
+
+    // Include validation warnings in the response
+    const warnings = validation.errors.length > 0
+      ? `\n\n**Auto-corrections applied:**\n${validation.errors.map(e => `- ${e}`).join("\n")}`
+      : "";
 
     return NextResponse.json({
       preset: hlxFile,
-      summary,
-      spec: presetSpec,
+      summary: summary + warnings,
+      spec: finalSpec,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

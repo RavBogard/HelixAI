@@ -145,7 +145,7 @@ function buildSnapshot(
   spec: SnapshotSpec,
   allBlocks: BlockSpec[],
   tempo: number,
-  index: number,
+  _index: number,
 ): HlxSnapshot {
   const blocks: { dsp0?: Record<string, boolean>; dsp1?: Record<string, boolean> } = {
     dsp0: {},
@@ -157,29 +157,46 @@ function buildSnapshot(
     dsp1?: Record<string, Record<string, { "@value": number }>>;
   } = { dsp0: {}, dsp1: {} };
 
-  // Set block bypass states from the snapshot spec
+  // Build a map from blockKey -> { dsp, perDspKey } using the actual signal chain
+  // This ensures correct per-DSP block numbering regardless of what the AI provided
+  const blockKeyMap = buildBlockKeyMap(allBlocks);
+
+  // Set block bypass states — resolve AI's block keys to correct per-DSP keys
   for (const [blockKey, enabled] of Object.entries(spec.blockStates)) {
-    // Determine which DSP this block is on
-    const block = allBlocks.find((_, i) => {
-      const bKey = getBlockKeyForIndex(allBlocks, i);
-      return bKey === blockKey;
-    });
-    const dspKey = block?.dsp === 1 ? "dsp1" : "dsp0";
-    blocks[dspKey]![blockKey] = enabled;
+    const mapping = blockKeyMap.get(blockKey);
+    if (mapping) {
+      const dspKey = mapping.dsp === 1 ? "dsp1" : "dsp0";
+      blocks[dspKey]![mapping.perDspKey] = enabled;
+    }
+  }
+
+  // Ensure ALL non-cab blocks have a bypass state (use default if not specified)
+  let dsp0Idx = 0;
+  let dsp1Idx = 0;
+  for (const block of allBlocks) {
+    if (block.type === "cab") continue;
+    const dspKey = block.dsp === 1 ? "dsp1" : "dsp0";
+    const idx = block.dsp === 1 ? dsp1Idx : dsp0Idx;
+    const key = `block${idx}`;
+    if (block.dsp === 0) dsp0Idx++;
+    else dsp1Idx++;
+
+    if (!(key in blocks[dspKey]!)) {
+      blocks[dspKey]![key] = block.enabled;
+    }
   }
 
   // Set parameter overrides
   for (const [blockKey, params] of Object.entries(spec.parameterOverrides)) {
-    const block = allBlocks.find((_, i) => {
-      const bKey = getBlockKeyForIndex(allBlocks, i);
-      return bKey === blockKey;
-    });
-    const dspKey = block?.dsp === 1 ? "dsp1" : "dsp0";
-    if (!controllers[dspKey]![blockKey]) {
-      controllers[dspKey]![blockKey] = {};
-    }
-    for (const [paramName, value] of Object.entries(params)) {
-      controllers[dspKey]![blockKey][paramName] = { "@value": value };
+    const mapping = blockKeyMap.get(blockKey);
+    if (mapping) {
+      const dspKey = mapping.dsp === 1 ? "dsp1" : "dsp0";
+      if (!controllers[dspKey]![mapping.perDspKey]) {
+        controllers[dspKey]![mapping.perDspKey] = {};
+      }
+      for (const [paramName, value] of Object.entries(params)) {
+        controllers[dspKey]![mapping.perDspKey][paramName] = { "@value": value };
+      }
     }
   }
 
@@ -192,6 +209,34 @@ function buildSnapshot(
     blocks,
     controllers,
   };
+}
+
+// Build a mapping from any block key the AI might use to the correct per-DSP key
+function buildBlockKeyMap(allBlocks: BlockSpec[]): Map<string, { dsp: number; perDspKey: string }> {
+  const map = new Map<string, { dsp: number; perDspKey: string }>();
+  let dsp0Idx = 0;
+  let dsp1Idx = 0;
+  let globalIdx = 0;
+
+  for (const block of allBlocks) {
+    if (block.type === "cab") continue;
+    const dsp = block.dsp;
+    const perDspIdx = dsp === 0 ? dsp0Idx : dsp1Idx;
+    const perDspKey = `block${perDspIdx}`;
+
+    // Map the per-DSP key to itself
+    map.set(perDspKey, { dsp, perDspKey });
+
+    // Also map global-index keys (block0, block1, block2... across both DSPs) to per-DSP keys
+    // This handles the common AI mistake of using sequential numbering across DSPs
+    map.set(`block${globalIdx}`, { dsp, perDspKey });
+
+    if (dsp === 0) dsp0Idx++;
+    else dsp1Idx++;
+    globalIdx++;
+  }
+
+  return map;
 }
 
 function buildEmptySnapshot(index: number): HlxSnapshot {
@@ -210,30 +255,32 @@ function buildControllerSection(spec: PresetSpec) {
     dsp1: {},
   };
 
+  const blockKeyMap = buildBlockKeyMap(spec.signalChain);
+
   // Collect all parameters that vary across snapshots and register them as snapshot-controlled
   const paramVariations = new Map<string, Map<string, Set<number>>>();
 
   for (const snapshot of spec.snapshots) {
     for (const [blockKey, params] of Object.entries(snapshot.parameterOverrides)) {
-      if (!paramVariations.has(blockKey)) {
-        paramVariations.set(blockKey, new Map());
+      const mapping = blockKeyMap.get(blockKey);
+      const resolvedKey = mapping ? mapping.perDspKey : blockKey;
+
+      if (!paramVariations.has(resolvedKey)) {
+        paramVariations.set(resolvedKey, new Map());
       }
       for (const [paramName, value] of Object.entries(params)) {
-        if (!paramVariations.get(blockKey)!.has(paramName)) {
-          paramVariations.get(blockKey)!.set(paramName, new Set());
+        if (!paramVariations.get(resolvedKey)!.has(paramName)) {
+          paramVariations.get(resolvedKey)!.set(paramName, new Set());
         }
-        paramVariations.get(blockKey)!.get(paramName)!.add(value);
+        paramVariations.get(resolvedKey)!.get(paramName)!.add(value);
       }
     }
   }
 
   // Only register parameters that actually vary across snapshots
   for (const [blockKey, params] of paramVariations.entries()) {
-    const block = spec.signalChain.find((_, i) => {
-      const bKey = getBlockKeyForIndex(spec.signalChain, i);
-      return bKey === blockKey;
-    });
-    const dspKey = block?.dsp === 1 ? "dsp1" : "dsp0";
+    const mapping = blockKeyMap.get(blockKey);
+    const dspKey = mapping?.dsp === 1 ? "dsp1" : "dsp0";
 
     for (const [paramName, values] of params.entries()) {
       if (values.size > 1) {
@@ -269,21 +316,6 @@ function getBlockType(type: string): number {
     case "send_return": return 9;
     default: return 0;
   }
-}
-
-function getBlockKeyForIndex(blocks: BlockSpec[], index: number): string {
-  // Filter out cabs since they use a separate numbering
-  let blockCount = 0;
-  for (let i = 0; i <= index && i < blocks.length; i++) {
-    if (blocks[i].type !== "cab") {
-      if (i === index) return `block${blockCount}`;
-      blockCount++;
-    } else {
-      // Cabs don't get block keys in the same way, but we still need to handle them
-      if (i === index) return `block${blockCount}`;
-    }
-  }
-  return `block${index}`;
 }
 
 // Generate a human-readable summary of a preset spec
