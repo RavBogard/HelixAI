@@ -13,14 +13,20 @@ export function buildHlxFile(spec: PresetSpec): HlxFile {
     version: HLX_VERSION,
     data: {
       device: HELIX_LT_DEVICE_ID,
+      device_version: HLX_APP_VERSION,
       meta: {
         name: spec.name.substring(0, 32),
-        application: "HelixAI",
+        application: "HX Edit",
         build_sha: HLX_BUILD_SHA,
         modifieddate: Math.floor(Date.now() / 1000),
         appversion: HLX_APP_VERSION,
       },
       tone,
+    },
+    meta: {
+      original: 0,
+      pbn: 0,
+      premium: 0,
     },
     schema: "L6Preset",
   };
@@ -61,6 +67,7 @@ function buildTone(spec: PresetSpec): HlxTone {
     controller,
     footswitch: {},
     global: {
+      "@model": "@global_params",
       "@topology0": "A",
       "@topology1": "A",
       "@cursor_dsp": 0,
@@ -70,6 +77,8 @@ function buildTone(spec: PresetSpec): HlxTone {
       "@tempo": spec.tempo,
       "@current_snapshot": 0,
       "@pedalstate": 2,
+      "@guitarpad": 0,
+      "@guitarinputZ": 0,
     },
   };
   return tone;
@@ -78,15 +87,15 @@ function buildTone(spec: PresetSpec): HlxTone {
 function buildDsp(blocks: BlockSpec[], dspIndex: number): HlxDsp {
   const dsp: HlxDsp = {
     inputA: {
-      "@input": 0,
+      "@input": 1, // 1 = Guitar In
       "@model": dspIndex === 0 ? "HD2_AppDSPFlow1Input" : "HD2_AppDSPFlow2Input",
       noiseGate: dspIndex === 0,
-      decay: 0.5,
+      decay: 0.1,
       threshold: -48.0,
     },
     outputA: {
       "@model": "HD2_AppDSPFlowOutput",
-      "@output": dspIndex === 0 ? 1 : 2, // 1 = series (dsp0 feeds dsp1), 2 = independent
+      "@output": 1,
       pan: 0.5,
       gain: 0.0,
     },
@@ -114,14 +123,16 @@ function buildDsp(blocks: BlockSpec[], dspIndex: number): HlxDsp {
         "@path": block.path,
         "@type": getBlockType(block.type),
         "@stereo": block.stereo,
+        "@no_snapshot_bypass": false,
       };
 
       if (block.trails) {
         hlxBlock["@trails"] = true;
       }
 
-      // Add cab reference for amp blocks
+      // Add amp-specific fields and cab reference
       if (block.type === "amp") {
+        hlxBlock["@bypassvolume"] = 1;
         const associatedCab = blocks.find(b => b.type === "cab");
         if (associatedCab) {
           hlxBlock["@cab"] = `cab${cabIndex}`;
@@ -153,8 +164,8 @@ function buildSnapshot(
   };
 
   const controllers: {
-    dsp0?: Record<string, Record<string, { "@value": number }>>;
-    dsp1?: Record<string, Record<string, { "@value": number }>>;
+    dsp0?: Record<string, Record<string, { "@fs_enabled": boolean; "@value": number }>>;
+    dsp1?: Record<string, Record<string, { "@fs_enabled": boolean; "@value": number }>>;
   } = { dsp0: {}, dsp1: {} };
 
   // Build a map from blockKey -> { dsp, perDspKey } using the actual signal chain
@@ -195,7 +206,7 @@ function buildSnapshot(
         controllers[dspKey]![mapping.perDspKey] = {};
       }
       for (const [paramName, value] of Object.entries(params)) {
-        controllers[dspKey]![mapping.perDspKey][paramName] = { "@value": value };
+        controllers[dspKey]![mapping.perDspKey][paramName] = { "@fs_enabled": false, "@value": value };
       }
     }
   }
@@ -206,6 +217,7 @@ function buildSnapshot(
     "@valid": true,
     "@pedalstate": 2,
     "@ledcolor": spec.ledColor,
+    "@custom_name": false,
     blocks,
     controllers,
   };
@@ -292,6 +304,7 @@ function buildControllerSection(spec: PresetSpec) {
           "@min": Math.min(...allValues),
           "@max": Math.max(...allValues),
           "@controller": CONTROLLERS.SNAPSHOT,
+          "@snapshot_disable": false,
         };
       }
     }
@@ -302,8 +315,8 @@ function buildControllerSection(spec: PresetSpec) {
 
 function getBlockType(type: string): number {
   switch (type) {
-    case "amp": return 1;
-    case "cab": return 2;
+    case "amp": return 3;
+    case "cab": return 4;
     case "distortion": return 0;
     case "delay": return 7;
     case "reverb": return 7;

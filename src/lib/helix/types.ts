@@ -4,8 +4,14 @@ export interface HlxFile {
   version: number;
   data: {
     device: number;
+    device_version: number;
     meta: HlxMeta;
     tone: HlxTone;
+  };
+  meta: {
+    original: number;
+    pbn: number;
+    premium: number;
   };
   schema: "L6Preset";
 }
@@ -83,6 +89,7 @@ export interface HlxBlock {
   "@path": number;
   "@type": number;
   "@stereo": boolean;
+  "@no_snapshot_bypass"?: boolean;
   "@bypassvolume"?: number;
   "@cab"?: string;
   "@trails"?: boolean;
@@ -106,13 +113,14 @@ export interface HlxSnapshot {
   "@valid": boolean;
   "@pedalstate": number;
   "@ledcolor": number;
+  "@custom_name"?: boolean;
   blocks?: {
     dsp0?: Record<string, boolean>;
     dsp1?: Record<string, boolean>;
   };
   controllers?: {
-    dsp0?: Record<string, Record<string, { "@value": number }>>;
-    dsp1?: Record<string, Record<string, { "@value": number }>>;
+    dsp0?: Record<string, Record<string, { "@fs_enabled": boolean; "@value": number }>>;
+    dsp1?: Record<string, Record<string, { "@fs_enabled": boolean; "@value": number }>>;
   };
 }
 
@@ -125,10 +133,12 @@ export interface HlxControllerAssignment {
   "@min": number;
   "@max": number;
   "@controller": number; // 19 = Snapshot, 2 = EXP Pedal 2, 18 = MIDI CC
+  "@snapshot_disable"?: boolean;
   "@cc"?: number;
 }
 
 export interface HlxGlobal {
+  "@model": string;
   "@topology0": "A" | "AB" | "SABJ";
   "@topology1": "A" | "AB" | "SABJ";
   "@cursor_dsp": number;
@@ -138,6 +148,8 @@ export interface HlxGlobal {
   "@tempo": number;
   "@current_snapshot": number;
   "@pedalstate": number;
+  "@guitarpad"?: number;
+  "@guitarinputZ"?: number;
 }
 
 // --- Preset specification types (what the AI generates) ---
