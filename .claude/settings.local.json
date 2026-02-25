@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:helixhelp.com)",
+      "WebFetch(domain:line6.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:benvesco.com)",
+      "WebFetch(domain:ai.google.dev)",
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm --no-turbopack)",
+      "Bash(npx create-next-app@latest helix-ai-temp --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm --no-turbopack)",
+      "Bash(npm install @google/genai zod)",
+      "Bash(npx next build)",
+      "Bash(git init)",
+      "Bash(git add -A)"
+    ]
+  }
+}
