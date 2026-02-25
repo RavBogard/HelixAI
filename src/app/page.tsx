@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import ReactMarkdown from "react-markdown";
 
 interface Message {
   role: "user" | "assistant";
@@ -257,7 +258,11 @@ export default function Home() {
                   <div className={`message-content text-sm leading-relaxed ${
                     isStreaming && i === messages.length - 1 && msg.role === "assistant" ? "typing-cursor" : ""
                   }`}>
-                    {msg.content || (isStreaming && msg.role === "assistant" ? "" : "")}
+                    {msg.role === "assistant" ? (
+                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    ) : (
+                      msg.content
+                    )}
                   </div>
                 </div>
               </div>
@@ -301,8 +306,8 @@ export default function Home() {
                     Download .hlx
                   </button>
                 </div>
-                <div className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap message-content">
-                  {generatedPreset.summary}
+                <div className="text-sm text-zinc-300 leading-relaxed message-content">
+                  <ReactMarkdown>{generatedPreset.summary}</ReactMarkdown>
                 </div>
               </div>
             )}
