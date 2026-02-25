@@ -53,6 +53,9 @@ function buildTone(spec: PresetSpec): HlxTone {
   // Build controller section for snapshot-controlled parameters
   const controller = buildControllerSection(spec);
 
+  // Build footswitch section — auto-assign toggleable blocks to stomp switches
+  const footswitch = buildFootswitchSection(spec.signalChain);
+
   const tone: HlxTone = {
     dsp0,
     dsp1,
@@ -65,7 +68,7 @@ function buildTone(spec: PresetSpec): HlxTone {
     snapshot6: snapshots["snapshot6"],
     snapshot7: snapshots["snapshot7"],
     controller,
-    footswitch: {},
+    footswitch,
     global: {
       "@model": "@global_params",
       "@topology0": "A",
@@ -313,6 +316,77 @@ function buildControllerSection(spec: PresetSpec) {
   return controller;
 }
 
+// Footswitch LED colors (color_index * 65536)
+const FS_LED_COLORS: Record<string, number> = {
+  distortion: 131072,   // red
+  dynamics: 65536,       // white
+  delay: 327680,         // green
+  reverb: 458752,        // blue
+  modulation: 393216,    // turquoise
+  eq: 262144,            // yellow
+  wah: 196608,           // orange
+  pitch: 524288,         // purple
+  volume: 65536,         // white
+};
+
+// Helix LT footswitch indices: FS5-FS8 = indices 7-10 (top row, used for stomps)
+const STOMP_FS_INDICES = [7, 8, 9, 10];
+
+// Block types that should be assigned to stomp switches (user-toggleable effects)
+const STOMP_BLOCK_TYPES = new Set([
+  "distortion", "delay", "reverb", "modulation",
+  "dynamics", "wah", "pitch", "volume",
+]);
+
+/**
+ * Auto-assign effect blocks to stomp footswitches (FS5-FS8).
+ * Amps, cabs, and EQ are typically "always on" so they're skipped.
+ * This gives the user a Snap/Stomp layout:
+ *   Bottom row: Snapshots 1-4
+ *   Top row: Stomp switches for individual effects
+ */
+function buildFootswitchSection(allBlocks: BlockSpec[]): Record<string, unknown> {
+  const footswitch: Record<string, Record<string, unknown>> = {
+    dsp0: {},
+    dsp1: {},
+  };
+
+  // Collect toggleable blocks across both DSPs
+  const stompCandidates: { block: BlockSpec; dspKey: string; blockKey: string }[] = [];
+  let dsp0Idx = 0;
+  let dsp1Idx = 0;
+
+  for (const block of allBlocks) {
+    if (block.type === "cab") continue;
+    const dspKey = block.dsp === 0 ? "dsp0" : "dsp1";
+    const idx = block.dsp === 0 ? dsp0Idx : dsp1Idx;
+    const blockKey = `block${idx}`;
+    if (block.dsp === 0) dsp0Idx++;
+    else dsp1Idx++;
+
+    if (STOMP_BLOCK_TYPES.has(block.type)) {
+      stompCandidates.push({ block, dspKey, blockKey });
+    }
+  }
+
+  // Assign up to 4 blocks to FS5-FS8 (indices 7-10)
+  const toAssign = stompCandidates.slice(0, STOMP_FS_INDICES.length);
+
+  for (let i = 0; i < toAssign.length; i++) {
+    const { block, dspKey, blockKey } = toAssign[i];
+    footswitch[dspKey][blockKey] = {
+      "@fs_enabled": false,
+      "@fs_index": STOMP_FS_INDICES[i],
+      "@fs_label": block.modelName.substring(0, 16),
+      "@fs_ledcolor": FS_LED_COLORS[block.type] || 65536,
+      "@fs_momentary": false,
+      "@fs_primary": true,
+    };
+  }
+
+  return footswitch;
+}
+
 function getBlockType(type: string): number {
   switch (type) {
     case "amp": return 3;
@@ -371,6 +445,17 @@ export function summarizePreset(spec: PresetSpec): string {
   for (let i = 0; i < spec.snapshots.length; i++) {
     const snap = spec.snapshots[i];
     lines.push(`**${i + 1}. ${snap.name}** — ${snap.description}`);
+  }
+
+  // Show stomp switch assignments
+  const stompBlocks = spec.signalChain.filter(b => b.type !== "amp" && b.type !== "cab" && b.type !== "eq" && STOMP_BLOCK_TYPES.has(b.type));
+  if (stompBlocks.length > 0) {
+    lines.push("");
+    lines.push("### Stomp Switches (FS5-FS8)");
+    const assigned = stompBlocks.slice(0, 4);
+    for (let i = 0; i < assigned.length; i++) {
+      lines.push(`**FS${i + 5}:** ${assigned[i].modelName}`);
+    }
   }
 
   return lines.join("\n");
