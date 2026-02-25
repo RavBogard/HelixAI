@@ -199,47 +199,69 @@ export default function Home() {
   }
 
   return (
-    <div className="flex flex-col h-screen max-w-4xl mx-auto">
-      {/* Header */}
-      <header className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white text-sm font-bold">
-            H
+    <div className="relative z-10 flex flex-col h-screen max-w-4xl mx-auto">
+      {/* ═══ Header ═══ */}
+      <header className="flex items-center justify-between px-6 py-4">
+        <div className="flex items-center gap-3.5">
+          {/* Tube glow logo */}
+          <div className="hlx-tube hlx-tube-sm">
+            <span className="text-sm font-bold text-white drop-shadow-sm select-none">H</span>
           </div>
           <div>
-            <h1 className="text-lg font-semibold tracking-tight">HelixAI</h1>
-            <p className="text-xs text-zinc-500">
-              Helix LT Preset Builder{premiumKey ? " \u2022 Pro" : ""}
-            </p>
+            <h1 className="hlx-font-display text-lg font-semibold tracking-tight text-[var(--hlx-text)]">
+              HelixAI
+            </h1>
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-[var(--hlx-text-muted)]">
+                Helix LT Preset Builder
+              </p>
+              {premiumKey && (
+                <span className="hlx-pro">
+                  <span className="hlx-led hlx-led-warm" style={{ width: 4, height: 4 }} />
+                  Pro
+                </span>
+              )}
+            </div>
           </div>
         </div>
         {messages.length > 0 && (
           <button
             onClick={startOver}
-            className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors px-3 py-1.5 rounded-md hover:bg-white/5"
+            className="text-xs text-[var(--hlx-text-muted)] hover:text-[var(--hlx-text-sub)] transition-colors px-3 py-1.5 rounded-lg border border-[var(--hlx-border)] hover:border-[var(--hlx-border-warm)] hover:bg-[var(--hlx-surface)]"
           >
             New Session
           </button>
         )}
       </header>
 
-      {/* Messages */}
+      {/* Rack divider */}
+      <div className="hlx-rack" />
+
+      {/* ═══ Messages ═══ */}
       <div className="flex-1 overflow-y-auto px-6 py-6">
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center gap-6">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white text-2xl font-bold">
-              H
+          /* ─── Welcome Screen ─── */
+          <div className="flex flex-col items-center justify-center h-full text-center gap-6 hlx-stagger">
+            {/* Hero logo */}
+            <div className="hlx-tube hlx-tube-lg">
+              <span className="text-2xl font-bold text-white drop-shadow-sm select-none">H</span>
             </div>
+
+            {/* Headline */}
             <div>
-              <h2 className="text-2xl font-semibold mb-2">Welcome to HelixAI</h2>
-              <p className="text-zinc-400 max-w-md">
-                Tell me what tone you&apos;re after and I&apos;ll build you a Helix LT preset.
-                Describe an artist, a song, a genre, or just a vibe.
+              <h2 className="hlx-font-display text-3xl font-semibold mb-2 hlx-hero-text">
+                What tone are you after?
+              </h2>
+              <p className="text-[var(--hlx-text-sub)] max-w-md leading-relaxed text-[0.9375rem]">
+                Describe an artist, a song, a genre, or just a vibe &mdash;
+                I&apos;ll build you a studio-quality Helix LT preset.
               </p>
             </div>
-            <div className="flex flex-wrap gap-2 justify-center max-w-lg">
+
+            {/* Suggestion pedals */}
+            <div className="flex flex-wrap gap-2.5 justify-center max-w-xl">
               {[
-                "Mark Knopfler's Sultans of Swing Alchemy tone",
+                "Mark Knopfler\u2019s Sultans of Swing Alchemy tone",
                 "SRV Texas blues crunch",
                 "Modern worship ambient clean",
                 "80s new wave jangly clean",
@@ -251,76 +273,94 @@ export default function Home() {
                     setInput(suggestion);
                     inputRef.current?.focus();
                   }}
-                  className="text-sm px-3 py-2 rounded-lg border border-white/10 text-zinc-400 hover:text-zinc-200 hover:border-white/20 hover:bg-white/5 transition-all"
+                  className="hlx-pedal"
                 >
-                  {suggestion}
+                  <span className="flex items-center gap-2.5">
+                    <span className="hlx-led" />
+                    {suggestion}
+                  </span>
                 </button>
               ))}
             </div>
           </div>
         ) : (
-          <div className="space-y-6">
+          /* ─── Chat Flow ─── */
+          <div className="space-y-5">
             {messages.map((msg, i) => (
-              <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div
-                  className={`max-w-[85%] rounded-2xl px-4 py-3 ${
-                    msg.role === "user"
-                      ? "bg-orange-600/90 text-white"
-                      : "bg-white/5 text-zinc-200"
-                  }`}
-                >
-                  <div className={`message-content text-sm leading-relaxed ${
-                    isStreaming && i === messages.length - 1 && msg.role === "assistant" ? "typing-cursor" : ""
-                  }`}>
-                    {msg.role === "assistant" ? (
+              <div
+                key={i}
+                className={`hlx-msg flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+              >
+                {msg.role === "assistant" ? (
+                  /* AI message — left amber border accent */
+                  <div className="hlx-msg-ai max-w-[88%]">
+                    <div
+                      className={`message-content text-[0.9375rem] leading-relaxed text-[var(--hlx-text-sub)] ${
+                        isStreaming && i === messages.length - 1 ? "typing-cursor" : ""
+                      }`}
+                    >
                       <ReactMarkdown>{msg.content}</ReactMarkdown>
-                    ) : (
-                      msg.content
-                    )}
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  /* User message — warm amber chip */
+                  <div className="hlx-msg-user max-w-[80%]">
+                    <div className="text-[0.9375rem] leading-relaxed text-[var(--hlx-text)]">
+                      {msg.content}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
 
-            {/* Generate button */}
+            {/* ─── Generate Button ─── */}
             {readyToGenerate && !generatedPreset && (
-              <div className="flex justify-center py-4">
+              <div className="flex justify-center py-6">
                 <button
                   onClick={generatePreset}
                   disabled={isGenerating}
-                  className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white font-semibold rounded-xl hover:from-orange-400 hover:to-red-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="hlx-generate"
                 >
                   {isGenerating ? (
                     <>
-                      <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <svg className="hlx-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                       </svg>
-                      Generating Preset...
+                      Generating Preset&hellip;
                     </>
                   ) : (
-                    "Generate Helix LT Preset"
+                    <>
+                      {/* Small tube icon */}
+                      <span className="w-5 h-5 rounded-md bg-[var(--hlx-void)] flex items-center justify-center text-[10px] font-bold text-[var(--hlx-amber)]">
+                        H
+                      </span>
+                      Generate Helix LT Preset
+                    </>
                   )}
                 </button>
               </div>
             )}
 
-            {/* Generated preset display */}
+            {/* ─── Preset Result Card ─── */}
             {generatedPreset && (
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-orange-400">Preset Generated!</h3>
-                  <button
-                    onClick={downloadPreset}
-                    className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
-                  >
+              <div className="hlx-preset-card space-y-5">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <span className="hlx-led hlx-led-on" />
+                    <h3 className="hlx-font-display text-lg font-semibold text-[var(--hlx-amber)]">
+                      Preset Ready
+                    </h3>
+                  </div>
+                  <button onClick={downloadPreset} className="hlx-download">
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
                     Download .hlx
                   </button>
                 </div>
-                <div className="text-sm text-zinc-300 leading-relaxed message-content">
+                <div className="hlx-rack" />
+                <div className="text-[0.875rem] text-[var(--hlx-text-sub)] leading-relaxed message-content">
                   <ReactMarkdown>{generatedPreset.summary}</ReactMarkdown>
                 </div>
               </div>
@@ -331,17 +371,17 @@ export default function Home() {
         )}
       </div>
 
-      {/* Error display */}
+      {/* ═══ Error ═══ */}
       {error && (
-        <div className="mx-6 mb-2 p-3 bg-red-900/30 border border-red-500/30 rounded-xl text-red-300 text-sm">
+        <div className="mx-6 mb-2 hlx-error">
           {error}
         </div>
       )}
 
-      {/* Input */}
+      {/* ═══ Input Area ═══ */}
       <div className="px-6 pb-6 pt-2">
         <form onSubmit={sendMessage} className="flex gap-3 items-end">
-          <div className="flex-1 relative">
+          <div className="flex-1">
             <textarea
               ref={inputRef}
               value={input}
@@ -349,22 +389,22 @@ export default function Home() {
               onKeyDown={handleKeyDown}
               placeholder="Describe the tone you're after..."
               rows={1}
-              className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/30 transition-all"
+              className="hlx-input"
               disabled={isStreaming}
             />
           </div>
           <button
             type="submit"
             disabled={!input.trim() || isStreaming}
-            className="p-3 bg-orange-600 hover:bg-orange-500 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-xl transition-colors shrink-0"
+            className="hlx-send"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19V5m0 0l-7 7m7-7l7 7" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19V5m0 0l-7 7m7-7l7 7" />
             </svg>
           </button>
         </form>
-        <p className="text-xs text-zinc-600 mt-2 text-center">
-          HelixAI uses Gemini with Google Search to research artist rigs and build accurate presets
+        <p className="text-[11px] text-[var(--hlx-text-muted)] mt-3 text-center tracking-wide">
+          Powered by Gemini &middot; Google Search grounded &middot; Line 6 Helix LT
         </p>
       </div>
     </div>

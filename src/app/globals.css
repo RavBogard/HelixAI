@@ -1,93 +1,501 @@
 @import "tailwindcss";
 
+/* ═══════════════════════════════════════════════════
+   HELIX AI — Warm Analog Studio Theme
+
+   Aesthetic: High-end audio console meets recording
+   studio. Warm tube glow, premium dark surfaces,
+   the kind of UI that belongs on a Neural DSP
+   or Universal Audio product.
+   ═══════════════════════════════════════════════════ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Core palette — warm blacks, not cold */
+  --hlx-void: #050404;
+  --hlx-deep: #0c0a09;
+  --hlx-surface: #1a1814;
+  --hlx-elevated: #262420;
+  --hlx-raised: #33302c;
+
+  /* Warm accent spectrum */
+  --hlx-amber: #f59e0b;
+  --hlx-amber-dim: #b45309;
+  --hlx-copper: #d97706;
+  --hlx-glow: rgba(245, 158, 11, 0.15);
+
+  /* Text — warm, not sterile */
+  --hlx-text: #faf8f5;
+  --hlx-text-sub: #c8c0b4;
+  --hlx-text-muted: #6b6560;
+
+  /* Borders */
+  --hlx-border: rgba(255, 255, 255, 0.06);
+  --hlx-border-warm: rgba(245, 158, 11, 0.12);
+
+  /* Status */
+  --hlx-green: #4ade80;
+  --hlx-red: #f87171;
+
+  /* Standard mappings */
+  --background: var(--hlx-deep);
+  --foreground: var(--hlx-text);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-dm-sans);
+  --font-mono: var(--font-jetbrains-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ─── Base ─── */
+
+body {
+  background: var(--hlx-deep);
+  color: var(--hlx-text);
+  font-family: var(--font-dm-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Film Grain Overlay ─── */
+
+.hlx-grain {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 90;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 200px 200px;
+}
+
+/* ─── Ambient Studio Glow ─── */
+
+.hlx-ambient {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 800px 300px at 50% -5%, rgba(245, 158, 11, 0.045) 0%, transparent 70%),
+    radial-gradient(ellipse 300px 500px at 90% 100%, rgba(180, 83, 9, 0.025) 0%, transparent 70%),
+    radial-gradient(ellipse 300px 500px at 10% 80%, rgba(245, 158, 11, 0.015) 0%, transparent 70%);
+}
+
+/* ─── Scrollbar ─── */
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--hlx-raised); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--hlx-text-muted); }
+
+/* ─── Tube Glow Logo ─── */
+
+.hlx-tube {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 13px;
+  background: linear-gradient(145deg, #f5a623 0%, var(--hlx-copper) 55%, var(--hlx-amber-dim) 100%);
+  box-shadow:
+    0 0 24px rgba(245, 158, 11, 0.25),
+    0 0 60px rgba(245, 158, 11, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.hlx-tube-sm {
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+}
+
+.hlx-tube-lg {
+  width: 76px;
+  height: 76px;
+  border-radius: 22px;
+  box-shadow:
+    0 0 50px rgba(245, 158, 11, 0.3),
+    0 0 120px rgba(245, 158, 11, 0.1),
+    0 0 220px rgba(245, 158, 11, 0.04),
+    inset 0 2px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.4);
+}
+
+/* ─── LED Status Dots ─── */
+
+.hlx-led {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--hlx-text-muted);
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.hlx-led-on {
+  background: var(--hlx-green);
+  box-shadow: 0 0 6px var(--hlx-green), 0 0 14px rgba(74, 222, 128, 0.3);
+}
+
+.hlx-led-warm {
+  background: var(--hlx-amber);
+  box-shadow: 0 0 6px var(--hlx-amber), 0 0 14px rgba(251, 191, 36, 0.3);
+}
+
+/* ─── Rack Unit Divider ─── */
+
+.hlx-rack {
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, var(--hlx-border) 20%, var(--hlx-border) 80%, transparent 100%);
+}
+
+/* ─── Footswitch-Style Suggestion Buttons ─── */
+
+.hlx-pedal {
+  position: relative;
+  padding: 11px 16px;
+  border-radius: 11px;
+  background: var(--hlx-surface);
+  border: 1px solid var(--hlx-border);
+  color: var(--hlx-text-sub);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: left;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.hlx-pedal:hover {
+  border-color: var(--hlx-border-warm);
+  color: var(--hlx-text);
+  background: var(--hlx-elevated);
+  transform: translateY(-2px);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.4),
+    0 0 0 1px var(--hlx-border-warm),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.hlx-pedal:hover .hlx-led {
+  background: var(--hlx-amber);
+  box-shadow: 0 0 6px var(--hlx-amber), 0 0 14px rgba(251, 191, 36, 0.35);
+}
+
+/* ─── Generate Button ─── */
+
+@keyframes tubeGlow {
+  0%, 100% {
+    box-shadow:
+      0 0 20px rgba(245, 158, 11, 0.2),
+      0 0 50px rgba(245, 158, 11, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  }
+  50% {
+    box-shadow:
+      0 0 30px rgba(245, 158, 11, 0.35),
+      0 0 70px rgba(245, 158, 11, 0.12),
+      0 0 120px rgba(245, 158, 11, 0.04),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
   }
 }
 
-.dark {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+.hlx-generate {
+  position: relative;
+  padding: 15px 36px;
+  border-radius: 14px;
+  background: linear-gradient(140deg, var(--hlx-amber) 0%, var(--hlx-copper) 100%);
+  color: var(--hlx-void);
+  font-weight: 700;
+  font-size: 0.9375rem;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  border: none;
+  animation: tubeGlow 3s ease-in-out infinite;
+  transition: transform 0.2s ease, filter 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: inherit;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+.hlx-generate:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.08);
 }
 
-/* Scrollbar styling */
-::-webkit-scrollbar {
-  width: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: #333;
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #555;
+.hlx-generate:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  animation: none;
+  transform: none;
+  filter: none;
 }
 
-/* Markdown in messages */
-.message-content p {
-  margin-bottom: 0.75em;
+/* ─── Chat Message Animations ─── */
+
+@keyframes msgReveal {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
-.message-content p:last-child {
-  margin-bottom: 0;
+
+.hlx-msg {
+  animation: msgReveal 0.3s ease-out both;
 }
-.message-content ul, .message-content ol {
-  margin-left: 1.5em;
-  margin-bottom: 0.75em;
+
+/* Assistant message — left amber accent */
+.hlx-msg-ai {
+  position: relative;
+  padding-left: 18px;
+  border-left: 2px solid rgba(245, 158, 11, 0.18);
+  transition: border-color 0.3s ease;
 }
-.message-content li {
-  margin-bottom: 0.25em;
+
+.hlx-msg-ai:hover {
+  border-left-color: rgba(245, 158, 11, 0.35);
 }
+
+/* User message — warm amber chip */
+.hlx-msg-user {
+  background: linear-gradient(140deg, rgba(245, 158, 11, 0.10) 0%, rgba(217, 119, 6, 0.06) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.12);
+  border-radius: 18px 18px 6px 18px;
+  padding: 13px 18px;
+}
+
+/* ─── Markdown Content ─── */
+
+.message-content p { margin-bottom: 0.75em; }
+.message-content p:last-child { margin-bottom: 0; }
+.message-content ul, .message-content ol { margin-left: 1.5em; margin-bottom: 0.75em; }
+.message-content li { margin-bottom: 0.25em; }
+
 .message-content strong {
   font-weight: 600;
-}
-.message-content h2, .message-content h3 {
-  font-weight: 600;
-  margin-top: 1em;
-  margin-bottom: 0.5em;
-}
-.message-content h2 {
-  font-size: 1.15em;
-}
-.message-content h3 {
-  font-size: 1.05em;
-}
-.message-content code {
-  background: rgba(255,255,255,0.1);
-  padding: 0.15em 0.3em;
-  border-radius: 3px;
-  font-family: var(--font-mono), monospace;
-  font-size: 0.9em;
+  color: var(--hlx-text);
 }
 
-/* Typing animation */
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+.message-content h2,
+.message-content h3 {
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-weight: 500;
+  margin-top: 1.1em;
+  margin-bottom: 0.5em;
+  color: var(--hlx-text);
+  letter-spacing: -0.01em;
 }
+
+.message-content h2 { font-size: 1.2em; }
+.message-content h3 { font-size: 1.05em; }
+
+.message-content code {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.15em 0.4em;
+  border-radius: 5px;
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 0.85em;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+/* ─── Typing Cursor ─── */
+
+@keyframes cursorPulse {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 0.15; }
+}
+
 .typing-cursor::after {
-  content: "\25AE";
-  animation: blink 1s infinite;
-  margin-left: 2px;
+  content: "";
+  display: inline-block;
+  width: 9px;
+  height: 18px;
+  background: var(--hlx-amber);
+  border-radius: 2px;
+  animation: cursorPulse 0.9s ease-in-out infinite;
+  margin-left: 3px;
+  vertical-align: text-bottom;
 }
+
+/* ─── Preset Result Card ─── */
+
+.hlx-preset-card {
+  position: relative;
+  background: var(--hlx-surface);
+  border: 1px solid var(--hlx-border-warm);
+  border-radius: 18px;
+  padding: 28px;
+  overflow: hidden;
+}
+
+/* Warm top highlight line */
+.hlx-preset-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--hlx-amber), transparent);
+  opacity: 0.35;
+}
+
+/* ─── Staggered Welcome Entrance ─── */
+
+@keyframes staggerUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.hlx-stagger > * {
+  opacity: 0;
+  animation: staggerUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.hlx-stagger > *:nth-child(1) { animation-delay: 0ms; }
+.hlx-stagger > *:nth-child(2) { animation-delay: 120ms; }
+.hlx-stagger > *:nth-child(3) { animation-delay: 240ms; }
+.hlx-stagger > *:nth-child(4) { animation-delay: 400ms; }
+
+/* ─── Text Input ─── */
+
+.hlx-input {
+  width: 100%;
+  resize: none;
+  border-radius: 14px;
+  border: 1px solid var(--hlx-border);
+  background: var(--hlx-surface);
+  padding: 14px 18px;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--hlx-text);
+  font-family: inherit;
+  transition: all 0.25s ease;
+}
+
+.hlx-input::placeholder {
+  color: var(--hlx-text-muted);
+}
+
+.hlx-input:focus {
+  outline: none;
+  border-color: rgba(245, 158, 11, 0.3);
+  background: rgba(26, 24, 20, 0.9);
+  box-shadow:
+    0 0 0 3px rgba(245, 158, 11, 0.06),
+    0 0 30px rgba(245, 158, 11, 0.04);
+}
+
+.hlx-input:disabled {
+  opacity: 0.5;
+}
+
+/* ─── Send Button ─── */
+
+.hlx-send {
+  width: 46px;
+  height: 46px;
+  border-radius: 13px;
+  background: var(--hlx-amber);
+  color: var(--hlx-void);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.15);
+}
+
+.hlx-send:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+  box-shadow: 0 0 24px rgba(245, 158, 11, 0.25);
+}
+
+.hlx-send:disabled {
+  background: var(--hlx-elevated);
+  color: var(--hlx-text-muted);
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+  filter: none;
+}
+
+/* ─── Download Button ─── */
+
+.hlx-download {
+  padding: 10px 22px;
+  border-radius: 11px;
+  background: var(--hlx-amber);
+  color: var(--hlx-void);
+  font-weight: 700;
+  font-size: 0.875rem;
+  cursor: pointer;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.15);
+}
+
+.hlx-download:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 0 24px rgba(245, 158, 11, 0.25);
+}
+
+/* ─── Pro Badge ─── */
+
+.hlx-pro {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 7px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.14), rgba(217, 119, 6, 0.08));
+  border: 1px solid rgba(245, 158, 11, 0.18);
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--hlx-amber);
+}
+
+/* ─── Error ─── */
+
+.hlx-error {
+  padding: 13px 18px;
+  border-radius: 13px;
+  background: rgba(239, 68, 68, 0.07);
+  border: 1px solid rgba(239, 68, 68, 0.18);
+  color: #fca5a5;
+  font-size: 0.875rem;
+}
+
+/* ─── Hero Gradient Title ─── */
+
+.hlx-hero-text {
+  background: linear-gradient(140deg, #faf8f5 10%, #f5a623 55%, var(--hlx-copper) 90%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Spinner ─── */
+
+@keyframes hlxSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.hlx-spin { animation: hlxSpin 1s linear infinite; }
+
+/* ─── Utility ─── */
+
+.hlx-font-display { font-family: var(--font-fraunces), Georgia, serif; }
