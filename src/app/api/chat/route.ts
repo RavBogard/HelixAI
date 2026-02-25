@@ -1,10 +1,12 @@
 import { NextRequest } from "next/server";
-import { createGeminiClient, getSystemPrompt, MODEL_ID } from "@/lib/gemini";
+import { createGeminiClient, getSystemPrompt, getModelId, isPremiumKey } from "@/lib/gemini";
 
 export async function POST(req: NextRequest) {
-  const { messages } = await req.json();
+  const { messages, premiumKey } = await req.json();
+  const premium = isPremiumKey(premiumKey);
 
   const ai = createGeminiClient();
+  const modelId = getModelId(premium);
 
   // Convert our message format to Gemini's format
   const history = messages.slice(0, -1).map((msg: { role: string; content: string }) => ({
@@ -15,7 +17,7 @@ export async function POST(req: NextRequest) {
   const lastMessage = messages[messages.length - 1];
 
   const chat = ai.chats.create({
-    model: MODEL_ID,
+    model: modelId,
     config: {
       systemInstruction: getSystemPrompt(),
       tools: [{ googleSearch: {} }],

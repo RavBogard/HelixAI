@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createGeminiClient, getPresetGenerationPrompt, MODEL_ID } from "@/lib/gemini";
+import { createGeminiClient, getPresetGenerationPrompt, getModelId, isPremiumKey } from "@/lib/gemini";
 import { buildHlxFile, summarizePreset, validateAndFixPresetSpec } from "@/lib/helix";
 import type { PresetSpec } from "@/lib/helix";
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages } = await req.json();
+    const { messages, premiumKey } = await req.json();
+    const premium = isPremiumKey(premiumKey);
 
     const ai = createGeminiClient();
+    const modelId = getModelId(premium);
 
     // Build the full conversation context for the generation call
     const conversationContext = messages
@@ -15,7 +17,7 @@ export async function POST(req: NextRequest) {
       .join("\n\n");
 
     const response = await ai.models.generateContent({
-      model: MODEL_ID,
+      model: modelId,
       contents: `Based on the following conversation, generate the Helix LT preset specification:\n\n${conversationContext}`,
       config: {
         systemInstruction: getPresetGenerationPrompt(),

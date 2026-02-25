@@ -22,8 +22,20 @@ export default function Home() {
   const [readyToGenerate, setReadyToGenerate] = useState(false);
   const [generatedPreset, setGeneratedPreset] = useState<GeneratedPreset | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [premiumKey, setPremiumKey] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Check for premium key in URL on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const key = params.get("pro");
+    if (key) {
+      setPremiumKey(key);
+      // Clean the URL so the key isn't visible in the address bar
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -60,7 +72,7 @@ export default function Home() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: newMessages }),
+        body: JSON.stringify({ messages: newMessages, premiumKey }),
       });
 
       if (!res.ok) {
@@ -139,7 +151,7 @@ export default function Home() {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages }),
+        body: JSON.stringify({ messages, premiumKey }),
       });
 
       if (!res.ok) {
@@ -196,7 +208,9 @@ export default function Home() {
           </div>
           <div>
             <h1 className="text-lg font-semibold tracking-tight">HelixAI</h1>
-            <p className="text-xs text-zinc-500">Helix LT Preset Builder</p>
+            <p className="text-xs text-zinc-500">
+              Helix LT Preset Builder{premiumKey ? " \u2022 Pro" : ""}
+            </p>
           </div>
         </div>
         {messages.length > 0 && (
