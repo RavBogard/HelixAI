@@ -151,18 +151,22 @@ Generate a JSON object matching this exact schema:
 - Master: 1.0 (CRITICAL — non-master-volume amps need master maxed for proper power amp character)
 - Drive: 0.30-0.50 (edge of breakup — respond to pick dynamics)
 - ChVol: 0.65-0.80 (use ChVol for volume balancing between snapshots, NOT Master)
-- Bass: 0.30-0.50 | Mid: 0.50-0.65 | Treble: 0.50-0.60
+- Bass: 0.30-0.50 | Mid: 0.50-0.65 | Treble: 0.50-0.65
+- Presence: 0.40-0.55
 - Sag: 0.60-0.75 | Hum: 0.05-0.15 | Ripple: 0.05-0.15 (tube character — don't leave at 0)
 - Bias: 0.60-0.70 | BiasX: 0.50
 - Exception: Jazz Rivet (JC-120) is solid-state: Sag 0.80, Hum 0.0, Ripple 0.0
+- **Single-coil guitar adjustment**: For Strat/Tele, push Treble to 0.58-0.65 and Presence to 0.48-0.55
 
-**Crunch Amps (Plexi, JCM, JTM45, Park 75, AC30 Fawn, Matchless, Grammatico, Tweed Blues, etc.)**
+**Crunch Amps (Plexi, JCM, JTM45, Park 75, AC30 Fawn, Matchless, Grammatico Nrm/Brt/Jump, Tweed Blues, etc.)**
 - Master: 0.85-1.0 (max or near-max — these amps get their character from power tube saturation)
 - Drive: 0.45-0.60
 - Bass: 0.20-0.35 (low bass is CRITICAL for Marshall/Plexi clarity — higher bass = mud)
 - Mid: 0.65-0.80 | Treble: 0.55-0.75
+- Presence: 0.45-0.60 (higher for single-coil guitars that need sparkle, lower for humbuckers)
 - Sag: 0.50-0.65 | Hum: 0.15-0.20 | Ripple: 0.10-0.15
 - Bias: 0.65-0.70 | BiasX: 0.50
+- **Single-coil guitar adjustment**: For Strat/Tele, push Treble to 0.60-0.75 and Presence to 0.50-0.60 for proper sparkle and chime
 
 **High-Gain Amps (Mesa Rectifire/Cali IV, 5150/Panama, Revv, Diezel, ENGL, Bogner, Friedman Dirty, Solo Lead OD, etc.)**
 - Master: 0.40-0.55 (LOWER master — modern high-gain amps have master volume circuits)
@@ -175,21 +179,31 @@ Generate a JSON object matching this exact schema:
 - Bias: 0.55-0.65 | BiasX: 0.45-0.50
 
 ### Cab Parameters (CRITICAL — bad cab settings ruin even the best amp tone)
+- Mic: INTEGER mic index, NOT normalized. 0=57 Dynamic (SM57, bright/punchy — best default), 1=421 Dynamic (MD421, scooped mids), 2=67 Condenser (warm/smooth), 3=87 Condenser (detailed), 4=47 Condenser (warm/full), 5=121 Ribbon (dark/smooth), 6=160 Ribbon (natural). Use 0 (SM57) for rock/blues/country, 2 or 3 for jazz/clean, 5 for dark/vintage. DEFAULT TO 0 unless you have a specific reason.
+- Angle: 0.0-0.25 (mic angle relative to speaker cone — 0 = on-axis = BRIGHTEST, higher = darker. CRITICAL: never go above 0.3 or the tone becomes muffled. Default to 0 for bright tones, 0.1-0.2 for slightly smoother tones)
+- Position: 0.0-0.35 (where mic points on speaker cone — 0 = center = brightest, 1 = edge = darkest. Use 0.0-0.15 for bright/cutting tones, 0.2-0.35 for warmer tones)
 - LowCut: 0.15-0.25 (removes mud and sub-bass rumble — NEVER leave at 0)
 - HighCut: 0.70-0.85 (removes digital fizz and harshness — NEVER leave at 1.0)
-- Distance: 0.5-1.0
+- Distance: 0.7-1.0 (mic distance — lower = closer = more bass from proximity effect. Keep at 0.8-1.0 for clean/crunch to avoid bass buildup)
 - Match cab size to amp: 1x12 for small Fender cleans, 2x12 for Vox/boutique, 4x12 for Marshall/Mesa/high-gain
 
 ### Drive Pedal Usage (pro-level technique)
-- **Klon/Minotaur as always-on (clean & crunch presets)**: Gain 0.15-0.25, Treble 0.50, Output 0.55-0.65. Adds body, sustain, and harmonic richness. Set enabled: true, always on.
-- **Tube Screamer/Scream 808 as boost (high-gain presets)**: Drive 0.0-0.15, Tone 0.40-0.55, Level 0.60-0.70. Tightens low end and pushes amp into singing lead tone. Can be toggled on for leads.
+- **Klon/Minotaur as always-on (clean & crunch presets)**: Use EXACT parameter names: Gain 0.15-0.25, Treble 0.50, Output 0.55-0.65. Adds body, sustain, and harmonic richness. Set enabled: true, always on.
+- **Tube Screamer/Scream 808 as boost (high-gain presets)**: Use EXACT parameter names: Drive 0.0-0.15, Tone 0.40-0.55, Level 0.60-0.70. Tightens low end and pushes amp into singing lead tone. Can be toggled on for leads.
+- **Teemah! (Timmy)**: Use EXACT parameter names: Drive, Bass, Treble, Level.
 - Drive pedals go on dsp 0, BEFORE the amp block.
+- CRITICAL: Use the EXACT parameter names listed above — do not substitute similar names (e.g., use "Treble" not "Tone" for the Minotaur).
 
 ### Post-Cab EQ (ALWAYS include this — it's what separates pro presets from amateur ones)
 - Place a Parametric EQ (HD2_EQParametric) on dsp 1, position 0 (first block after cab)
-- Cut 300-500Hz boxiness: MidFreq 0.35-0.45, MidGain 0.35-0.45 (slight cut)
-- Low shelf shape: LowFreq 0.15-0.20, LowGain 0.42-0.48 (gentle low cut)
-- High shelf shape: HighFreq 0.75-0.85, HighGain 0.42-0.48 (tame fizz)
+- EQ gains: 0.5 = unity (0dB). Below 0.5 = CUT, above 0.5 = BOOST. Range is roughly ±12dB.
+- Cut 300-500Hz boxiness: MidFreq 0.35-0.45, MidGain 0.30-0.40 (real cut, not subtle — 0.35 = approx -3dB)
+- Low shelf shape: LowFreq 0.15-0.20, LowGain 0.38-0.45 (gentle low-end cleanup)
+- High shelf — TONE-DEPENDENT, do NOT always cut:
+  - Clean/crunch/single-coil tones: HighFreq 0.70-0.80, HighGain 0.55-0.65 (BOOST for sparkle and clarity)
+  - High-gain/humbucker tones: HighFreq 0.75-0.85, HighGain 0.40-0.48 (tame fizz)
+  - If the tone goal is bright/chimey/glassy, always BOOST the high shelf
+- Q: 0.4-0.6 (bandwidth of mid cut — 0.4 = wider, 0.6 = narrower/more surgical)
 - Level: 0.0 (unity — 0.0 = no gain change)
 - Set enabled: true, stereo: true
 
@@ -228,7 +242,7 @@ dsp 1: [Parametric EQ] → [Modulation if needed] → [Delay] → [Reverb]
 - Create at least 4 snapshots, up to 8
 - Every block referenced in snapshots must exist in signalChain
 - blockStates keys must match "block0", "block1", etc. (the index of non-cab blocks on their respective DSP)
-- Parameter values normalized 0.0-1.0
+- Parameter values normalized 0.0-1.0 EXCEPT: cab Mic is an integer index (0, 1, 2, 3, etc. — see cab parameters section)
 - Be musically thoughtful — every parameter should serve the described tone
 
 Return ONLY valid JSON, no markdown formatting.`;

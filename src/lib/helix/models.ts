@@ -120,9 +120,9 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     id: "HD2_AmpGrammaticoNrm",
     name: "Grammatico Nrm",
     basedOn: "Grammatico LaGrange (Normal)",
-    category: "clean",
+    category: "crunch",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.40, Bass: 0.45, Mid: 0.55, Treble: 0.55, ChVol: 0.7, Master: 0.90, Presence: 0.45, Sag: 0.65, Hum: 0.1, Ripple: 0.1, Bias: 0.65, BiasX: 0.50 },
+    defaultParams: { Drive: 0.40, Bass: 0.30, Mid: 0.55, Treble: 0.60, ChVol: 0.7, Master: 0.90, Presence: 0.50, Sag: 0.65, Hum: 0.1, Ripple: 0.1, Bias: 0.65, BiasX: 0.50 },
   },
   "Fullerton Nrm": {
     id: "HD2_AmpFullertonNrm",
@@ -416,7 +416,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Grammatico LaGrange (Bright)",
     category: "crunch",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.50, Bass: 0.45, Mid: 0.55, Treble: 0.60, ChVol: 0.7, Master: 0.85, Presence: 0.45, Sag: 0.60, Hum: 0.1, Ripple: 0.1, Bias: 0.65, BiasX: 0.50 },
+    defaultParams: { Drive: 0.50, Bass: 0.30, Mid: 0.55, Treble: 0.65, ChVol: 0.7, Master: 0.85, Presence: 0.50, Sag: 0.60, Hum: 0.1, Ripple: 0.1, Bias: 0.65, BiasX: 0.50 },
   },
   "Grammatico Jump": {
     id: "HD2_AmpGrammaticoJump",
@@ -424,7 +424,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     basedOn: "Grammatico LaGrange (Jumped)",
     category: "crunch",
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.50, Bass: 0.45, Mid: 0.55, Treble: 0.58, ChVol: 0.7, Master: 0.85, Presence: 0.45, Sag: 0.60, Hum: 0.1, Ripple: 0.1, Bias: 0.65, BiasX: 0.50 },
+    defaultParams: { Drive: 0.50, Bass: 0.30, Mid: 0.55, Treble: 0.62, ChVol: 0.7, Master: 0.85, Presence: 0.50, Sag: 0.60, Hum: 0.1, Ripple: 0.1, Bias: 0.65, BiasX: 0.50 },
   },
   "Tweed Blues Brt": {
     id: "HD2_AmpTweedBluesBrt",
@@ -642,7 +642,7 @@ export const CAB_MODELS: Record<string, HelixModel> = {
 export const DISTORTION_MODELS: Record<string, HelixModel> = {
   "Scream 808": { id: "HD2_DistScream808", name: "Scream 808", basedOn: "Ibanez TS808 Tube Screamer", category: "overdrive", blockType: BLOCK_TYPES.DISTORTION, defaultParams: { Drive: 0.10, Tone: 0.45, Level: 0.65 } },
   "Minotaur": { id: "HD2_DistMinotaur", name: "Minotaur", basedOn: "Klon Centaur", category: "overdrive", blockType: BLOCK_TYPES.DISTORTION, defaultParams: { Gain: 0.20, Treble: 0.50, Output: 0.60 } },
-  "Teemah!": { id: "HD2_DistTeemah", name: "Teemah!", basedOn: "Paul Cochrane Timmy", category: "overdrive", blockType: BLOCK_TYPES.DISTORTION, defaultParams: { Gain: 0.5, Bass: 0.5, Treble: 0.5, Volume: 0.5 } },
+  "Teemah!": { id: "HD2_DistTeemah", name: "Teemah!", basedOn: "Paul Cochrane Timmy", category: "overdrive", blockType: BLOCK_TYPES.DISTORTION, defaultParams: { Drive: 0.5, Bass: 0.5, Treble: 0.5, Level: 0.5 } },
   "Kinky Boost": { id: "HD2_DistKinkyBoost", name: "Kinky Boost", basedOn: "Xotic EP Booster", category: "boost", blockType: BLOCK_TYPES.DISTORTION, defaultParams: { Boost: 0.5 } },
   "Compulsive Drive": { id: "HD2_DistCompulsiveDrive", name: "Compulsive Drive", basedOn: "Fulltone OCD", category: "overdrive", blockType: BLOCK_TYPES.DISTORTION, defaultParams: { Drive: 0.5, Tone: 0.5, Volume: 0.5 } },
   "Heir Apparent": { id: "HD2_DistHeirApparent", name: "Heir Apparent", basedOn: "Analogman Prince of Tone", category: "overdrive", blockType: BLOCK_TYPES.DISTORTION, defaultParams: { Drive: 0.5, Tone: 0.5, Volume: 0.5 } },
@@ -771,12 +771,12 @@ export const DYNAMICS_MODELS: Record<string, HelixModel> = {
 // EQ MODELS
 // ============================================================
 export const EQ_MODELS: Record<string, HelixModel> = {
-  "Parametric EQ": { id: "HD2_EQParametric", name: "Parametric EQ", basedOn: "Line 6 Original", category: "parametric", blockType: BLOCK_TYPES.EQ, defaultParams: { LowFreq: 200, LowGain: 0.0, MidFreq: 1000, MidGain: 0.0, MidQ: 0.5, HighFreq: 4000, HighGain: 0.0, Level: 0.0 } },
-  "Simple EQ": { id: "HD2_EQSimple3Band", name: "Simple EQ", basedOn: "Line 6 Original 3-Band", category: "simple", blockType: BLOCK_TYPES.EQ, defaultParams: { Bass: 0.0, Mid: 0.0, Treble: 0.0, Level: 0.0 } },
-  "Cali Q Graphic": { id: "HD2_CaliQ", name: "Cali Q Graphic", basedOn: "Mesa/Boogie 5-Band Graphic", category: "graphic", blockType: BLOCK_TYPES.EQ, defaultParams: { "80Hz": 0.0, "240Hz": 0.0, "750Hz": 0.0, "2200Hz": 0.0, "6600Hz": 0.0, Level: 0.0 } },
+  "Parametric EQ": { id: "HD2_EQParametric", name: "Parametric EQ", basedOn: "Line 6 Original", category: "parametric", blockType: BLOCK_TYPES.EQ, defaultParams: { LowFreq: 0.18, LowGain: 0.50, MidFreq: 0.40, MidGain: 0.50, Q: 0.50, HighFreq: 0.75, HighGain: 0.50, Level: 0.0 } },
+  "Simple EQ": { id: "HD2_EQSimple3Band", name: "Simple EQ", basedOn: "Line 6 Original 3-Band", category: "simple", blockType: BLOCK_TYPES.EQ, defaultParams: { Bass: 0.50, Mid: 0.50, Treble: 0.50, Level: 0.0 } },
+  "Cali Q Graphic": { id: "HD2_CaliQ", name: "Cali Q Graphic", basedOn: "Mesa/Boogie 5-Band Graphic", category: "graphic", blockType: BLOCK_TYPES.EQ, defaultParams: { "80Hz": 0.50, "240Hz": 0.50, "750Hz": 0.50, "2200Hz": 0.50, "6600Hz": 0.50, Level: 0.0 } },
   "10 Band Graphic": { id: "HD2_EQGraphic10Band", name: "10 Band Graphic", basedOn: "MXR 10-Band Graphic EQ", category: "graphic", blockType: BLOCK_TYPES.EQ, defaultParams: { Level: 0.0 } },
-  "Low and High Cut": { id: "HD2_EQLowCutHighCut", name: "Low and High Cut", basedOn: "Line 6 Original", category: "cut", blockType: BLOCK_TYPES.EQ, defaultParams: { LowCut: 80, HighCut: 12000, Level: 0.0 } },
-  "Tilt EQ": { id: "HD2_EQSimpleTilt", name: "Tilt EQ", basedOn: "Line 6 Original Tilt", category: "tilt", blockType: BLOCK_TYPES.EQ, defaultParams: { CenterFreq: 2000, Tilt: 0.0, Level: 0.0 } },
+  "Low and High Cut": { id: "HD2_EQLowCutHighCut", name: "Low and High Cut", basedOn: "Line 6 Original", category: "cut", blockType: BLOCK_TYPES.EQ, defaultParams: { LowCut: 0.10, HighCut: 0.85, Level: 0.0 } },
+  "Tilt EQ": { id: "HD2_EQSimpleTilt", name: "Tilt EQ", basedOn: "Line 6 Original Tilt", category: "tilt", blockType: BLOCK_TYPES.EQ, defaultParams: { CenterFreq: 0.50, Tilt: 0.50, Level: 0.0 } },
 };
 
 // ============================================================

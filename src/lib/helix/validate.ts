@@ -113,9 +113,16 @@ export function validateAndFixPresetSpec(spec: PresetSpec): ValidationResult {
     }
   }
 
-  // 5. Clamp parameter values to 0-1 range
+  // 5. Clamp parameter values to 0-1 range (except cab Mic which is an integer index)
   for (const block of fixedSpec.signalChain) {
     for (const [key, value] of Object.entries(block.parameters)) {
+      // Cab Mic is an integer mic index (0-7), not normalized 0-1
+      if (block.type === "cab" && key === "Mic") {
+        if (typeof value === "number") {
+          block.parameters[key] = Math.max(0, Math.min(7, Math.round(value)));
+        }
+        continue;
+      }
       if (typeof value === "number" && (value < 0 || value > 1)) {
         block.parameters[key] = Math.max(0, Math.min(1, value));
         fixed = true;
