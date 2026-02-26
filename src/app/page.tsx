@@ -8,10 +8,24 @@ interface Message {
   content: string;
 }
 
-interface GeneratedPreset {
-  preset: Record<string, unknown>;
-  summary: string;
-  spec: Record<string, unknown>;
+interface ProviderInfo {
+  id: string;
+  name: string;
+  color: string;
+  available: boolean;
+}
+
+interface ProviderResult {
+  providerId: string;
+  providerName: string;
+  preset?: Record<string, unknown>;
+  summary?: string;
+  spec?: Record<string, unknown> & { name?: string };
+  error?: string;
+}
+
+interface GeneratedResults {
+  results: ProviderResult[];
 }
 
 export default function Home() {
@@ -20,11 +34,32 @@ export default function Home() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [readyToGenerate, setReadyToGenerate] = useState(false);
-  const [generatedPreset, setGeneratedPreset] = useState<GeneratedPreset | null>(null);
+  const [generatedResults, setGeneratedResults] = useState<GeneratedResults | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [premiumKey, setPremiumKey] = useState<string | null>(null);
+  const [providers, setProviders] = useState<ProviderInfo[]>([]);
+  const [selectedProviders, setSelectedProviders] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Fetch available providers on mount
+  useEffect(() => {
+    fetch("/api/providers")
+      .then((res) => res.json())
+      .then((data) => {
+        setProviders(data.providers);
+        // Default: select all available providers
+        const available = data.providers
+          .filter((p: ProviderInfo) => p.available)
+          .map((p: ProviderInfo) => p.id);
+        setSelectedProviders(new Set(available));
+      })
+      .catch(() => {
+        // Fallback: just gemini
+        setProviders([{ id: "gemini", name: "Gemini", color: "#4285f4", available: true }]);
+        setSelectedProviders(new Set(["gemini"]));
+      });
+  }, []);
 
   // Check for premium key in URL on mount
   useEffect(() => {
@@ -32,7 +67,6 @@ export default function Home() {
     const key = params.get("pro");
     if (key) {
       setPremiumKey(key);
-      // Clean the URL so the key isn't visible in the address bar
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, []);
@@ -52,6 +86,20 @@ export default function Home() {
       inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 150) + "px";
     }
   }, [input]);
+
+  function toggleProvider(id: string) {
+    setSelectedProviders((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        // Don't allow deselecting all
+        if (next.size <= 1) return prev;
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
 
   async function sendMessage(e?: React.FormEvent) {
     e?.preventDefault();
@@ -104,15 +152,17 @@ export default function Home() {
               }
               if (parsed.text) {
                 fullContent += parsed.text;
-                setMessages(prev => {
+                setMessages((prev) => {
                   const updated = [...prev];
                   updated[updated.length - 1] = { role: "assistant", content: fullContent };
                   return updated;
                 });
               }
             } catch (parseError) {
-              // Skip malformed SSE chunks
-              if (parseError instanceof Error && parseError.message !== "Unexpected end of JSON input") {
+              if (
+                parseError instanceof Error &&
+                parseError.message !== "Unexpected end of JSON input"
+              ) {
                 console.warn("SSE parse error:", parseError);
               }
             }
@@ -123,8 +173,7 @@ export default function Home() {
       // Check if the AI indicated it's ready to generate
       if (fullContent.includes("[READY_TO_GENERATE]")) {
         setReadyToGenerate(true);
-        // Clean the marker from the displayed message
-        setMessages(prev => {
+        setMessages((prev) => {
           const updated = [...prev];
           updated[updated.length - 1] = {
             role: "assistant",
@@ -136,7 +185,6 @@ export default function Home() {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Something went wrong";
       setError(message);
-      // Remove the empty assistant message on error
       setMessages(newMessages);
     } finally {
       setIsStreaming(false);
@@ -144,6 +192,7 @@ export default function Home() {
   }
 
   async function generatePreset() {
+    if (selectedProviders.size === 0) return;
     setIsGenerating(true);
     setError(null);
 
@@ -151,7 +200,11 @@ export default function Home() {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages, premiumKey }),
+        body: JSON.stringify({
+          messages,
+          premiumKey,
+          providers: Array.from(selectedProviders),
+        }),
       });
 
       if (!res.ok) {
@@ -160,7 +213,23 @@ export default function Home() {
       }
 
       const data = await res.json();
-      setGeneratedPreset(data);
+      // Normalize: ensure we always have a results array
+      if (data.results) {
+        setGeneratedResults({ results: data.results });
+      } else {
+        // Backwards compat: single result — use provider info from response
+        setGeneratedResults({
+          results: [
+            {
+              providerId: data.providerId ?? "gemini",
+              providerName: data.providerName ?? "Gemini",
+              preset: data.preset,
+              summary: data.summary,
+              spec: data.spec,
+            },
+          ],
+        });
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Generation failed";
       setError(message);
@@ -169,16 +238,16 @@ export default function Home() {
     }
   }
 
-  function downloadPreset() {
-    if (!generatedPreset) return;
+  function downloadPreset(result: ProviderResult) {
+    if (!result.preset) return;
 
-    const json = JSON.stringify(generatedPreset.preset, null, 2);
+    const json = JSON.stringify(result.preset, null, 2);
     const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    const name = (generatedPreset.spec as { name?: string }).name || "HelixAI_Preset";
+    const baseName = result.spec?.name || "HelixAI_Preset";
     a.href = url;
-    a.download = `${name.replace(/[^a-zA-Z0-9_-]/g, "_")}.hlx`;
+    a.download = `${baseName.replace(/[^a-zA-Z0-9_()-]/g, "_")}.hlx`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -194,16 +263,18 @@ export default function Home() {
     setMessages([]);
     setInput("");
     setReadyToGenerate(false);
-    setGeneratedPreset(null);
+    setGeneratedResults(null);
     setError(null);
   }
 
+  const successResults = generatedResults?.results.filter((r) => !r.error) ?? [];
+  const errorResults = generatedResults?.results.filter((r) => r.error) ?? [];
+
   return (
-    <div className="relative z-10 flex flex-col h-screen max-w-4xl mx-auto">
+    <div className="relative z-10 flex flex-col h-screen max-w-5xl mx-auto">
       {/* ═══ Header ═══ */}
       <header className="flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-3.5">
-          {/* Tube glow logo */}
           <div className="hlx-tube hlx-tube-sm">
             <span className="text-sm font-bold text-white drop-shadow-sm select-none">H</span>
           </div>
@@ -234,7 +305,6 @@ export default function Home() {
         )}
       </header>
 
-      {/* Rack divider */}
       <div className="hlx-rack" />
 
       {/* ═══ Messages ═══ */}
@@ -242,12 +312,10 @@ export default function Home() {
         {messages.length === 0 ? (
           /* ─── Welcome Screen ─── */
           <div className="flex flex-col items-center justify-center h-full text-center gap-6 hlx-stagger">
-            {/* Hero logo */}
             <div className="hlx-tube hlx-tube-lg">
               <span className="text-2xl font-bold text-white drop-shadow-sm select-none">H</span>
             </div>
 
-            {/* Headline */}
             <div>
               <h2 className="hlx-font-display text-3xl font-semibold mb-2 hlx-hero-text">
                 What tone are you after?
@@ -258,7 +326,6 @@ export default function Home() {
               </p>
             </div>
 
-            {/* Suggestion pedals */}
             <div className="flex flex-wrap gap-2.5 justify-center max-w-xl">
               {[
                 "Mark Knopfler\u2019s Sultans of Swing Alchemy tone",
@@ -292,7 +359,6 @@ export default function Home() {
                 className={`hlx-msg flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 {msg.role === "assistant" ? (
-                  /* AI message — left amber border accent */
                   <div className="hlx-msg-ai max-w-[88%]">
                     <div
                       className={`message-content text-[0.9375rem] leading-relaxed text-[var(--hlx-text-sub)] ${
@@ -303,7 +369,6 @@ export default function Home() {
                     </div>
                   </div>
                 ) : (
-                  /* User message — warm amber chip */
                   <div className="hlx-msg-user max-w-[80%]">
                     <div className="text-[0.9375rem] leading-relaxed text-[var(--hlx-text)]">
                       {msg.content}
@@ -313,12 +378,49 @@ export default function Home() {
               </div>
             ))}
 
-            {/* ─── Generate Button ─── */}
-            {readyToGenerate && !generatedPreset && (
-              <div className="flex justify-center py-6">
+            {/* ─── Provider Selector + Generate ─── */}
+            {readyToGenerate && !generatedResults && (
+              <div className="flex flex-col items-center gap-4 py-6">
+                {/* Provider selector */}
+                {providers.length > 1 && (
+                  <div className="flex flex-col items-center gap-2.5">
+                    <p className="text-xs text-[var(--hlx-text-muted)] tracking-wide uppercase">
+                      Generate with
+                    </p>
+                    <div className="flex gap-2">
+                      {providers.map((provider) => (
+                        <button
+                          key={provider.id}
+                          onClick={() => provider.available && toggleProvider(provider.id)}
+                          disabled={!provider.available}
+                          className={`hlx-provider-toggle ${selectedProviders.has(provider.id) ? "hlx-provider-active" : ""}`}
+                          style={
+                            selectedProviders.has(provider.id)
+                              ? ({ "--provider-color": provider.color } as React.CSSProperties)
+                              : undefined
+                          }
+                        >
+                          <span
+                            className={`hlx-led ${selectedProviders.has(provider.id) ? "hlx-led-on" : ""}`}
+                            style={
+                              selectedProviders.has(provider.id)
+                                ? { background: provider.color, boxShadow: `0 0 6px ${provider.color}, 0 0 14px ${provider.color}40` }
+                                : undefined
+                            }
+                          />
+                          {provider.name}
+                          {!provider.available && (
+                            <span className="text-[10px] opacity-50">(no key)</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <button
                   onClick={generatePreset}
-                  disabled={isGenerating}
+                  disabled={isGenerating || selectedProviders.size === 0}
                   className="hlx-generate"
                 >
                   {isGenerating ? (
@@ -327,42 +429,86 @@ export default function Home() {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                       </svg>
-                      Generating Preset&hellip;
+                      Generating {selectedProviders.size > 1 ? `${selectedProviders.size} Presets` : "Preset"}&hellip;
                     </>
                   ) : (
                     <>
-                      {/* Small tube icon */}
                       <span className="w-5 h-5 rounded-md bg-[var(--hlx-void)] flex items-center justify-center text-[10px] font-bold text-[var(--hlx-amber)]">
                         H
                       </span>
-                      Generate Helix LT Preset
+                      Generate {selectedProviders.size > 1 ? `${selectedProviders.size} Presets` : "Preset"}
                     </>
                   )}
                 </button>
               </div>
             )}
 
-            {/* ─── Preset Result Card ─── */}
-            {generatedPreset && (
-              <div className="hlx-preset-card space-y-5">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <span className="hlx-led hlx-led-on" />
-                    <h3 className="hlx-font-display text-lg font-semibold text-[var(--hlx-amber)]">
-                      Preset Ready
-                    </h3>
+            {/* ─── Comparison Results ─── */}
+            {generatedResults && (
+              <div className="space-y-4">
+                {/* Success results — side by side grid */}
+                {successResults.length > 0 && (
+                  <div
+                    className={`grid gap-4 ${
+                      successResults.length === 1
+                        ? "grid-cols-1"
+                        : successResults.length === 2
+                          ? "grid-cols-1 md:grid-cols-2"
+                          : "grid-cols-1 md:grid-cols-3"
+                    }`}
+                  >
+                    {successResults.map((result) => {
+                      const provider = providers.find((p) => p.id === result.providerId);
+                      const color = provider?.color ?? "#888";
+                      return (
+                        <div key={result.providerId} className="hlx-preset-card space-y-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2.5">
+                              <span
+                                className="hlx-led hlx-led-on"
+                                style={{
+                                  background: color,
+                                  boxShadow: `0 0 6px ${color}, 0 0 14px ${color}40`,
+                                }}
+                              />
+                              <h3
+                                className="hlx-font-display text-base font-semibold"
+                                style={{ color }}
+                              >
+                                {result.providerName}
+                              </h3>
+                            </div>
+                            <button
+                              onClick={() => downloadPreset(result)}
+                              className="hlx-download text-xs px-3 py-1.5"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                              </svg>
+                              .hlx
+                            </button>
+                          </div>
+                          <div className="hlx-rack" />
+                          <div className="text-[0.8125rem] text-[var(--hlx-text-sub)] leading-relaxed message-content">
+                            <ReactMarkdown>{result.summary || ""}</ReactMarkdown>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <button onClick={downloadPreset} className="hlx-download">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    Download .hlx
-                  </button>
-                </div>
-                <div className="hlx-rack" />
-                <div className="text-[0.875rem] text-[var(--hlx-text-sub)] leading-relaxed message-content">
-                  <ReactMarkdown>{generatedPreset.summary}</ReactMarkdown>
-                </div>
+                )}
+
+                {/* Error results */}
+                {errorResults.length > 0 && (
+                  <div className="space-y-2">
+                    {errorResults.map((result) => (
+                      <div key={result.providerId} className="hlx-error flex items-center gap-2">
+                        <span className="font-semibold">{result.providerName}:</span>
+                        <span>{result.error}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -404,7 +550,7 @@ export default function Home() {
           </button>
         </form>
         <p className="text-[11px] text-[var(--hlx-text-muted)] mt-3 text-center tracking-wide">
-          Powered by Gemini &middot; Google Search grounded &middot; Line 6 Helix LT
+          Powered by Gemini &middot; Claude &middot; GPT &middot; Line 6 Helix LT
         </p>
       </div>
     </div>

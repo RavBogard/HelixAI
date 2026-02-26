@@ -496,6 +496,44 @@ body {
 }
 .hlx-spin { animation: hlxSpin 1s linear infinite; }
 
+/* ─── Provider Toggle Buttons ─── */
+
+.hlx-provider-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: 10px;
+  background: var(--hlx-surface);
+  border: 1px solid var(--hlx-border);
+  color: var(--hlx-text-muted);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: inherit;
+}
+
+.hlx-provider-toggle:hover:not(:disabled) {
+  border-color: var(--hlx-border-warm);
+  color: var(--hlx-text-sub);
+  background: var(--hlx-elevated);
+}
+
+.hlx-provider-toggle:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.hlx-provider-active {
+  color: var(--hlx-text);
+  border-color: var(--provider-color, var(--hlx-amber));
+  background: var(--hlx-elevated);
+  box-shadow:
+    0 0 0 1px var(--provider-color, var(--hlx-amber)),
+    0 0 12px color-mix(in srgb, var(--provider-color, var(--hlx-amber)) 15%, transparent);
+}
+
 /* ─── Utility ─── */
 
 .hlx-font-display { font-family: var(--font-fraunces), Georgia, serif; }
