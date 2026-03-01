@@ -99,12 +99,14 @@ export interface HlxBlock {
 export interface HlxCab {
   "@model": string;
   "@enabled": boolean;
-  "@mic": number;
-  Distance?: number;
-  Level?: number;
-  LowCut?: number;
-  HighCut?: number;
+  "@mic": number;          // integer index 0-15 (0=SM57, 7=Ribbon 121, 11=U67 Condenser)
+  Distance?: number;       // normalized 0-1 (optional)
+  Level?: number;          // normalized 0-1 (optional)
+  LowCut: number;          // REQUIRED — raw Hz (e.g., 80.0). NOT normalized 0-1. Min 19.9, typical 80-100.
+  HighCut: number;         // REQUIRED — raw Hz (e.g., 8000.0). NOT normalized 0-1. Max 20100.0, typical 6500-8000.
   EarlyReflections?: number;
+  Angle?: number;
+  Position?: number;
 }
 
 export interface HlxSnapshot {
@@ -151,6 +153,17 @@ export interface HlxGlobal {
   "@guitarpad"?: number;
   "@guitarinputZ"?: number;
 }
+
+// Amp classification types — used by HelixModel extension in models.ts and param-engine.ts (Phase 2)
+export type AmpCategory = "clean" | "crunch" | "high_gain";
+
+export type TopologyTag =
+  | "cathode_follower"   // EL84/EL34 cathode-follower: Vox AC30/AC15, Matchless DC-30
+  | "plate_fed"          // 6L6/6V6/EL34 plate-driven: Fender, Marshall, Mesa
+  | "solid_state"        // JC-120 (no tube power amp characteristics)
+  | "not_applicable";    // for non-amp models (cabs, effects)
+
+export type CabSize = "small" | "medium" | "large";
 
 // --- Preset specification types (what the AI generates) ---
 
