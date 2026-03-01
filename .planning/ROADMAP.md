@@ -31,7 +31,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Every @type block constant in BLOCK_TYPES has been verified against a real HX Edit .hlx export and any wrong values corrected
   4. LowCut and HighCut are required fields on the cab type — the TypeScript compiler rejects cab blocks missing these values
   5. The parameter type registry distinguishes Hz-valued fields (LowCut/HighCut), integer index fields (Mic), and normalized float fields (Drive/Master)
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — HlxCab required LowCut/HighCut + topology types in types.ts; ToneIntent Zod schema in tone-intent.ts (FNDN-02, FNDN-05)
+- [ ] 01-02-PLAN.md — param-registry.ts creation; models.ts BLOCK_TYPES fix + Hz cab defaults + amp topology/affinity metadata (FNDN-01, FNDN-03, FNDN-04)
+- [ ] 01-03-PLAN.md — index.ts barrel exports; validate.ts Mic range + Hz range fixes; full Phase 1 verification (FNDN-01–05)
 
 ### Phase 2: Knowledge Layer
 **Goal**: Deterministic code encodes expert Helix knowledge — signal chain order, amp parameters, snapshot design — that AI cannot override
@@ -98,7 +103,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/TBD | Not started | - |
+| 1. Foundation | 0/3 | Planned | - |
 | 2. Knowledge Layer | 0/TBD | Not started | - |
 | 3. AI Integration | 0/TBD | Not started | - |
 | 4. Orchestration | 0/TBD | Not started | - |
@@ -107,4 +112,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 ---
 *Roadmap created: 2026-03-01*
-*Last updated: 2026-03-01 after initial creation*
+*Last updated: 2026-03-01 — Phase 1 planned (3 plans, 3 waves)*
