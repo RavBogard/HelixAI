@@ -12,7 +12,7 @@ The rebuild transforms HelixAI from a system that generates structurally correct
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundation** - Type contracts, verified @type constants, expanded model database, parameter type registry
+- [x] **Phase 1: Foundation** - Type contracts, verified @type constants, expanded model database, parameter type registry
 - [ ] **Phase 2: Knowledge Layer** - Deterministic chain rules, param engine, snapshot engine — the expert Helix knowledge encoded in code
 - [ ] **Phase 3: AI Integration** - Claude Sonnet 4.6 with constrained ToneIntent output; Gemini chat unchanged
 - [ ] **Phase 4: Orchestration** - Wire all components end-to-end; harden validator; generate real downloadable presets
@@ -34,9 +34,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — HlxCab required LowCut/HighCut + topology types in types.ts; ToneIntent Zod schema in tone-intent.ts (FNDN-02, FNDN-05)
-- [ ] 01-02-PLAN.md — param-registry.ts creation; models.ts BLOCK_TYPES fix + Hz cab defaults + amp topology/affinity metadata (FNDN-01, FNDN-03, FNDN-04)
-- [ ] 01-03-PLAN.md — index.ts barrel exports; validate.ts Mic range + Hz range fixes; full Phase 1 verification (FNDN-01–05)
+- [x] 01-01-PLAN.md — HlxCab required LowCut/HighCut + topology types in types.ts; ToneIntent Zod schema in tone-intent.ts (FNDN-02, FNDN-05)
+- [x] 01-02-PLAN.md — param-registry.ts creation; models.ts BLOCK_TYPES fix + Hz cab defaults + amp topology/affinity metadata (FNDN-01, FNDN-03, FNDN-04)
+- [x] 01-03-PLAN.md — index.ts barrel exports; validate.ts Mic range + Hz range fixes; full Phase 1 verification (FNDN-01–05)
 
 ### Phase 2: Knowledge Layer
 **Goal**: Deterministic code encodes expert Helix knowledge — signal chain order, amp parameters, snapshot design — that AI cannot override
@@ -103,7 +103,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/3 | Planned | - |
+| 1. Foundation | 3/3 | Complete | 2026-03-01 |
 | 2. Knowledge Layer | 0/TBD | Not started | - |
 | 3. AI Integration | 0/TBD | Not started | - |
 | 4. Orchestration | 0/TBD | Not started | - |
@@ -112,4 +112,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 ---
 *Roadmap created: 2026-03-01*
-*Last updated: 2026-03-01 — Phase 1 planned (3 plans, 3 waves)*
+*Last updated: 2026-03-01 — Phase 1 COMPLETE (3/3 plans, all 5 FNDN requirements verified)*
