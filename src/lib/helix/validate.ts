@@ -113,16 +113,37 @@ export function validateAndFixPresetSpec(spec: PresetSpec): ValidationResult {
     }
   }
 
-  // 5. Clamp parameter values to 0-1 range (except cab Mic which is an integer index)
+  // 5. Clamp parameter values (type-aware: Hz for cab LowCut/HighCut, integer index for Mic, normalized 0-1 for everything else)
   for (const block of fixedSpec.signalChain) {
     for (const [key, value] of Object.entries(block.parameters)) {
-      // Cab Mic is an integer mic index (0-7), not normalized 0-1
+      // Cab Mic is an integer mic index (0-15), not normalized 0-1
       if (block.type === "cab" && key === "Mic") {
         if (typeof value === "number") {
-          block.parameters[key] = Math.max(0, Math.min(7, Math.round(value)));
+          block.parameters[key] = Math.max(0, Math.min(15, Math.round(value)));
         }
         continue;
       }
+
+      // Cab LowCut is Hz-encoded (valid: 19.9–500.0). Values < 19.9 are likely normalized-float bugs.
+      if (block.type === "cab" && key === "LowCut") {
+        if (typeof value === "number" && value < 19.9) {
+          console.warn(`[validate] Cab block has LowCut=${value} — looks like normalized float, should be Hz (e.g., 80.0). Correcting to 80.0`);
+          block.parameters[key] = 80.0;
+          fixed = true;
+        }
+        continue;
+      }
+
+      // Cab HighCut is Hz-encoded (valid: 1000.0–20100.0). Values < 100.0 are likely normalized-float bugs.
+      if (block.type === "cab" && key === "HighCut") {
+        if (typeof value === "number" && value < 100.0) {
+          console.warn(`[validate] Cab block has HighCut=${value} — looks like normalized float, should be Hz (e.g., 8000.0). Correcting to 8000.0`);
+          block.parameters[key] = 8000.0;
+          fixed = true;
+        }
+        continue;
+      }
+
       if (typeof value === "number" && (value < 0 || value > 1)) {
         block.parameters[key] = Math.max(0, Math.min(1, value));
         fixed = true;
