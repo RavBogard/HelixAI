@@ -154,9 +154,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 **Coverage:**
 - v1 requirements: 36 total
-- Mapped to phases: 36
+- Mapped to phases: 36 (Phases 1-5)
 - Unmapped: 0
+- Phase 6 (Hardening): addresses launch-readiness concerns from research — no v1 requirements assigned; see ROADMAP.md Phase 6 note
 
 ---
 *Requirements defined: 2026-03-01*
-*Last updated: 2026-03-01 after initial definition*
+*Last updated: 2026-03-01 after roadmap creation (traceability confirmed 36/36)*
