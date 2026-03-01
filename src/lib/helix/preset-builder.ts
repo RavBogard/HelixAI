@@ -127,6 +127,8 @@ function buildDsp(blocks: BlockSpec[], dspIndex: number): HlxDsp {
         "@model": block.modelId,
         "@enabled": block.enabled,
         "@mic": mic,
+        LowCut: cabParams.LowCut ?? 80.0,   // Hz default — required field
+        HighCut: cabParams.HighCut ?? 8000.0, // Hz default — required field
         ...cabParams,
       };
       cabIndex++;
