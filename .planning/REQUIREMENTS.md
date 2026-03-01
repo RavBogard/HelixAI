@@ -10,10 +10,10 @@ Requirements for the rebuilt preset engine. Each maps to roadmap phases.
 ### Foundation (Types & Data)
 
 - [ ] **FNDN-01**: Expanded model database with amp category metadata (clean/crunch/high-gain), cab affinities, and topology tags (cathode-follower vs. plate-fed)
-- [ ] **FNDN-02**: ToneIntent type definition — the narrow AI output contract (~15 fields: amp name, cab name, effects, snapshot intents, guitar type)
+- [x] **FNDN-02**: ToneIntent type definition — the narrow AI output contract (~15 fields: amp name, cab name, effects, snapshot intents, guitar type)
 - [ ] **FNDN-03**: Verified @type block constants against real HX Edit .hlx exports (current values are unverified and may be wrong)
 - [ ] **FNDN-04**: Parameter type registry distinguishing Hz values (LowCut/HighCut), integer indices (Mic), and normalized floats (Drive/Master)
-- [ ] **FNDN-05**: LowCut and HighCut made required fields on cab type (not optional) with safe defaults per gain category
+- [x] **FNDN-05**: LowCut and HighCut made required fields on cab type (not optional) with safe defaults per gain category
 
 ### Signal Chain Engineering
 
@@ -114,10 +114,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | FNDN-01 | Phase 1 | Pending |
-| FNDN-02 | Phase 1 | Pending |
+| FNDN-02 | Phase 1 | Complete |
 | FNDN-03 | Phase 1 | Pending |
 | FNDN-04 | Phase 1 | Pending |
-| FNDN-05 | Phase 1 | Pending |
+| FNDN-05 | Phase 1 | Complete |
 | CHAIN-01 | Phase 2 | Pending |
 | CHAIN-02 | Phase 2 | Pending |
 | CHAIN-03 | Phase 2 | Pending |
