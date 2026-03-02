@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: unknown
-last_updated: "2026-03-02T00:56:22.365Z"
+status: in-progress
+last_updated: "2026-03-02T01:31:08Z"
 progress:
-  total_phases: 2
+  total_phases: 3
   completed_phases: 2
-  total_plans: 6
-  completed_plans: 6
+  total_plans: 7
+  completed_plans: 7
 ---
 
 # Project State
@@ -18,23 +18,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-01)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** Phase 2 complete — Ready for Phase 3 (Orchestration)
+**Current focus:** Phase 3 in progress — AI Integration (enum-constrained ToneIntent + Claude Planner done)
 
 ## Current Position
 
-Phase: 2 of 6 (Knowledge Layer) — COMPLETE
-Plan: 3 of 3 in current phase (02-01, 02-02, 02-03 complete)
-Status: Phase 2 complete. All 3 Knowledge Layer modules built and tested.
-Last activity: 2026-03-02 — Completed Plan 02-03 (snapshot-engine.ts with buildSnapshots)
+Phase: 3 of 6 (AI Integration) — IN PROGRESS
+Plan: 1 of 2 in current phase (03-01 complete)
+Status: Plan 03-01 complete. ToneIntentSchema enum-constrained, Claude Planner module created.
+Last activity: 2026-03-02 — Completed Plan 03-01 (enum-constrained ToneIntent + planner.ts)
 
-Progress: [██████░░░░] 33%
+Progress: [███████░░░] 39%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
+- Total plans completed: 7
 - Average duration: ~5 min
-- Total execution time: ~31 min
+- Total execution time: ~38 min
 
 **By Phase:**
 
@@ -42,9 +42,10 @@ Progress: [██████░░░░] 33%
 |-------|-------|-------|----------|
 | 1. Foundation | 3 | ~19 min | ~6 min |
 | 2. Knowledge Layer | 3 | ~12 min | ~4 min |
+| 3. AI Integration | 1/2 | ~7 min | ~7 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-02 (8m), 01-03 (6m), 02-01 (4m), 02-02 (4m), 02-03 (4m)
+- Last 5 plans: 01-03 (6m), 02-01 (4m), 02-02 (4m), 02-03 (4m), 03-01 (7m)
 - Trend: stable (fast)
 
 *Updated after each plan completion*
@@ -69,6 +70,10 @@ Recent decisions affecting current work:
 - [Phase 2, Plan 03]: Global sequential block keys for snapshots — avoids per-DSP key collision in flat Record
 - [Phase 2, Plan 03]: Boost OFF in clean snapshot only for clean amps — crunch/high-gain keep boost ON for tonal consistency
 - [Phase 2, Plan 03]: Knowledge Layer complete — 3 modules (chain-rules, param-engine, snapshot-engine) with 50 tests
+- [Phase 3, Plan 01]: z.enum() for ampName/cabName/modelName — schema-level rejection of invalid model IDs
+- [Phase 3, Plan 01]: EFFECT_NAMES excludes EQ/WAH/VOLUME (Knowledge Layer handles those) — only user-selectable effects
+- [Phase 3, Plan 01]: Three optional ToneIntent fields (presetName, description, guitarNotes) for richer AI output
+- [Phase 3, Plan 01]: Planner prompt under 60 lines with zero numeric parameter values
 
 ### Pending Todos
 
@@ -83,5 +88,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed 02-03-PLAN.md (snapshot-engine.ts). Phase 2 Knowledge Layer complete. Phase 3 (Orchestration) is next.
+Stopped at: Completed 03-01-PLAN.md (enum-constrained ToneIntent + planner.ts). Plan 03-02 is next.
 Resume file: None
