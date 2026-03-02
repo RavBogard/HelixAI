@@ -8,6 +8,161 @@ interface Message {
   content: string;
 }
 
+// Signal chain block data from PresetSpec
+interface VizBlock {
+  type: string;
+  modelName: string;
+  dsp: number;
+  enabled: boolean;
+}
+
+// Snapshot data from PresetSpec
+interface VizSnapshot {
+  name: string;
+  ledColor: number;
+  description: string;
+}
+
+// LED color number → CSS color mapping (matches Helix hardware colors)
+const LED_CSS: Record<number, string> = {
+  1: "#ef4444",   // Red
+  2: "#f97316",   // Orange
+  3: "#eab308",   // Yellow
+  4: "#22c55e",   // Green
+  5: "#06b6d4",   // Turquoise
+  6: "#3b82f6",   // Blue
+  7: "#e5e7eb",   // White
+  8: "#a855f7",   // Purple
+};
+
+// Block type → display label
+const BLOCK_LABEL: Record<string, string> = {
+  dynamics: "Gate",
+  distortion: "Drive",
+  amp: "Amp",
+  cab: "Cab",
+  eq: "EQ",
+  volume: "Gain",
+  modulation: "Mod",
+  delay: "Delay",
+  reverb: "Reverb",
+  wah: "Wah",
+  pitch: "Pitch",
+  send_return: "FX Loop",
+};
+
+function SignalChainViz({ blocks }: { blocks: VizBlock[] }) {
+  return (
+    <div className="overflow-x-auto pb-1">
+      <div className="flex items-center gap-1.5 min-w-0">
+        {blocks.map((block, i) => (
+          <div key={i} className="flex items-center gap-1.5 flex-shrink-0">
+            <div
+              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg border text-center min-w-[64px] transition-opacity ${
+                block.enabled
+                  ? "bg-[var(--hlx-elevated)] border-[var(--hlx-border-warm)]"
+                  : "bg-[var(--hlx-surface)] border-[var(--hlx-border)] opacity-40"
+              }`}
+            >
+              <span className="text-[10px] font-semibold tracking-wide uppercase text-[var(--hlx-text-muted)]">
+                {BLOCK_LABEL[block.type] || block.type}
+              </span>
+              <span className="text-[11px] text-[var(--hlx-text-sub)] leading-tight max-w-[80px] truncate">
+                {block.modelName}
+              </span>
+              <span
+                className="w-[5px] h-[5px] rounded-full mt-0.5"
+                style={{
+                  background: block.enabled ? "var(--hlx-green)" : "var(--hlx-text-muted)",
+                  boxShadow: block.enabled ? "0 0 6px var(--hlx-green)" : "none",
+                }}
+              />
+            </div>
+            {i < blocks.length - 1 && (
+              <svg width="12" height="12" viewBox="0 0 12 12" className="flex-shrink-0 text-[var(--hlx-text-muted)]">
+                <path d="M2 6h8M7 3l3 3-3 3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ToneDescriptionCard({
+  name,
+  description,
+  ampName,
+  cabName,
+  effects,
+  snapshots,
+  guitarNotes,
+}: {
+  name: string;
+  description: string;
+  ampName: string;
+  cabName: string;
+  effects: VizBlock[];
+  snapshots: VizSnapshot[];
+  guitarNotes?: string;
+}) {
+  return (
+    <div className="space-y-4">
+      {/* Amp → Cab pair */}
+      <div className="flex items-center gap-2 text-[0.8125rem]">
+        <span className="text-[var(--hlx-text-muted)] text-[11px] uppercase tracking-wide font-semibold">Signal</span>
+        <span className="text-[var(--hlx-text)]">{ampName}</span>
+        <span className="text-[var(--hlx-text-muted)]">&rarr;</span>
+        <span className="text-[var(--hlx-text)]">{cabName}</span>
+      </div>
+
+      {/* Effects list */}
+      {effects.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {effects.map((fx, i) => (
+            <span
+              key={i}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[var(--hlx-elevated)] border border-[var(--hlx-border)] text-[11px] text-[var(--hlx-text-sub)]"
+            >
+              <span className="text-[var(--hlx-text-muted)] font-semibold uppercase text-[9px]">
+                {BLOCK_LABEL[fx.type] || fx.type}
+              </span>
+              {fx.modelName}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Snapshots */}
+      <div className="flex flex-wrap gap-2">
+        {snapshots.map((snap, i) => (
+          <span
+            key={i}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[var(--hlx-surface)] border border-[var(--hlx-border)] text-[11px] text-[var(--hlx-text-sub)]"
+          >
+            <span
+              className="w-[6px] h-[6px] rounded-full flex-shrink-0"
+              style={{
+                background: LED_CSS[snap.ledColor] || LED_CSS[7],
+                boxShadow: `0 0 6px ${LED_CSS[snap.ledColor] || LED_CSS[7]}40`,
+              }}
+            />
+            {snap.name}
+          </span>
+        ))}
+      </div>
+
+      {/* Guitar notes */}
+      {guitarNotes && (
+        <div className="text-[0.8125rem] text-[var(--hlx-text-sub)] leading-relaxed border-l-2 border-[var(--hlx-border-warm)] pl-3 italic">
+          {guitarNotes}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -356,28 +511,69 @@ export default function Home() {
             )}
 
             {/* --- Single Preset Result --- */}
-            {generatedPreset && (
-              <div className="hlx-preset-card space-y-4 max-w-2xl mx-auto">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2.5">
-                    <span className="hlx-led hlx-led-warm" />
-                    <h3 className="hlx-font-display text-base font-semibold text-[var(--hlx-text)]">
-                      {generatedPreset.spec?.name || "HelixAI Preset"}
-                    </h3>
+            {generatedPreset && (() => {
+              const spec = generatedPreset.spec as Record<string, unknown>;
+              const chain = (spec.signalChain || []) as VizBlock[];
+              const snaps = (spec.snapshots || []) as VizSnapshot[];
+              const intent = generatedPreset.toneIntent as Record<string, unknown>;
+              const ampBlock = chain.find((b) => b.type === "amp");
+              const cabBlock = chain.find((b) => b.type === "cab");
+              const effectBlocks = chain.filter(
+                (b) => !["amp", "cab", "eq", "volume", "dynamics"].includes(b.type)
+              );
+
+              return (
+                <div className="hlx-preset-card space-y-5 max-w-2xl mx-auto">
+                  {/* Header */}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <span className="hlx-led hlx-led-warm" />
+                      <h3 className="hlx-font-display text-base font-semibold text-[var(--hlx-text)]">
+                        {generatedPreset.spec?.name || "HelixAI Preset"}
+                      </h3>
+                    </div>
+                    <button onClick={downloadPreset} className="hlx-download text-xs px-3 py-1.5">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      Download .hlx
+                    </button>
                   </div>
-                  <button onClick={downloadPreset} className="hlx-download text-xs px-3 py-1.5">
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    Download .hlx
-                  </button>
+
+                  <div className="hlx-rack" />
+
+                  {/* Signal Chain Visualization (FXUI-01) */}
+                  {chain.length > 0 && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-widest text-[var(--hlx-text-muted)] font-semibold mb-2">
+                        Signal Chain
+                      </p>
+                      <SignalChainViz blocks={chain} />
+                    </div>
+                  )}
+
+                  <div className="hlx-rack" />
+
+                  {/* Tone Description Card (FXUI-02) */}
+                  <ToneDescriptionCard
+                    name={(spec.name as string) || "Preset"}
+                    description={(spec.description as string) || ""}
+                    ampName={ampBlock?.modelName || (intent.ampName as string) || "Unknown Amp"}
+                    cabName={cabBlock?.modelName || (intent.cabName as string) || "Unknown Cab"}
+                    effects={effectBlocks}
+                    snapshots={snaps}
+                    guitarNotes={(spec.guitarNotes as string) || (intent.guitarNotes as string) || undefined}
+                  />
+
+                  <div className="hlx-rack" />
+
+                  {/* Summary */}
+                  <div className="text-[0.8125rem] text-[var(--hlx-text-sub)] leading-relaxed message-content">
+                    <ReactMarkdown>{generatedPreset.summary || ""}</ReactMarkdown>
+                  </div>
                 </div>
-                <div className="hlx-rack" />
-                <div className="text-[0.8125rem] text-[var(--hlx-text-sub)] leading-relaxed message-content">
-                  <ReactMarkdown>{generatedPreset.summary || ""}</ReactMarkdown>
-                </div>
-              </div>
-            )}
+              );
+            })()}
 
             <div ref={messagesEndRef} />
           </div>
@@ -417,7 +613,16 @@ export default function Home() {
           </button>
         </form>
         <p className="text-[11px] text-[var(--hlx-text-muted)] mt-3 text-center tracking-wide">
-          Powered by Gemini &middot; Claude &middot; Line 6 Helix
+          A project of{" "}
+          <a
+            href="https://danielbogard.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[var(--hlx-text-sub)] hover:text-[var(--hlx-amber)] transition-colors"
+          >
+            Daniel Bogard
+          </a>
+          {" "}&middot; Powered by Gemini &middot; Claude &middot; Line 6 Helix
         </p>
       </div>
     </div>
