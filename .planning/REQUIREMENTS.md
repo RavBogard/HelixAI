@@ -26,12 +26,12 @@ Requirements for the rebuilt preset engine. Each maps to roadmap phases.
 
 ### Amp & Cab Quality
 
-- [ ] **TONE-01**: Amp-category-specific parameter defaults — clean amps get Master 9-10/Drive 2-3/SAG 5-7; high-gain amps get Drive 3-5/Master 3-6/SAG 2-3
-- [ ] **TONE-02**: Cab block filtering on every preset — Low Cut 80-100 Hz, High Cut 5-8 kHz (6 dB/oct slope accounted for)
-- [ ] **TONE-03**: Post-cab presence recovery — high shelf +0.5-1.5 dB at 6-8 kHz to restore sparkle after high cut
-- [ ] **TONE-04**: Mic selection by tone category — 121 Ribbon for clean/jazz, 57 Dynamic for distorted, blend for crunch
-- [ ] **TONE-05**: Correct amp+cab pairing — amp models matched with tonally coherent cab models by default
-- [ ] **TONE-06**: Amp topology awareness — cathode-follower amps (Cali Rectifire) get different mid EQ treatment than plate-fed amps (PV Panama)
+- [x] **TONE-01**: Amp-category-specific parameter defaults — clean amps get Master 9-10/Drive 2-3/SAG 5-7; high-gain amps get Drive 3-5/Master 3-6/SAG 2-3
+- [x] **TONE-02**: Cab block filtering on every preset — Low Cut 80-100 Hz, High Cut 5-8 kHz (6 dB/oct slope accounted for)
+- [x] **TONE-03**: Post-cab presence recovery — high shelf +0.5-1.5 dB at 6-8 kHz to restore sparkle after high cut
+- [x] **TONE-04**: Mic selection by tone category — 121 Ribbon for clean/jazz, 57 Dynamic for distorted, blend for crunch
+- [x] **TONE-05**: Correct amp+cab pairing — amp models matched with tonally coherent cab models by default
+- [x] **TONE-06**: Amp topology awareness — cathode-follower amps (Cali Rectifire) get different mid EQ treatment than plate-fed amps (PV Panama)
 
 ### Snapshot System
 
@@ -51,9 +51,9 @@ Requirements for the rebuilt preset engine. Each maps to roadmap phases.
 
 ### Dynamic Responsiveness
 
-- [ ] **DYN-01**: Presets clean up naturally when rolling back guitar volume knob (low Drive + high Master ratio)
-- [ ] **DYN-02**: SAG parameter set appropriately per category for musical power-amp-style compression
-- [ ] **DYN-03**: Boost architecture enables dynamic response — rolling back volume removes boost effect on amp input
+- [x] **DYN-01**: Presets clean up naturally when rolling back guitar volume knob (low Drive + high Master ratio)
+- [x] **DYN-02**: SAG parameter set appropriately per category for musical power-amp-style compression
+- [x] **DYN-03**: Boost architecture enables dynamic response — rolling back volume removes boost effect on amp input
 
 ### .hlx File Quality
 
@@ -124,20 +124,20 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CHAIN-04 | Phase 2 | Complete |
 | CHAIN-05 | Phase 2 | Complete |
 | CHAIN-06 | Phase 2 | Complete |
-| TONE-01 | Phase 2 | Pending |
-| TONE-02 | Phase 2 | Pending |
-| TONE-03 | Phase 2 | Pending |
-| TONE-04 | Phase 2 | Pending |
-| TONE-05 | Phase 2 | Pending |
-| TONE-06 | Phase 2 | Pending |
+| TONE-01 | Phase 2 | Complete |
+| TONE-02 | Phase 2 | Complete |
+| TONE-03 | Phase 2 | Complete |
+| TONE-04 | Phase 2 | Complete |
+| TONE-05 | Phase 2 | Complete |
+| TONE-06 | Phase 2 | Complete |
 | SNAP-01 | Phase 2 | Pending |
 | SNAP-02 | Phase 2 | Pending |
 | SNAP-03 | Phase 2 | Pending |
 | SNAP-04 | Phase 2 | Pending |
 | SNAP-05 | Phase 2 | Pending |
-| DYN-01 | Phase 2 | Pending |
-| DYN-02 | Phase 2 | Pending |
-| DYN-03 | Phase 2 | Pending |
+| DYN-01 | Phase 2 | Complete |
+| DYN-02 | Phase 2 | Complete |
+| DYN-03 | Phase 2 | Complete |
 | AI-01 | Phase 3 | Pending |
 | AI-02 | Phase 3 | Pending |
 | AI-03 | Phase 3 | Pending |
