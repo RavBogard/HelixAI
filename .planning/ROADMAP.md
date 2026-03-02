@@ -97,8 +97,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — Refactor page.tsx: remove multi-provider UI, add device selector, single preset card, update footer/branding (UX-01, UX-02, UX-03, UX-04)
-- [ ] 05-02-PLAN.md — Delete dead provider code (providers.ts, /api/providers route), clean orphaned CSS, visual verification checkpoint (UX-02, UX-04)
+- [x] 05-01-PLAN.md — Refactor page.tsx: remove multi-provider UI, add device selector, single preset card, update footer/branding (UX-01, UX-02, UX-03, UX-04)
+- [x] 05-02-PLAN.md — Delete dead provider code (providers.ts, /api/providers route), clean orphaned CSS, visual verification checkpoint (UX-02, UX-04)
 
 ### Phase 6: Hardening
 **Goal**: The system is verified against real hardware and the known "looks done but isn't" failure modes are closed before launch
@@ -109,7 +109,11 @@ Plans:
   2. Generation fails with a clear error rather than producing a broken preset when a DSP block limit (8 non-cab blocks per DSP) would be exceeded
   3. The firmware version is read from a config value — changing it does not require a code change
   4. The openai package has been removed from package.json and no generation code references it
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 06-01-PLAN.md — Firmware version parameterization to config.ts + openai package removal (SC-3, SC-4)
+- [ ] 06-02-PLAN.md — DSP block limit error path test + hardware verification checkpoint on real Helix LT (SC-1, SC-2)
 
 **Phase 6 Note:** All v1 requirements are fully covered in Phases 1-5 (36/36). Phase 6 addresses launch readiness concerns surfaced by research (hardware verification, firmware parameterization, DSP limit enforcement, openai cleanup) that are prerequisites for a production-quality launch but were categorized as v2 infrastructure in REQUIREMENTS.md. These are elevated for this milestone because they gate the core value: presets that actually sound good on real hardware.
 
@@ -125,8 +129,8 @@ Phases execute in numeric order: 1 > 2 > 3 > 4 > 5 > 6
 | 3. AI Integration | 2/2 | Complete | 2026-03-02 |
 | 4. Orchestration | 2/2 | Complete | 2026-03-02 |
 | 5. Frontend Polish | 2/2 | Complete | 2026-03-02 |
-| 6. Hardening | 0/TBD | Not started | - |
+| 6. Hardening | 0/2 | Not started | - |
 
 ---
 *Roadmap created: 2026-03-01*
-*Last updated: 2026-03-02 — Phase 5 complete (2/2 plans). Phases 1-5 complete (12/12 plans).*
+*Last updated: 2026-03-02 — Phase 6 planned (2 plans). Phases 1-5 complete (12/12 plans).*
