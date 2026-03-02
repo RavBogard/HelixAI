@@ -1,3 +1,4 @@
+export { FIRMWARE_CONFIG } from "./config";
 export { buildHlxFile, summarizePreset } from "./preset-builder";
 export { getModelListForPrompt, getAllModels, LED_COLORS, BLOCK_TYPES, AMP_MODELS, CAB_MODELS, AMP_NAMES, CAB_NAMES, EFFECT_NAMES } from "./models";
 export { validatePresetSpec, validateAndFixPresetSpec } from "./validate";

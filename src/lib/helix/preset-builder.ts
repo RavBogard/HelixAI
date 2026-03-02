@@ -1,25 +1,22 @@
 import type { HlxFile, HlxDsp, HlxSnapshot, HlxTone, PresetSpec, BlockSpec, SnapshotSpec } from "./types";
 import { DEVICE_IDS, type DeviceTarget } from "./types";
 import { CONTROLLERS } from "./models";
-
-const HLX_VERSION = 6;
-const HLX_APP_VERSION = 57671680; // FW 3.70+
-const HLX_BUILD_SHA = "v3.70";
+import { FIRMWARE_CONFIG } from "./config";
 
 export function buildHlxFile(spec: PresetSpec, device: DeviceTarget = "helix_lt"): HlxFile {
   const tone = buildTone(spec);
 
   return {
-    version: HLX_VERSION,
+    version: FIRMWARE_CONFIG.HLX_VERSION,
     data: {
       device: DEVICE_IDS[device],
-      device_version: HLX_APP_VERSION,
+      device_version: FIRMWARE_CONFIG.HLX_APP_VERSION,
       meta: {
         name: spec.name.substring(0, 32),
         application: "HX Edit",
-        build_sha: HLX_BUILD_SHA,
+        build_sha: FIRMWARE_CONFIG.HLX_BUILD_SHA,
         modifieddate: Math.floor(Date.now() / 1000),
-        appversion: HLX_APP_VERSION,
+        appversion: FIRMWARE_CONFIG.HLX_APP_VERSION,
       },
       tone,
     },
