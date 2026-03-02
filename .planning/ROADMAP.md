@@ -13,8 +13,8 @@ The rebuild transforms HelixAI from a system that generates structurally correct
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation** - Type contracts, verified @type constants, expanded model database, parameter type registry
-- [ ] **Phase 2: Knowledge Layer** - Deterministic chain rules, param engine, snapshot engine — the expert Helix knowledge encoded in code
-- [ ] **Phase 3: AI Integration** - Claude Sonnet 4.6 with constrained ToneIntent output; Gemini chat unchanged
+- [x] **Phase 2: Knowledge Layer** - Deterministic chain rules, param engine, snapshot engine — the expert Helix knowledge encoded in code
+- [x] **Phase 3: AI Integration** - Claude Sonnet 4.6 with constrained ToneIntent output; Gemini chat unchanged
 - [ ] **Phase 4: Orchestration** - Wire all components end-to-end; harden validator; generate real downloadable presets
 - [ ] **Phase 5: Frontend Polish** - Device selector (LT vs. Floor), UX refinements, remove multi-provider UI
 - [ ] **Phase 6: Hardening** - Hardware verification on real Helix LT, fail-fast validation, firmware parameterization, openai package removal
@@ -52,8 +52,8 @@ Plans:
 
 Plans:
 - [x] 02-01-PLAN.md — chain-rules.ts: signal chain assembly, mandatory block insertion, DSP assignment (CHAIN-01, CHAIN-02, CHAIN-03, CHAIN-04, CHAIN-05, CHAIN-06)
-- [ ] 02-02-PLAN.md — param-engine.ts: category-specific amp/cab/effect parameter resolution, topology-aware mid EQ (TONE-01, TONE-02, TONE-03, TONE-04, TONE-05, TONE-06, DYN-01, DYN-02, DYN-03)
-- [ ] 02-03-PLAN.md — snapshot-engine.ts: 4-snapshot generation, volume balancing, block state tables, barrel exports (SNAP-01, SNAP-02, SNAP-03, SNAP-04, SNAP-05)
+- [x] 02-02-PLAN.md — param-engine.ts: category-specific amp/cab/effect parameter resolution, topology-aware mid EQ (TONE-01, TONE-02, TONE-03, TONE-04, TONE-05, TONE-06, DYN-01, DYN-02, DYN-03)
+- [x] 02-03-PLAN.md — snapshot-engine.ts: 4-snapshot generation, volume balancing, block state tables, barrel exports (SNAP-01, SNAP-02, SNAP-03, SNAP-04, SNAP-05)
 
 ### Phase 3: AI Integration
 **Goal**: Claude Sonnet 4.6 generates creative model choices constrained to valid IDs — never numeric parameter values
@@ -67,8 +67,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — Enum-constrained ToneIntentSchema (z.enum for model IDs) + Claude Planner module with structured output (AI-01, AI-02, AI-03, AI-05)
-- [ ] 03-02-PLAN.md — Generate route refactor to Planner -> Knowledge Layer pipeline; remove old multi-provider generation code; preserve Gemini chat (AI-04, AI-05)
+- [x] 03-01-PLAN.md — Enum-constrained ToneIntentSchema (z.enum for model IDs) + Claude Planner module with structured output (AI-01, AI-02, AI-03, AI-05)
+- [x] 03-02-PLAN.md — Generate route refactor to Planner -> Knowledge Layer pipeline; remove old multi-provider generation code; preserve Gemini chat (AI-04, AI-05)
 
 ### Phase 4: Orchestration
 **Goal**: The full generation pipeline runs end-to-end and produces a downloadable .hlx file that loads on Helix hardware
@@ -113,12 +113,12 @@ Phases execute in numeric order: 1 > 2 > 3 > 4 > 5 > 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 3/3 | Complete | 2026-03-01 |
-| 2. Knowledge Layer | 1/3 | In Progress | - |
-| 3. AI Integration | 0/2 | Not started | - |
+| 2. Knowledge Layer | 3/3 | Complete | 2026-03-02 |
+| 3. AI Integration | 2/2 | Complete | 2026-03-02 |
 | 4. Orchestration | 0/TBD | Not started | - |
 | 5. Frontend Polish | 0/TBD | Not started | - |
 | 6. Hardening | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-03-01*
-*Last updated: 2026-03-02 — Phase 3 planned (2 plans). Plan 02-01 complete (chain-rules.ts). 1/3 Phase 2 plans done.*
+*Last updated: 2026-03-02 — Phases 1-3 complete (8/8 plans). Phase 4 next.*
