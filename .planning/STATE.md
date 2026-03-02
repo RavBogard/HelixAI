@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Pod Go Support
-status: researching
+status: ready_to_plan
 last_updated: "2026-03-02T00:00:00Z"
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -18,14 +18,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** v1.2 — Researching Pod Go hardware architecture and file format
+**Current focus:** v1.2 — Phase 12: Format Foundation and Types
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Researching
-Last activity: 2026-03-02 — Milestone v1.2 started
+Phase: 12 of 16 (Format Foundation and Types)
+Plan: 0 of TBD in current phase
+Status: Ready to plan
+Last activity: 2026-03-02 — Roadmap created for v1.2 Pod Go Support (phases 12-16)
 
 Progress: [░░░░░░░░░░] 0% (v1.2)
 
@@ -52,6 +52,16 @@ Progress: [░░░░░░░░░░] 0% (v1.2)
 | 10. Snapshot Toggling | 1 | Complete |
 | 11. Frontend Transparency | 2 | Complete |
 
+**By Phase (v1.2):**
+
+| Phase | Plans | Status |
+|-------|-------|--------|
+| 12. Format Foundation and Types | TBD | Not started |
+| 13. Pod Go Model Catalog | TBD | Not started |
+| 14. Chain Rules, Validation, Planner | TBD | Not started |
+| 15. Pod Go Preset Builder | TBD | Not started |
+| 16. Integration, UI, Testing | TBD | Not started |
+
 ## Accumulated Context
 
 ### Decisions
@@ -62,6 +72,8 @@ Progress: [░░░░░░░░░░] 0% (v1.2)
 - [v1.1]: Genre defaults applied as outermost resolution layer
 - [v1.1]: intentRole flows from EffectIntent through chain-rules into BlockSpec
 - [v1.2]: Pod Go is additive v1.2, not a v2.0 rewrite — build on existing architecture
+- [v1.2]: podgo-builder.ts lives in src/lib/helix/ (not a separate directory) — devices share the same HD2 engine
+- [v1.2]: chain-rules.ts accepts deviceTarget parameter; builder and validator are separate functions per device
 
 ### Pending Todos
 
@@ -69,10 +81,11 @@ None.
 
 ### Blockers/Concerns
 
-- Pod Go DSP architecture, file format, and block constraints unknown — research needed before scoping
+- Pod Go effect model catalog: only ~30 of 206+ effects confirmed with Mono/Stereo suffixed IDs from real files. Phase 13 will require systematic extraction from Pod Go Edit.
+- device_version for firmware 2.50 needs confirmation from a real Pod Go Edit 2.50 export.
 
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: v1.2 research phase starting
+Stopped at: v1.2 roadmap created — ready to plan Phase 12
 Resume file: None

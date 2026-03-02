@@ -4,6 +4,7 @@
 
 - [x] **v1.0 Full Rebuild** - Phases 1-6 (shipped 2026-03-02)
 - [x] **v1.1 Polish & Precision** - Phases 7-11 (shipped 2026-03-02)
+- [ ] **v1.2 Pod Go Support** - Phases 12-16 (in progress)
 
 ## Phases
 
@@ -108,9 +109,8 @@ Plans:
 
 </details>
 
-### v1.1 Polish & Precision (In Progress)
-
-**Milestone Goal:** Fix hardware-facing bugs, deepen preset intelligence, and give users a window into what they're downloading.
+<details>
+<summary>v1.1 Polish & Precision (Phases 7-11) — SHIPPED 2026-03-02</summary>
 
 #### Phase 7: Hardware Bug Fixes and .hlx Audit
 **Goal**: Presets respond correctly to hardware on first press and the .hlx format is verified against real HX Edit exports
@@ -121,11 +121,11 @@ Plans:
   2. Pedal LEDs on each snapshot reflect the active stomp states for that snapshot — the Clean snapshot shows clean LEDs and the Lead snapshot shows appropriate drive LEDs
   3. A systematic diff of generated .hlx output against real HX Edit exports has been completed and any field mismatches in the generated file have been corrected or documented as known limitations
   4. The `@pedalstate` bitmask computation is either derived from empirically verified HX Edit exports or explicitly documented as a known limitation with the hardcoded value retained
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 07-01-PLAN.md — .hlx audit: export real HX Edit presets, diff against generated output, document field mismatches; fix @fs_enabled in buildFootswitchSection() (HW-01, HW-03)
-- [ ] 07-02-PLAN.md — @pedalstate bitmask: empirically map bit positions from HX Edit exports, implement computeFootswitchAssignments(), or document hardcode limitation (HW-02)
+- [x] 07-01-PLAN.md — .hlx audit: export real HX Edit presets, diff against generated output, document field mismatches; fix @fs_enabled in buildFootswitchSection() (HW-01, HW-03)
+- [x] 07-02-PLAN.md — @pedalstate bitmask: empirically map bit positions from HX Edit exports, implement computeFootswitchAssignments(), or document hardcode limitation (HW-02)
 
 #### Phase 8: Prompt Caching
 **Goal**: API input token costs are reduced ~50% via system prompt caching with no effect on preset output quality
@@ -135,10 +135,10 @@ Plans:
   1. On the second identical generation request in a session, `usage.cache_read_input_tokens` is greater than zero in the API response — confirming cache hits are occurring
   2. The first generation request shows `cache_creation_input_tokens > 1024` — confirming the system prompt meets the minimum cacheable size
   3. Preset output is identical before and after caching is added — no degradation in generated ToneIntent quality
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 08-01-PLAN.md — Add cache_control: { type: "ephemeral" } to system prompt in callClaudePlanner(); audit system prompt for dynamic content that would bust cache; verify cache metrics (PERF-01)
+- [x] 08-01-PLAN.md — Add cache_control: { type: "ephemeral" } to system prompt in callClaudePlanner(); audit system prompt for dynamic content that would bust cache; verify cache metrics (PERF-01)
 
 #### Phase 9: Genre-Aware Effect Defaults
 **Goal**: Delay time, reverb mix, and modulation rate in generated presets are tuned to the detected genre rather than applying identical defaults to every request
@@ -149,10 +149,10 @@ Plans:
   2. An ambient preset has reverb mix in the 40-60% range — noticeably wetter than a clean jazz preset which stays under 25%
   3. Genre string matching uses substring lookup with an explicit fallback to model defaults — an unrecognized genre hint does not cause an error or silent parameter corruption
   4. Genre defaults are applied as the outermost resolution layer — they override model defaults and category defaults, never the other way around
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 09-01-PLAN.md — Inspect models.ts delay/reverb/modulation defaultParams encoding; build GENRE_EFFECT_DEFAULTS lookup table; wire into param-engine.ts as outermost resolution layer (INTL-01)
+- [x] 09-01-PLAN.md — Inspect models.ts delay/reverb/modulation defaultParams encoding; build GENRE_EFFECT_DEFAULTS lookup table; wire into param-engine.ts as outermost resolution layer (INTL-01)
 
 #### Phase 10: Smarter Snapshot Effect Toggling
 **Goal**: Snapshot block states reflect musical intent — the ambient snapshot enables time-based effects at boosted mix and the clean snapshot disables drive blocks
@@ -163,10 +163,10 @@ Plans:
   2. The Clean snapshot has all drive-type effect blocks disabled — no overdrive or distortion pedal is active in the clean snapshot
   3. All snapshot toggling logic lives in getBlockEnabled() and buildSnapshots() in snapshot-engine.ts — SnapshotIntentSchema has gained zero new AI output fields
   4. Existing snapshot-engine unit tests pass without modification after the changes are applied
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 10-01-PLAN.md — Extend getBlockEnabled() with intentRole-based toggling; add ambient Mix overrides in buildSnapshots(); integration-test genre defaults + snapshot toggling in combination (INTL-02)
+- [x] 10-01-PLAN.md — Extend getBlockEnabled() with intentRole-based toggling; add ambient Mix overrides in buildSnapshots(); integration-test genre defaults + snapshot toggling in combination (INTL-02)
 
 #### Phase 11: Frontend Transparency
 **Goal**: Users can see the signal chain and read a plain-language description of their preset before downloading
@@ -177,16 +177,86 @@ Plans:
   2. A tone description card displays the preset name, amp/cab pair, all four snapshot names with distinguishable colors, and guitar-specific playing notes
   3. A "Project of Daniel Bogard" footer with a working link to danielbogard.com appears on all pages
   4. The signal chain visualization loads without SSR errors and does not block page render if the visualization data is unavailable
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 11-01-PLAN.md — Install @xyflow/react 12.10.1; build viz.ts pure function; add signalChainViz to API response; build SignalChainViz React component with next/dynamic SSR guard (FXUI-01)
-- [ ] 11-02-PLAN.md — Build ToneDescriptionCard component from existing API response data; add danielbogard.com footer to all pages (FXUI-02, BRAND-01)
+- [x] 11-01-PLAN.md — Install @xyflow/react 12.10.1; build viz.ts pure function; add signalChainViz to API response; build SignalChainViz React component with next/dynamic SSR guard (FXUI-01)
+- [x] 11-02-PLAN.md — Build ToneDescriptionCard component from existing API response data; add danielbogard.com footer to all pages (FXUI-02, BRAND-01)
+
+</details>
+
+### v1.2 Pod Go Support (In Progress)
+
+**Milestone Goal:** Extend HelixAI to generate presets for Line 6 Pod Go — a single-DSP device with different block limits, file format, and model catalog. Pod Go presets must match the same professional tone quality standard as Helix presets.
+
+- [ ] **Phase 12: Format Foundation and Types** - Pod Go type definitions, device constants, and block type encoding
+- [ ] **Phase 13: Pod Go Model Catalog** - Effect model IDs with Mono/Stereo suffixes, device-filtered model list
+- [ ] **Phase 14: Chain Rules, Validation, and Planner** - Device-aware signal chain assembly, Pod Go validation, planner prompt filtering
+- [ ] **Phase 15: Pod Go Preset Builder** - .pgp file generation with correct format, snapshots, and tone quality
+- [ ] **Phase 16: Integration, UI, and Testing** - Pod Go in device selector, .pgp download, end-to-end verification
+
+## Phase Details
+
+### Phase 12: Format Foundation and Types
+**Goal**: Every downstream Pod Go component has verified type contracts and format constants to build against — no guesswork on device IDs, block types, or file structure
+**Depends on**: Phase 11
+**Requirements**: PGP-01, PGP-02, PGP-03, PGP-04, PGP-05
+**Success Criteria** (what must be TRUE):
+  1. A `DeviceTarget` union type includes `"pod_go"` alongside `"helix_lt"` and `"helix_floor"` — TypeScript rejects any code passing an unrecognized device string
+  2. `BLOCK_TYPES_PODGO` constant map contains verified Pod Go @type values (delay=5, modulation=0, reverb=5, EQ_STATIC=6) that differ from Helix values — using Helix @type values for a Pod Go preset is a compile-time or test-time error
+  3. `PgpFile` and `PodGoTone` interfaces exist with `input`/`output` keys (not `inputA`/`outputA`), no `@path`, `@stereo`, or `@topology` fields, and `P34_AppDSPFlow*` I/O model references
+  4. `DEVICE_IDS` includes `pod_go: 2162695` and Pod Go firmware constants (`device_version`, `appversion`, `build_sha`) are defined and ready for the builder
+  5. The type system enforces that Pod Go cab blocks are numbered chain blocks (not a separate `cab0` key) and that `dsp1` is always empty
+**Plans**: TBD
+
+### Phase 13: Pod Go Model Catalog
+**Goal**: The model registry knows which amps and effects are available on Pod Go, with correct Mono/Stereo suffixed IDs, so the AI planner never offers an unavailable model
+**Depends on**: Phase 12
+**Requirements**: PGMOD-01, PGMOD-02, PGMOD-03, PGMOD-04
+**Success Criteria** (what must be TRUE):
+  1. Effect model entries in the registry include Pod Go-specific IDs with Mono/Stereo suffixes (e.g., `HD2_DistScream808Mono` not `HD2_DistScream808`) — a test verifies every Pod Go effect ID ends in `Mono` or `Stereo`
+  2. Amp model entries are correctly shared between Helix and Pod Go without suffix transformation — the same amp ID works for both devices
+  3. `getModelsForDevice("pod_go")` excludes Tone Sovereign, Clawthorn Drive, Cosmos Echo, Poly Pitch, and Space Echo — these models never appear in a Pod Go-targeted generation
+  4. `getModelListForPrompt("pod_go")` returns a device-filtered model list that the AI planner prompt consumes — the prompt contains only Pod Go-available model IDs
+**Plans**: TBD
+
+### Phase 14: Chain Rules, Validation, and Planner
+**Goal**: Signal chain assembly enforces Pod Go's single-DSP, 4-effect-block constraint, the validator catches Pod Go-specific errors, and the AI planner generates Pod Go-appropriate creative choices
+**Depends on**: Phase 13
+**Requirements**: PGCHAIN-01, PGCHAIN-02, PGCHAIN-03
+**Success Criteria** (what must be TRUE):
+  1. `assembleSignalChain()` with `deviceTarget: "pod_go"` assigns all blocks to dsp:0 and enforces a maximum of 4 user-assignable effect blocks — a 5th effect block causes a validation error, not silent truncation
+  2. Pod Go chain assembly does not insert Parametric EQ or Gain Block — the DSP budget is fully reserved for user-facing effects (amp, cab, and up to 4 effects)
+  3. The AI planner system prompt for Pod Go says "Pod Go preset" and passes only Pod Go-available model IDs — a generation request for Pod Go never produces a ToneIntent referencing Helix-only models or dsp:1 assignments
+  4. `validatePodGoPresetSpec()` exists as a separate validation function that catches Pod Go-specific errors (dsp1 blocks, >4 effects, excluded models) without modifying Helix validation logic
+**Plans**: TBD
+
+### Phase 15: Pod Go Preset Builder
+**Goal**: The builder produces a valid .pgp file that loads in Pod Go Edit without errors, with 4 volume-balanced snapshots and the same professional tone quality as Helix presets
+**Depends on**: Phase 14
+**Requirements**: PGSNAP-01, PGSNAP-02, PGQUAL-01, PGQUAL-02
+**Success Criteria** (what must be TRUE):
+  1. `buildPgpFile()` produces a .pgp JSON file with exactly 4 snapshots (snapshot0-snapshot3) using `@controller: 4` for snapshot recall — Pod Go Edit imports the file without errors
+  2. The 4 snapshots (Clean, Rhythm, Lead, Ambient) are volume-balanced with per-snapshot block states and a Lead boost of +2-3 dB — matching the Helix quality standard for snapshot design
+  3. Pod Go presets receive the same category/genre/topology-aware parameter defaults from param-engine as Helix presets — a clean Pod Go preset has the same Master/Drive/SAG values as a clean Helix preset
+  4. Pod Go presets have proper cab filtering (LowCut 80-100 Hz, HighCut 5-8 kHz), dynamic responsiveness (volume knob cleanup), and a professional signal chain — the tone quality is mix-ready, not a degraded subset of Helix
+**Plans**: TBD
+
+### Phase 16: Integration, UI, and Testing
+**Goal**: Pod Go is fully wired into the application — selectable in the UI, generating downloadable .pgp files, and verified end-to-end with no Helix regressions
+**Depends on**: Phase 15
+**Requirements**: PGUX-01, PGUX-02, PGUX-03
+**Success Criteria** (what must be TRUE):
+  1. The device selector dropdown includes "Pod Go" as an option alongside Helix LT and Helix Floor — selecting Pod Go routes the generation request through the Pod Go pipeline
+  2. Completing a Pod Go tone generation produces a downloadable file with `.pgp` extension (not `.hlx`) — the browser download dialog shows the correct file name and extension
+  3. The signal chain visualization and tone description card display 4 snapshots (not 8) when viewing a Pod Go preset — the UI reflects Pod Go's actual hardware capability
+  4. All existing Helix test suites pass without modification after Pod Go code is added — no Helix regression from the Pod Go integration
+**Plans**: TBD
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 > 2 > 3 > 4 > 5 > 6 > 7 > 8 > 9 > 10 > 11
+Phases execute in numeric order: 1 > 2 > 3 > 4 > 5 > 6 > 7 > 8 > 9 > 10 > 11 > 12 > 13 > 14 > 15 > 16
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -201,7 +271,12 @@ Phases execute in numeric order: 1 > 2 > 3 > 4 > 5 > 6 > 7 > 8 > 9 > 10 > 11
 | 9. Genre-Aware Effect Defaults | v1.1 | 1/1 | Complete | 2026-03-02 |
 | 10. Smarter Snapshot Effect Toggling | v1.1 | 1/1 | Complete | 2026-03-02 |
 | 11. Frontend Transparency | v1.1 | 2/2 | Complete | 2026-03-02 |
+| 12. Format Foundation and Types | v1.2 | 0/TBD | Not started | - |
+| 13. Pod Go Model Catalog | v1.2 | 0/TBD | Not started | - |
+| 14. Chain Rules, Validation, and Planner | v1.2 | 0/TBD | Not started | - |
+| 15. Pod Go Preset Builder | v1.2 | 0/TBD | Not started | - |
+| 16. Integration, UI, and Testing | v1.2 | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-03-01*
-*Last updated: 2026-03-02 — v1.1 milestone complete (all 5 phases shipped)*
+*Last updated: 2026-03-02 — v1.2 Pod Go Support phases 12-16 added*

@@ -233,14 +233,33 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FXUI-01 | Phase 11 | Complete |
 | FXUI-02 | Phase 11 | Complete |
 | BRAND-01 | Phase 11 | Complete |
+| PGP-01 | Phase 12 | Pending |
+| PGP-02 | Phase 12 | Pending |
+| PGP-03 | Phase 12 | Pending |
+| PGP-04 | Phase 12 | Pending |
+| PGP-05 | Phase 12 | Pending |
+| PGMOD-01 | Phase 13 | Pending |
+| PGMOD-02 | Phase 13 | Pending |
+| PGMOD-03 | Phase 13 | Pending |
+| PGMOD-04 | Phase 13 | Pending |
+| PGCHAIN-01 | Phase 14 | Pending |
+| PGCHAIN-02 | Phase 14 | Pending |
+| PGCHAIN-03 | Phase 14 | Pending |
+| PGSNAP-01 | Phase 15 | Pending |
+| PGSNAP-02 | Phase 15 | Pending |
+| PGQUAL-01 | Phase 15 | Pending |
+| PGQUAL-02 | Phase 15 | Pending |
+| PGUX-01 | Phase 16 | Pending |
+| PGUX-02 | Phase 16 | Pending |
+| PGUX-03 | Phase 16 | Pending |
 
 **Coverage:**
 - v1 requirements: 36 total (all complete)
 - v1.1 requirements: 9 total (all complete)
-- v1.2 requirements: 17 total (pending)
-- Mapped to phases: 36 (v1 Phases 1-6) + 9 (v1.1 Phases 7-11) + 17 (v1.2 TBD)
-- Unmapped: 17 (awaiting roadmap)
+- v1.2 requirements: 19 total (all mapped to phases 12-16)
+- Mapped to phases: 36 (v1 Phases 1-6) + 9 (v1.1 Phases 7-11) + 19 (v1.2 Phases 12-16)
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-01*
-*Last updated: 2026-03-02 — v1.2 requirements defined (17 Pod Go requirements)*
+*Last updated: 2026-03-02 — v1.2 requirements mapped to phases 12-16 (19 Pod Go requirements)*
