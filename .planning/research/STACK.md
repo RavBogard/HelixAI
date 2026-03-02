@@ -1,369 +1,262 @@
 # Stack Research
 
-**Domain:** Pod Go preset generation — adding Line 6 Pod Go (.pgp) support to existing HelixAI app
+**Domain:** Vision AI + browser image upload (v1.3 Rig Emulation additions to HelixAI)
 **Researched:** 2026-03-02
-**Confidence:** MEDIUM (Pod Go file format is undocumented officially; findings synthesized from community reverse-engineering, converter source analysis, official firmware release notes, and the existing .hlx codebase)
+**Confidence:** HIGH — all key claims verified against official Anthropic and Vercel documentation
 
 ---
 
 ## Scope
 
-This document covers ONLY what is needed to add Pod Go support. The existing validated stack (Next.js, TypeScript, Tailwind CSS, Claude Sonnet 4.6, `@anthropic-ai/sdk`, Zod, Vitest, Vercel) is NOT re-researched here.
+This file covers ONLY the NEW stack additions for v1.3 Rig Emulation. The existing validated
+stack (Next.js 14, TypeScript, Tailwind CSS, Claude Sonnet 4.6 via `@anthropic-ai/sdk`, Zod,
+Vercel) is NOT re-researched here.
+
+New capabilities required:
+1. Browser image upload (one or more pedal photos) to a Next.js/Vercel serverless route
+2. Client-side image compression to stay within Vercel's 4.5MB body limit
+3. Vision AI that extracts pedal model name + knob positions from each photo
 
 ---
 
-## Recommended Stack
+## Recommendation Summary
 
-### Core Technologies
+**Vision AI:** Use Claude Sonnet 4.6 vision (base64 image blocks in existing messages[]).
+**Image upload:** Use multipart FormData to the existing `/api/generate` route.
+**Client-side compression:** Use `browser-image-compression` v2.0.2.
+**No new API keys, no new SDK, no new serverless routes required.**
 
-No new npm packages are needed. Pod Go support requires pure TypeScript changes to the existing `src/lib/helix/` module, a new `src/lib/podgo/` module mirroring it, and a new `DeviceTarget` variant.
+---
+
+## Vision API Decision: Claude Sonnet 4.6 vs Gemini Flash vs Google Cloud Vision API
+
+### The core task
+
+From a photo of a guitar pedal, extract:
+1. Pedal model name (text printed/silkscreened on the enclosure)
+2. Knob positions per knob — an estimate of rotary position (0–100%)
+
+These are two very different sub-tasks with different difficulty profiles.
+
+**Model name reading** is OCR on clear printed text. Straightforward for any modern vision model.
+
+**Knob position reading** is spatial reasoning about the angular position of a rotary dial.
+This is a documented hard problem for all current LLMs — structurally identical to reading
+an analog clock face.
+
+### Critical finding: Claude's documented spatial reasoning limitation
+
+The official Anthropic vision documentation (verified March 2026) explicitly states:
+
+> "Claude's spatial reasoning abilities are limited. It may struggle with tasks requiring
+> precise localization or layouts, like **reading an analog clock face** or describing
+> exact positions of chess pieces."
+
+Source: https://platform.claude.com/docs/en/build-with-claude/vision
+
+Reading a guitar pedal knob is the same task as reading an analog clock face — estimating
+the angular position of a pointer within a circular range. This limitation applies equally
+to Gemini Flash; it is a class-level weakness of current LLMs, not specific to Claude.
+
+**Design consequence:** Do not prompt any LLM for precise knob percentages (e.g., "Drive: 67%").
+Instead, prompt for coarse buckets: low (0–25%), medium-low (25–50%), medium-high (50–75%),
+high (75–100%). LLMs reliably distinguish "fully counterclockwise" from "noon" from "fully
+clockwise." Three-to-five bucket precision is achievable. Sub-10% precision is not reliable
+from any of the three vision options.
+
+### Comparison matrix
+
+| Criterion | Claude Sonnet 4.6 | Gemini 2.0/2.5 Flash | Google Cloud Vision API |
+|-----------|-------------------|----------------------|-------------------------|
+| **Model name OCR accuracy** | HIGH — strong text extraction, admits uncertainty | HIGH — 98.2% on printed text, strong general OCR | HIGH — specialized OCR, deterministic |
+| **Knob position estimation** | LIMITED — same clock-face spatial weakness; reliable for coarse buckets | LIMITED — same weakness; Gemini 3 Flash "Agentic Vision" (code-execution loop) mitigates somewhat but requires Gemini 3 and adds complexity | NOT APPLICABLE — returns bounding boxes and labels; cannot estimate rotary angular position |
+| **Structured JSON output** | Native — existing `zodOutputFormat` pattern already in codebase works unchanged | Strong with explicit schema, but requires new SDK + integration | None — returns raw label/confidence pairs; requires a separate LLM call to produce structured output |
+| **Integration complexity** | ZERO — extend existing `messages[]` with `{ type: "image", source: { type: "base64" } }` blocks | HIGH — new package `@google/generative-ai`, new `GOOGLE_API_KEY` env var, new error handling surface | HIGH — two-step pipeline (Cloud Vision for OCR + LLM for reasoning), two new SDKs, two API keys |
+| **Cost per image (1000x1000px)** | ~$0.004 (1,334 tokens @ $3/MTok on Claude Sonnet 4.6) | ~$0.0001 (1,334 tokens @ $0.10/MTok on Gemini 2.0 Flash) | ~$0.0015 ($1.50/1,000 requests for label detection), plus second LLM call |
+| **Latency** | 300–600ms typical | 200–400ms typical | Sub-second for Vision API, +300–600ms for required second LLM call |
+| **Hallucination behavior** | Lower — admits uncertainty rather than guessing | Flash models trade accuracy for speed; slightly higher hallucination rate | Deterministic, no hallucinations, but requires second LLM step which reintroduces hallucination risk |
+| **Vercel serverless compatible** | YES — existing SDK pattern works | YES — REST API works in serverless | YES — REST API works in serverless |
+| **New dependencies** | None | `@google/generative-ai` + env setup | `@google-cloud/vision` + Google Cloud project |
+
+### Recommendation: Claude Sonnet 4.6
+
+**Use Claude Sonnet 4.6 vision.** The decision is architectural, not accuracy-based.
+
+All three options share the same fundamental spatial reasoning limitation for knob positions.
+For model name extraction (OCR), all three perform equivalently. The accuracy difference
+between Claude and Gemini Flash for this specific task is negligible when both are prompted
+for coarse buckets.
+
+Claude Sonnet 4.6 wins decisively on:
+
+**Zero integration cost.** The Anthropic SDK is already initialized in the codebase. Adding
+image content blocks to `messages[]` is a 10-line change to the planner, not a new integration.
+The existing `zodOutputFormat` pattern works unchanged — pass images in the messages array,
+define a `RigAnalysis` Zod schema, receive structured output.
+
+**Consistent error handling.** The existing error boundary around all Claude API calls covers
+vision calls automatically. No new error surface.
+
+**No new API keys or environment variables.** The existing `ANTHROPIC_API_KEY` is the only
+credential needed.
+
+**Prompt caching synergy.** The system prompt (which includes rig mapping knowledge) can be
+cached at the 1-hour rate. Vision calls that reuse the same system prompt benefit from the
+0.1x cache-read multiplier on those tokens. This partially offsets the cost premium over Gemini.
+
+**Choose Gemini Flash only if:** Cost becomes a dominant concern at scale (>50,000 sessions/month)
+AND you accept adding a second SDK, second API key, and second error handling path. At v1.3
+hobbyist scale, the cost difference is ~$0.003 per session — irrelevant.
+
+**Do not use Google Cloud Vision API** for this task. It cannot estimate rotary positions at all.
+You would need Cloud Vision for text detection and a separate Claude/Gemini call for spatial
+reasoning, giving you two API calls, two error surfaces, two API keys, and higher total latency
+— with no accuracy benefit over using Claude alone.
+
+---
+
+## Core Technologies (NEW additions only)
+
+### Vision Integration
 
 | Technology | Version | Purpose | Why Recommended |
 |------------|---------|---------|-----------------|
-| TypeScript (existing) | 5.x (already installed) | Pod Go model registry, chain rules, preset builder | All logic is pure data transformation — no new runtime dependencies needed |
-| Zod (existing) | 4.x (already installed) | `ToneIntentSchema` extension for Pod Go device target | Already used for ToneIntent structured output; add `"pod_go"` to the `DeviceTarget` enum |
-| Vitest (existing) | 3.x (already installed) | Unit tests for Pod Go chain-rules and preset-builder | Already covers helix module with same pattern |
+| `@anthropic-ai/sdk` | already installed | Add `{ type: "image", source: { type: "base64" } }` blocks to existing `messages[]` | Zero new dependencies; the SDK already supports vision natively |
 
-### Supporting Libraries
+No new package required. The Anthropic TypeScript SDK already accepts image content blocks in
+the `messages` array. Extend the existing planner to pass compressed pedal photos as base64
+blocks before the text instruction.
 
-None. This is a pure knowledge-layer expansion, not a new library dependency.
-
-### Development Tools
-
-| Tool | Purpose | Notes |
-|------|---------|-------|
-| POD Go Edit 2.50 (offline, free) | Generate real .pgp files for format validation | Download from line6.com; export presets and inspect JSON to verify builder output field-by-field. Same workflow used for .hlx audit |
-| VS Code JSON diff (no install) | Compare AI-generated .pgp against POD Go Edit exports | Use VS Code's built-in JSON formatter and diff view on `.pgp` files |
-
----
-
-## Pod Go File Format
-
-### File Extension and Encoding
-
-Pod Go presets use the `.pgp` extension. The file is **plain JSON text** (not binary, not zlib-compressed at the file level — unlike `.pgb` backup bundles which ARE zlib-compressed). A `.pgp` file can be opened directly in any text editor.
-
-**Confidence: MEDIUM** — Confirmed by multiple community sources reporting Notepad-editable JSON. The internal structure below is synthesized from the forum thread at line6.com/support/topic/63502, the JSON hacking thread at line6.com/support/topic/64399, and the converter project at github.com/Zavsek/POD_GO-Helix_converter. No official Line 6 schema documentation exists.
-
-### Top-Level JSON Structure
-
-The `.pgp` format is structurally very similar to `.hlx`. The community consensus is "nearly the same format with different file extension." The critical structural difference is that `.pgp` uses **only `dsp0`** — there is no `dsp1`.
-
-```json
+```typescript
+// Content block added to the last user message
 {
-  "version": 6,
-  "data": {
-    "device": <integer device ID>,
-    "device_version": <integer firmware version>,
-    "meta": {
-      "name": "Preset Name",
-      "application": "POD Go Edit",
-      "build_sha": "v2.50",
-      "modifieddate": <unix timestamp>,
-      "appversion": <integer>
-    },
-    "tone": {
-      "dsp0": {
-        "inputA": { "@input": 1, "@model": "HD2_AppDSPFlow1Input", ... },
-        "outputA": { "@model": "HD2_AppDSPFlowOutput", "@output": 1, ... },
-        "block0": { "@model": "HD2_DistKlon", "@position": 0, "@enabled": true, ... },
-        "block1": { ... },
-        "cab0":   { "@model": "HD2_Cab1x12USDeluxe", "@enabled": true, "@mic": 0, ... }
-      },
-      "snapshot0": { "@name": "CLEAN", "@tempo": 120, "@valid": true, ... },
-      "snapshot1": { "@name": "RHYTHM", ... },
-      "snapshot2": { "@name": "LEAD", ... },
-      "snapshot3": { "@name": "AMBIENT", ... },
-      "controller": { "dsp0": {} },
-      "footswitch": { "dsp0": {} },
-      "global": { "@model": "@global_params", "@topology0": "A", "@tempo": 120, ... }
-    }
+  type: "image",
+  source: {
+    type: "base64",
+    media_type: "image/jpeg",   // or image/png, image/webp
+    data: base64String,          // Buffer.from(arrayBuffer).toString("base64")
   },
-  "meta": { "original": 0, "pbn": 0, "premium": 0 },
-  "schema": "L6Preset"
 }
 ```
 
-**Key difference from .hlx:** The `HlxTone` in `.hlx` has `dsp0` + `dsp1` + `snapshot0..7`. The `.pgp` equivalent has `dsp0` ONLY + `snapshot0..3` (4 snapshots, not 8).
+Claude's image token formula: `tokens = (width * height) / 750`. A 1000x1000px image uses
+~1,334 tokens, costing ~$0.004 at Claude Sonnet 4.6 rates. After compressing to Claude's
+optimal dimensions (max 1,568px per edge), images sit at ~1,600 tokens maximum.
 
-### Device ID
+Source: https://platform.claude.com/docs/en/build-with-claude/vision
 
-The `data.device` integer identifies the hardware. For Helix, `types.ts` already has:
+### Image Upload (Browser to Serverless Route)
+
+**Use multipart FormData**, not base64 JSON encoding at the HTTP layer.
+
+Base64 encoding adds ~33% payload overhead. A 1MB compressed image becomes 1.33MB in a JSON
+body. With 3 pedal photos, that is 4MB of base64 text in JSON vs 3MB of binary — a meaningful
+difference against Vercel's 4.5MB hard limit.
+
+With multipart FormData, the Next.js App Router handles parsing natively via `req.formData()`.
+No library required.
+
 ```typescript
-export const DEVICE_IDS = {
-  helix_lt:    2162692,
-  helix_floor: 2162688,
+// app/api/generate/route.ts (extended pattern)
+export async function POST(req: NextRequest) {
+  const formData = await req.formData();
+  const messages = JSON.parse(formData.get('messages') as string);
+  const device = formData.get('device') as string;
+  const imageFiles = formData.getAll('images') as File[];
+
+  const imageBlocks = await Promise.all(
+    imageFiles.map(async (file) => {
+      const buffer = await file.arrayBuffer();
+      const base64 = Buffer.from(buffer).toString('base64');
+      return {
+        type: 'image' as const,
+        source: {
+          type: 'base64' as const,
+          media_type: file.type as 'image/jpeg' | 'image/png' | 'image/webp',
+          data: base64,
+        },
+      };
+    })
+  );
+  // Prepend imageBlocks to the content array of the last user message before the AI call
+}
+```
+
+`req.formData()` is built into Next.js App Router's `NextRequest` — no formidable, multer, or
+other library needed.
+
+---
+
+## Supporting Libraries (NEW)
+
+| Library | Version | Purpose | When to Use |
+|---------|---------|---------|-------------|
+| `browser-image-compression` | 2.0.2 | Client-side image compression before upload | Always — enforces payload budget before upload reaches Vercel's 4.5MB limit |
+
+### Why browser-image-compression
+
+- **Web Worker support** (`useWebWorker: true` by default) — compression runs off the main
+  thread; the chat UI remains responsive during processing
+- **`maxSizeMB` option** — hard payload budget per image before FormData is sent
+- **`maxWidthOrHeight: 1568`** — matches Claude's optimal image dimension exactly; images
+  wider than 1568px are auto-resized by Anthropic's API anyway, wasting upload bandwidth
+- **Format support** — JPEG, PNG, WebP, BMP — covers all realistic pedal photo formats
+- **MIT license, 264+ npm dependents** — stable, actively used
+
+**Version note:** v2.0.2 is 3 years old but stable. No upgrade risk. No alternative with
+broader adoption in this category exists. The library does exactly what is needed.
+
+Source: https://www.npmjs.com/package/browser-image-compression
+Source: https://github.com/Donaldcwl/browser-image-compression
+
+### Compression configuration for HelixAI
+
+```typescript
+import imageCompression from 'browser-image-compression';
+
+const options = {
+  maxSizeMB: 0.8,           // Target 800KB per image
+  maxWidthOrHeight: 1568,   // Claude's optimal max dimension
+  useWebWorker: true,       // Non-blocking (default)
+  fileType: 'image/jpeg',   // Force JPEG output for consistent compression
 };
+
+const compressedFile = await imageCompression(rawFile, options);
+// compressedFile is a File object — use directly in FormData.append()
 ```
 
-Pod Go device IDs are **not officially documented**. Based on the sequential numbering pattern in the existing Helix IDs and community-reported structure similarity, the Pod Go device ID is expected to be in the same numeric family. **This must be verified by inspecting an actual `.pgp` file exported from POD Go Edit before shipping.** Until verified, use a placeholder and document it as requiring validation.
-
-**Action item:** Export one preset from POD Go Edit 2.50, open in text editor, read the `data.device` integer value. Update `DEVICE_IDS` in `types.ts` (or a new `pod-go/types.ts`) with the real value.
-
----
-
-## Pod Go DSP Architecture
-
-### Single DSP, Serial Signal Path
-
-| Constraint | Value | Helix LT Equivalent | Source |
-|------------|-------|---------------------|--------|
-| DSP count | 1 | 2 | FAQ, community unanimous |
-| Parallel routing | No (serial only) | Yes (SABJ topology) | Line 6 FAQ, multiple forum confirmations |
-| Split/join blocks | Not available | Available | FAQ |
-| Topology options | "A" only | "A", "AB", "SABJ" | Follows from serial-only architecture |
-
-### Block Structure: Fixed + Flexible
-
-The Pod Go has **10 total blocks** per preset, split into fixed and flexible categories:
-
-| Category | Count | Block Types | Notes |
-|----------|-------|-------------|-------|
-| Fixed (mandatory) | 6 | Wah, Volume/Expression, FX Loop, Amp/Preamp, Cab/IR, Preset EQ | Always present in signal chain; cannot be removed through normal UI. JSON-hacking can remove them but causes display glitches |
-| Flexible (user-assignable) | 4 | Any HX effect type: Distortion, Dynamics, EQ, Modulation, Delay, Reverb, Pitch/Synth, Filter, Looper | Freely chosen from the full model library |
-
-**Total non-cab, non-fixed blocks available for effects: 4.** This is the critical constraint vs. Helix LT's 8 blocks per DSP across two DSPs.
-
-**Source confidence: HIGH** — Pod Go FAQ states "Up to 4 additional effects (any HX type)" explicitly. Multiple forum threads confirm 10 total blocks (6 fixed + 4 flexible).
-
-### Signal Chain Order
-
-Pod Go enforces a **semi-fixed serial order** — you choose the model in each position, but the position categories are fixed:
-
-```
-[Input/Noise Gate] → [Wah] → [Distortion/Dynamics flex slots] → [Amp] → [Cab/IR] → [EQ flex slots] → [Modulation/Delay/Reverb flex slots] → [Volume] → [FX Loop] → [Output]
-```
-
-The flexible blocks slot into specific zones. Unlike Helix, you cannot place a reverb before the amp.
-
-**Implication for chain-rules.ts:** The existing `assembleSignalChain()` function places effects across DSP0 and DSP1. For Pod Go, all blocks go to `dsp: 0`, and the total non-cab non-fixed effect block count must not exceed 4. The mandatory Parametric EQ and Gain Block on DSP1 in the Helix chain do NOT exist as separate blocks on Pod Go (EQ is a fixed built-in position).
-
-### DSP Power Limits
-
-Pod Go's single DSP chip is powerful enough for the standard 4 effects + amp + cab, but DSP-intensive combinations can hit the ceiling. Line 6 prevents overloading by graying out unavailable models at the hardware level — the file format does not encode "DSP usage percentage" explicitly.
-
-**Models confirmed unavailable on Pod Go due to DSP cost:**
-- **Poly Pitch** — too DSP-intensive
-- **Space Echo** — too DSP-intensive
-- Some newer oversampled amp algorithms added post-Helix 3.5 may not be available
-
-**Confidence: MEDIUM** — Confirmed by community sources; no official exhaustive "not available on Pod Go" list from Line 6.
-
----
-
-## Snapshot Capabilities
-
-| Feature | Pod Go | Helix LT |
-|---------|--------|----------|
-| Snapshots per preset | **4** (snapshot0–snapshot3) | 8 (snapshot0–snapshot7) |
-| Footswitch mode for snapshots | Snapshot mode: 4 footswitches (A, B, C, D) | Snapshot mode: 8 footswitches |
-| Per-snapshot block bypass states | Yes | Yes |
-| Per-snapshot parameter overrides | Yes (up to 64 parameters) | Yes |
-| Snapshot + stomp hybrid mode | Yes (2 snapshots on A/B + 4 stomps on FS1–FS4) | Yes |
-| LED colors | Yes (same `@ledcolor` integer encoding) | Yes |
-
-**Implication for snapshot-engine.ts:** `buildSnapshots()` currently generates 8 snapshots. For Pod Go, generate exactly 4. The `ToneIntentSchema` already enforces `min(4).max(4)` for snapshots — this constraint happens to be correct for Pod Go too. No schema change needed.
-
-**Source confidence: HIGH** — Line 6 FAQ explicitly states 4 snapshots per preset. Owner's Manual v1.10 confirms A/B/C/D footswitch layout for snapshot mode.
-
----
-
-## Footswitch Layout
-
-Pod Go footswitch layout differs from Helix LT:
-
-| Mode | Pod Go | Helix LT |
-|------|--------|----------|
-| Stomp mode | FS1–FS6 (6 stomps) | FS5–FS8 (4 stomps) |
-| Snapshot mode | A, B, C, D (4 footswitches) | FS1–FS8 (8 footswitches) |
-| Hybrid (snap+stomp) | 2 snapshots on A/B, 4 stomps on FS1–FS4 | Various configurations |
-
-**Implication for preset-builder.ts:** The `STOMP_FS_INDICES` constant in `buildFootswitchSection()` is currently `[7, 8, 9, 10]` (FS5–FS8, Helix LT stomp layout). For Pod Go, stomp footswitch indices are 1–6. The footswitch section builder needs a device-specific `STOMP_FS_INDICES` variant.
-
-**Source confidence: MEDIUM** — Footswitch indices within the JSON are reverse-engineered (not officially documented). The `@fs_index` values used in the forum-confirmed JSON structure use integers 1–6 for Pod Go stomps. Verify against a real `.pgp` file export.
-
----
-
-## Model Availability: Pod Go vs Helix LT
-
-### Shared Models (HIGH confidence)
-
-Pod Go shares the **same HD2_ model ID naming convention** as Helix. Most amp and effect models from the Helix library are available on Pod Go. Both devices run the HX modeling engine.
-
-As of firmware 2.50 (January 2025), Pod Go has:
-- 105+ amp models (guitar + bass) — roughly equivalent to Helix LT
-- 80+ cab models
-- 200+ effects models
-- All standard amp models from Helix (Fender, Marshall, Mesa, Vox, etc.)
-
-### Models NOT Available on Pod Go (MEDIUM confidence)
-
-| Model / Category | Reason Unavailable | Helix LT Has It? |
-|-----------------|--------------------|------------------|
-| Poly Pitch | Too DSP-intensive for single chip | Yes |
-| Space Echo (delay) | Too DSP-intensive | Yes |
-| Some Line 6 Original amps added post-1.0 | Not all Helix originals ported | Yes |
-| 2x oversampling for amp algorithms | Pod Go DSP cannot accommodate oversampling added in Helix FW 3.5 | Yes (post-3.5) |
-| Parallel routing blocks (HD2_SplitAB, HD2_MergerMixer) | No parallel path architecture | Yes |
-| `HD2_AppDSPFlow2Input` (DSP1 input) | No DSP1 on Pod Go | Yes |
-
-### Key Implication for models.ts
-
-The current `models.ts` is a Helix model registry. For Pod Go, we need a **Pod Go model subset registry** that:
-1. Excludes DSP-intensive models unavailable on Pod Go (Poly Pitch, Space Echo)
-2. Excludes models that require DSP1 (none in the current small registry)
-3. Has the same `HD2_*` model IDs — the IDs are the same hardware, just a subset
-
-**Approach:** Create `src/lib/podgo/models.ts` that re-exports from the Helix models with a `POD_GO_UNAVAILABLE` exclusion set, OR add a `deviceAvailability` field to `HelixModel` in the existing `models.ts`. The latter is cleaner for long-term maintenance.
-
----
-
-## Code Changes Required
-
-### New Files (Recommended Architecture: Mirror Pattern)
-
-Create a `src/lib/podgo/` module mirroring `src/lib/helix/`:
-
-```
-src/lib/podgo/
-  types.ts          — PgpFile interface, PodGoDeviceTarget, PodGoTone (4 snapshots, dsp0 only)
-  models.ts         — Pod Go model subset (re-export from helix/models.ts with exclusions)
-  chain-rules.ts    — Pod Go chain assembly (single DSP, 4 max effects, semi-fixed order)
-  preset-builder.ts — buildPgpFile(spec: PresetSpec) → PgpFile
-  config.ts         — Pod Go firmware version config (device ID, app version)
-  index.ts          — Public API exports
-```
-
-### Changes to Existing Files
-
-| File | Change | Rationale |
-|------|--------|-----------|
-| `src/lib/helix/types.ts` | Add `"pod_go"` and `"pod_go_wireless"` to `DeviceTarget` union | Single source of truth for device targeting |
-| `src/lib/helix/types.ts` | Add `deviceAvailability?: DeviceTarget[]` field to `HelixModel` | Tag models as available/unavailable per device |
-| `src/lib/helix/models.ts` | Mark DSP-intensive models (Poly Pitch, Space Echo) with `deviceAvailability: ["helix_lt", "helix_floor"]` (not pod_go) | Drives validation in Pod Go chain-rules |
-| `src/app/api/generate/route.ts` | Accept `device: "helix_lt" | "helix_floor" | "pod_go"` in request body | Route to correct builder |
-| `src/lib/helix/tone-intent.ts` | ToneIntentSchema: snapshots already `min(4).max(4)` — no change needed for Pod Go compatibility | Existing constraint is correct |
-
-### New Types Required
-
-```typescript
-// In src/lib/podgo/types.ts
-
-export interface PgpFile {
-  version: number;           // Same as HlxFile.version (value: 6)
-  data: {
-    device: number;          // Pod Go device ID (verify from real .pgp export)
-    device_version: number;  // Firmware version integer
-    meta: HlxMeta;           // Same structure as Helix
-    tone: PodGoTone;         // Simplified tone — dsp0 only, 4 snapshots
-  };
-  meta: { original: number; pbn: number; premium: number };
-  schema: "L6Preset";        // Same schema identifier as Helix
-}
-
-export interface PodGoTone {
-  dsp0: HlxDsp;              // Re-use HlxDsp — same block structure
-  snapshot0: HlxSnapshot;
-  snapshot1: HlxSnapshot;
-  snapshot2: HlxSnapshot;
-  snapshot3: HlxSnapshot;   // 4 snapshots max (vs 8 for Helix)
-  controller: HlxControllerSection;
-  footswitch: Record<string, unknown>;
-  global: PodGoGlobal;
-}
-
-export interface PodGoGlobal {
-  "@model": "@global_params";
-  "@topology0": "A";         // Serial only — no "AB" or "SABJ" options
-  "@cursor_dsp": 0;          // Always DSP0
-  "@cursor_path": number;
-  "@cursor_position": number;
-  "@cursor_group": string;
-  "@tempo": number;
-  "@current_snapshot": number;
-  "@pedalstate": number;
-}
-
-export type PodGoDeviceTarget = "pod_go" | "pod_go_wireless";
-```
-
-### Chain Rules Differences (src/lib/podgo/chain-rules.ts)
-
-The Helix chain-rules.ts splits effects across DSP0 and DSP1 with `MAX_BLOCKS_PER_DSP = 8`. The Pod Go chain-rules must:
-
-1. **All blocks on DSP0** — no DSP1 assignment
-2. **MAX_FLEXIBLE_BLOCKS = 4** — at most 4 non-fixed effects (no separate EQ slot, no Gain Block at end)
-3. **No Parametric EQ mandatory insert** — Pod Go has a built-in fixed EQ block; do not insert an extra one
-4. **No Gain Block mandatory insert** — Volume is a fixed block on Pod Go
-5. **Boost (Minotaur/Scream 808) still valid** — counts as one of the 4 flexible effect slots
-6. **No Horizon Gate for high-gain by default** — only 4 slots; let the AI choose whether to use one
-7. **Semi-fixed slot order** — enforce signal chain ordering: drives → amp → cab → modulation → delay → reverb
-
-```typescript
-// In src/lib/podgo/chain-rules.ts
-const MAX_FLEXIBLE_EFFECTS = 4;  // Hard limit enforced by Pod Go hardware
-
-// DSP assignment: everything goes to dsp0
-function getDspForBlock(): 0 { return 0; }
-
-// No DSP1 mandatory blocks (no Parametric EQ, no Gain Block)
-// Boost is still inserted but counts toward the 4-block limit
-```
-
-### Preset Builder Differences (src/lib/podgo/preset-builder.ts)
-
-```typescript
-// Key differences from src/lib/helix/preset-builder.ts:
-
-// 1. Output type: PgpFile instead of HlxFile
-export function buildPgpFile(spec: PresetSpec, device: PodGoDeviceTarget = "pod_go"): PgpFile
-
-// 2. Tone structure: 4 snapshots (snapshot0–snapshot3) not 8
-// 3. No dsp1 — only dsp0 built
-// 4. Footswitch indices: Pod Go uses @fs_index 1–6 (not 7–10 like Helix LT)
-const POD_GO_STOMP_FS_INDICES = [1, 2, 3, 4];  // FS1–FS4 (4 stomps in hybrid mode)
-
-// 5. Global topology: "@topology0": "A" only (hardcoded, not configurable)
-// 6. File extension for download: ".pgp" not ".hlx"
-```
-
----
-
-## Libraries and Tools for Pod Go Preset Manipulation
-
-### Existing Tools (External)
-
-| Tool | URL | Status | Usefulness |
-|------|-----|--------|------------|
-| POD Go Edit 2.50 (Line 6 official) | line6.com/software | Active, free | CRITICAL for validating generated .pgp files |
-| Zavsek/POD_GO-Helix_converter | github.com/Zavsek/POD_GO-Helix_converter | Electron app, "simple mockup", outdated | LOW — source code reveals format clues but converter is not production-ready |
-| sj-williams/pod-go-patches | github.com/sj-williams/pod-go-patches | Small collection of .pgp patches | MEDIUM — actual .pgp files to inspect JSON structure |
-| dbagchee/helix-preset-viewer | github.com/dbagchee/helix-preset-viewer | Browser-based .hlx viewer | LOW — .hlx only, but reveals .hlx JSON structure useful for comparison |
-| benvesco.com/store/helix-dsp-allocations | benvesco.com/store/helix-dsp-allocations | Third-party, community-maintained | MEDIUM — Pod Go DSP cost percentages per model |
-
-### No npm Package Exists
-
-There is no published npm library for Pod Go preset manipulation. The format is undocumented by Line 6 and the community has only produced a few one-off converters/editors. HelixAI will implement the format directly, as it did for `.hlx`.
+### Payload budget math
+
+| Images | Size each (post-compression) | Total payload | Vercel limit | Headroom |
+|--------|------------------------------|---------------|--------------|----------|
+| 1 | 800KB | ~0.9MB (binary) | 4.5MB | OK |
+| 2 | 800KB each | ~1.7MB | 4.5MB | OK |
+| 3 | 800KB each | ~2.5MB | 4.5MB | OK |
+| 4+ | 800KB each | 3.3MB+ | 4.5MB | Warn user: max 3 photos |
+
+Enforce a maximum of 3 photos per upload in the client UI. Display an explicit warning if
+exceeded — do not silently drop images.
 
 ---
 
 ## Installation
 
 ```bash
-# No new packages required for Pod Go support.
-# All implementation is pure TypeScript in src/lib/podgo/.
+# Client-side compression only — no new server-side packages needed
+npm install browser-image-compression
 ```
 
 ---
 
 ## Alternatives Considered
 
-| Recommended | Alternative | Why Not |
-|-------------|-------------|---------|
-| Mirror pattern (new `src/lib/podgo/` module) | Modify existing `src/lib/helix/` with device flags | Pod Go and Helix differ enough in architecture (single vs dual DSP, 4 vs 8 snapshots, fixed blocks) that a shared module would require pervasive `if (device === "pod_go")` branching. Mirror pattern keeps both modules clean and independently testable |
-| Verify device ID from real .pgp export | Hardcode a guessed device ID | Pod Go device ID is unconfirmed. Using a wrong device ID may prevent the file from loading in POD Go Edit. Must be verified empirically |
-| 4 flexible effect blocks maximum | Allow 6+ effects matching Helix capacity | Pod Go hardware enforces this limit. Generating more than 4 flexible effects creates a preset that is either invalid or requires DSP headroom that may not exist |
-| All blocks on dsp0, serial only | Attempt dual-path routing | Pod Go has no dsp1 and no split/join blocks. Attempting parallel routing in a .pgp file would produce an invalid preset |
+| Recommended | Alternative | When to Use Alternative |
+|-------------|-------------|-------------------------|
+| Claude Sonnet 4.6 vision | Gemini 2.0/2.5 Flash | Only if per-image cost matters at >50k sessions/month AND you accept second SDK integration overhead |
+| Claude Sonnet 4.6 vision | Google Cloud Vision API | Never for this specific task — cannot estimate rotary positions without a second LLM call |
+| `browser-image-compression` | `compressor.js` | If canvas lifecycle hooks are needed (watermarks, grayscale); no advantage for compression-only use |
+| `browser-image-compression` | Vanilla canvas API | Zero dependencies acceptable; adds ~30 lines of boilerplate; choose if library weight is a concern |
+| multipart FormData | Base64 JSON | Never — base64 adds 33% overhead on an already constrained 4.5MB limit |
 
 ---
 
@@ -371,84 +264,75 @@ There is no published npm library for Pod Go preset manipulation. The format is 
 
 | Avoid | Why | Use Instead |
 |-------|-----|-------------|
-| Generating dsp1 blocks in .pgp files | Pod Go has no DSP1 — including a dsp1 section in the JSON will likely cause POD Go Edit to reject the file or display incorrectly | Only generate dsp0 |
-| More than 4 flexible effect blocks | Pod Go hardware limit: 4 flexible FX slots. Exceeding this causes DSP overload or invalid presets | Enforce `MAX_FLEXIBLE_EFFECTS = 4` in chain-rules |
-| Using HlxTone type for Pod Go tone | HlxTone has 8 snapshots (snapshot0–snapshot7) and dsp1 — structurally wrong for Pod Go | Use PodGoTone type with 4 snapshots and dsp0 only |
-| Poly Pitch or Space Echo model IDs in Pod Go presets | These models are too DSP-intensive for Pod Go's single chip | Use standard modulation/delay alternatives |
-| Assuming "@topology0": "AB" or "SABJ" works on Pod Go | Pod Go is serial-only; only "A" topology is valid | Always write "@topology0": "A" for Pod Go |
-| Reusing Helix LT device ID (2162692) for Pod Go | Device IDs are device-specific; POD Go Edit validates the device field | Verify and use the correct Pod Go device ID from a real export |
+| Google Cloud Vision API (standalone) | Returns labels and bounding boxes, not rotary position estimates. A second LLM call is required for knob reasoning — two error surfaces, two keys, higher latency, no accuracy benefit | Claude Sonnet 4.6 vision |
+| Gemini Flash (alongside Claude) | Splitting vision across two providers creates dual SDK overhead, dual API key management, and dual error handling for no measurable accuracy gain on this specific task | Claude Sonnet 4.6 vision |
+| Precise percentage prompts ("what percentage is the drive knob set to?") | All current LLMs have documented spatial reasoning limitations for analog rotary positions — precision requests produce unreliable hallucinated numbers | Prompt for coarse buckets: low / medium-low / medium-high / high |
+| Base64 JSON body for image upload | 33% payload inflation; three 800KB images in base64 = ~3.2MB of JSON text, approaching Vercel's 4.5MB limit uncomfortably | multipart FormData |
+| formidable / multer | Required only for Pages Router. App Router handles multipart natively via `req.formData()` | Built-in `req.formData()` on `NextRequest` |
+| Cloudinary / Vercel Blob / S3 for storage | Adds external storage dependency and async upload flow for a synchronous real-time use case — overkill when client-side compression keeps all images under the limit | Compress client-side, upload direct to serverless route |
+| Uncompressed raw uploads | A typical phone photo of a guitar pedal is 3–8MB. Three uncompressed photos exceed Vercel's 4.5MB limit before any JSON overhead is added | `browser-image-compression` with `maxSizeMB: 0.8` |
+| Anthropic Files API for pedal photos | Files API is designed for reuse of the same asset across multiple requests. Pedal photos are one-shot per session — no reuse benefit; adds an extra API call round-trip | Direct base64 encoding in the messages array |
 
 ---
 
 ## Stack Patterns by Variant
 
-**If generating a Pod Go preset:**
-- Use `src/lib/podgo/chain-rules.ts` — Pod Go-specific block limits and DSP assignment
-- Use `src/lib/podgo/preset-builder.ts` to output `.pgp` JSON
-- Set download filename to `{presetName}.pgp`
-- Cap effects at 4 flexible blocks before the AI prompt even runs (chain-rules enforces this)
-- Use only the 4-snapshot ToneIntent output (already enforced by existing schema)
+**If user uploads one pedal photo:**
+- Compress to <800KB
+- Upload via FormData alongside messages + device
+- Pass as a single image content block before the text instruction in the user message
+- Claude returns: `{ pedalName: string, knobs: { name: string, position: "low"|"medium-low"|"medium-high"|"high" }[] }`
 
-**If generating a Helix preset (existing behavior):**
-- Use `src/lib/helix/chain-rules.ts` — unchanged
-- Use `src/lib/helix/preset-builder.ts` to output `.hlx` JSON
-- Set download filename to `{presetName}.hlx`
+**If user uploads multiple pedal photos (2–3):**
+- Compress each to <800KB (total ~2.4MB binary, safe under 4.5MB)
+- Upload all in one FormData request
+- Label each image in the user message content: "Pedal 1: [image] Pedal 2: [image]"
+- Claude returns `RigAnalysis[]` via `zodOutputFormat`
 
-**If a model is in the Helix registry but not Pod Go:**
-- Tag in `models.ts` with `deviceAvailability` exclusion
-- Pod Go chain-rules throws a validation error if that model is selected
-- AI prompt for Pod Go should not list unavailable models (provide a Pod Go-specific model list)
+**If user uploads 4+ photos:**
+- Client-side validation rejects with explicit message: "Please upload up to 3 pedal photos at a time"
+- Do not silently drop images
+
+**If user provides text-only rig description (no photos):**
+- No image blocks in messages — existing flow unchanged
+- Claude parses the text description in the conversational turn as before
+
+---
+
+## Vercel Constraint Summary
+
+| Constraint | Value | Mitigation |
+|------------|-------|------------|
+| Serverless body limit | 4.5MB hard (no workaround on hobby tier) | Compress to <800KB/image, max 3 images = ~2.4MB binary + headers |
+| Function timeout (hobby plan) | 10 seconds | Claude vision call with 3 images: ~3–6s total; within limit |
+| Cold start overhead | ~300–500ms | Already accepted in existing architecture |
+| Anthropic API per-image size limit | 5MB per image | After compression to <800KB, no issue |
+| Anthropic image dimension limit | 8000x8000px max (auto-resize above 1568px long edge) | After `maxWidthOrHeight: 1568` compression, no issue |
 
 ---
 
 ## Version Compatibility
 
-| Component | Compatibility | Notes |
-|-----------|---------------|-------|
-| POD Go Edit 2.50 | Target for .pgp validation | Firmware 2.50 (January 2025) is current. Generated .pgp files should target 2.50 schema |
-| HX model IDs (HD2_*) | Same naming convention as Helix | Pod Go and Helix share model IDs — HD2_AmpUSDeluxeNrm works on both devices |
-| .pgp schema version | Expected: `"version": 6` | Matches .hlx version 6 (Helix FW 3.70). Verify from real .pgp export |
-| Snapshot count | 4 for Pod Go | ToneIntentSchema already enforces `min(4).max(4)` — no schema change needed |
-
----
-
-## Critical Unknowns (Must Verify Before Shipping)
-
-These items cannot be resolved from web research alone and require hands-on verification with POD Go Edit:
-
-1. **Pod Go device ID integer** — Read `data.device` from a real `.pgp` export. Without this, the preset file cannot be created correctly.
-
-2. **Exact `device_version` encoding** — The `HLX_APP_VERSION` for Helix FW 3.70 is `57671680`. Pod Go FW 2.50 uses a different encoding. Read `data.device_version` from a real `.pgp` export.
-
-3. **Footswitch index values** — The `.pgp` `@fs_index` integers for Pod Go stomps (FS1–FS6) need verification. Helix uses 7–10 for FS5–FS8. Pod Go likely uses 1–6 but must be confirmed.
-
-4. **`@topology0` value** — Confirm that Pod Go `.pgp` writes `"A"` only (not a different token).
-
-5. **Snapshot section naming** — Confirm `snapshot0`–`snapshot3` (4 keys) vs. any other convention.
-
-6. **Does `.pgp` include `dsp1` as an empty object or omit it entirely?** — Some formats include empty sections, others omit them. POD Go Edit may be strict about this.
-
-**Recommended first step:** Before writing any new code, export 2–3 presets from POD Go Edit 2.50, open in VS Code, and document the exact JSON structure. This is the fastest path to HIGH confidence on all six unknowns above.
+| Package | Compatible With | Notes |
+|---------|-----------------|-------|
+| `browser-image-compression@2.0.2` | Next.js 14, TypeScript 5.x | Client-side only — no SSR import; import in `"use client"` components |
+| `@anthropic-ai/sdk` (existing version) | Next.js 14 App Router serverless | Base64 image content blocks are a standard SDK feature; no version bump required |
 
 ---
 
 ## Sources
 
-- [Line 6 Community: File formats, custom tools and API](https://line6.com/support/topic/63502-fileformats-custom-tools-and-api/) — Confirms .pgp is JSON, describes .pgb structure (zlib), dsp0-only (MEDIUM confidence)
-- [Line 6 Community: Pod Go FAQ](https://line6.com/support/topic/53806-pod-go-faq/) — Block architecture (6 fixed + 4 flexible), snapshot support, single DSP (HIGH confidence)
-- [Line 6 Community: Pod Go Block Restrictions](https://line6.com/support/topic/62007-pod-go-block-restrictions/) — 10 total blocks, 4 user-assignable (HIGH confidence)
-- [Line 6 Community: Is JSON hacking safe?](https://line6.com/support/topic/64399-is-json-hacking-safe/) — Confirms JSON editability, footswitch section structure (MEDIUM confidence)
-- [Line 6 Community: Hack with no Amp, Cab or EQ](https://line6.com/support/topic/63601-hack-with-no-amp-cab-or-eq/) — Confirms JSON structure can be edited to remove fixed blocks (MEDIUM confidence)
-- [Line 6 Pod Go Models Page](https://line6.com/podgo-models/) — 89+ amp models, 80+ cabs, 200+ effects as of 2.50 (HIGH confidence)
-- [Line 6 Pod Go 2.50 Release Notes](https://line6.com/support/page/kb/pod/pod-go/pod-go-250-r1085/) — New models list, firmware date (HIGH confidence)
-- [Pod Go vs Helix LT community discussion](https://line6.com/support/topic/56025-pod-go-vs-helix-lt/) — No parallel routing, serial only, single DSP (HIGH confidence)
-- [Pod Go DSP Allocations (benvesco.com)](https://benvesco.com/store/helix-dsp-allocations/) — DSP cost percentages, fixed block overhead explanation (MEDIUM confidence — third-party)
-- [GitHub: Zavsek/POD_GO-Helix_converter](https://github.com/Zavsek/POD_GO-Helix_converter) — Electron app confirming .pgp↔.hlx format similarity and TypeScript-based conversion (MEDIUM confidence)
-- [GitHub: sj-williams/pod-go-patches](https://github.com/sj-williams/pod-go-patches) — Real .pgp files available for format inspection (MEDIUM confidence)
-- [Line 6 Community: Blocks DSP requirements overview](https://line6.com/support/topic/61457-blocks-dsp-requirements-overview/) — DSP behavior at capacity, effect greying-out mechanism (HIGH confidence)
-- Existing `src/lib/helix/` codebase — `types.ts`, `preset-builder.ts`, `chain-rules.ts`, `models.ts` — ground truth for what must be mirrored/adapted (HIGH confidence)
+- Anthropic Vision Docs (official, verified 2026-03-02) — image token formula, spatial reasoning limitation ("like reading an analog clock face"), 5MB per-image API limit, supported formats, base64 integration pattern: https://platform.claude.com/docs/en/build-with-claude/vision
+- Anthropic Pricing (official, verified 2026-03-02) — Claude Sonnet 4.6 at $3/MTok input, prompt caching multipliers: https://platform.claude.com/docs/en/about-claude/pricing
+- Google Gemini API Pricing (official) — Gemini 2.0 Flash at $0.10/MTok input, Gemini 2.5 Flash at $0.30/MTok input: https://ai.google.dev/gemini-api/docs/pricing
+- Vercel Serverless Body Limit (official KB) — 4.5MB hard limit, no config override in production: https://vercel.com/kb/guide/how-to-bypass-vercel-body-size-limit-serverless-functions
+- Next.js App Router `req.formData()` — built-in multipart support, no library needed: https://strapi.io/blog/epic-next-js-15-tutorial-part-5-file-upload-using-server-actions
+- `browser-image-compression` npm — v2.0.2, Web Worker support, `maxSizeMB`/`maxWidthOrHeight` options: https://www.npmjs.com/package/browser-image-compression
+- `browser-image-compression` GitHub — Donaldcwl/browser-image-compression, MIT license: https://github.com/Donaldcwl/browser-image-compression
+- Gemini Flash spatial reasoning limitations — semantic interpretation misses on ambiguous geometries (MEDIUM confidence, WebSearch, multiple sources): https://www.helicone.ai/blog/gemini-2.0-flash
+- Gemini 2.0 Flash OCR accuracy — 98.2% on printed text, strong general OCR: https://reducto.ai/blog/lvm-ocr-accuracy-mistral-gemini
 
 ---
 
-*Stack research for: Pod Go preset generation support (HelixAI v2 milestone)*
+*Stack research for: HelixAI v1.3 Rig Emulation — vision API + image upload additions*
 *Researched: 2026-03-02*

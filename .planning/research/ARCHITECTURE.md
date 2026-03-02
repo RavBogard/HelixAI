@@ -1,738 +1,717 @@
-# Architecture Research: Pod Go Integration
+# Architecture Research
 
-**Domain:** Line 6 Pod Go preset generation — adding to existing HelixAI architecture
+**Domain:** AI-powered rig emulation extension to an existing Planner-Executor guitar preset system
 **Researched:** 2026-03-02
-**Confidence:** HIGH (direct codebase inspection, community reverse-engineering sources, Line 6 official docs)
+**Confidence:** HIGH (existing codebase fully inspected; Claude API vision + structured output docs verified against official sources)
 
 ---
 
 ## Context: What This Document Covers
 
-This document addresses the Pod Go milestone specifically: how Pod Go preset generation integrates with the existing Helix-based architecture. Every decision is component-level: which modules share, which fork, which are new, and in what order to build.
-
----
-
-## Hardware Differences: Pod Go vs. Helix
-
-Understanding the hardware constraints drives every architectural decision.
-
-| Dimension | Helix LT / Floor | Pod Go |
-|-----------|-----------------|--------|
-| Signal paths | 2 (dsp0 + dsp1) | 1 (dsp0 only) |
-| Total blocks | 16+ (8 per DSP) | 10 total |
-| Assignable effect slots | ~8 per DSP | 4 user-assignable |
-| Fixed blocks | none (all user-configurable) | Wah, Volume, FX Loop, Amp, Cab, EQ — 6 fixed |
-| Snapshots per preset | 8 | 4 |
-| Footswitches (stomp) | FS5-FS8 (4 stomps in Snap/Stomp layout) | FS1, FS2, FS4, FS5, FS6 (up to 5) |
-| DSP chips | 2 (dual DSP) | 1 (single DSP) |
-| Parallel routing | Yes (AB, SABJ topologies) | No |
-| File extension | .hlx | .pgp |
-| File format | JSON (schema: "L6Preset") | JSON (community-confirmed) |
-| Schema name | "L6Preset" | Not publicly documented — needs verification |
-| Device ID (data.device) | helix_lt: 2162692, helix_floor: 2162688 | Unknown — requires .pgp file inspection |
-
-**Confidence on hardware facts:** HIGH — Line 6 official FAQ, community forums, multiple sources confirm single DSP, 4 assignable slots, 4 snapshots.
-
-**Confidence on .pgp JSON structure:** MEDIUM — community members confirm it is plain JSON and shares footswitch/snapshot field names with .hlx, but no official schema exists. The device ID value for Pod Go must be determined by inspecting a real .pgp export before building `podgo-builder.ts`.
-
-Sources:
-- [POD Go Block Restrictions](https://line6.com/support/topic/62007-pod-go-block-restrictions/)
-- [POD Go FAQ](https://kb.line6.com/kb/live/pod-go-faq)
-- [Fileformats, custom tools and API thread](https://line6.com/support/topic/63502-fileformats-custom-tools-and-api/)
-- [Zavsek POD_GO-Helix_converter](https://github.com/Zavsek/POD_GO-Helix_converter)
-
----
-
-## Existing Architecture (Stable Reference)
-
-```
-User Chat (Gemini SSE)
-        |
-        | conversation history
-        v
-[callClaudePlanner()]           planner.ts
-        |
-        | ToneIntent (~15 fields)
-        v
-[assembleSignalChain()]         chain-rules.ts
-[resolveParameters()]           param-engine.ts
-[buildSnapshots()]              snapshot-engine.ts
-        |
-        | PresetSpec
-        v
-[validatePresetSpec()]          validate.ts
-[buildHlxFile()]                preset-builder.ts
-        |
-        | HlxFile JSON
-        v
-POST /api/generate response
-```
-
----
-
-## Integration Strategy: What Changes and What Does Not
-
-### Decision Principle
-
-The Planner-Executor separation is the core design invariant. ToneIntent is the contract between AI and Knowledge Layer. The only reason to touch ToneIntent is if Pod Go genuinely needs information the AI must provide that the Knowledge Layer cannot derive. Everything else adapts below ToneIntent.
-
----
-
-## Component-by-Component Decisions
-
-### ToneIntent — Extend, Do Not Fork
-
-**Decision: Add one optional field. No forking.**
-
-ToneIntent is device-agnostic today. The AI selects amps, cabs, and effects by name. These names are strings, and the same HD2 model names exist in both Helix and Pod Go (Pod Go is a subset of the Helix model library, confirmed by Line 6). The AI does not need to know which device it is generating for — that is a Knowledge Layer and builder concern.
-
-The only change needed: the amp/cab/effect enum validation currently points to the full Helix model list. Pod Go has a subset. The planner prompt must be told which device it is generating for so it receives the correct allowed model list.
-
-```typescript
-// tone-intent.ts — no schema change needed
-// The device-specific model list is passed to buildPlannerPrompt() at call time
-// ToneIntentSchema stays identical
-```
-
-The route.ts passes `deviceTarget` to `buildPlannerPrompt()`, which already accepts a `modelList` string. The model list for Pod Go omits models unavailable on Pod Go.
-
-**What changes in planner.ts:**
-- `buildPlannerPrompt(modelList)` signature stays the same
-- `callClaudePlanner(messages, deviceTarget)` receives device target
-- It calls `getModelListForPrompt(deviceTarget)` to get the device-filtered list
-- System prompt says "Helix LT preset" or "Pod Go preset" based on deviceTarget
-
-**Confidence:** HIGH — the model list is already a parameter; this is a 3-line change.
-
----
-
-### models.ts — Shared Database with Device Flags
-
-**Decision: Single database, add `devices` flag per model. Do not fork.**
-
-Forking models.ts into `helix-models.ts` and `podgo-models.ts` creates permanent duplication. Every new model added to one must be manually synced to the other. This is a maintenance anti-pattern.
-
-Instead, add a `devices` field to `HelixModel`:
-
-```typescript
-export interface HelixModel {
-  id: string;
-  name: string;
-  basedOn: string;
-  category: string;
-  ampCategory?: AmpCategory;
-  topology?: TopologyTag;
-  cabAffinity?: string[];
-  defaultParams: Record<string, number>;
-  blockType: number;
-  devices?: DeviceTarget[];  // NEW: which devices support this model
-                             // undefined = all devices (backwards compatible)
-}
-```
-
-`devices: undefined` means available everywhere (backwards-compatible, no existing entries break). Pod Go-only or Helix-only models can be flagged explicitly.
-
-A new helper function `getModelsForDevice(deviceTarget)` returns the filtered subset. `getModelListForPrompt(deviceTarget?)` uses this to build the prompt's allowed model list.
-
-**Pod Go model subset reality:** Pod Go firmware 2.50 has 50+ guitar amp models. Most names match Helix exactly (same HD2_ IDs). Three effects are absent: Tone Sovereign, Clawthorn Drive, Cosmos Echo. All distortions/dynamics/pitch are mono only. Bass amps are present but not relevant to this app. The specific list of omitted models requires a Pod Go Edit export to confirm exhaustively — flag this as needing verification during implementation.
-
-**Confidence:** HIGH for the architecture. MEDIUM for the exact list of excluded models.
-
----
-
-### chain-rules.ts — Shared, Add Pod Go Path Guard
-
-**Decision: Shared module, add device-aware block limit validation.**
-
-`assembleSignalChain()` is device-agnostic in its model resolution logic. The signal chain slot ordering (wah > drive > boost > amp > cab > gate > eq > mod > delay > reverb > gain) applies to Pod Go too.
-
-What changes: the block limit check.
-
-Currently:
-```typescript
-const MAX_BLOCKS_PER_DSP = 8;
-// validates dsp0 and dsp1 separately
-```
-
-Pod Go needs:
-- Only dsp0 (no dsp1 blocks)
-- Maximum 4 assignable effect slots (the 6 fixed blocks don't count against BlockSpec limits because they are implicit in the device — they don't appear in the .pgp's user block list the same way)
-
-**Recommended approach:** Pass `deviceTarget` into `assembleSignalChain(intent, deviceTarget)`. Add a Pod Go path that:
-1. Forces all blocks to `dsp: 0` (no dsp1 assignment)
-2. Validates against a 4-effect-block limit (amp, cab, eq, wah, volume, gate are fixed/free — only the 4 user effects count toward the assignable limit)
-3. Still inserts mandatory blocks (boost, Parametric EQ, Gain Block) but treats them as fixed-position Pod Go blocks
-
-**Critical nuance on Pod Go fixed blocks:** Pod Go's fixed EQ block is already present on the device. If the Knowledge Layer inserts a Parametric EQ into the chain, it occupies one of the 4 assignable slots on Pod Go (because it is placed as a user block, not the device's built-in EQ). This means the 4-slot budget is tighter than it looks. Consider whether Pod Go presets should use the built-in EQ slot (by not inserting a separate EQ BlockSpec) or insert it anyway and accept it consumes one assignable slot.
-
-**Recommended:** For Pod Go, skip inserting a separate Parametric EQ BlockSpec. The device's built-in EQ position is always present and can be configured via the fixed block mechanism in the .pgp builder. This preserves all 4 assignable slots for user effects.
-
-Similarly, the Gain Block (volume pedal) is a fixed Pod Go block — do not insert it as a user BlockSpec for Pod Go presets.
-
-**Confidence:** HIGH for the architecture approach. MEDIUM for the exact fixed-block mechanics until a real .pgp file is inspected.
-
----
-
-### param-engine.ts — Shared, No Changes Required
-
-**Decision: Fully shared, no modification needed.**
-
-`resolveParameters()` operates on BlockSpec arrays. It does not care about device target. The 3-layer resolution (model defaults → category overrides → genre overrides) produces correct numeric values for any Helix-family device. The underlying parameter encoding (normalized 0-1 floats, Hz-encoded LowCut/HighCut, integer Mic index) is identical between Helix and Pod Go — they share the same HX modeling engine.
-
-No changes to param-engine.ts.
-
-**Confidence:** HIGH.
-
----
-
-### snapshot-engine.ts — Shared, Snapshot Count Adaptation
-
-**Decision: Shared module, caller passes correct intent count.**
-
-`buildSnapshots(chain, intents)` accepts any array of `SnapshotIntent` objects. It does not hardcode 8 snapshots — it maps over whatever the caller provides. The existing 4-snapshot output for Helix is already the correct count for Pod Go.
-
-The Helix preset-builder generates 8 snapshot slots (snapshot0-snapshot7), marking slots 4-7 as `@valid: false`. The Pod Go preset-builder will only need to write snapshot0-snapshot3.
-
-No changes to snapshot-engine.ts. The route.ts already passes exactly 4 SnapshotIntents (enforced by ToneIntent schema `min(4).max(4)`).
-
-**Confidence:** HIGH.
-
----
-
-### validate.ts — Fork (Add Pod Go Validator)
-
-**Decision: New function `validatePodGoPresetSpec()`, keep existing `validatePresetSpec()` for Helix.**
-
-The Pod Go validation rules differ:
-- No dsp1 blocks allowed
-- Max 4 user-effect blocks (amp, cab, and fixed-position blocks don't count)
-- Model IDs must be in the Pod Go subset
-
-```typescript
-// validate.ts additions
-export function validatePodGoPresetSpec(spec: PresetSpec): void {
-  // 1. No dsp1 blocks
-  const dsp1Blocks = spec.signalChain.filter(b => b.dsp === 1);
-  if (dsp1Blocks.length > 0) {
-    throw new Error(`Pod Go preset has dsp1 blocks — Pod Go is single-path only`);
-  }
-
-  // 2. User effect slot limit (4 assignable)
-  const userEffectTypes = new Set(["distortion", "delay", "reverb", "modulation", "wah", "pitch", "dynamics"]);
-  const userEffectCount = spec.signalChain.filter(b => userEffectTypes.has(b.type)).length;
-  if (userEffectCount > 4) {
-    throw new Error(`Pod Go preset has ${userEffectCount} user effects — max 4 assignable slots`);
-  }
-
-  // 3. Model IDs valid for Pod Go
-  // (use getModelsForDevice("pod_go") set)
-  ...
-}
-```
-
-**Confidence:** HIGH for the approach. Implementation details depend on .pgp inspection.
-
----
-
-### preset-builder.ts — Fork (New podgo-builder.ts)
-
-**Decision: New file `podgo-builder.ts`. Do not modify Helix's `preset-builder.ts`.**
-
-This is the highest-impact change. The .pgp file format differs from .hlx in ways that are not parameterizable:
-
-1. **File extension and schema name:** `.pgp` vs `.hlx`, likely different schema field
-2. **Device ID:** Different numeric device identifier (must be verified from a real .pgp export)
-3. **Single DSP only:** No dsp1 section in the tone object
-4. **Snapshot count:** Only snapshot0-snapshot3 (4 slots)
-5. **Fixed block handling:** Amp, cab, wah, volume, FX loop, EQ have special positions in Pod Go's JSON that differ from Helix's block0/block1 pattern
-6. **Footswitch layout:** Pod Go uses FS1, FS2, FS4, FS5, FS6 (not Helix's FS5-FS8 layout)
-7. **Topology fields:** No @topology1 (single path); @topology0 behavior may differ
-8. **Firmware version fields:** Different device_version, build_sha values
-
-The new file:
-```typescript
-// src/lib/helix/podgo-builder.ts
-export function buildPgpFile(spec: PresetSpec, device: "pod_go" | "pod_go_wireless"): PgpFile {
-  // ...
-}
-```
-
-**PgpFile type:** Needs its own interface. Until a real .pgp is inspected, define it as a type alias or extend HlxFile with overrides. Post-inspection, create proper `PgpFile` and `PgpTone` interfaces alongside the existing types.
-
-**Critical first step:** Before writing podgo-builder.ts, open a real .pgp file from POD Go Edit in a text editor and capture the exact JSON structure. This is a 5-minute task that unlocks all builder decisions. Without this, any builder is guesswork.
-
-**Where to put it:** `src/lib/helix/podgo-builder.ts` — same directory as `preset-builder.ts`. The `helix/` directory is already established as the Knowledge Layer directory. Renaming it to `device/` would be premature — both devices share the same HD2 engine.
-
-**Confidence:** HIGH that a separate builder is needed. LOW on specific .pgp field names until a real file is inspected.
-
----
-
-### types.ts — Extend DeviceTarget, Add PgpFile Types
-
-**Decision: Add `pod_go` and `pod_go_wireless` to DeviceTarget. Add PgpFile interfaces.**
-
-```typescript
-// Current:
-export type DeviceTarget = "helix_lt" | "helix_floor";
-
-// New:
-export type DeviceTarget = "helix_lt" | "helix_floor" | "pod_go" | "pod_go_wireless";
-
-export const DEVICE_IDS: Record<DeviceTarget, number> = {
-  helix_lt: 2162692,
-  helix_floor: 2162688,
-  pod_go: 0,           // PLACEHOLDER — verify from real .pgp export
-  pod_go_wireless: 0,  // PLACEHOLDER — verify from real .pgp export
-};
-```
-
-New PgpFile interfaces live in types.ts alongside HlxFile. They share the snapshot-related types (HlxSnapshot, HlxControllerSection) where field names overlap.
-
-**Confidence:** HIGH for the approach. Specific device IDs are PLACEHOLDER until verified.
-
----
-
-### route.ts — Route Branching by Device
-
-**Decision: Single route, device-conditional builder call.**
-
-```typescript
-// api/generate/route.ts
-const deviceTarget: DeviceTarget = parseDeviceTarget(device);
-const isHelixDevice = deviceTarget === "helix_lt" || deviceTarget === "helix_floor";
-const isPodGoDevice = deviceTarget === "pod_go" || deviceTarget === "pod_go_wireless";
-
-// Steps 1-3 are shared (chain, params, snapshots)
-const chain = assembleSignalChain(toneIntent, deviceTarget);
-const parameterized = resolveParameters(chain, toneIntent);
-const snapshots = buildSnapshots(parameterized, toneIntent.snapshots);
-
-// Step 4: Device-specific build
-let presetFile: HlxFile | PgpFile;
-if (isHelixDevice) {
-  validatePresetSpec(presetSpec);
-  presetFile = buildHlxFile(presetSpec, deviceTarget);
-} else if (isPodGoDevice) {
-  validatePodGoPresetSpec(presetSpec);
-  presetFile = buildPgpFile(presetSpec, deviceTarget);
-}
-```
-
-The response JSON changes: instead of always returning a `.hlx` file, it returns `.pgp` or `.hlx` based on device. The frontend download link must use the correct extension.
-
-**Confidence:** HIGH.
-
----
-
-### Frontend (page.tsx) — Add Pod Go to Device Selector
-
-**Decision: Extend existing device selector array.**
-
-```typescript
-// Current:
-const [selectedDevice, setSelectedDevice] = useState<"helix_lt" | "helix_floor">("helix_lt");
-
-// New:
-const [selectedDevice, setSelectedDevice] = useState<DeviceTarget>("helix_lt");
-
-// Device selector buttons:
-{(["helix_lt", "helix_floor", "pod_go", "pod_go_wireless"] as const).map((device) => (
-  // display names: "Helix LT", "Helix Floor", "Pod Go", "Pod Go Wireless"
-))}
-```
-
-The download button must use `.pgp` extension for Pod Go devices and `.hlx` for Helix devices.
-
-The signal chain visualization (VizBlock, dsp labels) currently shows "Path 1 (DSP 1)" and "Path 2 (DSP 2)". For Pod Go, only Path 1 exists. The visualization conditionally hides DSP 2.
-
-**Confidence:** HIGH.
-
----
-
-## Complete Data Flow: Pod Go Path
-
-```
-User Chat
-        |
-        | conversation + deviceTarget="pod_go"
-        v
-callClaudePlanner(messages, deviceTarget)
-        |
-        | uses getModelListForPrompt("pod_go") — Pod Go model subset
-        | ToneIntent (same 15 fields, Pod Go-valid model names only)
-        v
-assembleSignalChain(intent, deviceTarget)
-        |
-        | Pod Go mode: all blocks → dsp0, no dsp1
-        | No Parametric EQ BlockSpec (fixed device block)
-        | No Gain Block BlockSpec (fixed device block)
-        | Max 4 user-effect blocks validated
-        | BlockSpec[] (all dsp:0, max 4 user effects + amp + cab + boost + gate)
-        v
-resolveParameters(chain, intent)           ← UNCHANGED
-        |
-        | BlockSpec[] with all parameters filled
-        v
-buildSnapshots(parameterized, intents)     ← UNCHANGED
-        |
-        | SnapshotSpec[] (4 snapshots only, snapshot0-snapshot3)
-        v
-validatePodGoPresetSpec(presetSpec)        ← NEW
-        |
-        v
-buildPgpFile(presetSpec, deviceTarget)     ← NEW
-        |
-        | PgpFile JSON
-        v
-POST /api/generate response
-        |
-        | preset (PgpFile), summary, spec, toneIntent, device
-        v
-page.tsx: download as .pgp
-```
+This document covers the v1.3 Rig Emulation milestone: how vision-based rig extraction, physical-to-Helix pedal mapping, and substitution display integrate with the existing Planner-Executor architecture. Every decision specifies which files are new, which are modified, and in what order to build.
 
 ---
 
 ## System Overview
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      Frontend (page.tsx)                     │
-│  Device Selector: [Helix LT] [Helix Floor] [Pod Go] [Pod Go W]│
-└─────────────────────┬───────────────────────────────────────┘
-                      │ POST /api/generate { messages, device }
-┌─────────────────────▼───────────────────────────────────────┐
-│              API Route (route.ts) — branching point          │
-│  callClaudePlanner(messages, deviceTarget)                   │
-│  assembleSignalChain ← SHARED (device-aware limits)         │
-│  resolveParameters  ← SHARED (unchanged)                    │
-│  buildSnapshots     ← SHARED (unchanged)                    │
-│                                                              │
-│  if helix:   validatePresetSpec → buildHlxFile → .hlx       │
-│  if pod_go:  validatePodGoPresetSpec → buildPgpFile → .pgp  │
-└─────────────────────────────────────────────────────────────┘
-                      │
-┌─────────────────────▼───────────────────────────────────────┐
-│              Knowledge Layer (src/lib/helix/)                │
-│                                                              │
-│  SHARED (no/minor changes):                                  │
-│  ┌─────────────┐  ┌──────────────┐  ┌─────────────────┐    │
-│  │ chain-rules │  │ param-engine │  │ snapshot-engine │    │
-│  └─────────────┘  └──────────────┘  └─────────────────┘    │
-│                                                              │
-│  EXTENDED:                                                   │
-│  ┌──────────┐  ┌─────────────────────────────────────────┐  │
-│  │ models   │  │ types (DeviceTarget + PgpFile ifaces)   │  │
-│  │ +devices │  └─────────────────────────────────────────┘  │
-│  │  flag   │                                                 │
-│  └──────────┘                                                │
-│                                                              │
-│  NEW:                                                        │
-│  ┌──────────────────┐  ┌──────────────────────────────────┐ │
-│  │ podgo-builder.ts │  │ validate (+ Pod Go validator fn) │ │
-│  └──────────────────┘  └──────────────────────────────────┘ │
-│                                                              │
-│  UNCHANGED:                                                  │
-│  ┌───────────────┐  ┌────────────┐  ┌────────────────────┐  │
-│  │ preset-builder│  │  config    │  │  param-registry    │  │
-│  └───────────────┘  └────────────┘  └────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
-                      │
-┌─────────────────────▼───────────────────────────────────────┐
-│                 Model Database (models.ts)                    │
-│  HD2_Amp* / HD2_Cab* / HD2_Dist* / HD2_Delay* / ...         │
-│  HelixModel.devices?: DeviceTarget[]                         │
-│  getModelsForDevice(target) → filtered subset               │
-└─────────────────────────────────────────────────────────────┘
++----------------------------------------------------------------------+
+|                     BROWSER (Next.js page.tsx)                       |
+|                                                                      |
+|  +------------------+  +-------------------+  +-------------------+ |
+|  | Chat Messages    |  | Image Upload UI   |  | Substitution Card | |
+|  | (existing)       |  | (NEW — file input |  | (NEW — TS9 ->     | |
+|  |                  |  |  or drag-drop)    |  |  Teemah! display) | |
+|  +--------+---------+  +---------+---------+  +---------+---------+ |
+|           |                      |                      |           |
+|           +----------------------+----------------------+           |
+|                                  |                                  |
+|      POST /api/generate { messages, device, images[] }              |
++----------------------------------+----------------------------------+
+                                   |
++----------------------------------v----------------------------------+
+|                  API ROUTE (route.ts — MODIFIED)                    |
+|                                                                     |
+|  1. Extract images[] from request body                              |
+|  2. Call callRigVisionPlanner(images) -> RigIntent    [NEW]         |
+|  3. Call mapRigToToneIntent(rigIntent, device)        [NEW]         |
+|     -> { substitutions[], toneContext, unmappedPedals[] }           |
+|  4. Call callClaudePlanner(messages, device, toneContext)           |
+|     -> ToneIntent                              [planner.ts MODIFIED]|
+|  5. Knowledge Layer pipeline (existing — unchanged)                 |
+|  6. Return { ...existing, substitutions[] }      [response EXTENDED]|
++---------------------------------------------------------------------+
+                |                    |                    |
++---------------v------+  +----------v---------+  +------v-----------+
+| planner.ts (MODIFIED)|  | rig-vision.ts (NEW)|  | rig-mapping.ts   |
+|                      |  |                    |  | (NEW)            |
+| Accepts optional     |  | callRigVision-     |  |                  |
+| toneContext string   |  | Planner() ->       |  | mapRigToTone-    |
+| appended to conv.    |  | RigIntent          |  | Intent() +       |
+| before model sends   |  | (one Claude vision |  | substitution     |
+|                      |  |  call, all images) |  | map building     |
++----------------------+  +--------------------+  +------------------+
+                                                           |
++----------------------------------------------------------v----------+
+|                   KNOWLEDGE LAYER (all existing — unchanged)        |
+|                                                                     |
+|  chain-rules.ts -> param-engine.ts -> snapshot-engine.ts           |
+|  preset-builder.ts / podgo-builder.ts                               |
++---------------------------------------------------------------------+
+```
+
+### Component Responsibilities
+
+| Component | Responsibility | Status |
+|-----------|----------------|--------|
+| `src/app/page.tsx` | Image upload UI, substitution card display, include images[] in generate POST | Modified |
+| `src/app/api/generate/route.ts` | Orchestrate vision extraction, mapping, planner; add substitutions to response | Modified |
+| `src/lib/rig-vision.ts` | Single Claude API call with image content blocks -> RigIntent | NEW |
+| `src/lib/rig-mapping.ts` | Static curated lookup table (physical pedal -> Helix model) + knob% -> param translation | NEW |
+| `src/lib/helix/rig-intent.ts` | Zod schemas: RigIntentSchema, PhysicalPedalSchema, SubstitutionEntrySchema | NEW |
+| `src/lib/planner.ts` | Accept optional toneContext string appended to conversation before Claude call | Modified |
+| `src/lib/helix/index.ts` | Export new rig-intent types | Modified |
+| All other `src/lib/helix/*` | Unchanged — receives ToneIntent exactly as before | Existing |
+
+---
+
+## The Central Architecture Decision: Two-Step vs Single-Call Vision
+
+This is the most consequential decision for v1.3. The recommendation is definitive.
+
+### Option A: Two-Step Pre-Processing (Recommended)
+
+```
+Step 1: callRigVisionPlanner(images[]) -> RigIntent
+        [Dedicated Claude call with image blocks — extracts pedal names and knob positions]
+        [No structured output constraint — focused extraction prompt only]
+
+Step 2: mapRigToToneIntent(rigIntent, device) -> { substitutions[], toneContext }
+        [Deterministic — static PEDAL_HELIX_MAP lookup table, no AI]
+        [Translates knob% to Helix 0-1 param values]
+        [Builds toneContext summary string]
+
+Step 3: callClaudePlanner(messages, device, toneContext?) -> ToneIntent
+        [Existing planner — receives toneContext as appended text hint]
+        [Uses zodOutputFormat(ToneIntentSchema) as today, completely unchanged]
+```
+
+### Option B: Single Multi-Modal Call
+
+```
+Step 1: callClaudeMultiModal(messages, images[], device) -> ToneIntent
+        [One API call sees both conversation text and pedal photos]
+        [zodOutputFormat still constrains ToneIntent schema]
+        [Mapping burden falls entirely on Claude's knowledge and the prompt]
+```
+
+### Recommendation: Two-Step (Option A)
+
+**Rationale — five reasons, all strong:**
+
+1. **Matches the existing Planner-Executor philosophy.** The codebase explicitly separates creative AI choices (planner) from deterministic parameter resolution (Knowledge Layer). Vision extraction is a third distinct concern — reading physical hardware — that should not be conflated with creative Helix model selection. Treating it as a separate step preserves the architectural invariant that AI makes creative choices and code handles deterministic translation.
+
+2. **Static mapping table beats prompt-embedded knowledge for reliability.** Claude's gear knowledge is good but not auditable. A static `PEDAL_HELIX_MAP` lookup can be curated, reviewed, and extended without retesting the planner prompt. When a user reports "my Boss SD-1 wasn't mapped correctly," the fix is one line in a data file, not a prompt rewrite. This is explicitly what the PROJECT.md means by "physical pedal -> Helix model mapping must be curated, not guessed."
+
+3. **Zodoutputformat compatibility is preserved without complexity.** The existing planner uses `output_config: { format: zodOutputFormat(ToneIntentSchema) }`. Adding vision images to the existing planner call while keeping structured output works (the Claude API supports combining vision input with structured output in the same call — verified against official docs). However, it creates a large, multi-purpose prompt boundary where failures are harder to isolate. A dedicated vision extraction step can use a simple extraction prompt without structured output, and the planner remains structurally unchanged.
+
+4. **RigIntent and ToneIntent are fundamentally different schemas.** RigIntent contains physical pedal names and knob percentages. ToneIntent contains Helix model names and snapshot structure. Forcing a single call to produce ToneIntent from photos requires the AI to perform the physical-to-Helix mapping inside its reasoning, which is invisible and non-deterministic. The two-step approach makes the mapping explicit and testable.
+
+5. **Failure isolation.** If Claude misreads one pedal photo, the error is contained to Step 1 and can be surfaced as "could not identify Pedal 2." In the single-call approach, a bad image interpretation can corrupt the entire ToneIntent including the amp choice.
+
+**When Option B would be preferable:** If the project had no mapping layer and raw AI gear knowledge was intentionally the mapping mechanism. That is explicitly ruled out by the project constraints.
+
+---
+
+## New Types and Schemas
+
+All schemas live in `src/lib/helix/rig-intent.ts` and are exported from `src/lib/helix/index.ts`.
+
+### PhysicalPedalSchema
+
+Represents one physical pedal extracted from a user's photo.
+
+```typescript
+// src/lib/helix/rig-intent.ts
+import { z } from "zod";
+
+export const PhysicalPedalSchema = z.object({
+  brand: z.string(),           // "Boss", "Ibanez", "Electro-Harmonix"
+  model: z.string(),           // "SD-1", "TS9", "Big Muff Pi"
+  fullName: z.string(),        // "Boss SD-1 Super OverDrive" — used as lookup key
+  knobPositions: z.record(
+    z.string(),
+    z.number().min(0).max(100)
+  ),                           // { "Drive": 70, "Tone": 50, "Level": 60 } — percent
+  imageIndex: z.number().int(),// Which image this came from (0-indexed)
+  confidence: z.enum(["high", "medium", "low"]), // Vision extraction confidence
+});
+
+export type PhysicalPedal = z.infer<typeof PhysicalPedalSchema>;
+```
+
+### RigIntentSchema
+
+The full extracted rig from vision analysis — output of `callRigVisionPlanner()`.
+
+```typescript
+export const RigIntentSchema = z.object({
+  pedals: z.array(PhysicalPedalSchema),
+  rigDescription: z.string().optional(),    // Free-text if user also typed a description
+  extractionNotes: z.string().optional(),   // Claude's notes on ambiguities
+});
+
+export type RigIntent = z.infer<typeof RigIntentSchema>;
+```
+
+### SubstitutionEntrySchema
+
+One pedal substitution — what gets shown in the UI substitution card.
+
+```typescript
+export const SubstitutionEntrySchema = z.object({
+  physicalPedal: z.string(),        // "TS9 Tube Screamer"
+  helixModel: z.string(),           // "Teemah!" (exact Helix model name)
+  substitutionReason: z.string(),   // "Closest gain structure and mid-hump EQ character"
+  parameterMapping: z.record(
+    z.string(),                     // Helix param name: "Drive"
+    z.number()                      // Translated value: 0.35
+  ),
+  confidence: z.enum(["direct", "close", "approximate"]),
+  // direct = exact model exists in Helix
+  // close = functionally equivalent, same circuit topology
+  // approximate = closest available, different character
+});
+
+export type SubstitutionEntry = z.infer<typeof SubstitutionEntrySchema>;
+```
+
+### SubstitutionMapSchema
+
+The full mapping result — what `mapRigToToneIntent()` returns.
+
+```typescript
+export const SubstitutionMapSchema = z.object({
+  substitutions: z.array(SubstitutionEntrySchema),
+  unmappedPedals: z.array(z.string()),  // Physical pedals with no Helix equivalent
+  toneContext: z.string(),              // Summary string passed to planner as hint
+});
+
+export type SubstitutionMap = z.infer<typeof SubstitutionMapSchema>;
 ```
 
 ---
 
-## Recommended Project Structure (After Pod Go Milestone)
+## Recommended Project Structure
 
 ```
-src/lib/helix/
-├── types.ts              EXTENDED — DeviceTarget, DEVICE_IDS, PgpFile interfaces
-├── models.ts             EXTENDED — HelixModel.devices field, getModelsForDevice()
-├── tone-intent.ts        UNCHANGED — ToneIntentSchema is device-agnostic
-├── chain-rules.ts        MODIFIED — device-aware block limit, dsp assignment
-├── param-engine.ts       UNCHANGED
-├── snapshot-engine.ts    UNCHANGED
-├── preset-builder.ts     UNCHANGED — Helix-specific .hlx builder
-├── podgo-builder.ts      NEW — Pod Go-specific .pgp builder
-├── validate.ts           MODIFIED — adds validatePodGoPresetSpec()
-├── config.ts             MODIFIED — adds Pod Go firmware version constants
-├── planner.ts            MODIFIED — passes deviceTarget, device-filtered model list
-├── param-registry.ts     UNCHANGED
-└── index.ts              MODIFIED — exports new Pod Go symbols
+src/
++-- app/
+|   +-- page.tsx                    MODIFIED: image upload UI, substitution card
+|   +-- api/
+|       +-- generate/
+|           +-- route.ts            MODIFIED: vision + mapping + planner orchestration
++-- lib/
+    +-- planner.ts                  MODIFIED: accept optional toneContext string
+    +-- rig-vision.ts               NEW: callRigVisionPlanner(images[]) -> RigIntent
+    +-- rig-mapping.ts              NEW: PEDAL_HELIX_MAP lookup + mapRigToToneIntent()
+    +-- gemini.ts                   UNCHANGED
+    +-- helix/
+        +-- rig-intent.ts           NEW: all rig-related Zod schemas and types
+        +-- tone-intent.ts          UNCHANGED
+        +-- chain-rules.ts          UNCHANGED
+        +-- param-engine.ts         UNCHANGED
+        +-- snapshot-engine.ts      UNCHANGED
+        +-- preset-builder.ts       UNCHANGED
+        +-- podgo-builder.ts        UNCHANGED
+        +-- models.ts               UNCHANGED
+        +-- types.ts                UNCHANGED
+        +-- index.ts                MODIFIED: export rig-intent types
+        +-- validate.ts             UNCHANGED
+        +-- config.ts               UNCHANGED
+        +-- param-registry.ts       UNCHANGED
 ```
+
+### Structure Rationale
+
+- **`rig-vision.ts` at `src/lib/` level:** Peers with `planner.ts` — both are AI call modules, not domain types. The `lib/` level owns AI calls; `lib/helix/` owns domain types and the Knowledge Layer.
+- **`rig-mapping.ts` at `src/lib/` level:** The mapping layer is a translation concern bridging the physical rig domain and the Helix domain. It logically sits between `rig-vision.ts` (what the user has) and `planner.ts` (what Helix should use).
+- **`rig-intent.ts` inside `src/lib/helix/`:** RigIntent and SubstitutionEntry describe Helix-specific substitution concepts. They belong in the helix domain module alongside ToneIntentSchema and are exported through the existing `src/lib/helix/index.ts` barrel.
 
 ---
 
 ## Architectural Patterns
 
-### Pattern 1: Device-Conditional at the Edges, Shared in the Middle
+### Pattern 1: Dedicated Vision Extraction Function
 
-**What:** Route.ts branches by device at call-in and call-out. The Knowledge Layer pipeline (chain-rules, param-engine, snapshot-engine) stays device-agnostic. Device-specific logic lives only in the builder and validator.
+**What:** `callRigVisionPlanner(images: Base64Image[])` is a standalone async function that makes one Claude API call with all images in a single message, using labeled content blocks ("Pedal 1:", "Pedal 2:"), and returns a `RigIntent`.
 
-**When to use:** When the core computation is identical and only the output format and input constraints differ.
+**When to use:** Every time the generate endpoint receives images[] in the request body.
 
-**Trade-offs:** Adds a small device context threading requirement (DeviceTarget flows into assembleSignalChain and planner) but avoids duplicating the entire pipeline.
+**Trade-offs:** One additional API call per generation (adds approximately 1-2 seconds latency). Benefit: the vision prompt is narrow and focused — it only asks "what pedals and knob positions do you see?" rather than also asking "what Helix preset should I build?"
 
-**Example:**
+**Note on structured output with vision:** The Claude API officially supports combining image content blocks with `output_config.format` (zodOutputFormat) in the same call — this is confirmed in the Anthropic structured outputs documentation. Either approach works for the vision call. Start without zodOutputFormat for simplicity. If extraction reliability is poor in testing, add `output_config` to the vision call with a RigIntentSchema JSON schema.
+
+**Implementation shape:**
+
 ```typescript
-// route.ts — branch only at builder stage
-const chain = assembleSignalChain(toneIntent, deviceTarget);  // context-aware limits
-const parameterized = resolveParameters(chain, toneIntent);   // identical
-const snapshots = buildSnapshots(parameterized, toneIntent.snapshots); // identical
+// src/lib/rig-vision.ts
+import Anthropic from "@anthropic-ai/sdk";
+import { RigIntentSchema } from "@/lib/helix/rig-intent";
+import type { RigIntent } from "@/lib/helix/rig-intent";
 
-// Branch at builder
-const file = isHelixDevice
-  ? buildHlxFile(presetSpec, deviceTarget)
-  : buildPgpFile(presetSpec, deviceTarget);
+export interface Base64Image {
+  data: string;      // raw base64 string (strip "data:image/jpeg;base64," prefix)
+  mediaType: "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+}
+
+export async function callRigVisionPlanner(
+  images: Base64Image[]
+): Promise<RigIntent> {
+  const client = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY! });
+
+  // Official docs: place images before text for best results
+  const contentBlocks: Anthropic.MessageParam["content"] = [
+    ...images.flatMap((img, i) => [
+      { type: "text" as const, text: `Pedal ${i + 1}:` },
+      {
+        type: "image" as const,
+        source: { type: "base64" as const, media_type: img.mediaType, data: img.data },
+      },
+    ]),
+    { type: "text" as const, text: buildRigExtractionPrompt() },
+  ];
+
+  const response = await client.messages.create({
+    model: "claude-sonnet-4-6",
+    max_tokens: 2048,
+    messages: [{ role: "user", content: contentBlocks }],
+  });
+
+  const textBlock = response.content.find((b) => b.type === "text");
+  if (!textBlock || textBlock.type !== "text") throw new Error("No vision response");
+  const raw = JSON.parse(extractJsonFromText(textBlock.text));
+  return RigIntentSchema.parse(raw);
+}
 ```
 
-### Pattern 2: Shared Model Database with Device Flags
+### Pattern 2: Static Lookup Table in rig-mapping.ts
 
-**What:** Single `models.ts` with per-model `devices?: DeviceTarget[]` property. `undefined` means all devices.
+**What:** `PEDAL_HELIX_MAP` is a curated constant — a typed `Record` mapping normalized physical pedal names (lowercase) to their best Helix equivalent with substitution metadata and knob translation functions.
 
-**When to use:** When model data is mostly shared and per-device differences are sparse exceptions.
+**When to use:** Always for physical-to-Helix mapping. Never let AI decide the mapping at generation time.
 
-**Trade-offs:** Slightly more complex filtering logic but eliminates sync problems between two separate databases.
+**Trade-offs:** Requires up-front curation effort (estimated 40-60 entries to cover most common pedals at launch). Benefit: deterministic, auditable, improvable without model changes. This follows the same philosophy as the existing Knowledge Layer.
 
-**Example:**
+**Implementation shape:**
+
 ```typescript
-// Models available everywhere (devices undefined = all)
-"US Deluxe Nrm": { id: "HD2_AmpUSDeluxeNrm", ..., devices: undefined }
+// src/lib/rig-mapping.ts
 
-// Model exclusive to Helix (not on Pod Go)
-"Tone Sovereign": { id: "HD2_DistToneSovereign", ..., devices: ["helix_lt", "helix_floor"] }
+import type { DeviceTarget } from "@/lib/helix";
+import type { RigIntent, SubstitutionEntry } from "@/lib/helix/rig-intent";
 
-// Hypothetical Pod Go-only model
-"PG Exclusive": { id: "HD2_PGExclusive", ..., devices: ["pod_go", "pod_go_wireless"] }
+export interface PedalMapEntry {
+  helixModel: string;      // Exact name from EFFECT_NAMES or AMP_NAMES
+  helixCategory: "distortion" | "amp" | "modulation" | "delay" | "reverb" | "dynamics";
+  reason: string;          // Human-readable substitution rationale
+  confidence: "direct" | "close" | "approximate";
+  // Optional: knob name -> function converting physical % to Helix 0-1
+  knobTranslation?: Record<string, (knobPercent: number) => number>;
+}
+
+export const PEDAL_HELIX_MAP: Record<string, PedalMapEntry> = {
+  // Tube Screamer variants
+  "ibanez ts9":           { helixModel: "Teemah!", helixCategory: "distortion",
+                            confidence: "close", reason: "..." },
+  "ibanez ts808":         { helixModel: "Teemah!", helixCategory: "distortion",
+                            confidence: "direct", reason: "..." },
+  // Boss overdrives
+  "boss sd-1":            { helixModel: "Minotaur", helixCategory: "distortion",
+                            confidence: "close", reason: "..." },
+  "boss od-1x":           { helixModel: "Minotaur", helixCategory: "distortion",
+                            confidence: "approximate", reason: "..." },
+  // ... 40-60 entries at launch covering most common stomp boxes
+};
+
+export function mapRigToToneIntent(
+  rigIntent: RigIntent,
+  device: DeviceTarget,
+): { substitutions: SubstitutionEntry[]; toneContext: string; unmappedPedals: string[] } {
+  const substitutions: SubstitutionEntry[] = [];
+  const unmappedPedals: string[] = [];
+
+  for (const pedal of rigIntent.pedals) {
+    const lookupKey = pedal.fullName.toLowerCase();
+    const entry = PEDAL_HELIX_MAP[lookupKey];
+
+    if (!entry) {
+      // Fuzzy fallback: try brand + model combination
+      const fallbackKey = `${pedal.brand.toLowerCase()} ${pedal.model.toLowerCase()}`;
+      const fallback = PEDAL_HELIX_MAP[fallbackKey];
+      if (!fallback) {
+        unmappedPedals.push(pedal.fullName);
+        continue;
+      }
+    }
+
+    const mapEntry = entry ?? PEDAL_HELIX_MAP[`${pedal.brand.toLowerCase()} ${pedal.model.toLowerCase()}`]!;
+    const parameterMapping = translateKnobs(pedal.knobPositions, mapEntry);
+
+    substitutions.push({
+      physicalPedal: pedal.fullName,
+      helixModel: mapEntry.helixModel,
+      substitutionReason: mapEntry.reason,
+      parameterMapping,
+      confidence: mapEntry.confidence,
+    });
+  }
+
+  const toneContext = buildToneContextString(substitutions, unmappedPedals);
+  return { substitutions, toneContext, unmappedPedals };
+}
 ```
 
-### Pattern 3: File Format Discovery Before Builder Implementation
+### Pattern 3: Planner Hint Injection via toneContext
 
-**What:** Before writing `podgo-builder.ts`, export one preset from Pod Go Edit and inspect the raw JSON to capture exact field names, nesting structure, and device ID.
+**What:** The existing `callClaudePlanner` receives an optional `toneContext` string that is appended to the conversation text before the API call. This string summarizes the rig mapping result so Claude selects the already-mapped Helix models.
 
-**When to use:** Always, when the output format is reverse-engineered rather than officially documented.
+**When to use:** When `rigIntent` is present (images were provided) or when the API route has a mapping result.
 
-**Trade-offs:** 5-minute task that prevents weeks of debugging incorrect .pgp structure.
+**Trade-offs:** Minimal change to `planner.ts`. The toneContext is appended to the user-facing conversation text block, not embedded in the system prompt. This preserves the existing prompt cache on the system prompt — the cached system prompt is not invalidated by per-request rig context.
 
-**Example discovery checklist:**
-- What is `data.device` numeric value for pod_go vs pod_go_wireless?
-- Is the schema still `"L6Preset"` or something else?
-- Is there a `dsp1` key present (even empty) or entirely absent?
-- How are the 6 fixed blocks (wah, volume, FX loop, amp, cab, EQ) represented?
-- Are snapshot keys snapshot0-snapshot3 or snapshot1-snapshot4?
-- What firmware version fields (device_version, appversion, build_sha) should be used?
+**Implementation change to planner.ts:**
+
+```typescript
+// MODIFIED signature — toneContext is optional, backwards-compatible
+export async function callClaudePlanner(
+  messages: Array<{ role: string; content: string }>,
+  device?: DeviceTarget,
+  toneContext?: string,   // NEW — rig mapping summary if images were provided
+): Promise<ToneIntent> {
+  // ... (client setup, modelList, systemPrompt — all unchanged) ...
+
+  let conversationText = messages
+    .map((msg) => `${msg.role}: ${msg.content}`)
+    .join("\n\n");
+
+  // Append rig context after conversation — does not invalidate system prompt cache
+  if (toneContext) {
+    conversationText +=
+      `\n\n[RIG CONTEXT]\n${toneContext}\n` +
+      `Please base your amp and effect model selections primarily on the ` +
+      `mapped Helix equivalents listed above.`;
+  }
+
+  // API call — structure unchanged
+  const response = await client.messages.create({
+    model: "claude-sonnet-4-6",
+    max_tokens: 4096,
+    system: [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }],
+    messages: [{ role: "user", content: conversationText }],
+    output_config: { format: zodOutputFormat(ToneIntentSchema) },
+  });
+  // ... rest unchanged ...
+}
+```
 
 ---
 
-## Anti-Patterns
+## Data Flow
 
-### Anti-Pattern 1: Forking chain-rules.ts and param-engine.ts
+### Full Request Flow with Images
 
-**What people do:** Copy chain-rules.ts to podgo-chain-rules.ts and param-engine.ts to podgo-param-engine.ts to handle Pod Go differences.
+```
+User attaches pedal photos + clicks "Generate Preset"
+    |
+    v
+page.tsx: FileReader.readAsDataURL -> strip data URL prefix -> base64 strings
+          Validate: max 3 images, max 1.5 MB each (before encoding)
+          Compress/resize to <= 1 MP using canvas API if needed
+    |
+    v
+POST /api/generate
+  body: { messages[], device, images?: [{ data, mediaType }] }
+    |
+    +-- if images[] present:
+    |       |
+    |       v
+    |   callRigVisionPlanner(images) -> RigIntent
+    |       |
+    |       v
+    |   mapRigToToneIntent(rigIntent, device)
+    |       -> { substitutions[], toneContext, unmappedPedals[] }
+    |
+    +-- callClaudePlanner(messages, device, toneContext?) -> ToneIntent
+    |
+    +-- assembleSignalChain(toneIntent, device) -> BlockSpec[]   [existing]
+    +-- resolveParameters(chain, toneIntent) -> BlockSpec[]      [existing]
+    +-- buildSnapshots(chain, toneIntent.snapshots) -> Snapshot[] [existing]
+    +-- validatePresetSpec(presetSpec, device)                    [existing]
+    +-- buildHlxFile / buildPgpFile                               [existing]
+    |
+    v
+Response: {
+  preset,                    // existing
+  summary,                   // existing
+  spec,                      // existing
+  toneIntent,                // existing
+  device,                    // existing
+  fileExtension,             // existing
+  substitutions?: SubstitutionEntry[],   // NEW — only if images provided
+  unmappedPedals?: string[],             // NEW
+}
+    |
+    v
+page.tsx: render SubstitutionCard if substitutions[] present
+```
 
-**Why it's wrong:** These modules are the most complex and well-tested in the codebase. Forking them doubles the surface area for bugs and means every future improvement (new genre profiles, new topology handling) must be applied twice. Pod Go's differences are primarily output-format constraints (single DSP, fewer blocks) not algorithmic differences.
+### Text-Only Rig Description Flow
 
-**Do this instead:** Pass `deviceTarget` as a parameter and add a small device-conditional block at the constraint-check point. The core logic is shared.
+When the user types "TS9 -> Blues Breaker -> Fender Twin Reverb" without images:
 
-### Anti-Pattern 2: Writing podgo-builder.ts Without Inspecting a Real .pgp File
+```
+POST /api/generate
+  body: { messages[], device }  (no images field)
+    |
+    +-- No vision step (images absent)
+    +-- callClaudePlanner(messages, device)  <- unchanged behavior
+    |   The planner reads the text description from messages[] and uses
+    |   its training knowledge to select appropriate Helix models.
+    |
+    v
+Response: { preset, summary, spec, toneIntent, device, fileExtension }
+  (no substitutions field — UI shows nothing extra)
+```
 
-**What people do:** Look at the .hlx format, assume .pgp is structurally similar, and write the builder based on that assumption.
+Text-only rig descriptions require zero new backend logic. The existing planner handles them without modification because the conversation history already contains the gear description.
 
-**Why it's wrong:** Community sources confirm .pgp is JSON and shares some field names with .hlx, but the device ID, topology fields, fixed block representation, and snapshot count all differ. Building without verification risks producing files that import as "incompatible device."
+### Client-Side Image Handling
 
-**Do this instead:** Export one preset from Pod Go Edit, open it in a text editor, and verify the structure before writing a single line of `podgo-builder.ts`. This is the single highest-value step in the entire milestone.
-
-### Anti-Pattern 3: Adding Pod Go Logic to ToneIntentSchema
-
-**What people do:** Add a `deviceTarget` field to ToneIntent, then use it inside chain-rules and param-engine to branch behavior.
-
-**Why it's wrong:** ToneIntent is the AI output contract. Polluting it with infrastructure concerns (which device the user selected) conflates creative intent with execution context. The device selection is a UI concern that flows through route.ts, not through Claude's output.
-
-**Do this instead:** Thread `deviceTarget` as a separate function parameter through the Knowledge Layer functions that need it. Keep ToneIntentSchema clean.
-
-### Anti-Pattern 4: Single models.ts Split Into Two Files
-
-**What people do:** Create `helix-models.ts` and `podgo-models.ts`.
-
-**Why it's wrong:** Synchronization hell. Pod Go uses ~95% of the same models as Helix. Maintaining two files that are mostly identical creates guaranteed drift.
-
-**Do this instead:** Single models.ts with `devices` flag. Pod Go gets a filtered view via `getModelsForDevice("pod_go")`.
-
----
-
-## Build Order
-
-The build order is constrained by dependencies. Each step can only proceed after its prerequisites are done.
-
-### Phase 1: Foundation (No Risk, No Unknown)
-
-**Step 1.1: Inspect a real .pgp file**
-Before any code. Open Pod Go Edit, create a minimal preset (one amp, one reverb, 4 snapshots), export it, open the .pgp in a text editor. Document: device ID, schema name, exact field structure, snapshot key naming, fixed block representation.
-
-This step has zero code risk and eliminates all LOW-confidence assumptions about the file format.
-
-**Step 1.2: Extend types.ts**
-- Add `pod_go` and `pod_go_wireless` to DeviceTarget
-- Add PgpFile interface (from .pgp inspection)
-- Add DEVICE_IDS for Pod Go (from .pgp inspection)
-- Create PgpTone, PgpDsp interfaces
-
-**Step 1.3: Extend models.ts**
-- Add `devices?: DeviceTarget[]` to HelixModel interface
-- Add `getModelsForDevice(target)` helper
-- Mark Pod Go-excluded models (Tone Sovereign, Clawthorn Drive, Cosmos Echo) with `devices: ["helix_lt", "helix_floor"]`
-- Update `getModelListForPrompt(deviceTarget?)` to use device filtering
-
-No tests break. No existing behavior changes (undefined = all devices).
-
-### Phase 2: Knowledge Layer Adaptation (Low Risk)
-
-**Step 2.1: Modify chain-rules.ts**
-- Add `deviceTarget` parameter to `assembleSignalChain(intent, deviceTarget)`
-- Pod Go path: all blocks forced to dsp:0; no dsp1
-- Pod Go path: skip Parametric EQ BlockSpec (use fixed device EQ)
-- Pod Go path: skip Gain Block BlockSpec (use fixed device volume)
-- Pod Go path: validate max 4 user effect blocks
-- Update chain-rules.test.ts with Pod Go test cases
-
-**Step 2.2: Modify planner.ts**
-- Add `deviceTarget` parameter to `callClaudePlanner(messages, deviceTarget)`
-- Pass deviceTarget to `getModelListForPrompt(deviceTarget)`
-- Update system prompt to say "Pod Go preset" vs "Helix LT preset"
-
-### Phase 3: New Components (Medium Risk — File Format Uncertainty)
-
-**Step 3.1: Write podgo-builder.ts**
-- Uses findings from Step 1.1 (real .pgp inspection)
-- `buildPgpFile(spec, device)` → PgpFile
-- Single DSP section only
-- 4 snapshots only (snapshot0-snapshot3)
-- Pod Go footswitch layout (FS1, FS2, FS4, FS5, FS6)
-- Correct device ID and firmware version fields
-
-**Step 3.2: Add validatePodGoPresetSpec() to validate.ts**
-- No dsp1 blocks
-- Max 4 user effects
-- Model IDs valid for Pod Go
-
-### Phase 4: Integration and Wiring
-
-**Step 4.1: Modify route.ts**
-- Parse `pod_go` and `pod_go_wireless` device values
-- Branch at builder stage
-- Return correct file extension in response
-
-**Step 4.2: Modify page.tsx**
-- Add Pod Go options to device selector
-- Use `.pgp` extension for Pod Go downloads
-- Conditionally hide DSP 2 row in signal chain visualization
-
-**Step 4.3: Update index.ts**
-- Export new Pod Go symbols
-- Export PgpFile type, buildPgpFile, validatePodGoPresetSpec
-
-### Phase 5: Testing
-
-**Step 5.1: Integration test**
-- Generate a Pod Go preset end-to-end
-- Import the .pgp file into POD Go Edit on hardware
-- Verify it loads without "incompatible device" error
-- Verify signal chain, snapshots, and block assignments are correct
-
-**Step 5.2: Regression test**
-- Verify existing Helix LT and Helix Floor generation still works unchanged
-- Run existing test suite
+```
+User selects files via file input or drag-drop
+    |
+    v
+Validate in browser:
+  - Accept: image/jpeg, image/png, image/gif, image/webp (Claude API limits)
+  - Max 3 images per request (stays under Vercel 4.5 MB body limit)
+  - Max 1.5 MB per image before base64 encoding (~2 MB encoded)
+    |
+    v
+Compress/resize if needed:
+  - Target: <= 1 megapixel (1000x1000 px equivalent)
+  - Target: <= 1568 px on longest edge (Claude docs optimal dimension)
+  - Use canvas API: drawImage -> toBlob with JPEG quality 0.85
+    |
+    v
+FileReader.readAsDataURL -> "data:image/jpeg;base64,<data>"
+Strip prefix -> raw base64 string
+    |
+    v
+Include in POST body: images: [{ data: "<base64>", mediaType: "image/jpeg" }]
+```
 
 ---
 
 ## Integration Points
 
-### External Boundaries
+### New vs Modified vs Existing Files — Explicit
 
-| Boundary | Communication | Notes |
-|----------|---------------|-------|
-| Claude API ↔ planner.ts | Structured output (zodOutputFormat) | ToneIntentSchema unchanged; only model list changes |
-| route.ts ↔ chain-rules | Function call with new deviceTarget param | Backwards-compatible if deviceTarget defaults to "helix_lt" |
-| route.ts ↔ podgo-builder | Direct function call | New dependency |
-| page.tsx ↔ /api/generate | POST body adds no new fields; response same shape | file content and extension differ per device |
+**New files (create from scratch):**
 
-### Internal Boundaries
+| File | Exports | Purpose |
+|------|---------|---------|
+| `src/lib/helix/rig-intent.ts` | `PhysicalPedalSchema`, `RigIntentSchema`, `SubstitutionEntrySchema`, `SubstitutionMapSchema` and inferred types | All Zod schemas for the rig domain |
+| `src/lib/rig-vision.ts` | `callRigVisionPlanner(images[])`, `Base64Image` | Claude vision API call |
+| `src/lib/rig-mapping.ts` | `PEDAL_HELIX_MAP`, `mapRigToToneIntent()` | Static pedal lookup + translation |
 
-| Module A | Module B | Change | Notes |
-|----------|----------|--------|-------|
-| route.ts | planner.ts | Modified | deviceTarget threads through |
-| route.ts | chain-rules | Modified | deviceTarget parameter added |
-| route.ts | podgo-builder | New | new import |
-| route.ts | validate.ts | Modified | calls validatePodGoPresetSpec |
-| models.ts | tone-intent.ts | Modified | getModelListForPrompt(deviceTarget?) |
-| param-engine.ts | models.ts | Unchanged | no interface changes affect param-engine |
-| snapshot-engine.ts | — | Unchanged | fully device-agnostic |
+**Modified files (specific changes only):**
+
+| File | Change | Lines affected |
+|------|--------|----------------|
+| `src/app/page.tsx` | Add file input or drag-drop; add SubstitutionCard component; send images[] in generate POST | New state: `images`, `substitutions`; new UI sections |
+| `src/app/api/generate/route.ts` | Parse images from body; call vision + mapping if present; add substitutions to response | ~20 new lines in try block |
+| `src/lib/planner.ts` | Add `toneContext?: string` as third parameter to `callClaudePlanner`; append to conversationText if present | ~8 lines |
+| `src/lib/helix/index.ts` | Add exports for rig-intent types | ~4 lines |
+
+**Unchanged files (zero modification):**
+
+```
+src/lib/helix/tone-intent.ts     ToneIntentSchema is device-agnostic; rig data never enters it
+src/lib/helix/chain-rules.ts     Receives ToneIntent as before; no rig awareness needed
+src/lib/helix/param-engine.ts    Receives ToneIntent as before
+src/lib/helix/snapshot-engine.ts Receives ToneIntent as before
+src/lib/helix/preset-builder.ts  Receives PresetSpec as before
+src/lib/helix/podgo-builder.ts   Receives PresetSpec as before
+src/lib/helix/models.ts          Model catalog unchanged
+src/lib/helix/types.ts           Core types unchanged
+src/lib/helix/validate.ts        Validation unchanged
+src/lib/helix/config.ts          Unchanged
+src/lib/helix/param-registry.ts  Unchanged
+src/lib/gemini.ts                Unchanged
+```
+
+---
+
+## Suggested Build Order for Phases
+
+Dependencies determine order. Each phase must be completable and testable independently before the next begins.
+
+### Phase 1: New Schemas and Types
+
+**Files:** `src/lib/helix/rig-intent.ts`, update `src/lib/helix/index.ts`
+
+**Why first:** Every other new module imports from here. RigIntentSchema, PhysicalPedalSchema, SubstitutionEntrySchema, and SubstitutionMapSchema must exist before any function can reference them. Zero external dependencies — compiles and validates with just Zod.
+
+**Done when:** All types compile, Zod schemas parse correctly against example data, exports visible from `@/lib/helix`.
+
+**Estimated scope:** ~60 lines.
+
+### Phase 2: Pedal Mapping Table
+
+**Files:** `src/lib/rig-mapping.ts`
+
+**Why second:** Pure data plus deterministic transformation logic. No dependency on the Claude API. Can be built and tested without any AI calls. The quality of this table determines substitution quality — it deserves its own phase to be built carefully.
+
+**Target at launch:** 40-60 entries covering:
+- All major Boss overdrives, distortions, modulations (SD-1, DS-1, BD-2, OD-3, CE-5, CH-1, BF-3)
+- All Ibanez Tube Screamer variants (TS5, TS7, TS9, TS808, TS10)
+- ProCo Rat family
+- Electro-Harmonix Big Muff variants (NYC, Green Russian, Triangle)
+- Fulltone OCD, Full-Drive 2
+- MXR Phase 90, Dyna Comp, Carbon Copy
+- Common amp names in text descriptions (Fender Twin -> Archon 50 Clean, Marshall JCM800 -> Brit 2204, Mesa Boogie -> Cali IV Rhythm 2)
+
+**Depends on:** Phase 1 types (SubstitutionEntry, SubstitutionMap).
+
+**Done when:** `mapRigToToneIntent()` correctly maps known pedals, handles unknown pedals via `unmappedPedals[]`, and returns a valid toneContext string.
+
+### Phase 3: Vision Extraction
+
+**Files:** `src/lib/rig-vision.ts`
+
+**Why third:** References Phase 1 types. Tested against Phase 2 mapping to verify end-to-end flow. The vision prompt can be tuned independently of any planner changes.
+
+**Depends on:** Phase 1 types. Claude API key in env.
+
+**Done when:** `callRigVisionPlanner([pedal_photo])` returns a `RigIntent` with correct brand, model, and approximate knob positions for a known test pedal photo.
+
+**Testing approach:** Use a high-quality JPEG photo of a Boss SD-1 or Ibanez TS9 as the baseline test case. Both are well-documented pedals Claude will recognize reliably.
+
+### Phase 4: API Route and Planner Integration
+
+**Files:** `src/app/api/generate/route.ts`, `src/lib/planner.ts`
+
+**Why fourth:** Wires the full pipeline together. The route now calls vision -> mapping -> planner in sequence when images are present. The planner receives toneContext. Both new code paths are tested end-to-end.
+
+**Depends on:** Phases 1, 2, 3 complete. All new imports resolvable.
+
+**Done when:** A POST to `/api/generate` with a pedal photo produces a preset that reflects the mapped pedal selections in ToneIntent (planner selected "Teemah!" when user uploaded a TS9 photo), and the response JSON includes `substitutions[]`.
+
+### Phase 5: Browser Image Upload UI and Substitution Card
+
+**Files:** `src/app/page.tsx`
+
+**Why fifth:** UI is the last layer. The backend API contract (what fields go in the request, what comes back in the response) must be stable before building UI against it.
+
+**UI changes:**
+- File input or drag-drop area in the chat input section (below the textarea)
+- Image thumbnail previews with remove button
+- Client-side size validation and compression
+- `SubstitutionCard` component rendering `substitutions[]` in the preset result
+
+**Done when:** User attaches 1-3 pedal photos, generates a preset, and sees the substitution card showing "TS9 Tube Screamer -> Teemah! — closest gain structure and mid-hump EQ" in the results view.
 
 ---
 
 ## Scaling Considerations
 
-| Scale | Architecture Adjustment |
-|-------|------------------------|
-| 2 devices (now) | Single builder per device, shared Knowledge Layer |
-| 3-4 devices (HX Stomp, Helix Native) | Same pattern — new *-builder.ts per device, shared core |
-| 5+ devices | Consider a builder registry pattern: `BUILDERS: Record<DeviceTarget, BuilderFn>` |
+| Scale | Architecture Adjustments |
+|-------|--------------------------|
+| 0-1k users | Two sequential Claude calls per generation (vision + planner). Estimated ~$0.008-0.020 per generation with images (vision adds ~1600 tokens per image). Acceptable on free tier. |
+| 1k-100k users | Vision call latency dominates if images are large. Enforce aggressive client-side compression (target 500-800px max). Consider `cache_control: ephemeral` on the vision system prompt if using one. |
+| 100k+ users | PEDAL_HELIX_MAP maintenance becomes a concern — consider migrating to a JSON data file or database. Consider parallelizing vision + an optimistic planner call (cancel if vision fails). |
 
-The current architecture supports 3-4 devices without structural changes. A builder registry only becomes valuable when the number of devices makes the if/else chain in route.ts unwieldy.
+### Scaling Priorities
 
----
+1. **First bottleneck:** Vercel 4.5 MB body limit with multiple large images. Prevention: enforce ≤ 1.5 MB per image and ≤ 3 images client-side before encoding. Target ≤ 1 MB total base64 payload in normal use.
 
-## Gaps and Open Questions
-
-| Question | Impact | Resolution |
-|----------|--------|------------|
-| Exact .pgp device ID for pod_go and pod_go_wireless | Blocks podgo-builder.ts | Step 1.1: inspect real .pgp file |
-| Exact .pgp JSON schema name (is it "L6Preset"?) | Blocks PgpFile type | Step 1.1 |
-| How Pod Go's fixed blocks appear in .pgp JSON | Blocks podgo-builder.ts | Step 1.1 |
-| Complete list of models absent from Pod Go | Affects model flag completeness | Inspect Pod Go Edit's model browser or a full Pod Go preset |
-| Pod Go firmware version constants (device_version, build_sha) | Blocks config.ts for Pod Go | Step 1.1 |
-| Are Pod Go snapshot keys 0-indexed (snapshot0) or 1-indexed? | Affects podgo-builder.ts | Step 1.1 |
-
-All gaps resolve from a single 5-minute action: exporting and inspecting one real .pgp file. This is the critical path blocker for the entire milestone.
+2. **Second bottleneck:** Two sequential API calls increasing latency to 6-10 seconds for image-based generation (vs. 3-5 seconds for text-only). If this is unacceptable, consider streaming a "Analyzing your rig..." progress indicator while the vision call runs.
 
 ---
 
-## Confidence Assessment
+## Anti-Patterns
 
-| Area | Confidence | Reasoning |
-|------|------------|-----------|
-| Pod Go hardware constraints (single DSP, 4 slots, 4 snapshots) | HIGH | Line 6 official FAQ + multiple community sources confirm |
-| .pgp is JSON format | HIGH | Community members confirmed, converter tools exist |
-| Model names/IDs are same HD2_ namespace | HIGH | Line 6 states same HX engine; Pod Go is subset |
-| ToneIntent unchanged | HIGH | Design invariant — device is execution context, not intent |
-| param-engine, snapshot-engine fully shared | HIGH | No device-specific logic exists in these modules |
-| Specific .pgp field names and device ID | LOW | No official docs; requires real file inspection |
-| Exact Pod Go model exclusion list | MEDIUM | Known exclusions documented; exhaustive list needs verification |
-| Fixed block representation in .pgp | LOW | Inferred from architecture; requires real file inspection |
+### Anti-Pattern 1: Let AI Handle the Physical-to-Helix Mapping in the Planner Prompt
+
+**What people do:** Add the pedal photos directly to the existing `callClaudePlanner` call and instruct Claude to "pick the closest Helix equivalent" in the same prompt that generates ToneIntent.
+
+**Why it's wrong:** The mapping result is not auditable. When Claude maps a Big Muff to a high-gain amp model instead of a fuzz distortion block, you cannot fix it without changing the planner prompt and retesting all existing tone generation. The mapping and creative-selection concerns are entangled.
+
+**Do this instead:** Two-step. Extract with `callRigVisionPlanner`, map deterministically with `PEDAL_HELIX_MAP`, pass result as toneContext hint to planner.
+
+### Anti-Pattern 2: Extend ToneIntentSchema with Rig Fields
+
+**What people do:** Add `rigPedals?: PhysicalPedal[]` or `substitutions?: SubstitutionEntry[]` directly to ToneIntentSchema.
+
+**Why it's wrong:** ToneIntent is the AI output contract. It describes which Helix models to use, not what physical gear was mapped. Mixing the two schemas creates a contract that is part-AI-output, part-pre-processed infrastructure data. The Knowledge Layer would receive fields it never uses and the schema becomes harder to reason about.
+
+**Do this instead:** Keep ToneIntent exactly as-is. Substitutions travel alongside ToneIntent in the API response as a parallel field (`substitutions?: SubstitutionEntry[]`), not inside it.
+
+### Anti-Pattern 3: Accept Image Uploads as multipart/form-data in the API Route
+
+**What people do:** Use multipart/form-data file upload in the Next.js App Router API route, decode the uploaded file server-side, then pass to Claude.
+
+**Why it's wrong:** Vercel serverless functions have a 4.5 MB request body limit and the Next.js App Router does not have a built-in multipart streaming parser. Large image uploads will trigger 413 errors before reaching the handler.
+
+**Do this instead:** Encode images in the browser before sending. Use `FileReader.readAsDataURL`, strip the data URL prefix, send the raw base64 string in the existing JSON body alongside messages. Enforce size limits client-side so the request body stays under 3 MB total.
+
+### Anti-Pattern 4: One Claude API Call Per Pedal Photo
+
+**What people do:** Iterate over `images[]` and call `callRigVisionPlanner` once per image.
+
+**Why it's wrong:** The Claude API supports up to 100 images in a single messages call. Calling once per photo multiplies API call count, latency, and cost proportionally with the number of photos. With 3 photos, this triples the cost and adds 3-6 seconds of additional latency.
+
+**Do this instead:** Pass all images in a single call with labeled content blocks ("Pedal 1:", "Pedal 2:") and ask Claude to return a `pedals[]` array with one entry per image. The official Claude vision documentation demonstrates multi-image comparison in a single call.
+
+### Anti-Pattern 5: Store Base64 Images in React State Across Re-renders
+
+**What people do:** Store the full base64 strings in React state so they persist through the chat conversation.
+
+**Why it's wrong:** A 1.5 MB image becomes a 2 MB base64 string. Three images = 6 MB in component state, causing slow re-renders. The images are only needed at the moment "Generate Preset" is clicked.
+
+**Do this instead:** Store `File` objects in React state (or a ref). Convert to base64 only in the `generatePreset()` function immediately before the API call. Release after the call completes.
+
+---
+
+## Integration Points
+
+### External Services
+
+| Service | Integration Pattern | Notes |
+|---------|---------------------|-------|
+| Anthropic Messages API (vision) | `client.messages.create` with image content blocks in user message | Same SDK instance, same `CLAUDE_API_KEY`. Image content blocks are standard API — no beta header needed. |
+| Anthropic Messages API (planner) | Existing — completely unchanged | Prompt caching on system prompt unaffected by toneContext appended to user message |
+
+### Internal Boundaries
+
+| Boundary | Communication | Notes |
+|----------|---------------|-------|
+| `route.ts` -> `rig-vision.ts` | Direct function call, `Base64Image[]` in, `RigIntent` out | No shared state; pure async function |
+| `rig-vision.ts` -> `rig-mapping.ts` | Direct function call, `RigIntent` in, `{ substitutions[], toneContext }` out | Deterministic; fully testable in isolation with no API dependency |
+| `rig-mapping.ts` -> `planner.ts` | `toneContext: string` passed as third argument | Minimal coupling; planner treats it as additional conversation context |
+| `route.ts` -> `page.tsx` | JSON response field `substitutions?: SubstitutionEntry[]` | Optional — only present when images were provided; UI checks for existence before rendering |
 
 ---
 
 ## Sources
 
-- [POD Go Block Restrictions — Line 6 Community](https://line6.com/support/topic/62007-pod-go-block-restrictions/)
-- [POD Go FAQ — Line 6 Knowledge Base](https://kb.line6.com/kb/live/pod-go-faq)
-- [POD Go vs. Helix HX — Line 6 Community](https://line6.com/support/topic/58152-pod-go-vs-helix-hx/)
-- [POD Go Signal Flow Logic — Line 6 Community](https://line6.com/support/topic/56557-signal-flow-logic/)
-- [Fileformats, Custom Tools and API — Line 6 Community](https://line6.com/support/topic/63502-fileformats-custom-tools-and-api/)
-- [POD Go / Helix Converter — Line 6 Community](https://line6.com/support/topic/64226-pod-gohelix-converter/)
-- [Zavsek POD_GO-Helix_converter — GitHub](https://github.com/Zavsek/POD_GO-Helix_converter)
-- [POD Go Models Page — Line 6](https://line6.com/podgo-models/)
-- [POD Go FAQ Page 4 — Line 6 Community](https://line6.com/support/topic/53806-pod-go-faq/page/4/)
-- [Pod Go DSP Use of Every Block — Ivan Pesut](https://buymeacoffee.com/ivanpe/line-6-pod-go-dsp-use-of-every-block)
-- Direct codebase inspection: src/lib/helix/* (2026-03-02)
+- [Anthropic Vision Documentation](https://platform.claude.com/docs/en/build-with-claude/vision) — Image content block format, size limits (5 MB per image, 100 images per request, 32 MB total request), base64 encoding, multi-image best practices, image-before-text placement recommendation. HIGH confidence.
+- [Anthropic Structured Outputs Documentation](https://platform.claude.com/docs/en/build-with-claude/structured-outputs) — `output_config.format` (zodOutputFormat equivalent) is generally available on Claude Sonnet 4.6; compatible with vision image input in the same call. HIGH confidence.
+- [Vercel Functions Limitations](https://vercel.com/docs/functions/limitations) — 4.5 MB request body limit confirmed; not configurable; workarounds are streaming or client-side uploads. HIGH confidence.
+- Existing codebase inspection — `planner.ts`, `route.ts`, `tone-intent.ts`, `chain-rules.ts`, `param-engine.ts`, `snapshot-engine.ts`, `types.ts`, `index.ts`, `page.tsx` read in full. All integration points verified against actual code.
 
 ---
 
-*Architecture research for: HelixAI — Pod Go integration milestone*
+*Architecture research for: HelixAI v1.3 Rig Emulation — vision input extension to the Planner-Executor architecture*
 *Researched: 2026-03-02*

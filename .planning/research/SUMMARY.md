@@ -1,187 +1,245 @@
-# Project Research Summary
+# Research Summary — HelixAI v1.3 Rig Emulation
 
-**Project:** HelixAI v1.2 — Pod Go Device Support
-**Domain:** Line 6 Pod Go preset generation (.pgp files) added to existing Helix preset generator
+**Project:** HelixAI v1.3 Rig Emulation
+**Domain:** Vision AI + physical pedal mapping integrated into an existing Planner-Executor guitar preset system
 **Researched:** 2026-03-02
-**Confidence:** MEDIUM-HIGH (hardware constraints HIGH; .pgp file format confirmed via 18 real file inspections; effect model catalog partially confirmed)
+**Confidence:** HIGH (all claims verified against official Anthropic, Vercel, and Line 6 documentation; codebase inspected directly)
+
+> **Note on FEATURES.md:** The existing FEATURES.md contains v1.2 Pod Go research and was intentionally excluded from this synthesis. Feature scope for v1.3 is derived from ARCHITECTURE.md and PITFALLS.md.
+
+---
 
 ## Executive Summary
 
-HelixAI v1.2 adds Pod Go as a third device target alongside Helix LT and Helix Floor. Pod Go is a simpler device — single DSP chip, serial-only signal chain, 10 blocks (6 fixed + 4 user-assignable), 4 snapshots, and a `.pgp` file format that is structurally similar to `.hlx` but differs in dozens of specific field values. The Feature research inspected 18 real `.pgp` files and identified critical differences: effect model IDs require Mono/Stereo suffixes (`HD2_DistScream808Mono` not `HD2_DistScream808`), block `@type` values are completely remapped (delay=5 not 7, modulation=0 not 4), input/output keys are `input`/`output` not `inputA`/`outputA`, the snapshot controller number is 4 not 19, and the device ID is 2162695. These are not optional tweaks — getting any one wrong produces a file that Pod Go Edit silently rejects.
+HelixAI v1.3 adds the ability to photograph a physical guitar pedal board and receive a Helix preset that emulates that specific rig. This is a two-part problem: vision AI reads pedal labels and knob positions from photos, then a deterministic mapping layer translates physical pedals to their closest Helix equivalents. The critical design insight from research is that these are two separate concerns — vision extraction is noisy and AI-driven, while pedal-to-Helix mapping must be a curated static lookup table, never delegated to the AI's general gear knowledge. Conflating them into a single Claude call is the primary architectural trap to avoid.
 
-The recommended approach is to extend the existing Planner-Executor architecture by keeping the AI layer (planner.ts, ToneIntent) and middle Knowledge Layer (param-engine.ts, snapshot-engine.ts) shared, while creating a new `podgo-builder.ts` for file generation and adapting `chain-rules.ts` with device-aware constraints. No new npm packages are needed. The entire milestone is pure TypeScript data transformation within `src/lib/helix/`. The Architecture research recommends sharing chain-rules with a `deviceTarget` parameter (minimizes duplication), while Pitfalls research warns against contaminating Helix code paths. The resolution: share chain-rules.ts with a `deviceTarget` parameter for constraint checks, keep the builder and validator as separate functions, and run the existing 50-test Helix suite after every change.
+The vision API decision is settled: use Claude Sonnet 4.6 (already in the codebase) with base64 image content blocks. All three evaluated options — Claude Sonnet 4.6, Gemini Flash, and Google Cloud Vision — share the same fundamental spatial reasoning limitation for reading rotary knob positions. The accuracy difference between Claude and Gemini is negligible for this task. Claude wins decisively on zero integration cost: no new SDK, no new API key, no new error surface. The only new dependency is `browser-image-compression` (v2.0.2) for client-side payload reduction before upload. This is architecturally a clean extension of what already exists.
 
-The single highest risk is "silent success" — a preset that generates without errors, downloads successfully, but cannot be imported into Pod Go Edit. Every format pitfall (wrong device ID, wrong @type values, wrong model IDs, wrong snapshot count) produces this exact failure mode with no useful diagnostic. The mitigation is strong: the Feature researcher inspected 18 real `.pgp` files and documented exact field values. The remaining risk is in the completeness of the Pod Go effect model catalog — only ~30 of 206+ effects have confirmed Mono/Stereo suffixed IDs from real files.
+The dominant production risk is not accuracy — it is silent wrong answers. A pedal photographed in poor lighting may be confidently misidentified. A boutique pedal not in the mapping table may be fuzzy-matched to the wrong Helix equivalent. Knob positions extracted as precise percentages will be systematically unreliable. Every one of these failure modes looks like a success — no error message, plausible output. The mitigation is a consistent uncertainty representation throughout the pipeline: vision extraction returns a `confidence` field, mapping returns a `matchTier` (direct/close/approximate/unknown), and knob positions are coarse zones (low/mid/high), never false-precision percentages.
+
+---
 
 ## Key Findings
 
-### Recommended Stack
+### 1. Vision API Decision
 
-No new dependencies. Pod Go support is implemented entirely with the existing stack (TypeScript, Zod, Vitest, Next.js). All changes are pure TypeScript in `src/lib/helix/` plus a new `podgo-builder.ts`. The only external tool needed is POD Go Edit 2.50 (free download from Line 6) for validating generated `.pgp` files.
+**Use Claude Sonnet 4.6.** The decision is architectural, not accuracy-based.
 
-**Core technologies (all existing):**
-- **TypeScript 5.x**: Pod Go model registry, chain rules, preset builder — pure data transformation
-- **Zod 4.x**: Add `"pod_go"` to `DeviceTarget` enum in ToneIntentSchema
-- **Vitest 3.x**: Unit tests for Pod Go chain-rules and preset-builder (same patterns as Helix tests)
+| Option | Knob Reading | Integration Cost | Decision |
+|--------|-------------|-----------------|----------|
+| Claude Sonnet 4.6 | LIMITED — clock-face spatial reasoning problem | ZERO — existing SDK | **Use this** |
+| Gemini 2.0/2.5 Flash | LIMITED — same weakness | HIGH — new SDK, new API key | Only at >50k sessions/month |
+| Google Cloud Vision API | NOT APPLICABLE — no rotary reasoning | HIGH — two API calls, two keys | Never for this task |
 
-### Expected Features
+The official Anthropic docs explicitly state Claude "may struggle with tasks requiring precise localization, like reading an analog clock face." Reading a knob is the same task. This limitation applies equally to Gemini. **Design consequence:** prompt for coarse zones (low / medium-low / medium-high / high), not precise percentages. LLMs reliably distinguish "fully counterclockwise" from "noon" from "fully clockwise." Sub-10% precision is not achievable from any current vision LLM.
 
-**Must have (table stakes — file will not load without these):**
-- Valid `.pgp` file with device ID 2162695, correct `device_version`, `P34_AppDSPFlow*` I/O models
-- Effect model IDs with Mono/Stereo suffixes (cannot reuse Helix effect IDs directly)
-- Correct `@type` values for all block categories (complete remap from Helix values)
-- Series-only signal chain — all blocks on dsp0, `dsp1: {}` always empty
-- Exactly 4 snapshots (snapshot0-snapshot3) with `@controller: 4` for snapshot recall
-- `input`/`output` keys (not `inputA`/`outputA`), no `@path` or `@stereo` on blocks
-- No `@topology` fields in global section; `@model: "@global_params"` present
-- Cab placed as a numbered block in the chain (not as separate `cab0` key like Helix)
-- Footswitch section with `@fs_*` metadata per block
-- `.pgp` file extension on download
+**New dependencies (one only):**
+- `browser-image-compression@2.0.2` — client-side compression before upload. Targets 800KB/image, max 1568px edge (Claude's optimal dimension), runs in a Web Worker. Install: `npm install browser-image-compression`. Client-side only — import inside `"use client"` components.
 
-**Should have (differentiators):**
-- Pod Go-specific model catalog with all 86 amps and 206+ effects at correct suffixed IDs
-- DSP-awareness heuristics in chain-rules (avoid heavy effect combos)
-- Pod Go context in UI (device label on tone card, 4-snapshot display, firmware version note)
+No new server-side packages. No new API keys. Existing `@anthropic-ai/sdk` already supports image content blocks.
 
-**Defer (v2+):**
-- Pod Go Wireless as separate device target (same format, display name only)
-- Stomp mode footswitch layout optimization (musical logic-based FS assignment)
-- Live DSP budget calculation (no official DSP cost table from Line 6)
+**Payload budget (Vercel 4.5MB hard limit):**
+- 1 image @ 800KB compressed = ~0.9MB binary payload — safe
+- 3 images @ 800KB each = ~2.5MB — safe
+- 4+ images — enforce client-side rejection with explicit user message; do not silently drop
 
-See `.planning/research/FEATURES.md` for full prioritization matrix, feature dependency graph, and detailed `.pgp` format specification.
+### 2. Architecture Decision: Two-Step Flow
 
-### Architecture Approach
+**Use the two-step pre-processing architecture.** This is the definitive recommendation.
 
-The Planner-Executor separation is preserved. ToneIntent remains device-agnostic — the AI selects amps/effects by name, the Knowledge Layer handles device-specific formatting. Device context flows as a `deviceTarget` parameter through `route.ts` into `assembleSignalChain()` and the device-specific builder. The core pipeline is: shared planner (device-filtered model list) -> shared chain-rules (device-aware limits) -> shared param-engine (unchanged) -> shared snapshot-engine (unchanged) -> device-specific validator -> device-specific builder.
+```
+Step 1: callRigVisionPlanner(images[]) -> RigIntent          [NEW: rig-vision.ts]
+        One Claude call. All images labeled "Pedal 1:", "Pedal 2:", etc.
+        Returns: { pedals: [{ brand, model, fullName, knobPositions, confidence }] }
 
-**Major components:**
-1. **podgo-builder.ts** (NEW) — Emits valid `.pgp` JSON with all Pod Go-specific field values, cab-as-block, 4 snapshots, footswitch section
-2. **chain-rules.ts** (MODIFIED) — Accepts `deviceTarget` parameter; Pod Go path forces dsp:0, enforces 4-effect limit, skips Parametric EQ and Gain Block insertion
-3. **models.ts** (EXTENDED) — `devices?: DeviceTarget[]` flag per model; `getModelsForDevice()` helper; Pod Go effect IDs with Mono/Stereo suffixes
-4. **types.ts** (EXTENDED) — `DeviceTarget` union adds `pod_go`; `PgpFile`, `PodGoTone` interfaces; `DEVICE_IDS` with pod_go: 2162695
-5. **validate.ts** (EXTENDED) — New `validatePodGoPresetSpec()` function with Pod Go-specific rules
-6. **planner.ts** (MODIFIED) — Passes device-filtered model list to AI prompt; system prompt says "Pod Go preset"
+Step 2: mapRigToToneIntent(rigIntent, device) -> SubstitutionMap  [NEW: rig-mapping.ts]
+        Deterministic static lookup. No AI involved.
+        Returns: { substitutions[], toneContext, unmappedPedals[] }
 
-See `.planning/research/ARCHITECTURE.md` for complete data flow diagram, system overview, and build order dependency graph.
+Step 3: callClaudePlanner(messages, device, toneContext?) -> ToneIntent  [MODIFIED: planner.ts]
+        Existing planner, unchanged behavior. toneContext appended to user message array.
+        NOT to the system prompt — prompt cache on system prompt is fully preserved.
+```
 
-### Critical Pitfalls
+The single-call alternative (pass images directly to the existing planner and let Claude handle mapping) was rejected for five reasons: the mapping is invisible and non-auditable, `ToneIntent` and `RigIntent` are fundamentally different schemas, failures corrupt the entire preset rather than being isolated to the vision step, it violates the existing Planner-Executor architectural invariant, and there is no way to fix a wrong mapping without a prompt rewrite and full regression test.
 
-1. **Wrong file format / device ID** — Using `buildHlxFile()` for Pod Go produces "target is incompatible" errors with no useful diagnostic. Must use a separate `buildPgpFile()` with device=2162695, `.pgp` extension, and Pod Go-specific JSON structure. Every field difference matters.
+**New files (3):**
+- `src/lib/helix/rig-intent.ts` — Zod schemas: `PhysicalPedalSchema`, `RigIntentSchema`, `SubstitutionEntrySchema`, `SubstitutionMapSchema` (~60 lines, zero external dependencies)
+- `src/lib/rig-vision.ts` — `callRigVisionPlanner(images[])` — single Claude call with all images, returns `RigIntent`
+- `src/lib/rig-mapping.ts` — `PEDAL_HELIX_MAP` curated lookup table + `mapRigToToneIntent()` — fully deterministic
 
-2. **Helix effect model IDs in Pod Go files** — Pod Go effects require Mono/Stereo suffixes (`HD2_DistScream808Mono` not `HD2_DistScream808`). Using unsuffixed Helix IDs produces "unrecognized model" failures. Amp IDs ARE shared. This is the highest-complexity table-stakes feature.
+**Modified files (4):**
+- `src/app/page.tsx` — image upload UI, substitution card display, send images in POST
+- `src/app/api/generate/route.ts` — orchestrate vision → mapping → planner when images are present
+- `src/lib/planner.ts` — add `toneContext?: string` as third param, append to conversation text
+- `src/lib/helix/index.ts` — export rig-intent types
 
-3. **Wrong @type block encoding** — Pod Go @type values are completely different from Helix (delay=5 not 7, modulation=0 not 4, reverb=5 not 7, EQ_STATIC=6 not 0). Using Helix @type values produces unrecognizable blocks.
+**Unchanged (everything in the Knowledge Layer):** `chain-rules.ts`, `param-engine.ts`, `snapshot-engine.ts`, `preset-builder.ts`, `podgo-builder.ts`, `tone-intent.ts`, `models.ts`, `types.ts`, `validate.ts`, `gemini.ts`
 
-4. **Dual-DSP assumption in chain-rules** — Existing chain-rules split across dsp0/dsp1. Pod Go is single-DSP. All blocks must be assigned dsp:0; any dsp:1 blocks are silently lost, producing presets with missing effects.
+**Key schema decisions:**
+- `knobPositions` in `PhysicalPedalSchema`: `Record<string, number>` internally (0–100), extracted as coarse zones from vision prompt
+- `SubstitutionEntry.confidence`: enum `"direct" | "close" | "approximate"` — used in UI display and decision gating
+- `toneContext`: injected into user messages array, never the system prompt (preserves prompt caching)
+- `substitutions?: SubstitutionEntry[]`: parallel field on the API response, never inside `ToneIntent`
 
-5. **Helix code path contamination** — Adding `if (device === "pod_go")` branches throughout shared modules risks Helix regressions in the existing 50-test suite. Builder and validator must be separate functions; shared modules accept `deviceTarget` parameter.
+### 3. Critical Production Risks
 
-See `.planning/research/PITFALLS.md` for all 12 pitfalls with full prevention strategies, phase mapping, and "looks done but isn't" verification checklist.
+**The overarching risk: silent wrong answers.** None of these produce error messages. All look like success.
 
-### Cross-File Conflicts and Resolutions
+**Pitfall 1 — Vercel 4.5MB body limit kills image uploads before the handler runs.**
+An uncompressed smartphone photo (4–10MB) or a 3.5MB JPEG base64-encoded to JSON (~4.7MB) hits the hard Vercel limit. The 413 error arrives before any handler code executes.
+Prevention: `browser-image-compression` targeting 800KB/image, max 3 images. Validate and warn client-side before upload. Enforce the 3-photo limit explicitly in UI.
 
-| Conflict | Resolution |
-|----------|------------|
-| STACK.md says model IDs are the same HD2_ subset; FEATURES.md says effects need Mono/Stereo suffix | **FEATURES.md is correct** (based on 18 real files). Effect model IDs ARE different. Amp IDs are shared. |
-| STACK.md says Pod Go uses `@topology0: "A"`; FEATURES.md says no @topology fields exist at all | **FEATURES.md is correct** (empirical from real files). Omit @topology entirely. |
-| STACK.md says device ID needs verification; FEATURES.md says 2162695 | **FEATURES.md is correct**. Device ID is 2162695 (verified from real files). |
-| STACK.md recommends mirror `src/lib/podgo/` directory; ARCHITECTURE.md recommends `podgo-builder.ts` in `src/lib/helix/` | **ARCHITECTURE.md approach is better** — single directory avoids import path sprawl; devices share the same HD2 engine and types. |
-| ARCHITECTURE.md says snapshot controller is probably `@controller: 19` (same as Helix, unconfirmed); FEATURES.md says `@controller: 4` | **FEATURES.md is correct** (verified from 18 real files). Pod Go snapshot controller is 4, not 19. |
+**Pitfall 2 — Vercel 10-second timeout on the combined vision + planner call.**
+Cold start (~1–3s) + vision call (~5–15s) + planner call (~5–8s) = 30+ seconds. Default Hobby plan limit is 10 seconds. Results in 504 errors on cold starts.
+Prevention: add `export const maxDuration = 60;` to the vision route. Enable Fluid Compute in the Vercel dashboard (required — this does not work automatically). Consider a dedicated `/api/vision` route separate from `/api/generate` so each call has its own timeout budget and the existing generate flow is not disrupted.
+
+**Pitfall 3 — Confident wrong pedal identification from low-quality photos.**
+Claude returns "Ibanez TS9 Tube Screamer" for a TC Electronic MojoMojo photographed in dim light. The mapping table maps the misidentification to the wrong Helix model. The user gets a wrong preset with no indication anything failed.
+Prevention: include `confidence: "high" | "medium" | "low"` in `PhysicalPedalSchema`. Instruct Claude explicitly in the extraction prompt: "If you cannot identify the pedal make and model with confidence, return `modelName: null`." Surface low-confidence identifications for user confirmation before mapping.
+
+**Pitfall 5 — RigIntent in the system prompt breaks prompt caching.**
+The tempting shortcut is adding rig context to `buildPlannerPrompt()`. This changes the system prompt per request, dropping `cache_read_input_tokens` to 0 and doubling API costs.
+Prevention: inject `toneContext` as the final entry in the user messages array, never the system prompt. Verify after implementation: `cache_read_input_tokens > 0` in Anthropic API response.
+
+**Pitfall 7 — Vision integration breaks the existing [READY_TO_GENERATE] signal flow.**
+Adding image payloads to the existing `/api/generate` JSON body entangles vision extraction with preset generation. Failures in vision affect text-only users. The route body approaches or exceeds the 4.5MB limit.
+Prevention: keep vision extraction in a separate `/api/vision` route. The existing `/api/generate` contract does not change. If no images are provided, the vision route is never called.
+
+**Pitfall 6 — Static mapping table confidently maps boutique pedals to wrong Helix models.**
+The table covers common pedals. A Mythos Mjolnir or Walrus Audio Eras has no entry. Fuzzy fallback matching by category produces wrong confident matches that look like successes.
+Prevention: build three explicit match tiers — `"direct"` (exact table entry), `"close"` (same circuit topology), `"approximate"` (closest available) — plus `"unknown"` for no match. Surface each tier differently in UI. For `"unknown"`, never guess; show "we don't have this pedal — treating as [category]" with user confirmation.
+
+### 4. Key Implementation Patterns
+
+**Coarse knob zones, not percentages.**
+Vision prompt should request clock-face positions ("7 o'clock" through "5 o'clock") or labeled zones ("low / medium-low / medium-high / high"). The mapping layer translates zones to Helix parameter values. Never request precise percentages — the resulting numbers will be unreliable and silently wrong. Sanity check: if all extracted knob values cluster near 50%, Claude could not read individual positions.
+
+**toneContext injected as user message, not system prompt.**
+Add optional `toneContext?: string` parameter to `callClaudePlanner`. Append it to `conversationText` after the message join: `conversationText += \`\n\n[RIG CONTEXT]\n${toneContext}\n...\`` . The system prompt block with `cache_control: { type: "ephemeral" }` remains identical across all requests. Prompt caching is preserved.
+
+**Separate `/api/vision` route.**
+`/api/generate` currently accepts `{ messages, device }`. Do not add image payloads to this body. A separate `POST /api/vision` handles image-to-RigIntent extraction only. Its response (`RigIntent` + substitutions) feeds into the generate flow via `toneContext`. If vision fails, generation proceeds with the text-only flow. The existing `[READY_TO_GENERATE]` signal path is completely unchanged.
+
+**Match tiers in PEDAL_HELIX_MAP.**
+Every entry in `PEDAL_HELIX_MAP` carries `confidence: "direct" | "close" | "approximate"`. Missing entries produce `"unknown"` — never a guessed match. The substitution card UI differentiates visually: direct matches get the full card with rationale; approximate/unknown matches show reduced emphasis with a clear "best available" label.
+
+**Single multi-image Claude call.**
+Pass all pedal photos in one `client.messages.create` call with labeled content blocks ("Pedal 1:", "Pedal 2:"). The Claude API supports up to 100 images per request. Calling once per photo multiplies cost and latency proportionally — three photos means 3x cost and 15–30 additional seconds.
+
+**Substitution card display names, not internal IDs.**
+`rig-mapping.ts` must store both `helixModelId` (for the preset builder, e.g., `HD2_DistTeemah`) and `helixModelDisplayName` (for the UI, e.g., "Teemah!"). The `models.ts` data model already separates these fields. Never render `HD2_*` strings in the substitution card. Rationale text must use guitarist vocabulary: "mid-hump EQ character," "asymmetric clipping," "transparent boost" — not confidence scores or technical IDs.
+
+---
 
 ## Implications for Roadmap
 
-### Phase 1: Format Foundation and Types
-**Rationale:** Nothing works without correct types and format constants. Zero-risk, zero-dependency foundation.
-**Delivers:** `DeviceTarget` extended with `pod_go`, `PgpFile`/`PodGoTone` interfaces, `DEVICE_IDS` with pod_go: 2162695, Pod Go firmware constants (`device_version`, `appversion`, `build_sha`), `BLOCK_TYPES_PODGO` constant map with all remapped @type values.
-**Addresses:** Device ID (table stakes), firmware version constants, type safety for all downstream code.
-**Avoids:** Pitfall 1 (wrong file format), Pitfall 7 (wrong firmware constants).
+The ARCHITECTURE.md build order maps directly to a 5-phase structure. Each phase is independently testable before the next begins. Dependencies determine order strictly.
 
-### Phase 2: Pod Go Model Catalog
-**Rationale:** The model catalog is the highest-complexity dependency. Chain-rules and builder both need it. Must come before any preset generation logic.
-**Delivers:** Pod Go effect model IDs with Mono/Stereo suffixes, `devices` flag on `HelixModel` interface, `getModelsForDevice("pod_go")` helper, Pod Go-excluded model list (Tone Sovereign, Clawthorn Drive, Cosmos Echo, Poly Pitch, Space Echo), device-filtered `getModelListForPrompt()`.
-**Addresses:** Effect model ID correctness (table stakes, HIGH complexity), model filtering for AI prompt.
-**Avoids:** Pitfall 3 (Helix-only model IDs), Pitfall 11 (AI offered unavailable models).
+### Phase 1: Schemas and Types
+**Rationale:** Every other new module imports from here. Nothing else compiles until these exist. Zero external dependencies — testable with Zod alone.
+**Delivers:** `src/lib/helix/rig-intent.ts` with `PhysicalPedalSchema`, `RigIntentSchema`, `SubstitutionEntrySchema`, `SubstitutionMapSchema`. Updated `src/lib/helix/index.ts` exports.
+**Addresses:** Schema ambiguity that would force retroactive changes if deferred; type safety for all downstream code.
+**Avoids:** Pitfall 3 and Pitfall 6 (confidence and matchTier fields designed in from the start, not patched on later).
+**Scope:** ~60 lines. Done when all types compile and Zod schemas parse correctly against example JSON.
 
-### Phase 3: Chain Rules, Validation, and Planner Adaptation
-**Rationale:** With types and models in place, chain assembly can enforce Pod Go constraints. Planner prompt must be device-aware to avoid generating dsp:1 assignments.
-**Delivers:** Device-aware `assembleSignalChain()` (all blocks dsp:0, 4-effect limit, no Parametric EQ or Gain Block insertion for Pod Go), `validatePodGoPresetSpec()`, device-filtered system prompt in `callClaudePlanner()`.
-**Addresses:** Series-only chain (table stakes), block limit enforcement, planner prompt filtering.
-**Avoids:** Pitfall 2 (dual-DSP assumption), Pitfall 4 (shared validator with Helix rules), Pitfall 8 (free block positioning), Pitfall 10 (AI generates dsp:1).
+### Phase 2: Pedal Mapping Table
+**Rationale:** Pure data + deterministic logic. No Claude API dependency. Can be built and tested in isolation. Mapping quality determines the quality of the entire feature.
+**Delivers:** `src/lib/rig-mapping.ts` — `PEDAL_HELIX_MAP` (40–60 curated entries at launch) with match tiers, `mapRigToToneIntent()`, `unmappedPedals[]` handling, `toneContext` string builder.
+**Target coverage at launch:** Boss SD-1/DS-1/BD-2/OD-3/CE-5, Ibanez TS5/TS9/TS808/TS10, ProCo Rat, EHX Big Muff variants (NYC/Green Russian/Triangle), Fulltone OCD, MXR Phase 90/Dyna Comp/Carbon Copy, common amp names in text (Fender Twin, Marshall JCM800, Mesa Boogie Rectifier).
+**Addresses:** Pitfall 6 (match tiers prevent confident wrong boutique pedal matches), Pitfall 4 (coarse zone design intent baked into the knob translation interface from the start).
+**Research flag:** Knob translation functions (physical % → Helix 0–1 scale) require per-model knowledge that is not documented anywhere. Start with linear identity mapping. Flag for post-launch tuning from user feedback.
 
-### Phase 4: Pod Go Preset Builder
-**Rationale:** The builder is the final output stage. It depends on types, models, and chain-rules all being correct. This is where format correctness is realized.
-**Delivers:** `buildPgpFile()` producing valid `.pgp` JSON — correct device ID, `input`/`output` keys, `P34_AppDSPFlow*` I/O models, cab-as-block placement, 4 snapshots with `@controller: 4`, footswitch section with `@fs_*` metadata, no @topology/@path/@stereo fields, `dsp1: {}` empty.
-**Addresses:** All remaining table-stakes features (file generation, snapshot encoding, footswitch section, cab placement).
-**Avoids:** Pitfall 1 (wrong format), Pitfall 5 (code contamination — separate function), Pitfall 6 (8 snapshots), Pitfall 9 (snapshot controller encoding).
+### Phase 3: Vision Extraction
+**Rationale:** References Phase 1 types. Tested against Phase 2 mapping to verify end-to-end extraction → mapping before touching any route or UI code.
+**Delivers:** `src/lib/rig-vision.ts` — `callRigVisionPlanner(images[])` returning validated `RigIntent`. Single multi-image Claude call with labeled content blocks. Coarse zone prompting. Confidence field populated.
+**Uses:** Claude Sonnet 4.6 via existing `@anthropic-ai/sdk`. No new dependencies.
+**Addresses:** Pitfall 3 (confidence in schema and prompt), Pitfall 4 (clock-face prompting for knob positions).
+**Testing baseline:** Use a high-quality JPEG of a Boss SD-1 or Ibanez TS9 — well-documented pedals Claude will recognize reliably. Confirm `RigIntentSchema.parse()` succeeds and `confidence` field is populated.
 
-### Phase 5: Integration, UI, and Testing
-**Rationale:** Wiring phase. All Pod Go logic exists; now connect to API route and frontend, then validate end-to-end.
-**Delivers:** Device routing in `route.ts`, Pod Go option in device selector, `.pgp` download with correct extension, device-filtered AI prompt in action, Pod Go label on tone card, firmware version note, regression test suite passing, end-to-end validation in Pod Go Edit.
-**Addresses:** Device selector UI, `.pgp` download, AI prompt filtering, regression testing, hardware validation.
-**Avoids:** UX pitfalls (wrong extension label, missing firmware note, 8-snapshot display for 4-snapshot device).
+### Phase 4: API Route and Planner Integration
+**Rationale:** Wires the full backend pipeline. Route orchestrates vision → mapping → planner in sequence when images are present. Existing text-only flow is completely untouched.
+**Delivers:** Modified (or new `/api/vision`) route handling image upload and extraction. Modified `src/lib/planner.ts` accepting `toneContext?`. Response extended with `substitutions?: SubstitutionEntry[]` and `unmappedPedals?: string[]`.
+**Addresses:** Pitfall 5 (toneContext in user message array, not system prompt), Pitfall 2 (`maxDuration` export + Fluid Compute verification), Pitfall 7 (separate route preserves existing generate flow).
+**Verification gate (mandatory before Phase 5):**
+- Generate a preset WITHOUT images — behavior identical to v1.2, no new loading states, no changed response shape.
+- Check Anthropic API response: `cache_read_input_tokens > 0` confirming prompt caching intact.
+- Deploy to Vercel and trigger a cold-start vision call — confirm no 504 errors.
+
+### Phase 5: Browser Image Upload UI and Substitution Card
+**Rationale:** UI is the last layer. Backend API contract must be stable before building against it.
+**Delivers:** File input or drag-drop in the chat input section. Client-side compression via `browser-image-compression`. Image thumbnail previews with remove button. `SubstitutionCard` component showing substitutions in the preset result view.
+**Uses:** `browser-image-compression@2.0.2` (`maxSizeMB: 0.8`, `maxWidthOrHeight: 1568`, `useWebWorker: true`).
+**Addresses:** Pitfall 1 (compression gate before upload), Pitfall 8 (substitution card shows display names, not `HD2_*` IDs, with guitarist vocabulary rationale).
+**Implementation notes:**
+- Store `File` objects in React state, convert to base64 only at generate time — prevents 6MB base64 strings in component state causing slow re-renders.
+- Max 3 photos enforced with explicit warning, not silent drop.
+- Progressive status indicators: "Analyzing pedal photo..." → "Mapping to Helix models..." → "Building preset..." — essential at 15–20 second total latency.
+- Differentiate substitution card display by match tier: full confident card for `"direct"`, reduced emphasis with "best available match" label for `"approximate"` and `"unknown"`.
 
 ### Phase Ordering Rationale
 
-- **Types before models before chain-rules before builder** — strict dependency chain. Each layer depends on the one below it.
-- **Models isolated into Phase 2** — the effect model catalog with Mono/Stereo suffixes is the highest-risk, highest-effort task. Isolating it allows focused testing and validation before chain logic is built on top.
-- **Chain-rules and planner together in Phase 3** — the planner must know the device to filter models; chain-rules must know the device to enforce limits. These are coupled and should be tested together.
-- **Builder in Phase 4** — independently testable (generate .pgp, inspect in text editor, import into Pod Go Edit) before wiring into the API route.
-- **Integration last** — route.ts and page.tsx changes are low-risk plumbing that should not be entangled with format correctness work.
+- Phases 1 → 2 → 3 follow strict import dependencies: schemas must exist before mapping logic, mapping must exist before vision calls reference it.
+- Phase 2 before Phase 3 enables isolated testing of the deterministic mapping layer before any Claude API calls are involved — faster iteration and easier debugging.
+- Phase 4 before Phase 5 ensures the API response contract is final before the UI is built against it, preventing a UI rewrite if the response shape needs adjustment.
+- Backend-complete before UI reduces rework risk across all phases.
 
 ### Research Flags
 
-Phases likely needing deeper research during planning:
-- **Phase 2 (Model Catalog):** Only ~30 of 206+ effect models have confirmed Mono/Stereo suffixed IDs from the 18 inspected files. The remaining models need systematic extraction from Pod Go Edit's model browser. This requires hands-on tool work, not web research. Expect 4-6 hours of catalog building.
-- **Phase 4 (Builder):** The footswitch section and controller section encoding need validation against additional real `.pgp` files. Edge cases (expression pedal assignments, all 4 flexible slots filled) should be verified. The `device_version` for firmware 2.50 specifically needs confirmation (inspected files were firmware v1.00-v2.00).
+Phases with well-documented patterns (no additional research needed):
+- **Phase 1 (Schemas):** Standard Zod. Schema design is fully specified in ARCHITECTURE.md.
+- **Phase 3 (Vision):** Claude vision API patterns are official and verified. Coarse zone prompting approach is clear.
+- **Phase 5 (UI):** `browser-image-compression` API is documented and stable.
 
-Phases with standard patterns (skip additional research):
-- **Phase 1 (Types):** Pure TypeScript interface definitions from empirically verified values. No unknowns.
-- **Phase 3 (Chain Rules):** Straightforward adaptation of existing logic with device parameter. Well-understood constraints from hardware docs.
-- **Phase 5 (Integration):** Standard Next.js routing and React state. No new patterns.
+Phases that need targeted investigation during implementation:
+- **Phase 2 (Mapping Table — knob translation):** Per-pedal knob taper curves (linear vs. logarithmic vs. stepped) are not documented publicly. Start with linear identity mapping. Budget time post-launch for a feedback-driven tuning pass. This is inherently empirical, not researchable.
+- **Phase 4 (Route — timeout verification):** Must verify that `export const maxDuration = 60;` on the Vercel project's current plan and Fluid Compute configuration produces the expected 60-second budget. Test with a real cold-start deploy, not local dev. If the two-call combined latency still exceeds the budget, the fallback is a two-request client flow (POST `/api/vision` → POST `/api/generate`) — design Phase 4 so this split is possible without UI rewrite.
+
+---
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | No new dependencies. Pure TypeScript. Zero package risk. |
-| Features | HIGH | 18 real .pgp files inspected empirically. Device ID, @type values, I/O keys, model suffixes all confirmed from actual device files. |
-| Architecture | HIGH | Extend-not-rewrite approach validated by codebase inspection. param-engine and snapshot-engine fully reusable. Builder must be new. |
-| Pitfalls | HIGH | 12 specific pitfalls identified with prevention strategies. "Silent success" failure mode well-characterized. |
+| Vision API choice (Claude Sonnet 4.6) | HIGH | Official Anthropic docs verified; spatial reasoning limitation explicitly documented; cost math from official pricing pages |
+| Image upload approach (FormData + compression) | HIGH | Vercel 4.5MB limit from official KB; `browser-image-compression` API verified from npm + GitHub |
+| Two-step architecture | HIGH | Based on direct codebase inspection of `planner.ts`, `route.ts`, `page.tsx`; matches existing architectural invariants |
+| Schema design | HIGH | Zod schema design derived from explicit data requirements with no ambiguity |
+| Vercel production constraints | HIGH | Official Vercel docs; limits are hard and version-independent |
+| Vision accuracy limitations | HIGH | Official Claude docs quote the clock-face limitation verbatim; industrial vision research corroborates |
+| Mapping table content quality | MEDIUM | Which entries to include and how to translate knob scales per pedal is judgment-based; requires curation and tuning |
 
-**Overall confidence:** MEDIUM-HIGH
+**Overall confidence: HIGH.** The three key decisions — vision API provider, two-step architecture, and coarse-zone knob extraction — are all strongly supported by official documentation and direct codebase analysis. The only MEDIUM area is mapping table content, which is a curation problem rather than a research problem.
 
-The format details are well-established from real file inspection. The remaining uncertainty is in the completeness of the Pod Go effect model catalog (only ~30 of 206+ effects confirmed with Mono/Stereo suffixed IDs) and in the `device_version` constant for the latest firmware 2.50.
+### Gaps to Address During Implementation
 
-### Gaps to Address
+- **Knob translation accuracy per pedal model:** Linear identity mapping is the starting point but is likely wrong for pedals with non-linear tapers (Boss numbered dials 1–10, Fender-style controls). Flag for a post-launch user feedback loop. Do not attempt to solve before launch.
+- **PEDAL_HELIX_MAP boutique coverage:** The 40–60 entry launch target covers the most common stomps. Users with boutique boards will hit the `"unknown"` tier frequently in early versions. The match tier system handles this gracefully; coverage expands over time as entries are added.
+- **Fluid Compute enablement:** Must be verified in the Vercel project dashboard before Phase 4 is considered complete. Cannot be tested locally — cold-start behavior does not exist in `next dev`.
+- **Two-request fallback for timeout budget:** If vision + planner in one function invocation consistently exceeds the timeout budget even with Fluid Compute, the client must orchestrate two sequential requests. Build Phase 4 to make this split possible without requiring UI changes.
 
-- **Pod Go effect model catalog completeness:** Only ~30 effect models confirmed with Mono/Stereo suffixed IDs from 18 real files. The remaining ~170 models need systematic extraction. Resolution: during Phase 2, export presets from Pod Go Edit that use each effect category and catalog the IDs. This is the single largest work item in the milestone.
-
-- **`device_version` for firmware 2.50:** The 18 inspected files were from firmware v1.00-v2.00. Firmware 2.50 (January 2025) may have a different `device_version` integer encoding. Resolution: export a preset from Pod Go Edit 2.50 and read the value.
-
-- **Pod Go Wireless device ID:** FEATURES.md states it uses the same device ID and format as Pod Go. Not independently confirmed. Resolution: verify from a real Pod Go Wireless export, or defer Pod Go Wireless to a future release.
-
-- **Footswitch `@fs_index` edge cases:** Basic range confirmed as 0-5 from real files. External FS7-FS8 indices and edge cases (FX Loop on a footswitch) need verification from additional preset files.
+---
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- **18 real Pod Go .pgp preset files** (firmware v1.00-v2.00, Line 6 CustomTone) — All file format findings verified empirically
-- **12 real Helix .hlx preset files** (firmware v3.70) — Comparison baseline for structural differences
-- **Line 6 POD Go FAQ** (line6.com/support) — Block structure, fixed blocks, excluded models
-- **Line 6 POD Go 2.50 Release Notes** — New models, firmware date (January 2025)
-- **Line 6 POD Go Models Page** — 86 amp models, 206+ effects
-- **Existing src/lib/helix/ codebase** — Ground truth for current architecture and what must be adapted
+- Anthropic Vision Docs (verified 2026-03-02) — image token formula, spatial reasoning limitation ("like reading an analog clock face"), 5MB/image API limit, base64 integration, multi-image support up to 100 images: https://platform.claude.com/docs/en/build-with-claude/vision
+- Anthropic Pricing (verified 2026-03-02) — Claude Sonnet 4.6 at $3/MTok input, prompt caching multipliers: https://platform.claude.com/docs/en/about-claude/pricing
+- Anthropic Structured Outputs Docs — `output_config.format` compatible with vision input in same call: https://platform.claude.com/docs/en/build-with-claude/structured-outputs
+- Vercel Functions Limits (official) — 4.5MB body limit hard, Fluid Compute up to 300s on Hobby: https://vercel.com/docs/functions/limitations
+- Vercel Body Size KB (official) — client-side upload as recommended mitigation: https://vercel.com/kb/guide/how-to-bypass-vercel-body-size-limit-serverless-functions
+- Direct codebase inspection — `planner.ts`, `route.ts`, `page.tsx`, `models.ts`, `tone-intent.ts`, `helix/index.ts` read in full; integration points verified against actual code
 
 ### Secondary (MEDIUM confidence)
-- **Line 6 Community Forums** — .pgp format details, routing constraints, footswitch field names, converter discussions
-- **GitHub: Zavsek/POD_GO-Helix_converter** — Format similarity confirmation, TypeScript conversion source
-- **GitHub: sj-williams/pod-go-patches** — Additional real .pgp files for format inspection
-- **benvesco.com DSP Allocations** — Pod Go DSP cost percentages per effect model
+- `browser-image-compression` npm/GitHub — v2.0.2, Web Worker support, MIT license: https://www.npmjs.com/package/browser-image-compression
+- Google Gemini API Pricing — Gemini 2.0 Flash at $0.10/MTok: https://ai.google.dev/gemini-api/docs/pricing
+- Gemini 2.0 Flash OCR accuracy — 98.2% on printed text: https://reducto.ai/blog/lvm-ocr-accuracy-mistral-gemini
 
-### Tertiary (LOW confidence)
-- **Pod Go Wireless device ID** — Assumed same as Pod Go; needs independent verification
-- **Full effect model ID list with Mono/Stereo suffixes** — Only ~30 of 206+ confirmed from real files; remainder needs systematic extraction
+### Tertiary (MEDIUM confidence — derived, not guitar-specific)
+- Edge Impulse knob monitoring research — confirms accuracy drop with lighting and angle variation: https://docs.edgeimpulse.com/experts/computer-vision-projects/dials-and-knob-monitoring-with-computer-vision-raspberry-pi
+- MDPI Sensors academic research — low SNR, angle deformation, inconsistent features as primary failure modes for industrial knob reading: https://www.mdpi.com/1424-8220/22/13/4722
 
 ---
+
 *Research completed: 2026-03-02*
 *Ready for roadmap: yes*
