@@ -313,19 +313,17 @@ describe("buildSnapshots", () => {
 });
 
 // Helper: compute the block key for a given block in the chain,
-// using per-DSP sequential numbering (excluding cabs).
+// using global sequential numbering (excluding cabs).
+// Matches the snapshot-engine's buildBlockKeys() which uses global indices.
 function findBlockKey(chain: BlockSpec[], target: BlockSpec): string {
-  let dsp0Idx = 0;
-  let dsp1Idx = 0;
+  let globalIdx = 0;
 
   for (const block of chain) {
     if (block.type === "cab") continue;
     if (block === target) {
-      const idx = block.dsp === 0 ? dsp0Idx : dsp1Idx;
-      return `block${idx}`;
+      return `block${globalIdx}`;
     }
-    if (block.dsp === 0) dsp0Idx++;
-    else dsp1Idx++;
+    globalIdx++;
   }
   throw new Error(`Block not found in chain: ${target.modelName}`);
 }
