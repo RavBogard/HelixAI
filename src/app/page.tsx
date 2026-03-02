@@ -169,6 +169,7 @@ export default function Home() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [readyToGenerate, setReadyToGenerate] = useState(false);
+  // CHANGE 4-B: add substitutionMap? to generatedPreset state type
   const [generatedPreset, setGeneratedPreset] = useState<{
     preset: Record<string, unknown>;
     summary: string;
@@ -176,6 +177,14 @@ export default function Home() {
     toneIntent: Record<string, unknown>;
     device: string;
     fileExtension?: string;
+    substitutionMap?: Array<{
+      physicalPedal: string;
+      helixModel: string;
+      helixModelDisplayName: string;
+      substitutionReason: string;
+      confidence: "direct" | "close" | "approximate";
+      parameterMapping?: Record<string, number>;
+    }>;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [premiumKey, setPremiumKey] = useState<string | null>(null);
@@ -197,6 +206,15 @@ export default function Home() {
     extractionNotes?: string;
   } | null>(null);
   const [visionError, setVisionError] = useState<string | null>(null);
+  // CHANGE 4-A: rig mapping state (Phase 20) — populated after generate when rigIntent was provided
+  const [substitutionMap, setSubstitutionMap] = useState<Array<{
+    physicalPedal: string;
+    helixModel: string;
+    helixModelDisplayName: string;
+    substitutionReason: string;
+    confidence: "direct" | "close" | "approximate";
+    parameterMapping?: Record<string, number>;
+  }> | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -317,11 +335,13 @@ export default function Home() {
     }
   }
 
+  // CHANGE 4-C: pass rigIntent in generate body; store substitutionMap from response
   async function generatePreset() {
     setIsGenerating(true);
     setError(null);
 
     try {
+      setSubstitutionMap(null);
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -329,6 +349,8 @@ export default function Home() {
           messages,
           premiumKey,
           device: selectedDevice,
+          // Phase 20: pass rigIntent if vision extraction was performed
+          ...(rigIntent ? { rigIntent } : {}),
         }),
       });
 
@@ -339,6 +361,10 @@ export default function Home() {
 
       const data = await res.json();
       setGeneratedPreset(data);
+      // Phase 20: store substitution map from generate response
+      if (data.substitutionMap) {
+        setSubstitutionMap(data.substitutionMap);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Generation failed";
       setError(message);
@@ -369,6 +395,7 @@ export default function Home() {
     }
   }
 
+  // CHANGE 4-D: clear substitutionMap on startOver
   function startOver() {
     setMessages([]);
     setInput("");
@@ -379,6 +406,8 @@ export default function Home() {
     setRigImages([]);
     setRigIntent(null);
     setVisionError(null);
+    // Phase 20: clear substitution map
+    setSubstitutionMap(null);
   }
 
   async function callVision() {

@@ -11,11 +11,13 @@ import {
   summarizePodGoPreset,
   isPodGo,
 } from "@/lib/helix";
-import type { PresetSpec, DeviceTarget } from "@/lib/helix";
+import type { PresetSpec, DeviceTarget, SubstitutionMap } from "@/lib/helix";
+import type { RigIntent } from "@/lib/helix";
+import { mapRigToSubstitutions, parseRigText } from "@/lib/rig-mapping";
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, device } = await req.json();
+    const { messages, device, rigIntent, rigText } = await req.json();
 
     // Resolve device target — now supports pod_go (PGUX-01)
     let deviceTarget: DeviceTarget;
@@ -34,9 +36,37 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Rig emulation path: build substitution map and toneContext if rig data present.
+    // rigIntent takes precedence over rigText (vision path is higher confidence).
+    // If neither is present, substitutionMap and toneContext remain undefined —
+    // the route falls through to standard generation (identical to pre-Phase-20 behavior).
+    let substitutionMap: SubstitutionMap | undefined;
+    let toneContext: string | undefined;
+
+    if (rigIntent) {
+      // Vision path: rigIntent was validated by /api/vision before being stored in client state.
+      // Cast is safe — the data was already Zod-validated at the vision route.
+      const typedRigIntent = rigIntent as RigIntent;
+      substitutionMap = mapRigToSubstitutions(typedRigIntent, deviceTarget);
+    } else if (rigText && typeof rigText === "string" && rigText.trim().length > 0) {
+      // Text path: user described their rig as text — parse to synthetic RigIntent.
+      // parseRigText() splits on conjunctions/commas/newlines and creates PhysicalPedal entries
+      // with confidence "low". mapRigToSubstitutions() applies the same three-tier lookup.
+      const parsedRigIntent = parseRigText(rigText.trim());
+      substitutionMap = mapRigToSubstitutions(parsedRigIntent, deviceTarget);
+    }
+
+    // Build toneContext string only when substitutionMap has entries.
+    // An empty substitutionMap produces a context string with no bullet points —
+    // avoid sending that to the planner as it adds noise without information.
+    if (substitutionMap && substitutionMap.length > 0) {
+      toneContext = buildToneContext(substitutionMap);
+    }
+
     // Step 1: Claude Planner generates ToneIntent (creative choices only)
     // Pass device target so planner filters model list for Pod Go (PGMOD-04)
-    const toneIntent = await callClaudePlanner(messages, deviceTarget);
+    // Pass toneContext so planner prioritizes rig-matched models (Phase 20)
+    const toneIntent = await callClaudePlanner(messages, deviceTarget, toneContext);
 
     // Step 2: Knowledge Layer pipeline (deterministic)
     // Pass device target so chain rules apply Pod Go constraints (PGCHAIN-01-03)
@@ -71,6 +101,7 @@ export async function POST(req: NextRequest) {
         toneIntent,
         device: deviceTarget,
         fileExtension: ".pgp", // PGUX-02: frontend uses this for download filename
+        ...(substitutionMap !== undefined ? { substitutionMap } : {}),
       });
     } else {
       // Helix: build .hlx file
@@ -84,6 +115,7 @@ export async function POST(req: NextRequest) {
         toneIntent,
         device: deviceTarget,
         fileExtension: ".hlx",
+        ...(substitutionMap !== undefined ? { substitutionMap } : {}),
       });
     }
   } catch (error) {
@@ -91,4 +123,24 @@ export async function POST(req: NextRequest) {
     console.error("Preset generation error:", message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
+}
+
+// ---------------------------------------------------------------------------
+// buildToneContext — convert SubstitutionMap to planner-friendly context string
+//
+// Private helper — NOT exported. Called only from the POST handler above.
+// Formats substitution entries as a bullet list under a context header.
+// Only called when substitutionMap.length > 0 (guard in POST handler).
+// ---------------------------------------------------------------------------
+
+function buildToneContext(substitutionMap: SubstitutionMap): string {
+  const lines = substitutionMap.map(
+    (e) =>
+      `- ${e.physicalPedal} → ${e.helixModelDisplayName} (${e.confidence}): ${e.substitutionReason}`
+  );
+  return [
+    "Rig emulation context: The user's physical pedal rig has been mapped to Helix equivalents. Please prioritize these specific models when building the preset while still fulfilling the tone interview goals:",
+    "",
+    ...lines,
+  ].join("\n");
 }

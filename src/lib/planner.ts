@@ -81,10 +81,14 @@ Based on the conversation below, generate a ToneIntent:`;
  * any constraints that JSON Schema cannot express (min/max/minItems).
  *
  * @param device - Optional device target for device-specific model filtering (PGMOD-04)
+ * @param toneContext - Optional rig emulation context string appended to user message only.
+ *   Appended to the USER message (not the system prompt) to preserve prompt caching.
+ *   The system prompt hash is unchanged; cache_control: ephemeral remains effective.
  */
 export async function callClaudePlanner(
   messages: Array<{ role: string; content: string }>,
   device?: DeviceTarget,
+  toneContext?: string,
 ): Promise<ToneIntent> {
   const apiKey = process.env.CLAUDE_API_KEY;
   if (!apiKey) throw new Error("CLAUDE_API_KEY environment variable is required");
@@ -98,6 +102,13 @@ export async function callClaudePlanner(
     .map((msg) => `${msg.role}: ${msg.content}`)
     .join("\n\n");
 
+  // Append rig context to user message content only — NOT the system prompt.
+  // This preserves prompt caching: the system prompt hash is unchanged because
+  // buildPlannerPrompt() is called with the same arguments regardless of toneContext.
+  const userContent = toneContext
+    ? `${conversationText}\n\n---\n\n${toneContext}`
+    : conversationText;
+
   const response = await client.messages.create({
     model: "claude-sonnet-4-6",
     max_tokens: 4096,
@@ -108,7 +119,7 @@ export async function callClaudePlanner(
         cache_control: { type: "ephemeral" as const },
       },
     ],
-    messages: [{ role: "user", content: conversationText }],
+    messages: [{ role: "user", content: userContent }],
     output_config: {
       format: zodOutputFormat(ToneIntentSchema),
     },

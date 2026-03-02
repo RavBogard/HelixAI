@@ -601,3 +601,40 @@ export function mapRigToSubstitutions(
     lookupPedal(pedal.fullName, device, pedal.knobPositions)
   );
 }
+
+// ---------------------------------------------------------------------------
+// parseRigText — convert a plain-text rig description to a synthetic RigIntent
+//
+// Splits on conjunctions (" and "), commas, and newlines to extract individual
+// pedal name fragments. Each fragment becomes a PhysicalPedal with:
+//   - fullName = the fragment (primary lookup key for lookupPedal)
+//   - confidence = "low" (text descriptions lack visual confirmation)
+//   - knobPositions = {} (no zone data from text)
+//   - imageIndex = fragment array index (aids debugging)
+//
+// The resulting RigIntent is passed to mapRigToSubstitutions() which applies
+// the same three-tier lookup (direct / close / approximate) as the vision path.
+//
+// NOTE: "confidence: low" on the input PhysicalPedal does not determine the
+// SubstitutionEntry confidence — lookupPedal() assigns its own output confidence
+// based on the lookup tier result. The input value only describes the source quality.
+// ---------------------------------------------------------------------------
+
+export function parseRigText(text: string): RigIntent {
+  // Split on " and " (conjunction), "," (comma list), "\n" (line list)
+  const fragments = text
+    .split(/\s+and\s+|,|\n/)
+    .map((f) => f.trim())
+    .filter((f) => f.length > 0);
+
+  const pedals = fragments.map((fragment, index) => ({
+    brand: "",
+    model: fragment,
+    fullName: fragment,
+    knobPositions: {} as Record<string, "low" | "medium-low" | "medium-high" | "high">,
+    imageIndex: index,
+    confidence: "low" as const,
+  }));
+
+  return { pedals };
+}
