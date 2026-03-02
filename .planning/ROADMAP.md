@@ -239,7 +239,10 @@ Plans:
   4. `SubstitutionMapSchema` compiles as a wrapper around an array of `SubstitutionEntry` entries — represents the full pedal → Helix mapping result for a rig
   5. All new schemas are exported from `src/lib/helix/index.ts` — downstream phases import types from the existing barrel without new import paths
   6. TypeScript compiler produces zero errors after schema additions — no conflicts with existing ToneIntent, PresetSpec, or DeviceTarget types
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 17-01-PLAN.md — rig-intent.ts: PhysicalPedalSchema, RigIntentSchema, SubstitutionEntrySchema, SubstitutionMapSchema + barrel exports in index.ts (RIG-06)
 
 ### Phase 18: Pedal Mapping Engine
 **Goal**: The deterministic rig mapping layer converts physical pedal names to Helix equivalents with three match tiers and coarse knob zone translation — no AI guessing in the mapping logic
@@ -318,7 +321,7 @@ Phases execute in numeric order: 1 > 2 > 3 > 4 > 5 > 6 > 7 > 8 > 9 > 10 > 11 > 1
 | 14. Chain Rules, Validation, and Planner | v1.2 | 1/1 | Complete | 2026-03-02 |
 | 15. Pod Go Preset Builder | v1.2 | 1/1 | Complete | 2026-03-02 |
 | 16. Integration, UI, and Testing | v1.2 | 1/1 | Complete | 2026-03-02 |
-| 17. Schemas & Types Foundation | v1.3 | 0/TBD | Not started | - |
+| 17. Schemas & Types Foundation | v1.3 | 0/1 | Not started | - |
 | 18. Pedal Mapping Engine | v1.3 | 0/TBD | Not started | - |
 | 19. Vision Extraction API | v1.3 | 0/TBD | Not started | - |
 | 20. Planner Integration & Route Orchestration | v1.3 | 0/TBD | Not started | - |
@@ -326,4 +329,4 @@ Phases execute in numeric order: 1 > 2 > 3 > 4 > 5 > 6 > 7 > 8 > 9 > 10 > 11 > 1
 
 ---
 *Roadmap created: 2026-03-01*
-*Last updated: 2026-03-02 — v1.2 phases 12-16 marked complete; v1.3 Rig Emulation phases 17-21 added*
+*Last updated: 2026-03-02 — v1.2 phases 12-16 marked complete; v1.3 Rig Emulation phases 17-21 added; Phase 17 plan created*
