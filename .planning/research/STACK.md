@@ -1,14 +1,22 @@
 # Stack Research
 
-**Domain:** AI-powered Helix preset generation (.hlx file production)
-**Researched:** 2026-03-01
-**Overall Confidence:** HIGH
+**Domain:** AI-powered Helix preset generation — v1.1 feature additions
+**Researched:** 2026-03-02
+**Confidence:** HIGH
 
 ---
 
-## Context Summary
+## Scope: v1.1 Only
 
-The existing app already runs on Next.js 16, TypeScript 5, Tailwind CSS 4, and has SDKs for all three major AI providers installed (`@anthropic-ai/sdk` 0.78.0, `@google/genai` 1.42.0, `openai` 6.25.0). The rebuild task is narrowly scoped: select the single best AI provider, harden the JSON schema pipeline, and rebuild the preset engine logic. No framework changes are needed.
+This document covers stack additions and changes needed for the six new v1.1 features only. The validated v1.0 stack (Next.js 16, TypeScript 5, Tailwind CSS 4, Claude Sonnet 4.6 with `zodOutputFormat`, `@anthropic-ai/sdk` 0.78.0, Zod 4.3.6, vitest, Gemini for chat) is NOT re-researched here — it stands unchanged.
+
+**New features requiring stack investigation:**
+1. Prompt caching for API cost reduction
+2. Genre-aware effect parameter defaults
+3. Smarter snapshot effect toggling
+4. .hlx format audit
+5. Signal chain visualization in UI
+6. Tone description card
 
 ---
 
@@ -18,173 +26,183 @@ The existing app already runs on Next.js 16, TypeScript 5, Tailwind CSS 4, and h
 
 | Technology | Version | Purpose | Why Recommended |
 |------------|---------|---------|-----------------|
-| Next.js | 16.1.6 (existing) | Full-stack framework, API routes | Already in use, no reason to change; App Router + serverless functions are the right primitives |
-| TypeScript | 5.x (existing) | Type safety across preset builder and AI output pipeline | Strict mode already enabled; PresetSpec/HlxFile types are the backbone of correctness |
-| Anthropic Claude (Sonnet 4.6) | API via `@anthropic-ai/sdk` 0.78.0 | Single AI provider for preset spec generation | See AI Provider Comparison below — wins on structured output precision and lowest hallucination rate |
-| Zod | 4.3.6 (existing) | Schema definition and validation for PresetSpec | Already in codebase; Zod v4 is 14.71x faster than v3; generates JSON Schema for Claude's `output_config`; source of truth for types |
-| Vercel | Free/Hobby tier | Deployment | Already in use; with streaming responses, 10-second function limit is not a blocker for generation |
+| `@anthropic-ai/sdk` | 0.78.0 (current, no upgrade needed) | Prompt caching via top-level `cache_control` field | v0.78.0 is the version that ADDED automatic top-level `cache_control` (released 2026-02-19). No upgrade needed — it is already installed at this exact version |
+| `@xyflow/react` | 12.10.1 | Signal chain visualization — interactive node/edge flow diagram | The renamed successor to `reactflow`; v12 adds SSR support, TypeScript-first, Tailwind-compatible custom nodes. Linear signal chain maps directly to input→block→output node graph. No alternative comes close for this shape of problem |
 
 ### Supporting Libraries
 
 | Library | Version | Purpose | When to Use |
 |---------|---------|---------|-------------|
-| `@anthropic-ai/sdk` | 0.78.0 (existing, current as of 2026-03-01) | Claude API client with TypeScript types, streaming, structured outputs | Use for all AI calls; supports `output_config.format.type: "json_schema"` natively |
-| `zod` | 4.3.6 (existing, latest stable) | Define PresetSpec schema; generates JSON Schema for `output_config`; validates AI response at runtime | Use `z.toJSONSchema()` to derive the Claude output schema from the same Zod definition used for TypeScript types — single source of truth |
-| `zod-to-json-schema` (optional) | — | Only needed if Zod v4's built-in `z.toJSONSchema()` output doesn't match Claude's exact schema dialect | Evaluate need at implementation time; Zod v4 now includes `z.fromJSONSchema()` and `z.toJSONSchema()` natively |
+| `@xyflow/react` | `^12.10.1` | Signal chain visualization component | Only for the new `SignalChainView` UI component. Do NOT use for anything outside the visualization panel |
 
 ### Development Tools
 
-| Tool | Purpose | Notes |
-|------|---------|-------|
-| ESLint 9.x (existing) | Code linting | No change needed |
-| TypeScript strict mode (existing) | Catch type errors in preset builder | Already enabled; critical for PresetSpec correctness |
-| Node.js 18+ (existing) | Runtime | No change needed |
+No new development tools needed. vitest, ESLint 9.x, and TypeScript strict mode cover all new code.
 
 ---
 
-## AI Provider Comparison
+## Feature-by-Feature Stack Analysis
 
-The question is: which single provider produces the most accurate, schema-compliant PresetSpec JSON for Helix preset generation?
+### 1. Prompt Caching
 
-### Evaluation Criteria for This Use Case
+**What's needed:** A change to how `callClaudePlanner()` calls the Claude API in `src/lib/planner.ts`.
 
-1. **Structured output reliability** — Does the model guarantee schema-compliant JSON, not just "usually" produce it?
-2. **Hallucination rate on domain-specific parameters** — Will it invent fake model IDs like `HD2_AmpFakeModel` or get real ones right?
-3. **Reasoning quality for complex specs** — Can it design a coherent signal chain (right block order, right EQ values, realistic gain staging) not just fill in fields?
-4. **Vercel/serverless compatibility** — Does the API pattern work within Vercel's streaming constraints?
-5. **Cost** — Sustainable on a free-tier Vercel app with per-request AI calls.
+**Mechanism:** Add `cache_control: { type: "ephemeral" }` at the top level of the `client.messages.create()` call. This is the "automatic caching" mode added in `@anthropic-ai/sdk` 0.78.0. The SDK automatically marks the last cacheable block in the conversation, and subsequent requests with the same prefix read from cache at 10% of the normal input token cost.
 
----
+**Why automatic caching over explicit cache breakpoints:**
+- The Planner system prompt (`buildPlannerPrompt()`) is the large static block — it contains the full model list (~3K-5K tokens) plus instructions.
+- The conversation history changes on every call (different users, different messages).
+- Automatic caching handles this split correctly: it caches system prompt + early conversation turns and moves the breakpoint forward as conversations grow.
+- Explicit breakpoints would require manually placing `cache_control` inside the system content array, which is more fragile and provides no additional benefit here.
 
-### Provider Deep Dive
+**Minimum token threshold for Claude Sonnet 4.6:**
+The official Anthropic docs specify **2048 tokens** as the minimum cacheable prompt length for Claude Sonnet 4.6 (source: official prompt caching docs, verified 2026-03-02). The Planner system prompt alone is ~3K-5K tokens (it contains the full model list from `getModelListForPrompt()`), so the minimum is easily met on every call.
 
-#### Anthropic Claude (Sonnet 4.6)
+**Cost impact:** Cache write tokens cost 1.25x base input price. Cache read tokens cost 0.10x base input price. After the first generation (cache miss), every subsequent generation within 5 minutes that shares the same system prompt pays 10% for those tokens. For a system prompt that is ~4K tokens at $3/MTok input price, each cache hit saves approximately $0.0011 per call. With tens of calls per session this compounds meaningfully.
 
-**Structured Output Mechanism:** Constrained decoding via `output_config.format`. As of November 2025 (GA), the API compiles your Zod-derived JSON schema into a token grammar and constrains generation — the model literally cannot produce tokens that violate the schema. This is not prompt engineering; it is enforced at the inference level.
-
-**API surface (TypeScript):**
+**SDK usage (TypeScript):**
 ```typescript
+// In src/lib/planner.ts — callClaudePlanner()
 const response = await client.messages.create({
   model: "claude-sonnet-4-6",
-  max_tokens: 8192,
-  messages: [...],
+  max_tokens: 4096,
+  cache_control: { type: "ephemeral" },   // <-- add this line only
+  system: systemPrompt,
+  messages: [{ role: "user", content: conversationText }],
   output_config: {
-    format: {
-      type: "json_schema",
-      schema: zodToJsonSchema(PresetSpecSchema)
-    }
-  }
+    format: zodOutputFormat(ToneIntentSchema),
+  },
 });
 ```
 
-**Models supported for structured outputs:** Claude Opus 4.6, Claude Sonnet 4.6, Claude Sonnet 4.5, Claude Opus 4.5, Claude Haiku 4.5. Sonnet 4.6 is generally available on the Claude API and Amazon Bedrock. (Source: official Anthropic structured outputs docs, verified 2026-03-01.)
+**No SDK upgrade needed.** `@anthropic-ai/sdk` 0.78.0 introduced `cache_control` at the top level. The TypeScript types for this field are included in 0.78.0.
 
-**Hallucination rate:** ~3% — the lowest of the three providers tested in 2026 comparisons. For domain-specific tasks where wrong values cause hardware failures (wrong model IDs break preset loading), this is the critical metric.
+**No beta header needed.** Prompt caching is now a core feature, not a beta. The old `anthropic-beta: prompt-caching-2024-07-31` header is no longer required.
 
-**Structured output quality for complex JSON:** Sonnet 4.6 ranks #1 globally in office productivity and large-scale tool-calling benchmarks. On SWE-bench Verified it scores 79.6% vs Opus 4.6's 80.8% — a 1.2% gap at one-fifth the cost. For a PresetSpec (a structured object with 20-40 fields, arrays of blocks, and nested snapshots), Sonnet 4.6 is the correct tier — not Haiku (insufficient reasoning depth) and not Opus (unnecessary and expensive).
-
-**Vercel compatibility:** The Claude API is a standard HTTPS endpoint with streaming support. On Vercel's Hobby plan (10-second hard limit for non-streaming functions), generation must stream. Claude's SDK provides `client.messages.stream()` which works as a streaming response from a Next.js Route Handler.
-
-**Cost:** $3/MTok input, $15/MTok output. A typical preset generation request uses ~2K input tokens and ~1K output tokens. Cost per generation: ~$0.021. Negligible for a free-tier app.
-
-**Prompt caching advantage:** Claude supports prompt caching for system prompts. The Helix model database + generation system prompt is ~3K-5K tokens. With caching enabled, repeated generations cache the system prompt at $0.30/MTok reads (10x cheaper). This is directly applicable: the system prompt with full model IDs, parameter ranges, and signal chain rules is constant across all generations.
-
-**Rating for this use case: STRONGLY RECOMMENDED**
+**Cache monitoring:** The response `usage` object returns `cache_creation_input_tokens` and `cache_read_input_tokens` fields. Log these in development to verify caching is working. No additional tooling needed.
 
 ---
 
-#### OpenAI GPT-4o
+### 2. Genre-Aware Effect Parameter Defaults
 
-**Structured Output Mechanism:** `response_format: { type: "json_schema", json_schema: { strict: true, schema: ... } }`. Claims 100% schema compliance on controlled benchmarks. In real-world community usage, intermittent failures with newer models (gpt-4.1, o4-mini) and `gpt-4o-mini` are reported. The `strict: true` flag is required for guarantees and not consistently supported across all current model snapshots.
+**What's needed:** Additions to the Knowledge Layer only — pure TypeScript data and logic changes. No new packages.
 
-**Hallucination rate:** ~6% — double Claude's rate. For a task where hallucinated model IDs (e.g., `HD2_AmpMarshallPlexiThatDoesNotExist`) break .hlx files on real hardware, this matters.
+**Affected files:**
+- `src/lib/helix/param-engine.ts` — Add genre-aware lookup tables for delay times, reverb mix, modulation rates
+- `src/lib/helix/tone-intent.ts` — `genreHint` is already optional string on ToneIntent; no schema change needed
 
-**Cost:** $2.50/MTok input, $10/MTok output — cheaper than Claude. However, the lower accuracy requires more aggressive validation and fallback logic, negating cost savings.
+**Implementation pattern:** Extend the existing `AMP_DEFAULTS` / category lookup table pattern in `param-engine.ts` with a new `GENRE_EFFECT_PARAMS` table keyed by genre prefix. The `resolveParameters()` function already receives `ToneIntent`, so `intent.genreHint` is available to conditionally override defaults.
 
-**Vercel compatibility:** Standard HTTPS, compatible.
-
-**Key concern:** Community-reported intermittent structured output failures on GPT-4.1 and newer model snapshots. The model support matrix for `json_schema` structured outputs is inconsistent across the API version landscape as of early 2026. Requires testing on each new model snapshot.
-
-**Rating for this use case: VIABLE FALLBACK, not primary choice**
-
----
-
-#### Google Gemini (2.5 Pro)
-
-**Structured Output Mechanism:** JSON Schema via `generationConfig.responseSchema`. Moved from OpenAPI 3.0 subset to full JSON Schema support (preview) in 2025. Complex schemas still produce `400 InvalidArgument` errors — Google advises shortening property names, flattening arrays, and reducing optional fields. The Helix PresetSpec has nested objects, union types, and arrays of blocks, which is exactly the schema shape that triggers Gemini's complexity limits.
-
-**Current app context:** Gemini is already used for the chat/interview phase (`/api/chat`). This is the right use for it — Gemini 2.5 Pro's 2M context window and conversational quality are excellent for the interview. Google Search grounding (already integrated) adds real value for artist/rig research during the chat phase.
-
-**Structured output for PresetSpec generation:** The Vercel AI SDK has an open GitHub issue specifically requesting full JSON Schema support for Gemini 2.5 structured outputs (as of 2026), indicating the integration is not yet as mature as OpenAI's or Claude's. Gemini's schema complexity limitations are a real risk for a PresetSpec with 8 snapshots, 15+ blocks, and nested parameter overrides.
-
-**Cost:** $1.25-$2.50/MTok input — cheapest of the three.
-
-**Rating for this use case: KEEP for chat interview phase only; DO NOT use for preset generation**
-
----
-
-### Provider Recommendation Summary
-
-| Criterion | Claude Sonnet 4.6 | GPT-4o | Gemini 2.5 Pro |
-|-----------|:-----------------:|:------:|:--------------:|
-| Schema guarantee mechanism | Constrained decoding (enforced) | Constrained decoding (enforced, strict: true) | Schema-guided generation (not full constrained decoding) |
-| Hallucination rate | ~3% (lowest) | ~6% | ~6% |
-| Complex nested JSON reliability | HIGH | MEDIUM (intermittent reports) | MEDIUM (schema complexity limits) |
-| Prompt caching for large system prompts | YES (10x cheaper reads) | YES (but less favorable) | YES |
-| Vercel streaming compatibility | YES | YES | YES |
-| Cost per generation (~3K in, ~1K out) | ~$0.024 | ~$0.018 | ~$0.006 |
-| Risk of schema complexity errors | LOW | LOW-MEDIUM | MEDIUM-HIGH |
-| Recommended for PresetSpec generation | **YES** | Fallback | No |
-| Recommended for chat interview | YES | No | **YES (already in use)** |
-
-**Decision: Claude Sonnet 4.6 for preset generation. Gemini 2.5 Pro for chat interview (keep existing).**
-
-Rationale: The primary failure mode of the current app is incorrect parameter values and hallucinated model IDs. Claude's lowest hallucination rate combined with constrained decoding (schema guaranteed at the token level) is the correct solution. The 40% higher cost vs GPT-4o is trivially small at this app's scale and is outweighed by the reliability advantage. Gemini keeps its role in the interview phase where it performs well and already works.
-
----
-
-## Schema Validation Architecture
-
-The rebuild should use a three-layer validation approach:
-
-**Layer 1 — Schema enforcement at generation (Claude `output_config`):**
-The Zod `PresetSpecSchema` is compiled to JSON Schema via `z.toJSONSchema()` and passed directly to Claude's `output_config.format.schema`. Claude cannot return a response that violates the schema structure. This eliminates JSON parse errors and missing required fields.
-
-**Layer 2 — Business logic validation (existing `validateAndFixPresetSpec`):**
-Schema compliance does not guarantee business correctness. After Claude returns a schema-valid PresetSpec, the existing validator handles: model ID existence checks against the Helix model database, block position normalization within each DSP, snapshot block reference resolution, and parameter range clamping. This layer is already implemented and should be retained and extended.
-
-**Layer 3 — Domain knowledge defaults (models.ts database):**
-The model database provides authoritative default parameters per amp/cab/effect model. AI-generated parameter values should be treated as overrides on top of database defaults, not freestanding values. This hybrid approach (template defaults + AI creative choices) is the correct architecture for world-class preset quality.
-
-**Implementation note on Zod + Claude schema generation:**
+**Example shape:**
 ```typescript
-import { z } from "zod";
-// Zod v4 built-in — no external package needed
-const jsonSchema = z.toJSONSchema(PresetSpecSchema);
-// Pass to Claude:
-output_config: { format: { type: "json_schema", schema: jsonSchema } }
+// In param-engine.ts
+const GENRE_DELAY_PARAMS: Record<string, Partial<Record<string, number>>> = {
+  country:    { Time: 375, Feedback: 0.30, Mix: 0.22 },  // dotted-eighth slap
+  blues:      { Time: 420, Feedback: 0.25, Mix: 0.20 },  // trailing repeats
+  metal:      { Time: 0,   Feedback: 0.0,  Mix: 0.0  },  // off in rhythm
+  ambient:    { Time: 800, Feedback: 0.55, Mix: 0.45 },  // wash
+  // ...
+};
 ```
-Zod v4's `z.toJSONSchema()` is the built-in method (verified current). The `additionalProperties: false` constraint should be set on all object nodes to prevent Claude from appending extraneous fields.
+
+No new library. This is data, not a dependency.
 
 ---
 
-## Template Hybrid Approach
+### 3. Smarter Snapshot Effect Toggling
 
-The current app generates presets from scratch via AI. The rebuild should use a template+AI hybrid:
+**What's needed:** Logic changes to `src/lib/helix/snapshot-engine.ts` — pure TypeScript. No new packages.
 
-**What templates provide (deterministic):**
-- Signal chain topology (block ordering rules: dynamics before amp, modulation after amp, reverb last)
-- Per-amp-category baseline parameters (clean/crunch/high-gain profiles from models.ts)
-- Mandatory always-on blocks (noise gate, post-cab EQ)
-- Cab selection logic (match cab to amp family)
+**Current behavior:** `getBlockEnabled()` uses a fixed lookup table (reverb always ON, delay ON for lead/ambient, modulation ON for ambient only). The v1.1 goal is to make toggling sensitive to the effect's `role` field on the `EffectIntent` (`always_on`, `toggleable`, `ambient`).
 
-**What AI provides (creative):**
-- Amp model selection based on artist/genre research
-- EQ sculpting values to match target tone
-- Snapshot design (which blocks on/off per scene, volume balance)
-- Effect choice and placement beyond mandatory blocks
+**Implementation path:** The `buildSnapshots()` function receives the signal chain (`BlockSpec[]`) and `SnapshotIntent[]`. The `EffectIntent.role` from `ToneIntent` needs to be threaded into the snapshot engine so block-level decisions can use it. The cleanest approach: enrich each `BlockSpec` with the originating `EffectIntent.role` when `assembleSignalChain()` builds the chain in `chain-rules.ts`, making it available downstream without passing `ToneIntent` through multiple layers.
 
-This hybrid approach encodes the expert knowledge that professional Helix preset makers use, while letting the AI handle the creative matching. The AI should be told what building blocks exist and given the defaults — it should override defaults only where the target tone requires it.
+No new library. This is pure logic refactoring.
+
+---
+
+### 4. .hlx Format Audit
+
+**What's needed:** Research and validation work against HX Edit's actual export format. No new runtime packages.
+
+**Approach:** Collect real .hlx exports from HX Edit and diff them against HelixAI's outputs. This is a data audit + schema correction task.
+
+**Optional dev tooling:** A simple Node.js comparison script in `scripts/` to diff two .hlx JSON files field-by-field. No package needed; `JSON.parse` + `fs.readFileSync` is sufficient.
+
+No new production package. The fix is in `src/lib/helix/preset-builder.ts` and `src/lib/helix/types.ts`.
+
+---
+
+### 5. Signal Chain Visualization
+
+**What's needed:** `@xyflow/react` 12.x for the flow diagram component.
+
+**Why @xyflow/react over alternatives:**
+
+| Option | Assessment |
+|--------|------------|
+| `@xyflow/react` v12 | PURPOSE-BUILT for this exact problem shape: directed graph with custom node types, edges between nodes, readonly display mode. TypeScript-first. SSR support. Tailwind-compatible custom nodes. Actively maintained (12.10.1 released ~10 days ago). MIT license |
+| Custom SVG in JSX | Viable — this is a simple linear chain, not a complex graph. However, implementing edge routing, node layout, and responsive sizing from scratch takes 1-2 days. @xyflow/react does this in 20 lines |
+| D3.js / visx | Low-level — overkill for a linear chain display. Would require building all abstractions that @xyflow provides |
+| react-flow-chart (`@mrblenny/react-flow-chart`) | Unmaintained — last published 6 years ago. Reject |
+
+**Decision: @xyflow/react.** The signal chain is literally a node graph (DSP0 blocks → DSP1 blocks with split/join). React Flow was built for this. For a read-only visualization of 8-15 blocks connected in series/parallel, this is ~50 lines of component code rather than ~200+ of custom SVG.
+
+**Size consideration:** @xyflow/react adds to bundle size. Since the visualization is only shown after preset generation (not on initial page load), it should be lazy-loaded with `next/dynamic`:
+```typescript
+const SignalChainView = dynamic(
+  () => import("@/components/SignalChainView"),
+  { ssr: false, loading: () => <p>Loading visualization...</p> }
+);
+```
+This keeps the initial page load unaffected.
+
+**Usage pattern:** The existing `generatedPreset.spec.signalChain` (`BlockSpec[]`) from the generate API response is the data source. Map each `BlockSpec` to a React Flow node (custom styled card per block type). Edges connect sequential blocks. Split/join blocks trigger branching edges.
+
+**TypeScript types for nodes:**
+```typescript
+import { Node, Edge } from "@xyflow/react";
+
+type BlockNode = Node<{ block: BlockSpec }, "block">;
+```
+
+**Styling:** Use Tailwind CSS for custom node components. @xyflow/react renders custom nodes as standard React components — Tailwind classes work without any configuration changes.
+
+---
+
+### 6. Tone Description Card
+
+**What's needed:** Pure React/TypeScript — no new library.
+
+**Data source:** The existing `generatedPreset.summary` string (from `summarizePreset()` in `src/lib/helix/index.ts`) plus `generatedPreset.toneIntent` (already returned in the API response at `toneIntent` field).
+
+**Implementation:** A new React component in `src/components/ToneDescriptionCard.tsx` that renders `toneIntent.description`, `toneIntent.guitarNotes`, amp/cab names, snapshot names, and effect list in a styled card. `ReactMarkdown` (already installed) can render the description field if it contains markdown.
+
+No new package needed.
+
+---
+
+## Installation
+
+```bash
+# The only new production dependency for v1.1:
+npm install @xyflow/react@^12.10.1
+
+# No other new packages needed.
+# @anthropic-ai/sdk is already at 0.78.0 (the version that added cache_control).
+# All other v1.1 features are pure TypeScript changes to existing modules.
+```
+
+---
+
+## Alternatives Considered
+
+| Recommended | Alternative | Why Not |
+|-------------|-------------|---------|
+| `@xyflow/react` for signal chain visualization | Custom SVG in JSX | Viable for a simple linear chain, but @xyflow handles edge routing, zoom, and layout for free. At 50 lines vs 200+, @xyflow wins unless bundle size is a hard constraint |
+| `@xyflow/react` for signal chain visualization | D3.js | D3 is imperatively-styled and not idiomatic in a React/Tailwind codebase. @xyflow is React-native and Tailwind-compatible |
+| Automatic `cache_control` (top-level) | Explicit `cache_control` on system content array | Explicit is useful when you want to cache specific sections at different frequencies. Automatic is simpler and sufficient here — the entire system prompt is static, the conversation is dynamic. Automatic handles this split correctly without manual management |
+| Genre hints as string in ToneIntent | New `genre` enum field on ToneIntent | String is already there (`genreHint: z.string().optional()`). Adding an enum would add schema complexity and require retraining Claude's understanding. Prefix-match on the string is sufficient for the lookup table approach |
 
 ---
 
@@ -192,53 +210,53 @@ This hybrid approach encodes the expert knowledge that professional Helix preset
 
 | Avoid | Why | Use Instead |
 |-------|-----|-------------|
-| Multi-provider parallel generation for .hlx output | Architecture produces inconsistent results across providers; tone quality is not comparable across schemas; creates maintenance burden for three code paths | Single provider (Claude Sonnet 4.6) for generation |
-| Gemini for PresetSpec generation | Schema complexity limits risk 400 errors on nested PresetSpec; existing schema violations reported in community | Claude Sonnet 4.6 for generation; keep Gemini for chat |
-| Zod v3 | Exists in repo as a dependency but v4 is current default at `npm i zod`; v3 is 14.71x slower and has >25,000 TypeScript instantiations vs ~175 in v4 | Zod v4 (already installed at 4.3.6) |
-| AJV as primary validator | Better raw performance, but TypeScript DX is worse (no native type inference); Zod v4 is fast enough for this use case (preset generation is not high-throughput) and provides the JSON Schema export needed for Claude's `output_config` | Zod v4 |
-| Raw prompt engineering for JSON (no schema enforcement) | Current approach — fragile, requires defensive parsing, produces hallucinated IDs | Claude `output_config` with Zod-derived schema |
-| Edge Functions for generation route | Strict first-byte timeout limits; generation requires reasoning time before first token; streaming helps but Edge adds fragility | Node.js serverless functions (existing `/api/generate` route) |
-| `claude-opus-4-6` as default generation model | 5x more expensive than Sonnet 4.6 for 1.2% quality difference on structured tasks; output ceiling advantage (128K vs 64K) irrelevant for preset generation (output is ~1K tokens) | `claude-sonnet-4-6` as default; Opus as premium tier |
-| `claude-haiku-4-5` for generation | Insufficient reasoning depth for complex signal chain design and EQ parameter judgment | `claude-sonnet-4-6` |
-| Audio DSP libraries (Web Audio API, essentia.js, libfaust) | This app does NOT process audio — it generates configuration JSON describing a DSP device (the Helix). No audio signal processing happens server-side | None needed; this is a JSON generation problem, not an audio processing problem |
-| LangChain or similar orchestration frameworks | Adds abstraction and dependency overhead for a simple two-phase workflow (chat + generation); direct SDK calls are cleaner and already implemented | Direct `@anthropic-ai/sdk` and `@google/genai` SDK calls |
-| Outlines/XGrammar/Microsoft Guidance | Open-source constrained decoding frameworks for self-hosted models; not applicable when using hosted APIs with native structured output support | Claude `output_config` |
+| `reactflow` (legacy package name) | Renamed to `@xyflow/react` at v12. The old package still exists but is not actively maintained at v12+ | `@xyflow/react` |
+| `@mrblenny/react-flow-chart` | Last published 6 years ago, unmaintained | `@xyflow/react` |
+| Anthropic beta header `prompt-caching-2024-07-31` | No longer required — prompt caching is now a core Claude API feature, not a beta | Just add `cache_control: { type: "ephemeral" }` to the request |
+| `@ai-sdk/anthropic` (Vercel AI SDK wrapper) | Adds abstraction overhead; `@anthropic-ai/sdk` is already installed and directly supports `cache_control`. No reason to add a wrapper | Direct `@anthropic-ai/sdk` calls (already in use) |
+| Upgrading `@anthropic-ai/sdk` to a newer version for prompt caching | 0.78.0 IS the version that added automatic `cache_control`. No upgrade needed | Stay at 0.78.0 |
+| Audio processing libraries for signal chain visualization | The visualization shows the CONFIGURATION of DSP blocks, not actual audio signal data. No audio processing occurs | `@xyflow/react` for configuration graph display |
 
 ---
 
-## Installation
+## Version Compatibility
 
-No new packages are required for the core rebuild. All dependencies are already installed. The changes are architectural, not dependency-based.
+| Package | Compatible With | Notes |
+|---------|-----------------|-------|
+| `@xyflow/react@^12.10.1` | React 19.x | @xyflow/react v12 is tested with React 18 and 19. React 19.2.3 is installed — no conflict |
+| `@xyflow/react@^12.10.1` | Next.js 16.x | Must be lazy-loaded with `next/dynamic({ ssr: false })` — React Flow uses browser APIs (DOM measurements) that are not SSR-safe |
+| `@xyflow/react@^12.10.1` | Tailwind CSS 4.x | Custom node components use standard React + Tailwind classes. No PostCSS or config changes needed |
+| `@anthropic-ai/sdk@0.78.0` | Current | `cache_control` top-level field TypeScript type is included in 0.78.0. No type augmentation needed |
 
-```bash
-# Current dependencies already cover all needs:
-# @anthropic-ai/sdk@0.78.0  — Claude API with structured outputs support
-# @google/genai@1.42.0      — Gemini for chat (keep)
-# zod@4.3.6                 — Schema validation + JSON Schema generation for output_config
-# openai@6.25.0             — Can be removed after single-provider migration
+---
 
-# To remove unused providers after migration:
-npm uninstall openai
-# Keep @google/genai for the chat interview phase
-```
+## Stack Patterns by Variant
+
+**For the signal chain visualization (read-only display):**
+- Use `@xyflow/react` in `fitView` mode with `nodesDraggable: false` and `nodesConnectable: false` — prevents user interaction, pure display
+- Lazy-load via `next/dynamic` to avoid SSR issues and keep initial page load fast
+- Map `BlockSpec.type` to a color scheme via Tailwind class lookup (e.g., `amp` = amber, `delay` = blue, `reverb` = purple)
+
+**For prompt caching:**
+- Always add `cache_control` at request construction time, not conditionally. Even when the system prompt might be short, the overhead of the `cache_control` field itself is zero — if below the 2048-token minimum, caching is silently skipped by the API
+- Log `response.usage.cache_read_input_tokens` in development to verify cache hits are occurring
+
+**For genre-aware defaults:**
+- Use `genreHint.toLowerCase()` before table lookup, and implement prefix matching (e.g., "modern metal" matches "metal" key) to avoid requiring exact strings from Claude
+- Provide fallback defaults for all unrecognized genres — never throw on missing genre key
 
 ---
 
 ## Sources
 
-- [Anthropic Structured Outputs — Official Docs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs) — GA on Opus 4.6, Sonnet 4.6, Haiku 4.5; `output_config.format.type: "json_schema"`; constrained decoding mechanism (verified 2026-03-01)
-- [Structured Output Comparison across LLM Providers — Medium (Rost Glukhov)](https://medium.com/@rosgluk/structured-output-comparison-across-popular-llm-providers-openai-gemini-anthropic-mistral-and-1a5d42fa612a) — Hands-on comparison of OpenAI, Gemini, Claude, Mistral, Bedrock
-- [Claude Sonnet 4.6 vs Opus 4.6 2026 Comparison — DataStudios](https://www.datastudios.org/post/claude-sonnet-4-6-vs-opus-4-6-2026-comparison-capability-split-output-ceilings-long-context-beha) — Benchmark data, output ceilings, cost analysis
-- [Anthropic Launches Structured Outputs — TechBytes](https://techbytes.app/posts/claude-structured-outputs-json-schema-api/) — Feature announcement, Zod/Pydantic integration, zero JSON parse errors claim
-- [OpenAI Structured Outputs — Official Docs](https://developers.openai.com/api/docs/guides/structured-outputs/) — `response_format json_schema strict: true`, model support matrix
-- [Structured Outputs not reliable with GPT-4o — OpenAI Community](https://community.openai.com/t/structured-outputs-not-reliable-with-gpt-4o-mini-and-gpt-4o/918735) — Real-world reliability reports
-- [Gemini JSON Schema support — Google AI for Developers](https://ai.google.dev/gemini-api/docs/structured-output) — Schema complexity warnings, 400 errors on complex schemas
-- [Gemini 2.5 JSON Schema Vercel AI SDK issue — GitHub](https://github.com/vercel/ai/issues/6494) — Open issue as of 2026 for full JSON Schema support
-- [Zod v4 npm](https://www.npmjs.com/package/zod) — Latest version 4.3.6; 86M weekly downloads; z.toJSONSchema() built-in
-- [Zod v4 Release Notes](https://zod.dev/v4) — 14.71x faster than v3; native JSON Schema generation/consumption
-- [Claude Sonnet 4.6 Pricing](https://platform.claude.com/docs/en/about-claude/pricing) — $3/MTok input, $15/MTok output; 90% caching savings
-- [Vercel Function Limits](https://vercel.com/docs/functions/limitations) — Hobby plan 10s default; streaming resolves timeout constraint
-- [Line 6 Community — .hlx format discussion](https://line6.com/support/topic/33381-documentation-on-the-hlx-json-format/) — Community documentation of hlx JSON structure
-- [HelixBackupFiles — GitHub (AntonyCorbett)](https://github.com/AntonyCorbett/HelixBackupFiles) — hlx/hlb format reverse engineering reference
-- [AI API Pricing Comparison 2026 — IntuitionLabs](https://intuitionlabs.ai/articles/ai-api-pricing-comparison-grok-gemini-openai-claude) — Cross-provider pricing table
-- [GPT-4o vs Claude vs Gemini Technical Comparison 2026 — CosmicJS](https://www.cosmicjs.com/blog/best-ai-for-developers-claude-vs-gpt-vs-gemini-technical-comparison-2026) — Developer-focused comparison
+- [Anthropic Prompt Caching Official Docs](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) — `cache_control` API shape, minimum token thresholds (2048 for Sonnet 4.6), pricing table, automatic vs explicit caching modes (verified 2026-03-02, HIGH confidence)
+- [@anthropic-ai/sdk npm changelog](https://github.com/anthropics/anthropic-sdk-typescript/blob/main/CHANGELOG.md) — v0.78.0 (2026-02-19) added top-level `cache_control` for automatic caching (HIGH confidence)
+- [@xyflow/react npm](https://www.npmjs.com/package/@xyflow/react) — Latest version 12.10.1, last published ~10 days ago, 407 dependents (MEDIUM confidence — npm registry data)
+- [React Flow v12 Migration Guide](https://reactflow.dev/learn/troubleshooting/migrate-to-v12) — Package rename from `reactflow` to `@xyflow/react`, SSR support added, React 19 compatibility (HIGH confidence)
+- [React Flow Quick Start](https://reactflow.dev/learn) — Installation, custom node API, `fitView` option (HIGH confidence)
+- Anthropic prompt caching pricing table in official docs — Claude Sonnet 4.6 cache writes $3.75/MTok, cache reads $0.30/MTok (verified 2026-03-02, HIGH confidence)
+
+---
+
+*Stack research for: HelixAI v1.1 feature additions*
+*Researched: 2026-03-02*

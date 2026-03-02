@@ -1,490 +1,378 @@
 # Pitfalls Research
 
-**Domain:** AI-powered Helix preset generation
-**Researched:** 2026-03-01
-**Confidence:** HIGH (multiple verified sources: Line 6 official community, Sweetwater, Tonevault analysis of 250 real presets, Fractal AI experiment, current codebase audit)
+**Domain:** AI-powered Helix preset generation — v1.1 feature additions
+**Researched:** 2026-03-02
+**Confidence:** HIGH (Anthropic official docs, direct codebase inspection, Line 6 community, verified against @anthropic-ai/sdk 0.78.0)
+
+> This document covers pitfalls for adding v1.1 features to the existing HelixAI system. The prior research in this file (v1.0) focused on preset tone quality. This update focuses on integration pitfalls for the six new features: prompt caching, genre-aware effect defaults, smarter snapshot toggling, .hlx format audit, signal chain visualization, and tone description card.
 
 ---
 
 ## Critical Pitfalls
 
-These cause presets that sound bad, won't load, or silently corrupt data.
+These cause silent failures, wrong hardware behavior, or wasted API spend with no visible error.
 
 ---
 
-### Pitfall 1: Missing Cab Low-Cut and High-Cut (The #1 Muddiness Cause)
+### Pitfall 1: Dynamic Content in System Prompt Invalidating Every Cache Entry
 
-**What goes wrong:** Generated presets omit `LowCut` and `HighCut` parameters on cab blocks, or set them to their passthrough defaults (0Hz / 20kHz). The cab IR reproduces close-mic'd speaker frequencies that would never be audible at normal listening distance — including deep low rumble below 80Hz and harsh fizz above 5–8kHz.
+**What goes wrong:** The system prompt for Claude's Planner (in `/api/generate`) includes a date stamp, session context, or any other per-request dynamic string. Every request hits the cache but fails to match because the system prompt bytes differ from the prior write. Anthropic's cache requires exact byte-for-byte identity up to and including the cached block. The generation route shows `cache_read_input_tokens: 0` on every call, meaning 100% cache misses with 25% write overhead on every request — costs go up, not down.
 
-**Why it happens:** AI models treat cab parameters as optional decoration. The Helix cab block `LowCut` and `HighCut` fields are technically optional in the JSON, so the AI omits them. The current codebase's `HlxCab` type marks them as optional (`LowCut?: number; HighCut?: number`), giving the AI no pressure to include them.
+**Why it happens:** The current system prompt in `providers.ts` injects a date at generation time: `src/lib/gemini.ts` line 98 does date injection at chat-prompt build time. Developers typically add similar context markers to the generation prompt "for freshness." Any part of the system prompt that changes between calls — even a single character — breaks the cache prefix.
 
-**Consequences:** Every generated preset sounds muddy, boomy, and harsh simultaneously. This is the single largest contributor to the "muddy + lacks sparkle" failure pattern in the current app. Without these cuts, a real guitar cab (which rolls off naturally below ~80Hz and above ~5kHz) is replaced with a full-spectrum close-mic response that sounds like you're pressing your ear to the speaker cone.
-
-**Prevention strategy:**
-- Make `LowCut` and `HighCut` REQUIRED fields on every cab block in the `HlxCab` type and `BlockSpec` — remove the `?` optional markers
-- Enforce at construction time in `preset-builder.ts`: if a cab block does not include these values, inject hardcoded safe defaults before building
-- Default values: `LowCut: 80` (Hz), `HighCut: 6500` (Hz) for standard guitar tones; `LowCut: 100, HighCut: 5000` for high-gain and metal
-- The generation prompt must explicitly list these as required fields with example values
-- Validate in `validate.ts` that no cab block has LowCut below 60Hz or HighCut above 10000Hz (values outside this range are almost always wrong for guitar)
+**How to avoid:**
+- Audit every string that ends up in the system prompt before marking it cacheable. Run two consecutive generations and compare the raw `system` field byte-for-byte.
+- Move the model ID list (the static knowledge: all amp names, effect names, schema description) before the cache breakpoint. Move any per-request context (user tone summary, conversation excerpt) after the cache breakpoint.
+- Use `cache_control: { type: "ephemeral" }` only on the static prefix block. The user's conversation history must be in a separate content block with no cache marker.
+- Log `usage.cache_creation_input_tokens` and `usage.cache_read_input_tokens` from every API response during development. If `cache_read_input_tokens` is 0 after the first call with identical prompts, the prefix is not byte-identical.
 
 **Warning signs:**
-- Any preset where the cab block parameters section is empty or only contains `Mic`
-- Presets described as "muddy" or "boomy" on first use
-- The AI produces a cab `parameters: {}` — zero parameters for a cab is guaranteed mud
+- `usage.cache_read_input_tokens` is consistently 0 across multiple generations with the same prompt
+- `usage.cache_creation_input_tokens` matches the full system prompt token count on every call (not just the first)
+- Total API costs increase after adding cache_control (writes cost 1.25x, reads cost 0.1x — if all writes and no reads, cost goes up)
 
-**Phase to address:** Preset Engine Core (Phase 1 of rebuild). This is non-negotiable pre-launch quality gate.
+**Phase to address:** Prompt Caching phase. Verify cache hit metrics before considering the feature complete.
 
 ---
 
-### Pitfall 2: Wrong Block Type Mapping in BLOCK_TYPES Constant
+### Pitfall 2: Prompt Too Short to Cache — Silent Non-Caching
 
-**What goes wrong:** The current `models.ts` has this in `BLOCK_TYPES`:
-```typescript
-DISTORTION: 0,
-DYNAMICS: 0,
-EQ: 0,
-WAH: 0,
-PITCH: 0,
-VOLUME: 0,
-DELAY: 7,
-REVERB: 7,
-```
-Multiple unrelated block categories share the numeric `@type` value `0`. The `DELAY` and `REVERB` share value `7`. If the Helix firmware uses these `@type` values to determine routing, signal processing order, or DSP chip assignment, sharing types across categories (e.g., EQ and distortion both being type 0) may cause incorrect behavior.
+**What goes wrong:** The static system prompt content placed before the cache breakpoint is fewer than 1,024 tokens. The API call succeeds, the preset generates correctly, but `cache_creation_input_tokens` is 0. No error is thrown. The feature appears to work but caching never activates. This is the most common reported failure mode from the Vercel AI SDK issue tracker.
 
-**Why it happens:** The `@type` field's semantics were reverse-engineered without official documentation. Line 6 does not publish the .hlx schema. The mapping was set up as a best-guess and never validated against real hardware behavior.
+**Why it happens:** The current Planner prompt in `providers.ts` may not reach 1,024 tokens if it only contains the structured output schema and basic instructions. The model ID enumeration (all valid amp names, cab names, effect names) needs to be included in the cached prefix to push it over the threshold — which is also the correct architecture (model list is the heaviest static content).
 
-**Consequences:** Preset may load but blocks may behave incorrectly. Reordering blocks in HX Edit after loading may snap to wrong positions. DSP allocation may be calculated incorrectly by firmware. This is a silent corruption — the preset appears valid but may not execute as intended.
-
-**Prevention strategy:**
-- Before rebuild: capture 5–10 representative .hlx files exported from HX Edit and verify the `@type` values for each block category by inspection
-- Map each type to a unique numeric constant verified from real exports, not assumed
-- Add a comment in `models.ts` documenting the source of each value
-- For blocks sharing `@type: 0`, verify this is correct in real exports — if they are genuinely 0 across categories, document the evidence
+**How to avoid:**
+- Measure the token count of the intended cache prefix before implementing. Use the Anthropic tokenizer or approximate at 4 characters per token. The full model ID list from `models.ts` (AMP_NAMES, CAB_NAMES, EFFECT_NAMES as enumerated strings) is roughly 800-1,200 tokens alone.
+- The schema description, all parameter guidance text, and the complete model enumeration together should comfortably exceed 1,024 tokens. If the prefix is short, the model enumeration is likely missing from the prompt.
+- Confirm by checking `usage.cache_creation_input_tokens > 0` on the first request after implementation.
 
 **Warning signs:**
-- Effects blocks appearing at wrong positions in HX Edit after loading
-- Helix displaying unexpected routing after import
-- Any `@type` constant that looks suspicious (two very different categories sharing a value)
+- `usage.cache_creation_input_tokens === 0` and `usage.cache_read_input_tokens === 0` on every call
+- System prompt appears to work correctly but cost savings are zero
 
-**Phase to address:** Preset Engine Core (Phase 1). Verify before any other work.
+**Phase to address:** Prompt Caching phase. Check token count before writing the implementation plan.
 
 ---
 
-### Pitfall 3: AI Hallucinating Invalid Model IDs
+### Pitfall 3: 5-Minute TTL Expiring Between Vercel Serverless Invocations
 
-**What goes wrong:** LLMs generate plausible-sounding model IDs that do not exist in the Helix model database. Example: AI generates `HD2_AmpBritVintage1959` instead of the actual `HD2_AmpBritPlexiNrm`. The Helix firmware silently skips or corrupts blocks with unknown model IDs.
+**What goes wrong:** The default cache TTL is 5 minutes. HelixAI is deployed on Vercel free tier. Users generate presets infrequently — often more than 5 minutes apart. Every generation is a cache miss + cache write (1.25x cost). The cache never actually saves money because no two requests arrive within the TTL window.
 
-**Why it happens:** AI models pattern-match on the `HD2_*` naming convention and extrapolate names that sound correct but were never defined. The training data has forum posts mentioning amp names but not exact model IDs. This is a well-documented failure mode: the Fractal Audio community confirmed ChatGPT "makes stuff up" about gear model IDs, and the Line 6 community AI builder acknowledged "sometimes it makes stuff up."
+**Why it happens:** Anthropic's prompt cache TTL is server-side (not tied to the serverless instance). The TTL resets on each cache hit. If no request hits the cache within 5 minutes, the cached entry expires. On Vercel free tier with infrequent users, this is the default behavior, not an edge case.
 
-**Consequences:** The current `validate.ts` auto-corrects by finding the closest model ID by trigram similarity — but "closest match" can be wrong. `HD2_AmpBritVintage1959` → `HD2_AmpBritPlexiNrm` is a reasonable guess, but the AI may have intended something else entirely. Silent auto-correction hides the root problem: the AI does not reliably know valid IDs.
-
-**Prevention strategy:**
-- The generation prompt must include the COMPLETE list of valid model IDs as an enumeration — not descriptions, the actual IDs
-- Use JSON Schema with an `enum` constraint on the `modelId` field so the AI's response is validated against the exact list before any downstream processing
-- If the provider supports structured output with schema enforcement (e.g., Anthropic tool use, OpenAI function calling with JSON Schema), use it — this reduces hallucinated IDs by ~70% based on RAG/constrained generation research
-- Keep the model database as the single source of truth; never allow the AI to invent IDs
-- Log every auto-correction with full context; if more than 2 corrections happen per preset, fail the generation rather than masking the problem
+**How to avoid:**
+- Use the 1-hour TTL option: `cache_control: { type: "ephemeral", ttl: "1h" }`. This costs 2x for cache writes instead of 1.25x, but a single cache hit within the hour pays back the extra write cost. For infrequent-use tools like HelixAI, 1-hour TTL is clearly better.
+- Note: The 1-hour TTL requires the `anthropic-beta: extended-cache-ttl-2025-04-11` header. With `@anthropic-ai/sdk` 0.78.0, this is passed via the `headers` option or via the `betas` parameter.
+- Model compatibility: Claude Sonnet 4.5 supports 1-hour TTL. Confirm the current model (`claude-sonnet-4-6` based on PROJECT.md) supports this option before depending on it.
 
 **Warning signs:**
-- Validation log shows `auto-corrected to` messages on every generation
-- The AI consistently uses IDs not in the database for a particular amp category
-- Two similar amp names (e.g., "Cali Rectifire" vs "Cali Recto") mapping to the same corrected ID
+- Cache metrics show writes but zero reads across a normal usage session
+- API costs remain unchanged after adding caching
 
-**Phase to address:** Prompt Engineering (Phase 2). The prompt must enumerate valid IDs. Test coverage: write tests for all high-risk amp categories.
+**Phase to address:** Prompt Caching phase. Choose TTL strategy as the first decision.
 
 ---
 
-### Pitfall 4: Uniform Drive Settings Across Amp Categories
+### Pitfall 4: Genre String Mismatch Between Prompt and Defaults Table
 
-**What goes wrong:** AI generates the same Drive (gain) parameter value regardless of amp category. Typically this manifests as a mid-range default (0.5–0.6) for clean, crunch, and high-gain amps alike. A clean amp (Fender Deluxe Reverb) at Drive 0.55 breaks up aggressively; a high-gain amp (Mesa Dual Rectifier) at Drive 0.55 with an 808 in front sounds compressed and lifeless.
+**What goes wrong:** The `ToneIntent.genreHint` field is `z.string().optional()` — a free-form string like `"blues rock"`, `"shoegaze"`, or `"ambient post-rock"`. The genre-aware defaults table uses a different key set (e.g., `"blues"`, `"ambient"`, `"rock"`). Lookup fails silently: `genreHint` is defined but no entry matches, so the defaults table returns `undefined` and the code falls back to amp-category defaults. The user asked for a shoegaze preset and gets generic clean amp defaults instead of the 500ms modulated delay they expected.
 
-**Why it happens:** AI training data treats amp parameters as generic knobs. Without explicit category-specific guidance, the AI defaults to "middle of the range" values that are defensible but wrong in practice. The current `models.ts` defaults show the correct approach (clean amps: Drive 0.35–0.50, high-gain: Drive 0.25–0.40 with external boost), but when the AI overrides these defaults, it ignores the category distinction.
+**Why it happens:** The `genreHint` was designed as an informational hint, not a controlled vocabulary term. Its documentation says "e.g., blues rock, metal, jazz — informational only." When genre-aware defaults are added later, a new lookup layer attempts to use this informational field as a lookup key without normalizing it.
 
-**Consequences:** Clean tones break up when strumming hard. High-gain tones are over-compressed and lack articulation. The presets fail the "cleans up with volume knob" requirement entirely because the amp is already pushed too hard.
-
-**What the data shows (Tonevault analysis of 250 real presets):**
-- Panama (5150-style): Drive stays below 4/10 in more than half of top presets. 71% use a Scream 808 to push the front end instead
-- Clean Fender types: Drive 2–3/10, Master at 9–10/10 (maxed to engage full power amp character)
-- Marshall types: Master 3–6/10, NOT 9–10 (high Master on these adds harsh negative feedback)
-- Mesa Rectifier-style: Drive moderate, low Master for tight preamp distortion
-
-**Prevention strategy:**
-- Encode amp-category-specific parameter ranges in the generation prompt as a reference table, not prose
-- The models database already has category fields (`clean`, `crunch`, `high_gain`); use these to inject category-specific parameter guidance into the prompt
-- For high-gain amps, specify that Drive should be set lower than intuitive (0.25–0.40) when a boost pedal precedes the amp
-- Master volume rules by category must be explicit: non-master-volume Fender types get Master 1.0; Marshall types get Master 0.3–0.6; high-gain modern amps get Master 0.3–0.5
-- Add post-generation parameter range validation per amp category: clean amp + Drive > 0.55 = flag as suspect
+**How to avoid:**
+- Define a closed genre vocabulary in the defaults table: `blues`, `jazz`, `country`, `classic_rock`, `hard_rock`, `metal`, `shoegaze`, `ambient`, `worship`, `punk`, `funk`, `indie`. Use these as keys.
+- Normalize `genreHint` before lookup: lowercase, strip punctuation, try direct match, then try partial match (contains `"metal"` uses `metal` defaults). Log when normalization fails to find a match.
+- Alternatively, add a `genreCategory` field to `ToneIntentSchema` with `z.enum(["blues", "jazz", ...])` alongside `genreHint`. The AI selects from the controlled list; the free-form string remains informational.
+- Never treat `undefined` genre as an error — it is a valid state. The defaults should gracefully degrade to amp-category defaults when genre is unknown.
 
 **Warning signs:**
-- All generated amps regardless of type have Drive in the 0.45–0.55 range
-- No 808/Minotaur or pre-amp boost block preceding a high-gain amp
-- Fender-style amp with Master set below 0.7
+- Genre-aware defaults have no observable effect on generated presets despite the user specifying a clear genre
+- Delay times and reverb mixes in generated presets are identical regardless of genre input
+- `genreHint` is defined in the intent but the genre defaults table lookup always returns `undefined`
 
-**Phase to address:** Models Database (Phase 1) + Prompt Engineering (Phase 2).
+**Phase to address:** Genre-Aware Defaults phase. Define the genre vocabulary before writing any lookup code.
 
 ---
 
-### Pitfall 5: Silent Snapshot Block State Loss
+### Pitfall 5: Overwriting Genre Defaults With Amp-Category Defaults at the Wrong Layer
 
-**What goes wrong:** The AI generates snapshot `blockStates` using block keys that don't survive the validation pipeline. When `resolveBlockKey()` in `validate.ts` can't map a key to a real block, it silently drops the entry. The snapshot then has no bypass control over that block — meaning a toggle that the user expects (e.g., "delay off in Clean snapshot") simply doesn't exist in the exported preset.
+**What goes wrong:** Genre-aware defaults for delay time, reverb mix, and modulation rate are applied in `param-engine.ts`. The existing `resolveDefaultParams()` function uses model `defaultParams` from the database. If genre defaults are applied first and then the model's `defaultParams` overwrite them, the genre-aware values are lost. This is the three-layer resolution problem: model defaults then category defaults then topology override. Genre defaults need a defined layer position or they will be silently overwritten.
 
-**Why it happens:** The `resolveBlockKey()` function has ambiguous logic for "global numbering" vs "per-DSP numbering." When the AI uses global sequential numbering (`block0` through `blockN` across both DSPs), the function remaps DSP1 blocks by subtracting the DSP0 count. But if the AI's count doesn't match the actual signal chain (due to removed blocks), the remapping produces wrong keys that fail the range check and return `null`.
+**Why it happens:** The existing `param-engine.ts` `resolveDefaultParams()` does `return { ...model.defaultParams }` — the model database values take full precedence over anything else for non-amp blocks. Genre defaults applied before this call vanish. Genre defaults applied after this call would correctly override, but the layer ordering must be explicit.
 
-**Consequences:** Snapshots that appear valid in the generation summary are functionally broken — effects that should toggle don't. User loads preset, switches to Lead snapshot expecting the chorus to turn off, nothing happens. This is a "looks done but isn't" bug.
-
-**Prevention strategy:**
-- After validation and auto-correction, programmatically rebuild all snapshot `blockStates` from the final signal chain — do not trust AI-generated block keys at all
-- The final signal chain (post-validation) is authoritative; regenerate all block keys from it before building the .hlx file
-- Emit a warning (and ideally fail) if the AI-generated blockStates reference more blocks than exist in the final signal chain
-- Add tests covering: AI uses global numbering with mixed DSP blocks, AI has one block removed by validation, AI uses out-of-range block index
+**How to avoid:**
+- Genre defaults must be the outermost layer (applied last, overriding model defaults). Define the resolution order explicitly in code comments: (1) model defaultParams, (2) category overrides (existing), (3) genre overrides (new). Each later layer wins over earlier layers.
+- Scope genre defaults to the correct block types: `delay` (Time, Mix, Feedback), `reverb` (Decay, Mix, Predelay), `modulation` (Speed, Depth, Mix). Do not apply genre defaults to amp or cab blocks — those already have category-specific expert values.
+- Use explicit override order: `{ ...modelDefaults, ...categoryDefaults, ...genreDefaults }`. The rightmost object wins.
 
 **Warning signs:**
-- Validation log shows block key corrections but generation succeeds without error
-- Snapshot `blockStates` in the final spec has fewer entries than there are non-cab blocks in the signal chain
-- Preset loads but all snapshots behave identically (no toggling)
+- Delay Time in generated presets does not match genre expectations (e.g., shoegaze gets short 200ms delay instead of 600ms)
+- All effect parameters match model database defaults exactly, regardless of genre
 
-**Phase to address:** Validation Pipeline (Phase 1 infrastructure). Block state regeneration must be programmatic, not AI-driven.
+**Phase to address:** Genre-Aware Defaults phase. Map out the resolution layer stack before writing code.
 
 ---
 
-### Pitfall 6: No Dynamic Responsiveness (Volume Knob Doesn't Clean Up)
+### Pitfall 6: Snapshot Effect Toggling Ignoring the Existing `getBlockEnabled()` State Table
 
-**What goes wrong:** The AI sets amp parameters (particularly Drive, Bias, Sag) to values that produce a fixed saturation state regardless of input level. Rolling back the guitar volume knob has no effect on the tone character — the amp stays in the same compressed breakup state at both 10 and 3 on the volume knob.
+**What goes wrong:** The existing `snapshot-engine.ts` `getBlockEnabled()` function has a deterministic state table for every block type and role combination. If smarter snapshot toggling is added by modifying the AI's output (e.g., adding new `toneRole` values or adding scene-purpose fields to `SnapshotIntent`) instead of extending `getBlockEnabled()`, the deterministic table gets bypassed. AI-generated block states re-enter the pipeline and the same non-determinism issues from v1.0 return.
 
-**Why it happens:** Dynamic responsiveness is not a single parameter — it's the interaction of Drive (low), Sag (moderate-high), Bias (cold for clean headroom), and BiasX (moderate). AI models don't understand this interaction. They treat each parameter independently.
+**Why it happens:** The natural implementation of "smarter snapshot toggling" is to add more fields to `SnapshotIntent` so the AI can express what effects should be on per snapshot. This breaks the Planner-Executor boundary — the Knowledge Layer (`snapshot-engine.ts`) is supposed to determine block states, not the AI. The v1.0 research clearly established that AI-generated `blockStates` were the source of the "all snapshots identical" bug.
 
-**What actually creates dynamic response:**
-- Drive kept low (0.25–0.45 for crunch amps)
-- Sag moderately high (0.55–0.75) — allows power supply "sag" to compress rather than the preamp
-- Bias cold (0.3–0.5) — increases headroom before breakup
-- No always-on OD pedal swamping the amp input at high gain
-
-**Consequences:** Presets feel "locked in" to one saturation state. They fail the professional quality bar — pro presets clean up naturally because that's how real tube amps work. This is a key differentiator between mediocre and world-class presets.
-
-**Prevention strategy:**
-- For clean and crunch categories: explicitly encode target parameter ranges for Sag, Bias, BiasX in the prompt as non-negotiable ranges, not suggestions
-- For clean amps intended to clean up: require Drive <= 0.45 and Bias <= 0.55
-- For crunch amps intended to respond to picking dynamics: require Sag >= 0.55
-- Add a Guitar In Pad note to the preset description so users know to enable it for high-output pickups (affects apparent Drive)
-- Do not place always-on OD pedals before amps in clean-to-crunch preset designs
+**How to avoid:**
+- Smarter snapshot toggling must be implemented by extending `getBlockEnabled()` in `snapshot-engine.ts`, not by giving the AI more control.
+- The new logic should be: for ambient-purposed snapshots, enable reverb and delay even for block roles that normally would not. For clean-purposed snapshots, disable distortion blocks regardless of amp category. These are rule additions to the existing state table.
+- Add a `snapshotPurpose` concept (separate from `toneRole`) only if it maps to deterministic rules. If it requires AI judgment, it does not belong in the AI output contract.
+- Run the full existing snapshot-engine tests after any change to `getBlockEnabled()` to verify no existing snapshot behavior regresses.
 
 **Warning signs:**
-- All presets use Bias values clustered around 0.5 (exactly mid-range — a sign of AI averaging)
-- Sag is consistently 0.5 across all amp types (should vary significantly by amp character)
-- A high-gain amp has Drive above 0.5 AND an OD pedal also enabled — double gain stacking eliminates dynamics
+- `SnapshotIntentSchema` gains new fields beyond `name` and `toneRole`
+- Block states in snapshots vary in unexpected ways that do not match the state table
+- Snapshot engine tests fail after adding new toggling logic
 
-**Phase to address:** Prompt Engineering (Phase 2) + Models Database amp category rules (Phase 1).
+**Phase to address:** Smarter Snapshot Toggling phase. Any change here must preserve the deterministic Knowledge Layer principle.
 
 ---
 
-### Pitfall 7: Physically Impossible or Out-of-Range Parameter Values
+### Pitfall 7: `@fs_enabled: false` Hardcoded in Footswitch Section
 
-**What goes wrong:** AI generates parameter values outside valid ranges for specific parameters. The current `validate.ts` clamps all values to 0–1 as a generic fix, but some parameters have non-standard ranges. The `Mic` parameter on cab blocks is an integer index 0–7, not a normalized float. Other parameters (like specific delay time values) may expect different encodings.
+**What goes wrong:** The current `buildFootswitchSection()` in `preset-builder.ts` hardcodes `"@fs_enabled": false` for every stomp assignment. This is the known hardware bug in the Active requirements list: footswitches require multiple presses before first activation. Setting `@fs_enabled: true` for stomp-assigned blocks should fix this.
 
-**Why it happens:** The AI has no concept of the difference between normalized 0–1 float parameters (most Helix parameters) and integer index parameters (Mic) or special-range parameters. It pattern-matches on "looks like a number" and may generate `Mic: 0.5` (invalid) or `LowCut: 0.1` (treating it as a 0–1 range when it's actually an Hz value requiring special encoding).
+The pitfall when fixing it: changing `@fs_enabled` to `true` on all blocks may also affect blocks that legitimately should not respond to footswitch presses (e.g., amp, cab, EQ). The footswitch section only assigns STOMP_BLOCK_TYPES (distortion, delay, reverb, modulation, dynamics, wah, pitch, volume), so the scope is correct — but this must be verified against real .hlx exports where `@fs_enabled: true` is confirmed to be the expected value for stomp-assigned blocks.
 
-**Current state:** The `validate.ts` comment explicitly documents: "Cab Mic is an integer mic index (0-7), not normalized 0-1." But it only handles Mic. Other parameters with non-standard semantics may be silently wrong.
-
-**Consequences:** Cab mic selection is wrong or defaults to SM57 regardless of intent. EQ frequency parameters may be miscalculated. The clamping fix hides the problem rather than solving it.
-
-**Prevention strategy:**
-- Audit the models database and document every parameter that is NOT normalized 0–1 (Hz values, integer indices, dB values)
-- Create a parameter type registry that maps parameter names to their expected type: `float_01`, `integer_index_0_7`, `hz_value`, etc.
-- Apply type-specific validation and conversion in `validate.ts` rather than generic 0–1 clamping
-- The generation prompt must specify the encoding of non-standard parameters explicitly: "Mic is an integer 0–7 where 0=SM57, 1=SM57 close, 2=121, etc."
-- For cab parameters `LowCut` and `HighCut`: specify in Hz in the prompt (e.g., "LowCut: 80 means 80Hz"), not normalized
+**How to avoid:**
+- Fix `@fs_enabled: false` to `@fs_enabled: true` only within `buildFootswitchSection()`, not in the controller section (`buildControllerSection()`).
+- Verify by exporting a real preset from HX Edit with one stomp assignment and inspecting the `@fs_enabled` value in the footswitch section of the JSON. Confirm it is `true`, not `false`.
+- After the fix, test on real hardware: load the preset, verify the effect activates on the first footswitch press.
+- Do not change the `@fs_enabled: false` in `buildSnapshot()` controllers section (line 227) — that field controls snapshot parameter controller behavior, not stomp state.
 
 **Warning signs:**
-- Cab `Mic` parameter is 0.0–1.0 range (should be 0–7 integer)
-- Validation log shows `clamped` messages on parameters that should not need clamping
-- EQ blocks with all parameters at exactly 0 or 1 (both extremes are usually wrong)
+- Footswitch behavior unchanged on hardware after the fix (still requires two presses)
+- Multiple places in the codebase have `@fs_enabled` — changing the wrong one
 
-**Phase to address:** Parameter Type System (Phase 1 infrastructure).
+**Phase to address:** Hardware Bug Fixes phase (first priority, it is a confirmed bug).
 
 ---
 
-### Pitfall 8: Wrong Signal Chain Block Order
+### Pitfall 8: `@pedalstate` Bitmask Computed Incorrectly
 
-**What goes wrong:** AI places blocks in an incorrect or suboptimal order. Common mistakes:
-- Reverb before delay (causes washed-out, muddy trails that compound into noise)
-- Noise gate after reverb/delay (chops off the tails)
-- OD/distortion after the amp (creates harsh digital clipping rather than tube saturation)
-- EQ placed before the amp instead of after (correct for some uses, wrong for post-amp shaping)
-- Modulation blocks placed before the amp (works but sounds thin compared to post-amp)
+**What goes wrong:** Every snapshot in the current output has `@pedalstate: 2` hardcoded in `buildSnapshot()`. The `@pedalstate` field is a bitmask that tells the Helix which stomp footswitches (FS1-FS12) are in their "on" state when that snapshot is entered. With all snapshots at `2` (binary 0000 0010 — only FS2 appears active), the Helix LED state does not reflect the actual block on/off states per snapshot.
 
-**Why it happens:** AI models understand the conventional signal chain as a prose description but don't enforce it structurally. When tasked with creative freedom, they place blocks "where they fit" rather than following signal chain physics.
+The pitfall: `@pedalstate` is undocumented. The value `2` in real HX Edit exports corresponds to a specific bitmask for footswitch assignments. Without reverse-engineering which bit corresponds to which footswitch index, computing the correct value is impossible.
 
-**Consensus correct order (verified from Line 6 official community and Sweetwater):**
-```
-Noise Gate → Wah/Filter → Compression → OD/Distortion → Amp → Cab → EQ → Modulation → Delay → Reverb
-```
-
-**Consequences:** Noisy presets (gate after reverb), washy tones (reverb before delay), harsh digital saturation (distortion after amp), lifeless modulation (pre-amp chorus instead of post-amp).
-
-**Prevention strategy:**
-- The generation prompt must specify block ordering rules as constraints, not preferences
-- `validate.ts` should check for rule violations and either auto-reorder or flag as error:
-  - Reverb before delay → swap
-  - Noise gate after reverb or delay → move before reverb chain
-  - Distortion after amp block → flag as error (cannot auto-fix)
-- Provide signal chain templates in the prompt for common preset types (clean, crunch, high-gain, ambient) that the AI fills in rather than invents from scratch
+**How to avoid:**
+- Export 3-4 presets from HX Edit with varying stomp assignments and inspect the `@pedalstate` values in each snapshot's JSON. Map bit positions to footswitch indices. The STOMP_FS_INDICES in the codebase (`[7, 8, 9, 10]`) correspond to FS5-FS8 on the hardware — these bit positions in the bitmask need to be verified.
+- The formula: for each snapshot, compute `@pedalstate` by OR-ing together the bit positions of all blocks that are ENABLED in that snapshot's `blockStates` AND have a footswitch assignment in `buildFootswitchSection()`.
+- If reverse-engineering the bitmask is not feasible before the v1.1 deadline, leave `@pedalstate: 2` as-is and document it as a known limitation. A wrong bitmask causes incorrect LED display but does not break audio functionality.
+- Do not guess the bitmask formula. An incorrect computed value may produce worse LED behavior than the current hardcoded `2`.
 
 **Warning signs:**
-- Any preset where `reverb` appears before `delay` in `signalChain` array
-- Any `dynamics` block at position > the highest reverb position
-- Any `distortion` block at a position after an `amp` block in the same DSP
+- Footswitch LEDs show all blocks as ON or all as OFF across all snapshots
+- Switching snapshots does not change LED states on the hardware
 
-**Phase to address:** Prompt Engineering (Phase 2) + Validation (Phase 1).
+**Phase to address:** Hardware Bug Fixes phase. Research the bitmask before writing code; this requires real hardware inspection.
 
 ---
 
-### Pitfall 9: No Volume Balancing Across Snapshots
+### Pitfall 9: Signal Chain Visualization Showing Data From the Wrong Layer
 
-**What goes wrong:** The AI generates 4 snapshots (Clean, Crunch, Lead, Ambient) without accounting for volume differences between amp states. The Lead snapshot (with an OD pedal engaged) is typically 4–8dB louder than Clean due to pedal output level. The Ambient snapshot with reverb fully wet is often quieter. The result: switching snapshots in performance causes jarring volume jumps.
+**What goes wrong:** The signal chain visualization component renders immediately after generation from the `spec.signalChain` data. If the component tries to show "what's in the file you downloaded" rather than "what's in the spec," there is a timing problem: the .hlx file builder applies transformations (cab indexing, block key remapping, footswitch assignments) that are not reflected in the raw `PresetSpec.signalChain`. The visualization shows the spec-level view, which is correct for user understanding, but the "DSP Path 1 / DSP Path 2" split in the spec may not match the physical Helix routing display.
 
-**Why it happens:** AI models don't simulate the cumulative effect of gain staging changes across snapshot states. They set bypass states and parameter overrides without calculating the resulting output level change.
+**Why it happens:** The `summarizePreset()` function already does a simple text version of this (DSP0 vs DSP1 blocks). A React visualization component that reuses this same data shape will have the same characteristics and the same limitations. The issue is if visualization scope creep adds "download-level" details the spec does not contain.
 
-**What professional presets do:** Use `ChVol` (Channel Volume) parameter overrides per snapshot to compensate for gain changes. Lead snapshot: OD on + ChVol reduced 2–3dB to match clean volume. This requires knowing the approximate level impact of each block combination.
-
-**Consequences:** Preset sounds good in isolation but is unusable live. Clean → Lead snapshot causes the user to blow the FOH mix. This is a professional-quality failure that would never pass through a paid preset maker.
-
-**Prevention strategy:**
-- Establish a volume calibration rule in the prompt: every snapshot that engages additional gain must compensate with reduced ChVol
-- Provide target relative levels: Clean = baseline, Crunch = +1dB (slightly louder is acceptable), Lead = +2dB maximum (solo boost), Ambient = -2dB (reverb wash should sit back)
-- After generation, programmatically check if any snapshot enables a gain pedal without a corresponding ChVol reduction; flag as a likely volume imbalance
-- Add a volume calibration phase to the generation pipeline: after building the preset spec, pass it through a "level check" function that estimates output level per snapshot and adds compensating ChVol overrides
+**How to avoid:**
+- The visualization should render from `PresetSpec.signalChain` directly. This is the canonical data shape the entire codebase uses.
+- Scope the component to: block type icons, block names, DSP assignment (dsp 0/1), enabled state, position order. These are all available in `BlockSpec`.
+- Do not attempt to show footswitch assignments, controller bindings, or snapshot states in the visualization component — those require data from the built `HlxFile`, not the `PresetSpec`.
+- Keep the component stateless (pure render from props). Accept `signalChain: BlockSpec[]` as the only prop.
 
 **Warning signs:**
-- Snapshot `parameterOverrides` are empty on the Lead snapshot when an OD pedal is engaged in `blockStates`
-- All snapshots have identical `parameterOverrides` (means no volume compensation was applied)
-- Any snapshot that toggles 2+ gain blocks without any level compensation
+- Component imports `buildHlxFile` or `buildFootswitchSection` to compute display data
+- Component has async data fetching or derives visualization from the download step
+- Component props include `HlxFile` instead of `PresetSpec`
 
-**Phase to address:** Snapshot Design System (Phase 3).
+**Phase to address:** Signal Chain Visualization phase.
 
 ---
 
-### Pitfall 10: Generic "Noon" EQ Values Across All Amps
+### Pitfall 10: Tone Description Card Duplicating the Existing `summarizePreset()` Function
 
-**What goes wrong:** AI generates Bass=0.5, Mid=0.5, Treble=0.5 (noon position) on every amp block regardless of the amp's character. This is the "safe default" that ignores each amp model's specific tonal character and the tonal goals of the preset.
+**What goes wrong:** The `summarizePreset()` function in `preset-builder.ts` already generates a human-readable summary (markdown format). If the tone description card is implemented as a separate function that re-derives the same information from `spec`, the two summaries will diverge over time as one is updated and the other is not. Users see different information in the UI card vs. what is in the download.
 
-**Why it happens:** Mid-range safe defaults are statistically common in training data (forum advice says "start at noon"), so the AI uses them everywhere. But noon is only a starting point — professional presets adjust from noon based on the amp model's known tone stack behavior.
+**Why it happens:** The new UI card is typically built by a developer who reaches for `spec` to generate the display text, unaware that `summarizePreset()` already exists and is authoritative. The result: two independent summary implementations of the same data.
 
-**What the data shows (Tonevault analysis):**
-- Marshall Plexi types: Mid 0.75–0.85 (these amps are known for pushed mids), Bass 0.15–0.25 (kept tight)
-- Mesa Rectifier types: Mid can be scooped 0.3–0.5, Bass moderate 0.35–0.55
-- Fender clean types: Bass 0.35, Mid 0.55–0.65, Treble 0.55 (balanced with slight mid presence)
-
-**Consequences:** All presets sound the same regardless of amp choice. The entire point of different amp models is their distinct frequency response — generic noon settings defeat this.
-
-**Prevention strategy:**
-- The models database already stores amp-category-specific defaults for each model — the generation prompt should reference these explicitly
-- The prompt should state: "Use the provided `defaultParams` as your starting point. Adjust from there based on the requested tone, never use 0.5 noon for all EQ knobs"
-- Add Bass/Mid/Treble range validation per amp category: if a Marshall-type amp has Mid below 0.55, flag as suspect
+**How to avoid:**
+- The tone description card should consume the output of `summarizePreset(spec)` rather than derive its own summary.
+- If the card needs structured data (not markdown), extract the summarization logic into a `buildPresetSummaryData(spec)` function that returns a typed object, and have `summarizePreset()` call it. This makes both the UI card and the markdown export use the same data source.
+- If the card needs richer information (e.g., snapshot LED colors, effect role descriptions), extend `summarizePreset()` or add a `buildToneCard(spec)` function that calls the same underlying data extraction.
 
 **Warning signs:**
-- Three or more consecutive amp entries in generated presets all have Bass=0.5, Mid=0.5, Treble=0.5
-- Identical EQ values across presets for very different amp models
+- A new function with similar output to `summarizePreset()` appears in `page.tsx` or a new utility file
+- The UI description card shows different block names or snapshot counts than the markdown summary
 
-**Phase to address:** Prompt Engineering (Phase 2) + Models Database (Phase 1).
+**Phase to address:** Tone Description Card phase.
+
+---
+
+### Pitfall 11: Genre Defaults for Delay Time Using Raw Milliseconds Instead of Normalized Float
+
+**What goes wrong:** Helix delay time is encoded as a normalized float (0.0-1.0) in the `defaultParams` for most delay models, NOT as a raw milliseconds value. If genre defaults are specified as milliseconds (e.g., `Time: 500` for a 500ms shoegaze delay), the Helix will interpret `500` as a value far beyond the 0-1 range, producing an extreme delay time or no delay at all. This is the same parameter encoding trap documented in the v1.0 research for `LowCut`/`HighCut`.
+
+**How to avoid:**
+- Before writing genre defaults, inspect actual `defaultParams` values for delay models in `models.ts`. If `Time: 0.45` represents 400ms on a Digital Delay, the genre defaults must use the same normalized encoding.
+- The `param-registry.ts` currently classifies `Gain` as `db_value` and `LowCut`/`HighCut` as `hz_value`. Delay `Time` and reverb `Decay` are currently classified as `normalized_float`. Genre defaults must respect this.
+- If tempo-sync delay is used (note values like quarter note, dotted eighth), the encoding is different again — these are integer indices in the note value list, not normalized floats.
+- Document the expected encoding for each genre default parameter before coding: `Time: 0.45` (normalized, approximately 400ms) not `Time: 400` (ms).
+
+**Warning signs:**
+- Generated presets with genre defaults have delay time at extreme positions (barely audible or infinitely repeating)
+- Genre default Time values are integers above 1.0
+
+**Phase to address:** Genre-Aware Defaults phase. Audit `models.ts` delay model defaultParams before writing the defaults table.
 
 ---
 
 ## Technical Debt Patterns
 
-Shortcuts in the current codebase that will create long-term problems if carried into the rebuild.
+Shortcuts that could be introduced while implementing v1.1 features.
 
----
-
-### Debt 1: Auto-Correction Hiding Root AI Failures
-
-**Pattern:** `validateAndFixPresetSpec()` silently corrects invalid model IDs, wrong block positions, missing snapshot states, and out-of-range parameters. Warnings go to `console.warn`. No user-visible signal.
-
-**Long-term problem:** If the prompt is broken, auto-correction masks it. Each generation produces "corrected" output, but the underlying prompt keeps generating wrong data. You can't improve what you can't see.
-
-**Correct approach:**
-- Log all corrections to a structured telemetry store, not just console
-- If corrections exceed a threshold (>2 per generation), surface this to the developer as a prompt quality signal
-- Distinguish between "safe corrections" (block position resequencing) and "risky corrections" (model ID substitution) — risky corrections should fail loudly, not silently succeed
-
----
-
-### Debt 2: Hardcoded Firmware Version
-
-**Pattern:** `preset-builder.ts` hardcodes `HLX_APP_VERSION = 57671680` (FW 3.70) and `HLX_BUILD_SHA = "v3.70"`. The current latest firmware is 3.80 (released November 2024), which added 6 new amps and 4 new cabs.
-
-**Long-term problem:** Models added in 3.71–3.80 cannot be referenced because the .hlx file claims to be from 3.70 firmware. If users are on 3.80, loading a "3.70" preset may silently omit newer models. The models database will grow stale without a firmware version tracking mechanism.
-
-**Correct approach:**
-- Parameterize firmware version as a config value, not a constant
-- Track which firmware version introduced each model in the database
-- When generating presets, only include models available up to the target firmware version
-
----
-
-### Debt 3: No Preset Quality Testing
-
-**Pattern:** There are zero automated tests for preset tone quality, parameter range validity by amp category, signal chain correctness, or snapshot volume balance. The only testing is structural (does it load?) not sonic (does it sound good?).
-
-**Long-term problem:** Every rebuild iteration has no regression safety net. A change to the prompt can degrade tone quality with no automated detection.
-
-**Correct approach:**
-- Create a test suite of "known good" preset specs (manually validated on hardware)
-- Assert that regenerated presets for the same inputs stay within acceptable parameter ranges
-- Test that specific amp categories produce parameter ranges consistent with category-specific rules
-- Test that every cab block has LowCut >= 60 and HighCut <= 10000
-
----
-
-### Debt 4: Block Type Constants Not Verified
-
-**Pattern:** `BLOCK_TYPES` in `models.ts` assigns numeric `@type` values that were likely reverse-engineered. `DISTORTION`, `DYNAMICS`, `EQ`, `WAH`, `PITCH`, and `VOLUME` all share `@type: 0`. `DELAY` and `REVERB` both use `@type: 7`. This was never verified against real .hlx exports.
-
-**Long-term problem:** Wrong `@type` values may cause firmware to misinterpret block functions, affect DSP routing, or cause subtle audio routing bugs that are impossible to diagnose without hardware testing.
-
-**Correct approach:** Before any rebuild work, export 5 presets from HX Edit covering all block types and inspect the `@type` values in the JSON. Use verified values as the foundation.
+| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
+|----------|-------------------|----------------|-----------------|
+| Hardcode `cache_control` on entire system prompt without splitting static/dynamic | Fast to implement | Every dynamic token in the system prompt causes 100% cache miss rate | Never — static/dynamic split is required for caching to work |
+| Genre defaults as a flat key-value object with string genre keys | Easy to extend | Genre strings from AI are inconsistent; lookups silently fail for any unrecognized genre | Only if combined with normalization and fallback |
+| Add new `SnapshotIntent` fields for smarter toggling instead of extending `getBlockEnabled()` | Flexible AI expression | Reintroduces AI-generated block states — defeats the deterministic Knowledge Layer | Never |
+| Build visualization component from `HlxFile` output instead of `PresetSpec` | Shows final file data | Couples visualization to file format internals; breaks if format changes | Never |
+| Compute `@pedalstate` bitmask by guessing bit positions | Eliminates hardcoded `2` | May produce worse LED behavior than current hardcode if bitmask formula is wrong | Skip the computation if bitmask cannot be verified from real exports |
+| Apply genre defaults to ALL block types including amp and cab | Simpler code path | Overwrites carefully tuned amp-category and cab parameters with generic genre values | Never — genre defaults must be scoped to time-based effects only |
 
 ---
 
 ## Integration Gotchas
 
-Problems specific to the AI provider and .hlx format integration layers.
+Common mistakes when connecting the new features to the existing system.
+
+| Integration | Common Mistake | Correct Approach |
+|-------------|----------------|------------------|
+| Anthropic prompt caching | Placing `cache_control` on a message content block that includes per-request data | Split system prompt into static prefix (schema + model list) and dynamic suffix (user context); place `cache_control` only on the static prefix block |
+| Anthropic prompt caching | Using the `/v1/chat/completions` OpenAI-compatible endpoint | Prompt caching is only available at `/v1/messages`; the `@anthropic-ai/sdk` native client uses `/v1/messages` by default |
+| Anthropic prompt caching | Not checking `usage.cache_read_input_tokens` in API response | Add logging of both `cache_creation_input_tokens` and `cache_read_input_tokens` to verify the feature is working |
+| Genre defaults | Treating `genreHint` as a reliable lookup key | Normalize genre strings before lookup; always have a fallback to amp-category defaults |
+| Genre defaults | Applying defaults to delay/reverb without checking whether delay model uses tempo-sync | Tempo-sync delay uses integer note-value indices, not normalized Time floats; check model defaultParams first |
+| Snapshot toggling | Modifying `buildSnapshot()` to read from a new AI field | Extend `getBlockEnabled()` in `snapshot-engine.ts` — the snapshot builder must not read AI state data |
+| `@fs_enabled` bug fix | Changing `@fs_enabled` in both footswitch and controller sections | The fix belongs only in `buildFootswitchSection()` — the controller section uses a different semantics for this field |
+| Signal chain visualization | Importing helix domain modules into a React component file for data transformation | Extract data transformation to a utility function; keep the React component as a pure display layer |
+| Tone description card | Calling `summarizePreset()` with the full markdown output and parsing it back into structured data | Add a `buildToneCardData(spec)` function that returns typed data; have both the card and `summarizePreset()` use it |
 
 ---
 
-### Gotcha 1: AI Returns JSON Wrapped in Unexpected Formatting
+## Performance Traps
 
-**What happens:** LLMs may return valid JSON wrapped in markdown triple-backtick fences, with prose explanation before/after, or in a `{"preset": {...}}` wrapper. The current naive regex `\`\`\`(?:json)?` in `generate/route.ts` fails on edge cases.
-
-**Prevention:** Use recursive JSON extraction: try direct parse → try extract from fences → try extract from key → use json5 as fallback. If all fail, retry the generation once before failing. Document in code what formats have been observed from each provider.
-
----
-
-### Gotcha 2: Provider Response Length Limits Truncating JSON
-
-**What happens:** Large preset specs (8 snapshots, 10+ blocks, parameter overrides) can exceed the output token limit of some models. The JSON is truncated mid-object, causing a parse failure. This is silent — the user sees a generic "generation failed" message.
-
-**Prevention:** Estimate expected token count from the prompt before sending. For complex presets, consider a two-phase generation: generate signal chain first, then generate snapshots in a second call with the signal chain as context.
+| Trap | Symptoms | Prevention | When It Breaks |
+|------|----------|------------|----------------|
+| Genre defaults table evaluated on every `resolveDefaultParams()` call | Slight latency increase on generation | Build genre defaults as a static const object, not computed dynamically per request | Not a real concern at current scale — preset generation is one call per user. Do not over-engineer. |
+| Signal chain visualization re-rendering on every parent state update | Flickering or lag in UI during generation | Wrap the visualization component in `React.memo()` and pass stable `signalChain` prop reference | When the parent component is large (page.tsx is already substantial); extract visualization into its own file |
+| Prompt caching adding 25% overhead on first request | First-generation response noticeably slower | Expected — write cost is 1.25x. Inform users this is normal if they report it. | Always happens on first request or after TTL expiry; not a bug |
 
 ---
 
-### Gotcha 3: Helix LT vs. Helix Floor Device ID
+## Security Mistakes
 
-**What happens:** `preset-builder.ts` hardcodes `HELIX_LT_DEVICE_ID = 2162692`. The Helix Floor has a different device ID. Presets exported with the wrong device ID may not load, or may load but behave unexpectedly on the wrong device. Both devices share the same .hlx format but different device IDs.
+Domain-specific security issues relevant to v1.1 features.
 
-**Prevention:** Add a `targetDevice` parameter to the generation and build pipeline. Maintain device ID constants for both LT and Floor. The PROJECT.md states "Helix LT + Helix Floor support" as a target — this needs a device selector in the UI.
-
----
-
-### Gotcha 4: DSP Block Count Limits Are Not Enforced
-
-**What happens:** Helix LT/Floor has two DSP chips, each supporting a maximum of 8 non-cab blocks (16 total). Poly Pitch-type effects can consume 50%+ of one DSP chip alone, reducing the practical limit further. If the AI generates a 10-block single-DSP chain, the preset will fail with "DSP block constraint exceeded" error 8701 on the hardware.
-
-**Prevention:**
-- Enforce per-DSP block count limit of 8 in the generation prompt
-- Add validation in `validate.ts` that counts non-cab blocks per DSP and fails if >8
-- For presets using expensive blocks (poly effects, complex reverbs), apply a lower effective limit warning
-- The generation prompt should distribute blocks across DSP0 and DSP1 intelligently: pre-amp effects on DSP0, post-amp effects (modulation, delay, reverb) on DSP1
+| Mistake | Risk | Prevention |
+|---------|------|------------|
+| Caching a system prompt that includes user-derived content | User A's tone preferences could theoretically be visible in User B's cached context if prompts overlap | Ensure only static, non-user-derived content is in the cached prefix. User conversation data must be in the uncached dynamic suffix. |
+| Rendering unescaped content in tone description card | XSS if `spec.description` or `spec.guitarNotes` contains user-influenced text | Use React's default JSX rendering (safe) or pass through `react-markdown` with `allowedElements` restriction; never use innerHTML directly |
+| Logging `cache_creation_input_tokens` to console in production | API usage patterns visible in Vercel function logs | Acceptable in development; gate behind `process.env.NODE_ENV === 'development'` check for production |
 
 ---
 
-### Gotcha 5: Snapshot Parameter Override Key Conflicts
+## UX Pitfalls
 
-**What happens:** The `blockKeyMap` in `preset-builder.ts` maps per-DSP block keys. But when blocks are removed by validation (invalid model ID found, no match), the per-DSP indexes shift. Snapshot parameter overrides that reference the old keys now point to the wrong blocks. A ChVol override intended for the amp (originally `block2`) now targets the delay (new `block2` after block removal).
-
-**Prevention:**
-- Rebuild snapshot parameter overrides from scratch using the validated signal chain, not the AI-generated keys
-- Assign stable human-readable block names in the spec (e.g., `amp_main`, `delay_main`) and map these to final block keys after validation
-- Never trust AI-generated block keys in parameter overrides — always resolve them against the final signal chain
+| Pitfall | User Impact | Better Approach |
+|---------|-------------|-----------------|
+| Showing signal chain visualization before generation completes | Users see empty/loading state or partial chain — confusing | Show visualization only after generation succeeds; use the same loading state gate as the download button |
+| Tone description card using technical field names (`modelId`, `ampCategory`) | Guitarists do not understand "HD2_AmpFenderTwin" or "ampCategory: clean" | Map internal names to human-readable labels: "Fender Twin Reverb" not `HD2_AmpFenderTwin`; "Clean amp" not "clean" |
+| Genre defaults silently changing the tone without user notification | User asked for "blues" but the delay is now 400ms instead of 250ms — they do not know why | Genre defaults are an accuracy feature, not a user-facing control. No notification needed, but the tone description card should mention the genre influence if one was detected. |
+| Signal chain visualization too complex (showing all 12+ blocks) | Overwhelming for non-technical users | Show a simplified view: amp name, cab name, key effects (delay, reverb, modulation). Hide always-on utility blocks (gate, EQ, gain block) from the user-facing visualization. |
+| Cache misses causing noticeably longer first-generation times | Users abandon if first response takes 8+ seconds | Expected behavior; prompt caching only helps subsequent requests. The first request after a cache miss is always full-price. No fix needed. |
 
 ---
 
 ## "Looks Done But Isn't" Checklist
 
-These issues make a preset appear functional but actually broken or subprofessional.
+- [ ] **Prompt caching:** `usage.cache_read_input_tokens > 0` on the second identical generation — if zero, caching is silently broken
+- [ ] **Prompt caching:** First request has `usage.cache_creation_input_tokens > 1024` — if not, the prefix is too short to cache
+- [ ] **Genre defaults:** A "shoegaze" generation has longer delay time than a "blues" generation — if delay times are identical, genre defaults are not being applied
+- [ ] **Genre defaults:** Effect parameters respect normalized 0-1 encoding — check that no genre default value is an integer above 1.0 for Time, Mix, or Decay parameters
+- [ ] **Snapshot toggling:** The "ambient" snapshot has delay, reverb, AND modulation enabled — all three should be on for ambient, not just reverb
+- [ ] **`@fs_enabled` fix:** Load the preset on real hardware and confirm the first press of FS5 activates the assigned effect without a double-press
+- [ ] **`@pedalstate` fix (if attempted):** Switch between Clean and Lead snapshots — the footswitch LEDs should change to reflect active/inactive effects per snapshot
+- [ ] **Signal chain visualization:** The block order in the visualization matches the `position` ordering of blocks in `spec.signalChain`, not insertion order
+- [ ] **Tone description card:** The snapshot names and descriptions in the card match the actual generated snapshot specs — not hardcoded defaults
+- [ ] **Tone description card:** Effect names shown are human-readable (`"Minotaur"`) not model IDs (`"HD2_DistMinotaur"`)
 
-| Symptom | Root Cause | Test |
-|---------|-----------|------|
-| Preset loads on Helix but sounds muddy | Missing LowCut/HighCut on cab blocks | Check cab `LowCut >= 60` and `HighCut <= 10000` |
-| All snapshots sound identical | blockStates not resolving — all corrections dropped | Verify blockStates count equals non-cab block count |
-| Lead snapshot is dramatically louder | No ChVol compensation for engaged OD pedal | Check snapshots with OD on have ChVol override |
-| Amp sounds same at volume 10 and 3 | Drive too high + Bias too warm for dynamics | Verify Drive <= 0.45 for clean/crunch and Bias <= 0.55 for clean |
-| Noisy between notes even with gate | Noise gate placed after reverb/delay blocks | Check noise gate position in signal chain |
-| Preset hangs or refuses to load on Helix | DSP block count exceeded (>8 per DSP) | Count non-cab blocks per DSP — must be <= 8 |
-| EQ after amp does nothing | EQ block placed before the amp (position ordering wrong) | Verify EQ position > amp position in the chain |
-| Chorus sounds thin and digital | Modulation block placed before amp instead of after | Check modulation position > amp position |
-| Reverb washes out the tone | Reverb before delay in chain | Verify delay position < reverb position |
-| Drive on amp sounds compressed, no sparkle | Missing 808/Minotaur with high-gain amp setup | Check high-gain amps have a pre-amp boost block |
-| Cab mic is always SM57 regardless of intent | AI generating Mic as float 0.5 instead of integer 0–7 | Check Mic value is integer and in range 0–7 |
-| Preset file won't load at all | Invalid block @type values or malformed JSON structure | Validate all @type constants against real HX Edit exports |
-| Preset sounds fine in preview but bad on hardware | Using wrong device ID (LT vs Floor) | Confirm targetDevice matches user's hardware |
+---
+
+## Recovery Strategies
+
+When pitfalls occur despite prevention, how to recover.
+
+| Pitfall | Recovery Cost | Recovery Steps |
+|---------|---------------|----------------|
+| Cache permanently misses due to dynamic content | LOW | Remove dynamic content from the cached prefix block; redeploy. No data loss. |
+| Genre defaults applied with wrong encoding (ms instead of normalized) | LOW | Correct values in the defaults table; no structural changes needed |
+| `@fs_enabled` fix breaks preset loading on hardware | MEDIUM | Revert `@fs_enabled` to `false` in footswitch section; file a bug for targeted investigation |
+| Signal chain visualization creates circular imports | LOW | Move visualization to a separate component file; use `@/lib/helix` barrel imports |
+| Genre defaults overwrite amp parameters (scope too broad) | LOW | Add `blockType` check to genre defaults application: only apply if `block.type === "delay" || "reverb" || "modulation"` |
+| Snapshot toggling logic regression breaks existing snapshot behavior | MEDIUM | The snapshot-engine tests catch this immediately; revert the `getBlockEnabled()` changes and approach incrementally |
 
 ---
 
 ## Pitfall-to-Phase Mapping
 
-How the rebuild roadmap phases should address each pitfall.
+How v1.1 roadmap phases should address these pitfalls.
 
-| Phase | Pitfall Addressed | How |
-|-------|-----------------|-----|
-| Phase 1: Engine Core | Pitfall 1: Missing cab filtering | Make LowCut/HighCut required; inject safe defaults |
-| Phase 1: Engine Core | Pitfall 2: Wrong block @type values | Verify constants against real .hlx exports before coding |
-| Phase 1: Engine Core | Pitfall 5: Silent snapshot block state loss | Regenerate blockStates programmatically post-validation |
-| Phase 1: Engine Core | Pitfall 7: Out-of-range parameters | Build parameter type registry; type-specific validation |
-| Phase 1: Engine Core | Debt 4: Unverified block type constants | Export + inspect real HX Edit presets before any build |
-| Phase 1: Engine Core | Gotcha 4: DSP block limit | Enforce 8-block-per-DSP limit in validation |
-| Phase 1: Engine Core | Gotcha 5: Snapshot key conflicts post-validation | Programmatic key resolution from final chain |
-| Phase 2: Prompt Engineering | Pitfall 3: Hallucinated model IDs | Enumerate all valid IDs in prompt; use schema constraints |
-| Phase 2: Prompt Engineering | Pitfall 4: Uniform drive settings | Amp-category-specific parameter tables in prompt |
-| Phase 2: Prompt Engineering | Pitfall 6: No dynamic responsiveness | Category-specific Sag/Bias/Drive ranges in prompt |
-| Phase 2: Prompt Engineering | Pitfall 8: Wrong signal chain order | Ordering constraints and templates in prompt |
-| Phase 2: Prompt Engineering | Pitfall 10: Generic noon EQ | Per-amp reference to defaultParams in prompt |
-| Phase 3: Snapshot Design | Pitfall 9: No volume balancing | Volume calibration function post-generation |
-| Phase 3: Snapshot Design | Debt 1: Auto-correction hiding failures | Telemetry for corrections; fail on risky corrections |
-| All Phases | Debt 3: No quality testing | Test suite for parameter ranges per amp category |
-| Infrastructure | Debt 2: Hardcoded firmware version | Parameterize firmware; track model availability by version |
-| Infrastructure | Gotcha 3: LT vs. Floor device ID | Device selector; separate device ID constants |
-| Infrastructure | Gotcha 1: JSON parsing fragility | Recursive extraction; retry on parse failure |
-| Infrastructure | Gotcha 2: Response truncation | Token estimation; two-phase generation for complex presets |
+| Pitfall | Prevention Phase | Verification |
+|---------|------------------|--------------|
+| Pitfall 1: Dynamic content breaks cache | Prompt Caching phase | `usage.cache_read_input_tokens > 0` on second identical generation |
+| Pitfall 2: Prompt too short to cache | Prompt Caching phase | `usage.cache_creation_input_tokens > 1024` on first generation |
+| Pitfall 3: TTL expires between infrequent calls | Prompt Caching phase | Use 1-hour TTL; verify with cache metrics over a 30-minute gap between generations |
+| Pitfall 4: Genre string mismatch | Genre-Aware Defaults phase | Test with "shoegaze", "blues", and "jazz" — each must hit a different defaults bucket |
+| Pitfall 5: Genre defaults overwritten by model defaults | Genre-Aware Defaults phase | Log resolved parameters for delay block; confirm genre values appear, not model database values |
+| Pitfall 6: Snapshot toggling bypasses Knowledge Layer | Smarter Snapshot Toggling phase | `SnapshotIntentSchema` has no new fields; all toggling changes are in `getBlockEnabled()` |
+| Pitfall 7: `@fs_enabled` hardcoded to false | Hardware Bug Fixes phase | Real hardware test: first press activates effect |
+| Pitfall 8: `@pedalstate` bitmask wrong | Hardware Bug Fixes phase | Inspect real HX Edit .hlx export before computing; compare LED behavior on hardware |
+| Pitfall 9: Visualization shows data from wrong layer | Signal Chain Visualization phase | Component accepts only `signalChain: BlockSpec[]`; no `HlxFile` props |
+| Pitfall 10: Tone card duplicates `summarizePreset()` | Tone Description Card phase | `summarizePreset()` is the single source of truth; card calls it or shares an underlying `buildToneCardData()` |
+| Pitfall 11: Genre delay time in milliseconds | Genre-Aware Defaults phase | Inspect `models.ts` delay defaultParams first; all defaults use same encoding as model database |
 
 ---
 
 ## Sources
 
-**Official Line 6 Community (verified community knowledge, HIGH confidence):**
-- [Why do Helix Cabs and IRs Need Low and Hi Cuts?](https://line6.com/support/topic/30066-why-do-helix-cabs-and-irs-need-low-and-hi-cuts/) — Confirms cab filtering is required, explains the physics
-- [Help me understand low/high cut on cabs/IRs](https://line6.com/support/topic/65836-help-me-understand-lowhigh-cut-on-cabsirs/) — Community consensus on LowCut 80–100Hz, HighCut 5–8kHz
-- [I built an AI (Chat GPT) powered helper to help build Helix guitar tones](https://line6.com/support/topic/67397-i-built-an-ai-chat-gpt-powered-helper-to-help-build-helix-guitar-tones/) — Direct evidence AI "makes stuff up" with Helix model IDs
-- [Helix/HX 3.70/3.71 Release Notes](https://line6.com/support/page/kb/effects-controllers/helix/helixhx-370371-release-notes-r1052/) — Firmware version reference
-- [HX Stomp DSP block constraint exceeded error](https://line6.com/support/topic/57689-hx-stomp-%E2%80%9C-8701-preset-translation-not-supported-dsp-block-constraint-exceeded%E2%80%9D/) — Documents the error 8701 and DSP limits
+**Anthropic Official Documentation (HIGH confidence):**
+- [Prompt Caching — Claude API Docs](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) — Cache breakpoint requirements, TTL options, min token thresholds, workspace isolation change Feb 2026
+- [Anthropic Automatic Prompt Caching Feb 2026](https://medium.com/ai-software-engineer/anthropic-just-fixed-the-biggest-hidden-cost-in-ai-agents-using-automatic-prompt-caching-9d47c95903c5) — Automatic prefix matching, workspace isolation announcement
 
-**Helix Help (community documentation, HIGH confidence):**
-- [Common Amp Settings](https://helixhelp.com/tips-and-guides/universal/common-amp-settings) — Parameter guidance including Sag, Bias, Master interactions
-- [Snapshots Guide](https://helixhelp.com/tips-and-guides/helix/snapshots) — Snapshot design best practices
-- [The Blocks](https://helixhelp.com/tips-and-guides/helix/the-blocks) — Signal chain ordering guidelines
+**Vercel AI SDK Issues (MEDIUM confidence — confirms real bugs):**
+- [Vercel AI SDK v5 Anthropic prompt caching broken](https://github.com/vercel/ai/issues/7612) — v5 system prompt caching not working even above 1024 token minimum
+- [Claude prompt caching is broken using Vercel AI SDK example code](https://github.com/vercel/ai/issues/4362) — Confirmed `cache_read_input_tokens: 0` failure pattern
 
-**Tonevault (empirical data from 250 real top presets, HIGH confidence):**
-- [Dialing in your Helix amps: what the top 250 presets teach us](https://www.tonevault.io/blog/250-helix-amps-analyzed) — Verified amp parameter ranges from analysis of real professional presets
+**Internal codebase inspection (HIGH confidence — verified from source):**
+- `src/lib/helix/snapshot-engine.ts` — `getBlockEnabled()` deterministic state table; confirms where snapshot toggling logic lives
+- `src/lib/helix/param-engine.ts` — Three-layer parameter resolution; confirms where genre defaults must be inserted
+- `src/lib/helix/param-registry.ts` — Parameter encoding types; delay `Time` is `normalized_float`
+- `src/lib/helix/preset-builder.ts` — `@fs_enabled: false` hardcode at `buildFootswitchSection()`; `@pedalstate: 2` hardcode at `buildSnapshot()`; `summarizePreset()` already exists
+- `src/lib/helix/tone-intent.ts` — `genreHint: z.string().optional()` — free-form, not controlled vocabulary
 
-**Sweetwater (professional source, HIGH confidence):**
-- [Double Down for the Best Line 6 Helix Tone](https://www.sweetwater.com/insync/double-best-line-6-helix-tone/) — Signal chain best practices
-- [3 Helix Effects Secrets](https://www.sweetwater.com/insync/3-helix-effects-secrets/) — Effects ordering confirmation
+**Genre defaults reference (MEDIUM confidence):**
+- [Using Delay for Specific Genres — BOSS Articles](https://articles.boss.info/using-delay-for-specific-genres/) — Genre-specific delay time recommendations (blues, classic rock, shoegaze, worship)
+- [6 Tips for Using Reverb in Different Genres — iZotope](https://www.izotope.com/en/learn/6-tips-for-using-reverb-in-different-genres-of-music.html) — Genre reverb usage guidance
 
-**Fractal Audio Forum (comparable hardware, AI experiment, MEDIUM confidence):**
-- [Can ChatGPT make a good preset that emulates a known tone?](https://forum.fractalaudio.com/threads/can-chatgpt-make-a-good-preset-that-emulates-a-known-tone-spoiler-no.192542/) — Documented AI failures: reversed EQ strategy, wrong parameter values, "thin and lifeless" output
+**Line 6 community (.hlx format, HIGH confidence for "no official docs"):**
+- [Documentation on the .hlx JSON format — Line 6 Community](https://line6.com/support/topic/33381-documentation-on-the-hlx-json-format/) — Confirms no official Line 6 documentation for `@fs_enabled` or `@pedalstate` bitmask fields
 
-**Komposition101 (practitioner knowledge, MEDIUM confidence):**
-- [Mastering Amp Parameters on Line6 Helix](https://www.komposition101.com/blog/mastering-amp-parameters-on-line6-helix) — Parameter ranges by amp type
-- [Volume Matching Presets on Line6 Helix](https://www.komposition101.com/blog/volume-matching-presets-on-line6-helix) — Snapshot volume balancing techniques
-
-**BenVesco (DSP allocation data, MEDIUM confidence):**
-- [Helix DSP Allocations](https://benvesco.com/store/helix-dsp-allocations/) — Block-level DSP costs for Helix FW 3.80, confirms poly effects consume 50%+ of one DSP chip
-
-**LLM Hallucination Research (academic, HIGH confidence for method):**
-- [Reducing hallucination in structured outputs via RAG](https://arxiv.org/html/2404.08189v1) — Confirms 21% hallucination rate without RAG, under 7.5% with RAG
-- [Constrained Decoding for Structured LLM Output](https://mbrenndoerfer.com/writing/constrained-decoding-structured-llm-output) — Schema-constrained generation reduces invalid JSON/model IDs
-
-**Internal codebase (direct inspection, HIGH confidence):**
-- `src/lib/helix/validate.ts` — Documents block key resolution bugs and parameter clamping logic
-- `src/lib/helix/models.ts` — Confirms BLOCK_TYPES sharing issue (DISTORTION, EQ, WAH all = 0)
-- `src/lib/helix/preset-builder.ts` — Documents hardcoded firmware version and fallback cab association
-- `.planning/codebase/CONCERNS.md` — CAB Microphone Parameter Type Ambiguity, Silent Snapshot Block Reference Loss, Hardcoded Block Type Mappings
+---
+*Pitfalls research for: HelixAI v1.1 feature additions*
+*Researched: 2026-03-02*
