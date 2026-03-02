@@ -163,6 +163,121 @@ function ToneDescriptionCard({
   );
 }
 
+// ---------------------------------------------------------------------------
+// SubstitutionCard (Phase 21)
+// Renders the list of physical pedal → Helix model substitutions produced by
+// /api/map. Shown in the upload panel after vision extraction, before Generate.
+// ---------------------------------------------------------------------------
+
+interface SubstitutionEntryDisplay {
+  physicalPedal: string;
+  helixModel: string;
+  helixModelDisplayName: string;
+  substitutionReason: string;
+  confidence: "direct" | "close" | "approximate";
+  parameterMapping?: Record<string, number>;
+}
+
+function SubstitutionCard({ entries }: { entries: SubstitutionEntryDisplay[] }) {
+  if (entries.length === 0) return null;
+
+  return (
+    <div className="space-y-2">
+      <p className="text-[11px] uppercase tracking-widest text-[var(--hlx-text-muted)] font-semibold">
+        Helix Substitutions
+      </p>
+      <div className="space-y-2">
+        {entries.map((entry, i) => {
+          const isApproximate = entry.confidence === "approximate";
+          const isClose = entry.confidence === "close";
+          const isDirect = entry.confidence === "direct";
+
+          // Safety guard: never render an HD2_ internal ID in the UI.
+          // helixModelDisplayName is always human-readable per rig-intent.ts,
+          // but this guard protects against future regressions.
+          const displayName = entry.helixModelDisplayName.startsWith("HD2_")
+            ? entry.helixModel.replace(/^HD2_/, "").replace(/_/g, " ")
+            : entry.helixModelDisplayName;
+
+          return (
+            <div
+              key={i}
+              className={`rounded-lg border px-3 py-2.5 transition-all ${
+                isDirect
+                  ? "border-[var(--hlx-border-warm)] bg-[var(--hlx-elevated)]"
+                  : isClose
+                  ? "border-yellow-900/40 bg-[var(--hlx-surface)]"
+                  : "border-orange-900/30 bg-[var(--hlx-surface)] opacity-70"
+              }`}
+            >
+              {/* Header row: Physical → Helix name + confidence badge */}
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-[0.8125rem] text-[var(--hlx-text)] font-medium truncate">
+                    {entry.physicalPedal}
+                  </span>
+                  <svg
+                    className="w-3 h-3 text-[var(--hlx-text-muted)] flex-shrink-0"
+                    fill="none"
+                    viewBox="0 0 12 12"
+                  >
+                    <path
+                      d="M2 6h8M7 3l3 3-3 3"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <span
+                    className={`text-[0.8125rem] font-semibold flex-shrink-0 ${
+                      isDirect
+                        ? "text-[var(--hlx-amber)]"
+                        : isClose
+                        ? "text-yellow-400"
+                        : "text-orange-400"
+                    }`}
+                  >
+                    {displayName}
+                  </span>
+                </div>
+
+                <span
+                  className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide flex-shrink-0 ${
+                    isDirect
+                      ? "bg-green-950/40 text-green-400 border border-green-900/30"
+                      : isClose
+                      ? "bg-yellow-950/40 text-yellow-400 border border-yellow-900/30"
+                      : "bg-orange-950/30 text-orange-400 border border-orange-900/30"
+                  }`}
+                >
+                  {isDirect ? "Exact match" : isClose ? "Best match" : "Approximate"}
+                </span>
+              </div>
+
+              {/* Substitution reason */}
+              <p className="text-[11px] text-[var(--hlx-text-muted)] mt-1.5 leading-relaxed">
+                {entry.substitutionReason}
+              </p>
+
+              {/* Escape hatch panel — only for approximate (unknown pedal) entries */}
+              {isApproximate && (
+                <div className="mt-2 rounded-md bg-orange-950/20 border border-orange-900/20 px-2.5 py-2">
+                  <p className="text-[11px] text-orange-300/90 leading-relaxed">
+                    We don&apos;t have <strong>{entry.physicalPedal}</strong> in our
+                    database. You can describe its sound instead, or we&apos;ll treat it
+                    as an overdrive-type pedal.
+                  </p>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -215,6 +330,8 @@ export default function Home() {
     confidence: "direct" | "close" | "approximate";
     parameterMapping?: Record<string, number>;
   }> | null>(null);
+  // Phase 21: mapping loading state — true while /api/map is in flight
+  const [isMappingLoading, setIsMappingLoading] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -244,6 +361,17 @@ export default function Home() {
       inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 150) + "px";
     }
   }, [input]);
+
+  // Phase 21: Re-run /api/map when the user changes device after vision extraction.
+  // Ensures SubstitutionCard shows device-appropriate model names (Pod Go vs Helix LT).
+  // callMap reads selectedDevice from closure at call time — safe because this effect
+  // only fires when selectedDevice changes, so the closure value is always current.
+  useEffect(() => {
+    if (rigIntent) {
+      callMap(rigIntent);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDevice]);
 
   async function sendMessage(e?: React.FormEvent) {
     e?.preventDefault();
@@ -408,6 +536,36 @@ export default function Home() {
     setVisionError(null);
     // Phase 20: clear substitution map
     setSubstitutionMap(null);
+    // Phase 21: clear mapping loading state
+    setIsMappingLoading(false);
+  }
+
+  // Phase 21: standalone mapping helper — called after callVision() and on device change.
+  // Non-fatal: if /api/map fails, vision result is preserved and Generate still works.
+  async function callMap(rigIntentData: NonNullable<typeof rigIntent>) {
+    setIsMappingLoading(true);
+    setSubstitutionMap(null);
+    try {
+      const mapRes = await fetch("/api/map", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rigIntent: rigIntentData,
+          device: selectedDevice,
+        }),
+      });
+      if (mapRes.ok) {
+        const mapData = await mapRes.json();
+        if (mapData.substitutionMap) {
+          setSubstitutionMap(mapData.substitutionMap);
+        }
+      }
+      // Mapping failure is non-fatal: SubstitutionCard simply doesn't show.
+    } catch {
+      // Non-fatal — silently continue.
+    } finally {
+      setIsMappingLoading(false);
+    }
   }
 
   async function callVision() {
@@ -415,6 +573,7 @@ export default function Home() {
     setIsVisionLoading(true);
     setVisionError(null);
     setRigIntent(null);
+    setSubstitutionMap(null); // Clear stale map on re-analyze
 
     try {
       // Dynamic import — browser-image-compression uses browser APIs (OffscreenCanvas, File, Blob).
@@ -451,11 +610,18 @@ export default function Home() {
 
       const data = await res.json();
       setRigIntent(data.rigIntent);
+
+      // Phase 21: End the vision phase label before mapping begins.
+      // This allows "Mapping to Helix models…" to show as a distinct second phase (SC-5).
+      setIsVisionLoading(false);
+
+      // Phase 21: Automatically chain into /api/map. Non-fatal — vision result is preserved
+      // even if mapping fails. isMappingLoading takes over the loading indicator.
+      await callMap(data.rigIntent);
     } catch (err) {
       setVisionError(
         err instanceof Error ? err.message : "Vision extraction failed"
       );
-    } finally {
       setIsVisionLoading(false);
     }
   }
@@ -661,15 +827,21 @@ export default function Home() {
                     </div>
                   ))}
 
-                  {/* Raw JSON for debugging (Phase 19 only — replaced by SubstitutionCard in Phase 21) */}
-                  <details className="group">
-                    <summary className="text-[11px] text-[var(--hlx-text-muted)] cursor-pointer hover:text-[var(--hlx-text-sub)] transition-colors">
-                      Raw extraction data
-                    </summary>
-                    <pre className="mt-2 text-[10px] text-[var(--hlx-text-muted)] bg-[var(--hlx-void)] rounded-lg p-3 overflow-x-auto leading-relaxed">
-                      {JSON.stringify(rigIntent, null, 2)}
-                    </pre>
-                  </details>
+                  {/* Phase 21: Mapping loading indicator */}
+                  {isMappingLoading && (
+                    <div className="flex items-center gap-2 text-[0.8125rem] text-[var(--hlx-text-muted)]">
+                      <svg className="hlx-spin h-4 w-4 flex-shrink-0" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Mapping to Helix models&hellip;
+                    </div>
+                  )}
+
+                  {/* Phase 21: SubstitutionCard — visible after mapping completes */}
+                  {substitutionMap && !isMappingLoading && (
+                    <SubstitutionCard entries={substitutionMap} />
+                  )}
                 </div>
               )}
             </div>
@@ -736,7 +908,7 @@ export default function Home() {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                       </svg>
-                      Generating Preset&hellip;
+                      {rigIntent ? "Building preset\u2026" : "Generating Preset\u2026"}
                     </>
                   ) : (
                     <>
