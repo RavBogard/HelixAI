@@ -64,7 +64,11 @@ Plans:
   2. Claude generates a ToneIntent with a valid amp model ID from the enumerated list — an invalid ID causes a schema-level rejection, not a downstream auto-correction
   3. The Gemini chat interview phase is unchanged — Google Search grounding still fires for artist/rig research queries
   4. The Planner prompt asks for ~15 creative fields only; no prompt language asks Claude to supply Drive, Master, EQ, or other numeric parameter values
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — Enum-constrained ToneIntentSchema (z.enum for model IDs) + Claude Planner module with structured output (AI-01, AI-02, AI-03, AI-05)
+- [ ] 03-02-PLAN.md — Generate route refactor to Planner -> Knowledge Layer pipeline; remove old multi-provider generation code; preserve Gemini chat (AI-04, AI-05)
 
 ### Phase 4: Orchestration
 **Goal**: The full generation pipeline runs end-to-end and produces a downloadable .hlx file that loads on Helix hardware
@@ -110,11 +114,11 @@ Phases execute in numeric order: 1 > 2 > 3 > 4 > 5 > 6
 |-------|----------------|--------|-----------|
 | 1. Foundation | 3/3 | Complete | 2026-03-01 |
 | 2. Knowledge Layer | 1/3 | In Progress | - |
-| 3. AI Integration | 0/TBD | Not started | - |
+| 3. AI Integration | 0/2 | Not started | - |
 | 4. Orchestration | 0/TBD | Not started | - |
 | 5. Frontend Polish | 0/TBD | Not started | - |
 | 6. Hardening | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-03-01*
-*Last updated: 2026-03-02 — Plan 02-01 complete (chain-rules.ts). 1/3 Phase 2 plans done.*
+*Last updated: 2026-03-02 — Phase 3 planned (2 plans). Plan 02-01 complete (chain-rules.ts). 1/3 Phase 2 plans done.*
