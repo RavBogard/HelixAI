@@ -194,6 +194,7 @@ interface PendingBlock {
   blockType: BlockType;
   slot: ChainSlot;
   dsp: 0 | 1;
+  intentRole?: "always_on" | "toggleable" | "ambient";
 }
 
 function buildBlockSpec(
@@ -215,6 +216,7 @@ function buildBlockSpec(
     stereo: false,
     ...(isDelayOrReverb ? { trails: true } : {}),
     parameters: {},
+    ...(pending.intentRole ? { intentRole: pending.intentRole } : {}),
   };
 }
 
@@ -264,6 +266,7 @@ export function assembleSignalChain(intent: ToneIntent): BlockSpec[] {
       blockType: resolved.blockType,
       slot,
       dsp: getDspForSlot(slot),
+      intentRole: effect.role,
     });
   }
 

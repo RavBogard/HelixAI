@@ -195,6 +195,7 @@ export interface BlockSpec {
   stereo: boolean;
   trails?: boolean;
   parameters: Record<string, number>;
+  intentRole?: "always_on" | "toggleable" | "ambient"; // From EffectIntent — used by snapshot engine for role-aware toggling
 }
 
 export interface SnapshotSpec {

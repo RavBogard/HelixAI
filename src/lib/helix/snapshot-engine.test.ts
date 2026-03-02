@@ -134,8 +134,8 @@ describe("buildSnapshots", () => {
     expect(clean.blockStates[modKey]).toBe(false);
   });
 
-  // Test 6: Lead snapshot has delay ON, reverb ON, modulation OFF
-  it("lead snapshot: delay ON, reverb ON, modulation OFF", () => {
+  // Test 6: Lead snapshot has delay ON, reverb ON, ambient-role modulation ON (INTL-02)
+  it("lead snapshot: delay ON, reverb ON, ambient-role modulation ON", () => {
     const intent = cleanIntent({
       effects: [
         { modelName: "Simple Delay", role: "toggleable" },
@@ -157,7 +157,8 @@ describe("buildSnapshots", () => {
 
     expect(lead.blockStates[delayKey]).toBe(true);
     expect(lead.blockStates[reverbKey]).toBe(true);
-    expect(lead.blockStates[modKey]).toBe(false);
+    // ambient-role modulation is ON for lead per INTL-02
+    expect(lead.blockStates[modKey]).toBe(true);
   });
 
   // Test 7: Ambient snapshot has delay ON, reverb ON, modulation ON

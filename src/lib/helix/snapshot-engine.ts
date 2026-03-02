@@ -64,8 +64,17 @@ const BOOST_MODEL_IDS = new Set([
 ]);
 
 // ---------------------------------------------------------------------------
-// Block state table by role and block type (SNAP-05)
+// Ambient Mix override amounts (INTL-02)
+// When ambient snapshot enables time-based effects, boost their Mix above
+// the base genre/model default by this delta (clamped to 0-1).
+// ---------------------------------------------------------------------------
+
+const AMBIENT_MIX_BOOST = 0.15; // +15% Mix for delay/reverb in ambient snapshot
+
+// ---------------------------------------------------------------------------
+// Block state table by role and block type (SNAP-05, INTL-02)
 // Returns whether a block should be enabled (true) or bypassed (false).
+// Now uses intentRole when available for smarter toggling.
 // ---------------------------------------------------------------------------
 
 interface BlockContext {
@@ -92,17 +101,32 @@ function getBlockEnabled(
 
   // Boost pedal (Minotaur or Scream 808)
   if (isBoost) {
-    // Clean snapshot: OFF for clean amps, ON for crunch/high-gain
     if (role === "clean") {
       return ampCategory !== "clean";
     }
-    // All other snapshots: boost ON
     return true;
   }
 
-  // Distortion / drive blocks (AI-added, not boost)
+  // --- intentRole-based toggling (INTL-02) ---
+  // When intentRole is set (from AI's EffectIntent), use it for smarter decisions.
+
+  const intentRole = block.intentRole;
+
+  // "always_on" effects stay ON in every snapshot
+  if (intentRole === "always_on") {
+    return true;
+  }
+
+  // "ambient" effects: ON for ambient and lead, OFF for clean
+  if (intentRole === "ambient") {
+    return role === "ambient" || role === "lead";
+  }
+
+  // --- Type-based fallback (original logic, used when intentRole is undefined) ---
+
+  // Distortion / drive blocks: OFF for clean snapshot (INTL-02)
   if (block.type === "distortion") {
-    // OFF for clean and ambient; ON for crunch and lead
+    if (role === "clean") return false;
     return role === "crunch" || role === "lead";
   }
 
@@ -218,6 +242,25 @@ export function buildSnapshots(
       parameterOverrides[gainEntry.key] = {
         Gain: ROLE_GAIN_DB[role] ?? 0.0,
       };
+    }
+
+    // Ambient Mix boost (INTL-02): elevate delay/reverb Mix in ambient snapshot
+    if (role === "ambient") {
+      for (const entry of blockEntries) {
+        if (
+          (entry.block.type === "delay" || entry.block.type === "reverb") &&
+          blockStates[entry.key] === true
+        ) {
+          const baseMix = entry.block.parameters?.Mix;
+          if (baseMix !== undefined) {
+            const boostedMix = Math.min(baseMix + AMBIENT_MIX_BOOST, 1.0);
+            parameterOverrides[entry.key] = {
+              ...(parameterOverrides[entry.key] ?? {}),
+              Mix: boostedMix,
+            };
+          }
+        }
+      }
     }
 
     return {
