@@ -6,7 +6,8 @@
 // Public API: assembleSignalChain(intent: ToneIntent): BlockSpec[]
 
 import type { ToneIntent } from "./tone-intent";
-import type { BlockSpec } from "./types";
+import type { BlockSpec, DeviceTarget } from "./types";
+import { isPodGo, POD_GO_MAX_USER_EFFECTS } from "./types";
 import {
   AMP_MODELS,
   CAB_MODELS,
@@ -150,7 +151,10 @@ function classifyEffectSlot(resolved: ResolvedEffect, modelName: string): ChainS
   }
 }
 
-function getDspForSlot(slot: ChainSlot): 0 | 1 {
+function getDspForSlot(slot: ChainSlot, device?: DeviceTarget): 0 | 1 {
+  // Pod Go: single DSP — all blocks on dsp0 (PGCHAIN-03)
+  if (device && isPodGo(device)) return 0;
+
   switch (slot) {
     case "wah":
     case "compressor":
@@ -228,12 +232,16 @@ function buildBlockSpec(
  * Transforms a ToneIntent into an ordered BlockSpec[] with all mandatory
  * blocks inserted, correct signal chain ordering, and DSP0/DSP1 assignments.
  *
+ * For Pod Go: all blocks forced to dsp0, no Parametric EQ or Gain Block
+ * insertion, and maximum 4 user-assignable effect blocks enforced.
+ *
  * Parameters are left empty ({}) -- param-engine.ts fills them.
  *
  * @throws Error if amp, cab, or any effect model name is not found in the database.
- * @throws Error if either DSP would exceed the 8-block-per-DSP limit (non-cab).
+ * @throws Error if either DSP would exceed the block limit.
  */
-export function assembleSignalChain(intent: ToneIntent): BlockSpec[] {
+export function assembleSignalChain(intent: ToneIntent, device?: DeviceTarget): BlockSpec[] {
+  const podGo = device ? isPodGo(device) : false;
   // 1. Resolve amp model
   const ampModel = AMP_MODELS[intent.ampName];
   if (!ampModel) {
@@ -265,9 +273,14 @@ export function assembleSignalChain(intent: ToneIntent): BlockSpec[] {
       model: resolved.model,
       blockType: resolved.blockType,
       slot,
-      dsp: getDspForSlot(slot),
+      dsp: getDspForSlot(slot, device),
       intentRole: effect.role,
     });
+  }
+
+  // Pod Go: enforce maximum 4 user-assignable effect blocks (PGCHAIN-01)
+  if (podGo && userEffects.length > POD_GO_MAX_USER_EFFECTS) {
+    userEffects.length = POD_GO_MAX_USER_EFFECTS;
   }
 
   // 5. Mandatory block insertion (CHAIN-06)
@@ -308,23 +321,27 @@ export function assembleSignalChain(intent: ToneIntent): BlockSpec[] {
     });
   }
 
-  // 5c. Post-cab Parametric EQ (always)
-  const eqModel = EQ_MODELS[PARAMETRIC_EQ]!;
-  mandatoryBlocks.push({
-    model: eqModel,
-    blockType: "eq",
-    slot: "eq",
-    dsp: 1,
-  });
+  // 5c. Post-cab Parametric EQ — skip for Pod Go (PGCHAIN-02: DSP budget reserved)
+  if (!podGo) {
+    const eqModel = EQ_MODELS[PARAMETRIC_EQ]!;
+    mandatoryBlocks.push({
+      model: eqModel,
+      blockType: "eq",
+      slot: "eq",
+      dsp: getDspForSlot("eq", device),
+    });
+  }
 
-  // 5d. Gain Block as last block on DSP1 (always)
-  const gainModel = VOLUME_MODELS[GAIN_BLOCK]!;
-  mandatoryBlocks.push({
-    model: gainModel,
-    blockType: "volume",
-    slot: "gain_block",
-    dsp: 1,
-  });
+  // 5d. Gain Block as last block — skip for Pod Go (PGCHAIN-02: DSP budget reserved)
+  if (!podGo) {
+    const gainModel = VOLUME_MODELS[GAIN_BLOCK]!;
+    mandatoryBlocks.push({
+      model: gainModel,
+      blockType: "volume",
+      slot: "gain_block",
+      dsp: getDspForSlot("gain_block", device),
+    });
+  }
 
   // 6. Build the complete pending block list
   //    Combine user effects + mandatory blocks, deduplicating by slot where
@@ -365,25 +382,40 @@ export function assembleSignalChain(intent: ToneIntent): BlockSpec[] {
   // 7. Sort all blocks by signal chain order
   allBlocks.sort((a, b) => SLOT_ORDER[a.slot] - SLOT_ORDER[b.slot]);
 
-  // 8. Validate DSP block limits (non-cab blocks)
-  const dsp0NonCab = allBlocks.filter(
-    (b) => b.dsp === 0 && b.blockType !== "cab"
-  );
-  const dsp1NonCab = allBlocks.filter(
-    (b) => b.dsp === 1 && b.blockType !== "cab"
-  );
+  // 8. Validate DSP block limits
+  if (podGo) {
+    // Pod Go: all blocks on single DSP, max 10 total (6 fixed + 4 flexible)
+    const totalNonCab = allBlocks.filter((b) => b.blockType !== "cab").length;
+    // Pod Go total: amp(1) + boost(1) + gate?(0-1) + user effects (up to 4) ≤ ~10
+    // We check against the total block limit including cab
+    const totalBlocks = allBlocks.length;
+    if (totalBlocks > 10) {
+      throw new Error(
+        `Pod Go block limit exceeded: ${totalBlocks} blocks (max 10 total). ` +
+          `Reduce the number of effects.`
+      );
+    }
+  } else {
+    // Helix: dual DSP, max 8 non-cab blocks per DSP
+    const dsp0NonCab = allBlocks.filter(
+      (b) => b.dsp === 0 && b.blockType !== "cab"
+    );
+    const dsp1NonCab = allBlocks.filter(
+      (b) => b.dsp === 1 && b.blockType !== "cab"
+    );
 
-  if (dsp0NonCab.length > MAX_BLOCKS_PER_DSP) {
-    throw new Error(
-      `DSP0 block limit exceeded: ${dsp0NonCab.length} non-cab blocks (max ${MAX_BLOCKS_PER_DSP}). ` +
-        `Reduce the number of pre-amp effects.`
-    );
-  }
-  if (dsp1NonCab.length > MAX_BLOCKS_PER_DSP) {
-    throw new Error(
-      `DSP1 block limit exceeded: ${dsp1NonCab.length} non-cab blocks (max ${MAX_BLOCKS_PER_DSP}). ` +
-        `Reduce the number of post-cab effects.`
-    );
+    if (dsp0NonCab.length > MAX_BLOCKS_PER_DSP) {
+      throw new Error(
+        `DSP0 block limit exceeded: ${dsp0NonCab.length} non-cab blocks (max ${MAX_BLOCKS_PER_DSP}). ` +
+          `Reduce the number of pre-amp effects.`
+      );
+    }
+    if (dsp1NonCab.length > MAX_BLOCKS_PER_DSP) {
+      throw new Error(
+        `DSP1 block limit exceeded: ${dsp1NonCab.length} non-cab blocks (max ${MAX_BLOCKS_PER_DSP}). ` +
+          `Reduce the number of post-cab effects.`
+      );
+    }
   }
 
   // 9. Assign sequential positions per-DSP, excluding cab from position count

@@ -1,5 +1,6 @@
 import { getAllModels } from "./models";
-import type { PresetSpec } from "./types";
+import type { PresetSpec, DeviceTarget } from "./types";
+import { isPodGo } from "./types";
 
 // Build a set of all valid model IDs from our database
 function getValidModelIds(): Set<string> {
@@ -14,17 +15,41 @@ function getValidModelIds(): Set<string> {
   ids.add("HD2_AppDSPFlowOutput");
   ids.add("HD2_SplitAB");
   ids.add("HD2_MergerMixer");
+  // Pod Go system models
+  ids.add("P34_AppDSPFlowInput");
+  ids.add("P34_AppDSPFlowOutput");
   return ids;
 }
 
 const VALID_IDS = getValidModelIds();
 
+// Build extended set that includes Pod Go suffixed model IDs
+function getValidModelIdsWithSuffixes(): Set<string> {
+  const ids = new Set(VALID_IDS);
+  const models = getAllModels();
+  for (const model of Object.values(models)) {
+    // Add Mono/Stereo suffixed variants for Pod Go effect models
+    if (!model.id.startsWith("HD2_Amp") && !model.id.startsWith("HD2_Cab")) {
+      ids.add(model.id + "Mono");
+      ids.add(model.id + "Stereo");
+    }
+  }
+  return ids;
+}
+
+const VALID_IDS_WITH_SUFFIXES = getValidModelIdsWithSuffixes();
+
 /**
  * Strict validation that throws on structural errors instead of auto-correcting.
  * The Knowledge Layer should produce valid specs, so any failure here indicates a bug.
- * Call this before buildHlxFile in the generate pipeline.
+ * Call this before buildHlxFile/buildPgpFile in the generate pipeline.
+ *
+ * @param device - Optional device target for device-specific validation rules
  */
-export function validatePresetSpec(spec: PresetSpec): void {
+export function validatePresetSpec(spec: PresetSpec, device?: DeviceTarget): void {
+  const podGo = device ? isPodGo(device) : false;
+  const validIds = podGo ? VALID_IDS_WITH_SUFFIXES : VALID_IDS;
+
   // 1. Signal chain not empty
   if (!spec.signalChain || spec.signalChain.length === 0) {
     throw new Error("PresetSpec has empty signal chain");
@@ -42,7 +67,7 @@ export function validatePresetSpec(spec: PresetSpec): void {
 
   // 4. All model IDs valid
   for (const block of spec.signalChain) {
-    if (!VALID_IDS.has(block.modelId)) {
+    if (!validIds.has(block.modelId)) {
       throw new Error(`Invalid model ID '${block.modelId}' for block '${block.modelName}'`);
     }
   }
@@ -88,14 +113,31 @@ export function validatePresetSpec(spec: PresetSpec): void {
     }
   }
 
-  // 7. DSP block limits (max 8 non-cab blocks per DSP)
-  const dsp0Count = spec.signalChain.filter(b => b.dsp === 0 && b.type !== "cab").length;
-  const dsp1Count = spec.signalChain.filter(b => b.dsp === 1 && b.type !== "cab").length;
-  if (dsp0Count > 8) {
-    throw new Error(`DSP0 exceeds 8-block limit (${dsp0Count} blocks)`);
-  }
-  if (dsp1Count > 8) {
-    throw new Error(`DSP1 exceeds 8-block limit (${dsp1Count} blocks)`);
+  // 7. DSP block limits
+  if (podGo) {
+    // Pod Go: single DSP, all blocks on dsp0 (PGP-05, PGCHAIN-01)
+    const nonDsp0 = spec.signalChain.filter(b => b.dsp !== 0);
+    if (nonDsp0.length > 0) {
+      throw new Error(`Pod Go preset has blocks on dsp1 — all blocks must be on dsp0`);
+    }
+    const totalBlocks = spec.signalChain.length;
+    if (totalBlocks > 10) {
+      throw new Error(`Pod Go exceeds 10-block limit (${totalBlocks} blocks)`);
+    }
+    // Validate exactly 4 snapshots (PGSNAP-01)
+    if (spec.snapshots.length !== 4) {
+      throw new Error(`Pod Go requires exactly 4 snapshots (got ${spec.snapshots.length})`);
+    }
+  } else {
+    // Helix: dual DSP, max 8 non-cab blocks per DSP
+    const dsp0Count = spec.signalChain.filter(b => b.dsp === 0 && b.type !== "cab").length;
+    const dsp1Count = spec.signalChain.filter(b => b.dsp === 1 && b.type !== "cab").length;
+    if (dsp0Count > 8) {
+      throw new Error(`DSP0 exceeds 8-block limit (${dsp0Count} blocks)`);
+    }
+    if (dsp1Count > 8) {
+      throw new Error(`DSP1 exceeds 8-block limit (${dsp1Count} blocks)`);
+    }
   }
 }
 

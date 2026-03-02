@@ -175,10 +175,11 @@ export default function Home() {
     spec: Record<string, unknown> & { name?: string };
     toneIntent: Record<string, unknown>;
     device: string;
+    fileExtension?: string;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [premiumKey, setPremiumKey] = useState<string | null>(null);
-  const [selectedDevice, setSelectedDevice] = useState<"helix_lt" | "helix_floor">("helix_lt");
+  const [selectedDevice, setSelectedDevice] = useState<"helix_lt" | "helix_floor" | "pod_go">("helix_lt");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -336,8 +337,9 @@ export default function Home() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     const baseName = generatedPreset.spec?.name || "HelixAI_Preset";
+    const ext = generatedPreset.fileExtension || ".hlx";
     a.href = url;
-    a.download = `${baseName.replace(/[^a-zA-Z0-9_()-]/g, "_")}.hlx`;
+    a.download = `${baseName.replace(/[^a-zA-Z0-9_()-]/g, "_")}${ext}`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -474,7 +476,7 @@ export default function Home() {
                     Target Device
                   </p>
                   <div className="flex gap-2">
-                    {(["helix_lt", "helix_floor"] as const).map((device) => (
+                    {(["helix_lt", "helix_floor", "pod_go"] as const).map((device) => (
                       <button
                         key={device}
                         onClick={() => setSelectedDevice(device)}
@@ -485,7 +487,7 @@ export default function Home() {
                         }`}
                       >
                         <span className={`hlx-led ${selectedDevice === device ? "hlx-led-warm" : ""}`} />
-                        {device === "helix_lt" ? "Helix LT" : "Helix Floor"}
+                        {device === "helix_lt" ? "Helix LT" : device === "helix_floor" ? "Helix Floor" : "Pod Go"}
                       </button>
                     ))}
                   </div>
@@ -536,7 +538,7 @@ export default function Home() {
                       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                       </svg>
-                      Download .hlx
+                      Download {generatedPreset.fileExtension || ".hlx"}
                     </button>
                   </div>
 

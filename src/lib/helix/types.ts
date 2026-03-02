@@ -165,13 +165,67 @@ export type TopologyTag =
 
 export type CabSize = "small" | "medium" | "large";
 
-// Device target for .hlx file generation
-export type DeviceTarget = "helix_lt" | "helix_floor";
+// Device target for .hlx / .pgp file generation
+export type DeviceTarget = "helix_lt" | "helix_floor" | "pod_go";
 
 export const DEVICE_IDS: Record<DeviceTarget, number> = {
   helix_lt: 2162692,
   helix_floor: 2162688,
+  pod_go: 2162695,
 } as const;
+
+/** Returns true if the device target is a Helix (LT or Floor) */
+export function isHelix(device: DeviceTarget): boolean {
+  return device === "helix_lt" || device === "helix_floor";
+}
+
+/** Returns true if the device target is a Pod Go */
+export function isPodGo(device: DeviceTarget): boolean {
+  return device === "pod_go";
+}
+
+// ---------------------------------------------------------------------------
+// Pod Go format constants
+// Source: Direct inspection of 18 real .pgp files (firmware v1.00–v2.00)
+// ---------------------------------------------------------------------------
+
+/** Pod Go block @type values — completely different encoding from Helix */
+export const BLOCK_TYPES_PODGO = {
+  // Generic effects (distortion, dynamics, wah, volume, pitch, modulation, CabMicIr)
+  GENERIC: 0,
+  // Amp block
+  AMP: 1,
+  // Simple cab (HD2_Cab*)
+  SIMPLE_CAB: 2,
+  // Looper
+  LOOPER: 4,
+  // Delay, Reverb, FX Loop — all share @type=5
+  DELAY: 5,
+  REVERB: 5,
+  FX_LOOP: 5,
+  // Static EQ (HD2_EQ_STATIC_*)
+  EQ_STATIC: 6,
+} as const;
+
+/** Pod Go I/O model constants */
+export const POD_GO_IO = {
+  INPUT_MODEL: "P34_AppDSPFlowInput",
+  OUTPUT_MODEL: "P34_AppDSPFlowOutput",
+  INPUT_KEY: "input",
+  OUTPUT_KEY: "output",
+} as const;
+
+/** Pod Go snapshot controller ID (Helix uses 19, Pod Go uses 4) */
+export const POD_GO_SNAPSHOT_CONTROLLER = 4;
+
+/** Pod Go footswitch indices: FS A-F = indices 0-5 */
+export const POD_GO_STOMP_FS_INDICES = [0, 1, 2, 3, 4, 5];
+
+/** Pod Go maximum user-assignable effect blocks */
+export const POD_GO_MAX_USER_EFFECTS = 4;
+
+/** Pod Go total block count (fixed: wah+vol+amp+cab+eq+fxloop = 6, flexible: 4) */
+export const POD_GO_TOTAL_BLOCKS = 10;
 
 // --- Preset specification types (what the AI generates) ---
 

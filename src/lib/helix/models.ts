@@ -1,7 +1,8 @@
 // Comprehensive database of Helix LT amp, cab, and effect models
 // Model IDs match the HD2_* naming convention used in .hlx files
 
-import type { AmpCategory, TopologyTag } from "./types";
+import type { AmpCategory, TopologyTag, DeviceTarget } from "./types";
+import { BLOCK_TYPES_PODGO, isPodGo } from "./types";
 
 export interface HelixModel {
   id: string;
@@ -1053,18 +1054,30 @@ export function getAllModels(): Record<string, HelixModel> {
 }
 
 // Build a condensed model list string for the system prompt
-export function getModelListForPrompt(): string {
+// Accepts optional device parameter to filter models for Pod Go
+export function getModelListForPrompt(device?: DeviceTarget): string {
+  const filterModels = (models: Record<string, HelixModel>): Record<string, HelixModel> => {
+    if (!device || !isPodGo(device)) return models;
+    const filtered: Record<string, HelixModel> = {};
+    for (const [name, model] of Object.entries(models)) {
+      if (!POD_GO_EXCLUDED_MODELS.has(name)) {
+        filtered[name] = model;
+      }
+    }
+    return filtered;
+  };
+
   const sections = [
-    { title: "AMPS", models: AMP_MODELS },
-    { title: "CABS", models: CAB_MODELS },
-    { title: "DISTORTION/OVERDRIVE", models: DISTORTION_MODELS },
-    { title: "DELAY", models: DELAY_MODELS },
-    { title: "REVERB", models: REVERB_MODELS },
-    { title: "MODULATION", models: MODULATION_MODELS },
-    { title: "DYNAMICS", models: DYNAMICS_MODELS },
-    { title: "EQ", models: EQ_MODELS },
-    { title: "WAH", models: WAH_MODELS },
-    { title: "VOLUME", models: VOLUME_MODELS },
+    { title: "AMPS", models: filterModels(AMP_MODELS) },
+    { title: "CABS", models: filterModels(CAB_MODELS) },
+    { title: "DISTORTION/OVERDRIVE", models: filterModels(DISTORTION_MODELS) },
+    { title: "DELAY", models: filterModels(DELAY_MODELS) },
+    { title: "REVERB", models: filterModels(REVERB_MODELS) },
+    { title: "MODULATION", models: filterModels(MODULATION_MODELS) },
+    { title: "DYNAMICS", models: filterModels(DYNAMICS_MODELS) },
+    { title: "EQ", models: filterModels(EQ_MODELS) },
+    { title: "WAH", models: filterModels(WAH_MODELS) },
+    { title: "VOLUME", models: filterModels(VOLUME_MODELS) },
   ];
 
   return sections.map(s => {
@@ -1073,4 +1086,125 @@ export function getModelListForPrompt(): string {
       .join("\n");
     return `### ${s.title}\n${entries}`;
   }).join("\n\n");
+}
+
+// ============================================================
+// POD GO MODEL SUPPORT (PGMOD-01 through PGMOD-04)
+// ============================================================
+
+/**
+ * Models excluded from Pod Go — too DSP-heavy or not ported.
+ * Source: Line 6 Pod Go FAQ + firmware 2.50 notes (PGMOD-03)
+ */
+export const POD_GO_EXCLUDED_MODELS = new Set([
+  "Tone Sovereign",   // HD2_DistToneSovereign — not ported to Pod Go
+  "Clawthorn Drive",  // HD2_DistClawthornDrive — not ported to Pod Go
+  "Cosmos Echo",      // HD2_DelayCosmosEcho — too DSP-heavy for single-chip Pod Go
+]);
+
+/**
+ * Pod Go effect model ID suffix mapping by block type category.
+ * Pod Go effect IDs append Mono or Stereo suffix; Helix IDs have no suffix (PGMOD-01).
+ *
+ * Mono-in effects: distortion, dynamics, pitch, EQ → "Mono"
+ * Stereo-capable effects: delay, reverb, modulation, wah, volume → "Stereo"
+ *
+ * Source: Direct inspection of 18 real .pgp files (confirmed patterns)
+ */
+const POD_GO_EFFECT_SUFFIX: Record<string, "Mono" | "Stereo"> = {
+  distortion: "Mono",
+  dynamics: "Mono",
+  eq: "Mono",
+  pitch: "Mono",
+  delay: "Stereo",
+  reverb: "Stereo",
+  modulation: "Stereo",
+  wah: "Stereo",
+  volume: "Stereo",
+};
+
+/**
+ * Get the correct model ID for a given device target (PGMOD-01).
+ *
+ * Amp and Cab IDs are shared between Helix and Pod Go (PGMOD-02).
+ * Effect IDs on Pod Go append Mono/Stereo suffix.
+ */
+export function getModelIdForDevice(
+  model: HelixModel,
+  blockType: string,
+  device: DeviceTarget,
+): string {
+  // Helix devices use model IDs as-is
+  if (!isPodGo(device)) return model.id;
+
+  // Amp IDs are identical between Pod Go and Helix (PGMOD-02)
+  if (model.id.startsWith("HD2_Amp")) return model.id;
+
+  // Cab IDs are shared
+  if (model.id.startsWith("HD2_Cab") || model.id.startsWith("HD2_CabMicIr")) return model.id;
+
+  // Effect IDs need Mono/Stereo suffix on Pod Go
+  const suffix = POD_GO_EFFECT_SUFFIX[blockType];
+  if (suffix) return model.id + suffix;
+
+  // Unknown category — return as-is (shouldn't happen with known block types)
+  return model.id;
+}
+
+/**
+ * Get the correct @type value for a block on a given device.
+ * Pod Go has completely different @type encoding from Helix.
+ */
+export function getBlockTypeForDevice(
+  blockType: string,
+  modelId: string,
+  device: DeviceTarget,
+): number {
+  if (!isPodGo(device)) {
+    // Helix block type mapping (existing logic)
+    switch (blockType) {
+      case "amp": return 3; // AMP_WITH_CAB for standard presets
+      case "cab": return BLOCK_TYPES.CAB_IN_SLOT;
+      case "distortion": return BLOCK_TYPES.DISTORTION;
+      case "delay": return BLOCK_TYPES.DELAY;
+      case "reverb": return BLOCK_TYPES.REVERB;
+      case "modulation": return BLOCK_TYPES.MODULATION;
+      case "dynamics": return BLOCK_TYPES.DYNAMICS;
+      case "eq": return BLOCK_TYPES.EQ;
+      case "wah": return BLOCK_TYPES.WAH;
+      case "pitch": return BLOCK_TYPES.PITCH;
+      case "volume": return BLOCK_TYPES.VOLUME;
+      case "send_return": return BLOCK_TYPES.SEND_RETURN;
+      default: return 0;
+    }
+  }
+
+  // Pod Go block type mapping
+  switch (blockType) {
+    case "amp": return BLOCK_TYPES_PODGO.AMP;
+    case "cab":
+      // CabMicIr models get @type=0, simple cabs get @type=2
+      if (modelId.startsWith("HD2_CabMicIr")) return BLOCK_TYPES_PODGO.GENERIC;
+      return BLOCK_TYPES_PODGO.SIMPLE_CAB;
+    case "delay": return BLOCK_TYPES_PODGO.DELAY;
+    case "reverb": return BLOCK_TYPES_PODGO.REVERB;
+    case "eq":
+      // Static EQ models get @type=6, others get @type=0
+      if (modelId.startsWith("HD2_EQ_STATIC")) return BLOCK_TYPES_PODGO.EQ_STATIC;
+      return BLOCK_TYPES_PODGO.GENERIC;
+    case "send_return": return BLOCK_TYPES_PODGO.FX_LOOP;
+    // Distortion, dynamics, wah, pitch, volume, modulation → all @type=0
+    default: return BLOCK_TYPES_PODGO.GENERIC;
+  }
+}
+
+/**
+ * Check if a model is available on Pod Go (PGMOD-03, PGMOD-04).
+ */
+export function isModelAvailableForDevice(
+  modelName: string,
+  device: DeviceTarget,
+): boolean {
+  if (!isPodGo(device)) return true;
+  return !POD_GO_EXCLUDED_MODELS.has(modelName);
 }

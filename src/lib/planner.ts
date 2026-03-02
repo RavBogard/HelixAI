@@ -5,18 +5,25 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { ToneIntentSchema, getModelListForPrompt } from "@/lib/helix";
-import type { ToneIntent } from "@/lib/helix";
+import { ToneIntentSchema, getModelListForPrompt, isPodGo } from "@/lib/helix";
+import type { ToneIntent, DeviceTarget } from "@/lib/helix";
 
 /**
  * Build the Planner system prompt.
  *
  * The prompt is narrow: creative model choices only, zero numeric parameter values.
  * The modelList parameter comes from getModelListForPrompt() and contains
- * all valid amp, cab, and effect model names.
+ * all valid amp, cab, and effect model names (filtered by device target).
  */
-export function buildPlannerPrompt(modelList: string): string {
-  return `You are HelixAI's Planner. You choose creative model selections for Helix LT presets.
+export function buildPlannerPrompt(modelList: string, device?: DeviceTarget): string {
+  const podGo = device ? isPodGo(device) : false;
+  const deviceName = podGo ? "Pod Go" : "Helix LT";
+  const maxEffects = podGo ? 4 : 6;
+  const effectNote = podGo
+    ? "- Keep effects to 2-4 maximum — Pod Go has a 4 user-effect limit and limited DSP"
+    : "- Keep effects minimal: 2-4 is typical, 6 is the maximum";
+
+  return `You are HelixAI's Planner. You choose creative model selections for ${deviceName} presets.
 
 ## Your Role
 
@@ -36,7 +43,7 @@ Generate a JSON object with these fields:
 - **cabName**: Exact name from the CABS list above
 - **guitarType**: "single_coil", "humbucker", or "p90" — based on what the user described
 - **genreHint**: Optional genre or style description (e.g., "blues rock", "modern metal")
-- **effects**: Array of up to 6 effects, each with:
+- **effects**: Array of up to ${maxEffects} effects, each with:
   - modelName: exact name from DISTORTION, DELAY, REVERB, MODULATION, or DYNAMICS lists
   - role: "always_on" (core tone), "toggleable" (switched per snapshot), or "ambient" (pads/textures)
 - **snapshots**: Exactly 4 snapshots, each with:
@@ -56,7 +63,7 @@ Do NOT generate Drive, Master, Bass, Mid, Treble, Presence, Sag, ChVol, LowCut, 
 - Match the amp and cab to the genre, artist, or tone the user described
 - Choose a cab that pairs naturally with the amp (similar era and voicing)
 - Pick effects that serve the described tone goal — do not add effects for the sake of filling slots
-- Keep effects minimal: 2-4 is typical, 6 is the maximum
+${effectNote}
 - Name snapshots clearly following the CLEAN / RHYTHM / LEAD / AMBIENT pattern
 - Set each snapshot's toneRole to match its purpose
 - Generate a creative preset name that captures the tone character
@@ -72,16 +79,19 @@ Based on the conversation below, generate a ToneIntent:`;
  * constrained decoding guarantees valid JSON matching ToneIntentSchema.
  * Belt-and-suspenders: Zod validates the response after parsing to catch
  * any constraints that JSON Schema cannot express (min/max/minItems).
+ *
+ * @param device - Optional device target for device-specific model filtering (PGMOD-04)
  */
 export async function callClaudePlanner(
-  messages: Array<{ role: string; content: string }>
+  messages: Array<{ role: string; content: string }>,
+  device?: DeviceTarget,
 ): Promise<ToneIntent> {
   const apiKey = process.env.CLAUDE_API_KEY;
   if (!apiKey) throw new Error("CLAUDE_API_KEY environment variable is required");
 
   const client = new Anthropic({ apiKey });
-  const modelList = getModelListForPrompt();
-  const systemPrompt = buildPlannerPrompt(modelList);
+  const modelList = getModelListForPrompt(device);
+  const systemPrompt = buildPlannerPrompt(modelList, device);
 
   // Concatenate conversation history into a single user message
   const conversationText = messages
