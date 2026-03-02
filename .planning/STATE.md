@@ -1,14 +1,14 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: Polish & Precision
-status: complete
+milestone: v1.2
+milestone_name: Pod Go Support
+status: researching
 last_updated: "2026-03-02T00:00:00Z"
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 7
-  completed_plans: 7
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
@@ -18,23 +18,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** v1.1 complete — all phases shipped
+**Current focus:** v1.2 — Researching Pod Go hardware architecture and file format
 
 ## Current Position
 
-Phase: 11 of 11 (Frontend Transparency)
-Plan: 2 of 2 in current phase
-Status: Complete
-Last activity: 2026-03-02 — v1.1 milestone complete (all 5 phases, 7 plans)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Researching
+Last activity: 2026-03-02 — Milestone v1.2 started
 
-Progress: [██████████] 100% (v1.1) — v1.0 complete (14/14 plans)
+Progress: [░░░░░░░░░░] 0% (v1.2)
 
 ## Performance Metrics
-
-**Velocity (v1.0):**
-- Total plans completed: 14
-- Average duration: unknown
-- Total execution time: unknown
 
 **By Phase (v1.0):**
 
@@ -61,16 +56,12 @@ Progress: [██████████] 100% (v1.1) — v1.0 complete (14/14 
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
-
 - [v1.0]: Planner-Executor architecture — AI generates ToneIntent (~15 fields), deterministic Knowledge Layer generates all parameter values
 - [v1.0]: 3-layer amp param resolution: model defaults -> category overrides -> topology adjustment
-- [v1.0]: Strict validatePresetSpec throws instead of auto-correcting
-- [v1.1]: @pedalstate computed from block states per snapshot using bitmask (base value 2 for snapshot mode)
-- [v1.1]: Genre defaults applied as outermost resolution layer in param-engine.ts
-- [v1.1]: intentRole flows from EffectIntent through chain-rules into BlockSpec for snapshot toggling
-- [v1.1]: Signal chain viz built with inline React components (no @xyflow dependency needed for linear chain)
+- [v1.1]: @pedalstate computed from block states per snapshot using bitmask
+- [v1.1]: Genre defaults applied as outermost resolution layer
+- [v1.1]: intentRole flows from EffectIntent through chain-rules into BlockSpec
+- [v1.2]: Pod Go is additive v1.2, not a v2.0 rewrite — build on existing architecture
 
 ### Pending Todos
 
@@ -78,10 +69,10 @@ None.
 
 ### Blockers/Concerns
 
-None — v1.1 complete.
+- Pod Go DSP architecture, file format, and block constraints unknown — research needed before scoping
 
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: v1.1 milestone complete
+Stopped at: v1.2 research phase starting
 Resume file: None

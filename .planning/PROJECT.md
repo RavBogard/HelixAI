@@ -28,36 +28,37 @@ Generated presets must sound professional enough to compete with custom presets 
 - ✓ Claude Sonnet 4.6 as single AI provider with structured output — v1.0
 - ✓ Rebuilt preset engine (planner-executor architecture) — v1.0
 - ✓ Refined frontend (device selector, single-preset UX) — v1.0
+- ✓ Stomp @fs_enabled fix + @pedalstate bitmask computation — v1.1
+- ✓ Prompt caching for ~50% API cost reduction — v1.1
+- ✓ Genre-aware effect parameter defaults — v1.1
+- ✓ Smarter snapshot effect toggling via intentRole — v1.1
+- ✓ Signal chain visualization + tone description card — v1.1
+- ✓ Daniel Bogard branding footer — v1.1
 
 ### Active
 
-- [ ] Fix stomp footswitch `@fs_enabled` — hardware responds on first press
-- [ ] Fix snapshot `@pedalstate` computation — pedal LEDs reflect active stomps per snapshot
-- [ ] Prompt caching for API cost reduction (~50% savings)
-- [ ] Genre-aware effect parameter defaults (delay times, reverb mixes, modulation rates)
-- [ ] Smarter snapshot effect toggling (ambient enables reverb+delay, clean disables drive)
-- [ ] Broader .hlx format audit against HX Edit expectations
-- [ ] Signal chain visualization in UI (show what's in the preset before download)
-- [ ] Tone description card (human-readable preset summary)
+- [ ] Pod Go preset generation — different DSP architecture, file format, and block constraints
+- [ ] Pod Go device selector in UI
+- [ ] Pod Go-specific signal chain rules and parameter engine
 
 ### Out of Scope
 
-- HX Stomp / POD Go support — different hardware constraints, different .hlx structure
+- HX Stomp support — different hardware constraints, defer to future
 - User accounts / preset saving — keep it simple, generate and download
 - MIDI configuration — focus on tone, not hardware routing
-- IR (impulse response) loading — stick with stock Helix cabs
+- IR (impulse response) loading — stick with stock cabs
 - Multi-provider comparison UI — going single provider for quality focus
 
-## Current Milestone: v1.1 Polish & Precision
+## Current Milestone: v1.2 Pod Go Support
 
-**Goal:** Fix hardware-facing bugs, deepen preset intelligence, and give users a window into what they're downloading.
+**Goal:** Extend HelixAI to generate presets for Line 6 Pod Go — a single-DSP device with different block limits, file format, and routing constraints.
 
 **Target features:**
-- Fix stomp `@fs_enabled` and snapshot `@pedalstate` hardware bugs
-- Prompt caching for 50% API cost reduction
-- Genre-aware effect parameters and smarter snapshot toggling
-- .hlx format audit for hardware correctness
-- Signal chain visualization and tone description card in UI
+- Pod Go preset file generation (different format from Helix .hlx)
+- Pod Go-specific signal chain rules (single DSP, limited blocks)
+- Pod Go-specific parameter engine (different amp/effect models and constraints)
+- Pod Go device selector in the frontend
+- Shared AI planner (ToneIntent works for both devices)
 
 ## Context
 
@@ -88,5 +89,7 @@ Existing codebase map available at `.planning/codebase/` with architecture, stac
 | Keep Warm Analog Studio frontend | Design is strong, just needs polish — no reason to throw it away | ✓ Good |
 | Planner-Executor architecture | AI selects models (~15 fields), Knowledge Layer generates all params deterministically | ✓ Good |
 
+| Pod Go as v1.2 (not v2.0) | Building on existing architecture, not replacing — new device is additive | — Pending |
+
 ---
-*Last updated: 2026-03-02 after v1.1 milestone start*
+*Last updated: 2026-03-02 after v1.2 milestone start*
