@@ -104,7 +104,19 @@ export async function callClaudePlanner(
     throw new Error("Claude returned no text content");
   }
 
-  // Belt-and-suspenders: parse with Zod to validate all constraints
-  // (zodOutputFormat strips min/max from JSON Schema; Zod validates them after)
-  return ToneIntentSchema.parse(JSON.parse(textBlock.text));
+  // Sanitize before Zod validation.
+  // zodOutputFormat strips min/max constraints from JSON Schema, so Claude's
+  // constrained decoding does NOT enforce string length limits. We truncate
+  // snapshot names here to avoid Zod rejecting valid-intent-but-too-long names
+  // (e.g., "CLEAN CHIME" → "CLEAN CHIM", "AMBIENT PAD" → "AMBIENT PA").
+  const raw = JSON.parse(textBlock.text);
+  if (Array.isArray(raw.snapshots)) {
+    raw.snapshots = raw.snapshots.map((s: { name?: string; toneRole?: string }) => ({
+      ...s,
+      name: typeof s.name === "string" ? s.name.slice(0, 10) : s.name,
+    }));
+  }
+
+  // Belt-and-suspenders: Zod validates all remaining constraints
+  return ToneIntentSchema.parse(raw);
 }
