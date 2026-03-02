@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Foundation** - Type contracts, verified @type constants, expanded model database, parameter type registry
 - [x] **Phase 2: Knowledge Layer** - Deterministic chain rules, param engine, snapshot engine — the expert Helix knowledge encoded in code
 - [x] **Phase 3: AI Integration** - Claude Sonnet 4.6 with constrained ToneIntent output; Gemini chat unchanged
-- [ ] **Phase 4: Orchestration** - Wire all components end-to-end; harden validator; generate real downloadable presets
+- [x] **Phase 4: Orchestration** - Wire all components end-to-end; harden validator; generate real downloadable presets
 - [ ] **Phase 5: Frontend Polish** - Device selector (LT vs. Floor), UX refinements, remove multi-provider UI
 - [ ] **Phase 6: Hardening** - Hardware verification on real Helix LT, fail-fast validation, firmware parameterization, openai package removal
 
@@ -82,8 +82,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — Device target support (LT/Floor) in buildHlxFile + strict validatePresetSpec + generate route wiring (HLX-01, HLX-02, HLX-03)
-- [ ] 04-02-PLAN.md — End-to-end orchestration tests: device IDs, strict validation, snapshot key rebuilding (HLX-01, HLX-02, HLX-03, HLX-04)
+- [x] 04-01-PLAN.md — Device target support (LT/Floor) in buildHlxFile + strict validatePresetSpec + generate route wiring (HLX-01, HLX-02, HLX-03)
+- [x] 04-02-PLAN.md — End-to-end orchestration tests: device IDs, strict validation, snapshot key rebuilding (HLX-01, HLX-02, HLX-03, HLX-04)
 
 ### Phase 5: Frontend Polish
 **Goal**: The UI is polished, device-aware, and presents a single world-class preset download experience
@@ -119,7 +119,7 @@ Phases execute in numeric order: 1 > 2 > 3 > 4 > 5 > 6
 | 1. Foundation | 3/3 | Complete | 2026-03-01 |
 | 2. Knowledge Layer | 3/3 | Complete | 2026-03-02 |
 | 3. AI Integration | 2/2 | Complete | 2026-03-02 |
-| 4. Orchestration | 0/2 | Not started | - |
+| 4. Orchestration | 2/2 | Complete | 2026-03-02 |
 | 5. Frontend Polish | 0/TBD | Not started | - |
 | 6. Hardening | 0/TBD | Not started | - |
 
