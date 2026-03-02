@@ -51,7 +51,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — chain-rules.ts: signal chain assembly, mandatory block insertion, DSP assignment (CHAIN-01, CHAIN-02, CHAIN-03, CHAIN-04, CHAIN-05, CHAIN-06)
+- [x] 02-01-PLAN.md — chain-rules.ts: signal chain assembly, mandatory block insertion, DSP assignment (CHAIN-01, CHAIN-02, CHAIN-03, CHAIN-04, CHAIN-05, CHAIN-06)
 - [ ] 02-02-PLAN.md — param-engine.ts: category-specific amp/cab/effect parameter resolution, topology-aware mid EQ (TONE-01, TONE-02, TONE-03, TONE-04, TONE-05, TONE-06, DYN-01, DYN-02, DYN-03)
 - [ ] 02-03-PLAN.md — snapshot-engine.ts: 4-snapshot generation, volume balancing, block state tables, barrel exports (SNAP-01, SNAP-02, SNAP-03, SNAP-04, SNAP-05)
 
@@ -109,7 +109,7 @@ Phases execute in numeric order: 1 > 2 > 3 > 4 > 5 > 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 3/3 | Complete | 2026-03-01 |
-| 2. Knowledge Layer | 0/3 | Planned | - |
+| 2. Knowledge Layer | 1/3 | In Progress | - |
 | 3. AI Integration | 0/TBD | Not started | - |
 | 4. Orchestration | 0/TBD | Not started | - |
 | 5. Frontend Polish | 0/TBD | Not started | - |
@@ -117,4 +117,4 @@ Phases execute in numeric order: 1 > 2 > 3 > 4 > 5 > 6
 
 ---
 *Roadmap created: 2026-03-01*
-*Last updated: 2026-03-01 — Phase 2 Knowledge Layer planned (3 plans, 20 requirements)*
+*Last updated: 2026-03-02 — Plan 02-01 complete (chain-rules.ts). 1/3 Phase 2 plans done.*

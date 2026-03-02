@@ -17,12 +17,12 @@ Requirements for the rebuilt preset engine. Each maps to roadmap phases.
 
 ### Signal Chain Engineering
 
-- [ ] **CHAIN-01**: Deterministic signal chain assembly enforcing correct block order (Gate > Boost > Amp > Cab > EQ > Mod > Delay > Reverb)
-- [ ] **CHAIN-02**: Always-on transparent boost block before amp — Minotaur (Klon) for clean/crunch, Scream 808 for high-gain
-- [ ] **CHAIN-03**: Post-cab EQ block on every preset with genre/category-appropriate cuts (mud at 300-500 Hz, harshness at 3-5 kHz)
-- [ ] **CHAIN-04**: Noise gate — input block gate always enabled; Horizon Gate post-amp for high-gain presets
-- [ ] **CHAIN-05**: DSP path split rules enforcing 8-block-per-DSP limit with amp+cab on DSP0
-- [ ] **CHAIN-06**: Mandatory block insertion — the engine inserts required blocks (boost, EQ, gate) without AI involvement
+- [x] **CHAIN-01**: Deterministic signal chain assembly enforcing correct block order (Gate > Boost > Amp > Cab > EQ > Mod > Delay > Reverb)
+- [x] **CHAIN-02**: Always-on transparent boost block before amp — Minotaur (Klon) for clean/crunch, Scream 808 for high-gain
+- [x] **CHAIN-03**: Post-cab EQ block on every preset with genre/category-appropriate cuts (mud at 300-500 Hz, harshness at 3-5 kHz)
+- [x] **CHAIN-04**: Noise gate — input block gate always enabled; Horizon Gate post-amp for high-gain presets
+- [x] **CHAIN-05**: DSP path split rules enforcing 8-block-per-DSP limit with amp+cab on DSP0
+- [x] **CHAIN-06**: Mandatory block insertion — the engine inserts required blocks (boost, EQ, gate) without AI involvement
 
 ### Amp & Cab Quality
 
@@ -118,12 +118,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FNDN-03 | Phase 1 | Complete |
 | FNDN-04 | Phase 1 | Complete |
 | FNDN-05 | Phase 1 | Complete |
-| CHAIN-01 | Phase 2 | Pending |
-| CHAIN-02 | Phase 2 | Pending |
-| CHAIN-03 | Phase 2 | Pending |
-| CHAIN-04 | Phase 2 | Pending |
-| CHAIN-05 | Phase 2 | Pending |
-| CHAIN-06 | Phase 2 | Pending |
+| CHAIN-01 | Phase 2 | Complete |
+| CHAIN-02 | Phase 2 | Complete |
+| CHAIN-03 | Phase 2 | Complete |
+| CHAIN-04 | Phase 2 | Complete |
+| CHAIN-05 | Phase 2 | Complete |
+| CHAIN-06 | Phase 2 | Complete |
 | TONE-01 | Phase 2 | Pending |
 | TONE-02 | Phase 2 | Pending |
 | TONE-03 | Phase 2 | Pending |
