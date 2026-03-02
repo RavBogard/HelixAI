@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Rig Emulation
-status: in_progress
-last_updated: "2026-03-02T00:00:00Z"
+status: complete
+last_updated: "2026-03-02T13:52:00Z"
 progress:
   total_phases: 5
-  completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  completed_phases: 5
+  total_plans: 5
+  completed_plans: 5
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** v1.3 — Rig Emulation (defining requirements)
+**Current focus:** v1.3 — Rig Emulation (COMPLETE)
 
 ## Current Position
 
-Phase: 20 — Planner Integration & Orchestration
+Phase: 21 — Substitution Card & End-to-End Polish
 Plan: 01 (complete)
-Status: Phase 20 complete — ready for Phase 21
-Last activity: 2026-03-02 — Phase 20 Plan 01 complete (toneContext injection, parseRigText, generate route orchestration, page.tsx substitutionMap state)
+Status: Phase 21 complete — v1.3 Rig Emulation milestone COMPLETE
+Last activity: 2026-03-02 — Phase 21 Plan 01 complete (SubstitutionCard UI, /api/map route, progressive loading, device re-map effect)
 
-Progress: [████████░░] 80% (v1.3)
+Progress: [██████████] 100% (v1.3)
 
 ## Performance Metrics
 
@@ -70,7 +70,7 @@ Progress: [████████░░] 80% (v1.3)
 | 18. Pedal Mapping Engine | 1 | Complete |
 | 19. Vision Extraction API | 1 | Complete |
 | 20. Planner Integration & Orchestration | 1 | Complete |
-| 21. Substitution Card & End-to-End Polish | — | Not Started |
+| 21. Substitution Card & End-to-End Polish | 1 | Complete |
 
 ## Accumulated Context
 
@@ -107,5 +107,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Phase 20 Plan 01 complete — moving to Phase 21
+Stopped at: Phase 21 Plan 01 complete — v1.3 Rig Emulation milestone COMPLETE
 Resume file: None
