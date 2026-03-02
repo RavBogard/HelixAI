@@ -46,7 +46,7 @@ Requirements for the rebuilt preset engine. Each maps to roadmap phases.
 - [x] **AI-01**: Claude Sonnet 4.6 as single generation provider with output_config structured output (constrained decoding)
 - [x] **AI-02**: ToneIntent Zod schema with z.toJSONSchema() export — single source of truth for TypeScript types and AI schema
 - [x] **AI-03**: Complete valid model ID enumeration in Planner prompt — prevents hallucination via enum constraint
-- [ ] **AI-04**: Gemini chat phase unchanged — keeps Google Search grounding for artist/rig research
+- [x] **AI-04**: Gemini chat phase unchanged — keeps Google Search grounding for artist/rig research
 - [x] **AI-05**: Planner prompt generates only creative choices (~15 fields) — Knowledge Layer generates all parameter values
 
 ### Dynamic Responsiveness
@@ -141,7 +141,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AI-01 | Phase 3 | Complete |
 | AI-02 | Phase 3 | Complete |
 | AI-03 | Phase 3 | Complete |
-| AI-04 | Phase 3 | Pending |
+| AI-04 | Phase 3 | Complete |
 | AI-05 | Phase 3 | Complete |
 | HLX-01 | Phase 4 | Pending |
 | HLX-02 | Phase 4 | Pending |
