@@ -1,25 +1,14 @@
 # Roadmap: HelixAI
 
-## Overview
+## Milestones
 
-The rebuild transforms HelixAI from a system that generates structurally correct but tonally mediocre presets into one that produces world-class, mix-ready tones. The path runs through five phases of build work plus one hardening phase: establish the type contracts and verified constants that everything depends on (Phase 1), encode expert Helix knowledge into deterministic code that no AI can corrupt (Phase 2), integrate Claude Sonnet 4.6 with constrained structured output for creative model selection only (Phase 3), wire all components into the generation route and harden the validator (Phase 4), then polish the frontend with the device selector and clean up UX (Phase 5). Phase 6 verifies the system holds up against real hardware and addresses the "looks done but isn't" failure modes before launch.
+- [x] **v1.0 Full Rebuild** - Phases 1-6 (shipped 2026-03-02)
+- [ ] **v1.1 Polish & Precision** - Phases 7-11 (in progress)
 
 ## Phases
 
-**Phase Numbering:**
-- Integer phases (1, 2, 3): Planned milestone work
-- Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
-
-Decimal phases appear between their surrounding integers in numeric order.
-
-- [x] **Phase 1: Foundation** - Type contracts, verified @type constants, expanded model database, parameter type registry
-- [x] **Phase 2: Knowledge Layer** - Deterministic chain rules, param engine, snapshot engine — the expert Helix knowledge encoded in code
-- [x] **Phase 3: AI Integration** - Claude Sonnet 4.6 with constrained ToneIntent output; Gemini chat unchanged
-- [x] **Phase 4: Orchestration** - Wire all components end-to-end; harden validator; generate real downloadable presets
-- [x] **Phase 5: Frontend Polish** - Device selector (LT vs. Floor), UX refinements, remove multi-provider UI
-- [x] **Phase 6: Hardening** - Hardware verification on real Helix LT, fail-fast validation, firmware parameterization, openai package removal
-
-## Phase Details
+<details>
+<summary>v1.0 Full Rebuild (Phases 1-6) — SHIPPED 2026-03-02</summary>
 
 ### Phase 1: Foundation
 **Goal**: Every downstream component has verified, trustworthy contracts to build against
@@ -117,20 +106,102 @@ Plans:
 
 **Phase 6 Note:** All v1 requirements are fully covered in Phases 1-5 (36/36). Phase 6 addresses launch readiness concerns surfaced by research (hardware verification, firmware parameterization, DSP limit enforcement, openai cleanup) that are prerequisites for a production-quality launch but were categorized as v2 infrastructure in REQUIREMENTS.md. These are elevated for this milestone because they gate the core value: presets that actually sound good on real hardware.
 
+</details>
+
+### v1.1 Polish & Precision (In Progress)
+
+**Milestone Goal:** Fix hardware-facing bugs, deepen preset intelligence, and give users a window into what they're downloading.
+
+#### Phase 7: Hardware Bug Fixes and .hlx Audit
+**Goal**: Presets respond correctly to hardware on first press and the .hlx format is verified against real HX Edit exports
+**Depends on**: Phase 6
+**Requirements**: HW-01, HW-02, HW-03
+**Success Criteria** (what must be TRUE):
+  1. A stomp assigned to a footswitch activates on the first press — no double-press required on Helix LT hardware
+  2. Pedal LEDs on each snapshot reflect the active stomp states for that snapshot — the Clean snapshot shows clean LEDs and the Lead snapshot shows appropriate drive LEDs
+  3. A systematic diff of generated .hlx output against real HX Edit exports has been completed and any field mismatches in the generated file have been corrected or documented as known limitations
+  4. The `@pedalstate` bitmask computation is either derived from empirically verified HX Edit exports or explicitly documented as a known limitation with the hardcoded value retained
+**Plans**: TBD
+
+Plans:
+- [ ] 07-01-PLAN.md — .hlx audit: export real HX Edit presets, diff against generated output, document field mismatches; fix @fs_enabled in buildFootswitchSection() (HW-01, HW-03)
+- [ ] 07-02-PLAN.md — @pedalstate bitmask: empirically map bit positions from HX Edit exports, implement computeFootswitchAssignments(), or document hardcode limitation (HW-02)
+
+#### Phase 8: Prompt Caching
+**Goal**: API input token costs are reduced ~50% via system prompt caching with no effect on preset output quality
+**Depends on**: Phase 7
+**Requirements**: PERF-01
+**Success Criteria** (what must be TRUE):
+  1. On the second identical generation request in a session, `usage.cache_read_input_tokens` is greater than zero in the API response — confirming cache hits are occurring
+  2. The first generation request shows `cache_creation_input_tokens > 1024` — confirming the system prompt meets the minimum cacheable size
+  3. Preset output is identical before and after caching is added — no degradation in generated ToneIntent quality
+**Plans**: TBD
+
+Plans:
+- [ ] 08-01-PLAN.md — Add cache_control: { type: "ephemeral" } to system prompt in callClaudePlanner(); audit system prompt for dynamic content that would bust cache; verify cache metrics (PERF-01)
+
+#### Phase 9: Genre-Aware Effect Defaults
+**Goal**: Delay time, reverb mix, and modulation rate in generated presets are tuned to the detected genre rather than applying identical defaults to every request
+**Depends on**: Phase 8
+**Requirements**: INTL-01
+**Success Criteria** (what must be TRUE):
+  1. A blues/rock preset has a slapback-style delay (short time, low mix) and a metal preset has minimal delay mix — the difference is audible and intentional, not accidental
+  2. An ambient preset has reverb mix in the 40-60% range — noticeably wetter than a clean jazz preset which stays under 25%
+  3. Genre string matching uses substring lookup with an explicit fallback to model defaults — an unrecognized genre hint does not cause an error or silent parameter corruption
+  4. Genre defaults are applied as the outermost resolution layer — they override model defaults and category defaults, never the other way around
+**Plans**: TBD
+
+Plans:
+- [ ] 09-01-PLAN.md — Inspect models.ts delay/reverb/modulation defaultParams encoding; build GENRE_EFFECT_DEFAULTS lookup table; wire into param-engine.ts as outermost resolution layer (INTL-01)
+
+#### Phase 10: Smarter Snapshot Effect Toggling
+**Goal**: Snapshot block states reflect musical intent — the ambient snapshot enables time-based effects at boosted mix and the clean snapshot disables drive blocks
+**Depends on**: Phase 9
+**Requirements**: INTL-02
+**Success Criteria** (what must be TRUE):
+  1. The Ambient snapshot has reverb and delay enabled with Mix values elevated above the base genre default — the snapshot sounds noticeably wetter than Rhythm
+  2. The Clean snapshot has all drive-type effect blocks disabled — no overdrive or distortion pedal is active in the clean snapshot
+  3. All snapshot toggling logic lives in getBlockEnabled() and buildSnapshots() in snapshot-engine.ts — SnapshotIntentSchema has gained zero new AI output fields
+  4. Existing snapshot-engine unit tests pass without modification after the changes are applied
+**Plans**: TBD
+
+Plans:
+- [ ] 10-01-PLAN.md — Extend getBlockEnabled() with intentRole-based toggling; add ambient Mix overrides in buildSnapshots(); integration-test genre defaults + snapshot toggling in combination (INTL-02)
+
+#### Phase 11: Frontend Transparency
+**Goal**: Users can see the signal chain and read a plain-language description of their preset before downloading
+**Depends on**: Phase 10
+**Requirements**: FXUI-01, FXUI-02, BRAND-01
+**Success Criteria** (what must be TRUE):
+  1. After generation and before download, a horizontal read-only signal chain visualization shows each block (amp, cab, effects) in order with their enabled states visible
+  2. A tone description card displays the preset name, amp/cab pair, all four snapshot names with distinguishable colors, and guitar-specific playing notes
+  3. A "Project of Daniel Bogard" footer with a working link to danielbogard.com appears on all pages
+  4. The signal chain visualization loads without SSR errors and does not block page render if the visualization data is unavailable
+**Plans**: TBD
+
+Plans:
+- [ ] 11-01-PLAN.md — Install @xyflow/react 12.10.1; build viz.ts pure function; add signalChainViz to API response; build SignalChainViz React component with next/dynamic SSR guard (FXUI-01)
+- [ ] 11-02-PLAN.md — Build ToneDescriptionCard component from existing API response data; add danielbogard.com footer to all pages (FXUI-02, BRAND-01)
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 > 2 > 3 > 4 > 5 > 6
+Phases execute in numeric order: 1 > 2 > 3 > 4 > 5 > 6 > 7 > 8 > 9 > 10 > 11
 
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 1. Foundation | 3/3 | Complete | 2026-03-01 |
-| 2. Knowledge Layer | 3/3 | Complete | 2026-03-02 |
-| 3. AI Integration | 2/2 | Complete | 2026-03-02 |
-| 4. Orchestration | 2/2 | Complete | 2026-03-02 |
-| 5. Frontend Polish | 2/2 | Complete | 2026-03-02 |
-| 6. Hardening | 2/2 | Complete | 2026-03-02 |
+| Phase | Milestone | Plans Complete | Status | Completed |
+|-------|-----------|----------------|--------|-----------|
+| 1. Foundation | v1.0 | 3/3 | Complete | 2026-03-01 |
+| 2. Knowledge Layer | v1.0 | 3/3 | Complete | 2026-03-02 |
+| 3. AI Integration | v1.0 | 2/2 | Complete | 2026-03-02 |
+| 4. Orchestration | v1.0 | 2/2 | Complete | 2026-03-02 |
+| 5. Frontend Polish | v1.0 | 2/2 | Complete | 2026-03-02 |
+| 6. Hardening | v1.0 | 2/2 | Complete | 2026-03-02 |
+| 7. Hardware Bug Fixes and .hlx Audit | v1.1 | 0/2 | Not started | - |
+| 8. Prompt Caching | v1.1 | 0/1 | Not started | - |
+| 9. Genre-Aware Effect Defaults | v1.1 | 0/1 | Not started | - |
+| 10. Smarter Snapshot Effect Toggling | v1.1 | 0/1 | Not started | - |
+| 11. Frontend Transparency | v1.1 | 0/2 | Not started | - |
 
 ---
 *Roadmap created: 2026-03-01*
-*Last updated: 2026-03-02 — All 6 phases complete (14/14 plans). Hardware verification deferred to user.*
+*Last updated: 2026-03-02 — v1.1 phases 7-11 added (9 requirements, 5 phases)*

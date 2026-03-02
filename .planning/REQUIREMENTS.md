@@ -177,23 +177,22 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UX-02 | Phase 5 | Complete |
 | UX-03 | Phase 5 | Complete |
 | UX-04 | Phase 5 | Complete |
-
-| HW-01 | TBD | Pending |
-| HW-02 | TBD | Pending |
-| HW-03 | TBD | Pending |
-| INTL-01 | TBD | Pending |
-| INTL-02 | TBD | Pending |
-| PERF-01 | TBD | Pending |
-| FXUI-01 | TBD | Pending |
-| FXUI-02 | TBD | Pending |
-| BRAND-01 | TBD | Pending |
+| HW-01 | Phase 7 | Pending |
+| HW-02 | Phase 7 | Pending |
+| HW-03 | Phase 7 | Pending |
+| PERF-01 | Phase 8 | Pending |
+| INTL-01 | Phase 9 | Pending |
+| INTL-02 | Phase 10 | Pending |
+| FXUI-01 | Phase 11 | Pending |
+| FXUI-02 | Phase 11 | Pending |
+| BRAND-01 | Phase 11 | Pending |
 
 **Coverage:**
 - v1 requirements: 36 total (all complete)
 - v1.1 requirements: 9 total
-- Mapped to phases: 36 (v1 Phases 1-6) + 0 (v1.1 — pending roadmap)
-- Unmapped: 9 (v1.1 — pending roadmap creation)
+- Mapped to phases: 36 (v1 Phases 1-6) + 9 (v1.1 Phases 7-11)
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-01*
-*Last updated: 2026-03-02 after v1.1 requirements definition*
+*Last updated: 2026-03-02 — v1.1 traceability complete (all 9 requirements mapped to Phases 7-11)*
