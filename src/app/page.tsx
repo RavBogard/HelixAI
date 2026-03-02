@@ -362,11 +362,10 @@ export default function Home() {
   }> | null>(null);
   // Phase 21: mapping loading state — true while /api/map is in flight
   const [isMappingLoading, setIsMappingLoading] = useState(false);
-  // Phase 22: rig upload panel — collapsed by default
-  const [rigPanelOpen, setRigPanelOpen] = useState(false);
-
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  // Phase 23: rig file input ref — camera button in prompt bar
+  const rigFileInputRef = useRef<HTMLInputElement>(null);
 
   // Check for premium key in URL on mount
   useEffect(() => {
@@ -498,7 +497,7 @@ export default function Home() {
   // CHANGE 4-C: pass rigIntent in generate body; store substitutionMap from response
   // overrideMessages: used by handleRigGenerate() when calling from the welcome screen,
   // where React state hasn't flushed yet. Falls back to messages state for the chat flow.
-  async function generatePreset(overrideMessages?: Message[]) {
+  async function generatePreset(overrideMessages?: Message[], overrideDevice?: "helix_lt" | "helix_floor" | "pod_go") {
     setIsGenerating(true);
     setError(null);
 
@@ -510,7 +509,7 @@ export default function Home() {
         body: JSON.stringify({
           messages: overrideMessages ?? messages,
           premiumKey,
-          device: selectedDevice,
+          device: overrideDevice ?? selectedDevice,
           // Phase 20: pass rigIntent if vision extraction was performed
           ...(rigIntent ? { rigIntent } : {}),
         }),
@@ -539,13 +538,13 @@ export default function Home() {
   // Injects a synthetic user message so the /api/generate route's messages.length > 0
   // guard passes, then calls generatePreset() with the local message list before React
   // flushes state. Switches the UI to the chat flow by setting messages state.
-  async function handleRigGenerate() {
+  async function handleRigGenerate(overrideDevice?: "helix_lt" | "helix_floor" | "pod_go") {
     const syntheticMsg: Message = {
       role: "user",
       content: "Build a preset from my pedal rig",
     };
     setMessages([syntheticMsg]);
-    await generatePreset([syntheticMsg]);
+    await generatePreset([syntheticMsg], overrideDevice);
   }
 
   function downloadPreset() {
@@ -591,8 +590,6 @@ export default function Home() {
     setSubstitutionMap(null);
     // Phase 21: clear mapping loading state
     setIsMappingLoading(false);
-    // Phase 22: collapse rig panel
-    setRigPanelOpen(false);
   }
 
   // Phase 21: standalone mapping helper — called after callVision() and on device change.
@@ -684,7 +681,7 @@ export default function Home() {
   return (
     <div className="relative z-10 flex flex-col h-screen max-w-5xl mx-auto">
       {/* --- Header --- */}
-      <header className="grid grid-cols-[1fr_auto_1fr] items-center px-6 py-3.5">
+      <header className="flex items-center justify-between px-6 py-3.5">
         {/* Left: brand */}
         <div className="flex items-center gap-2.5">
           <WaveformH className="w-7 h-[23px] text-[var(--hlx-amber)]" />
@@ -702,25 +699,8 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Center: device selector — compact mono pills */}
-        <div className="flex items-center gap-1" style={{ fontFamily: "var(--font-mono)" }}>
-          {(["helix_lt", "helix_floor", "pod_go"] as const).map((dev) => (
-            <button
-              key={dev}
-              onClick={() => setSelectedDevice(dev)}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-semibold tracking-wider uppercase transition-all cursor-pointer ${
-                selectedDevice === dev
-                  ? "bg-[var(--hlx-amber)] text-[var(--hlx-void)]"
-                  : "text-[var(--hlx-text-muted)] hover:text-[var(--hlx-text-sub)] hover:bg-[var(--hlx-surface)]"
-              }`}
-            >
-              {dev === "helix_lt" ? "LT" : dev === "helix_floor" ? "FLOOR" : "POD GO"}
-            </button>
-          ))}
-        </div>
-
         {/* Right: actions */}
-        <div className="flex justify-end">
+        <div className="flex">
           {messages.length > 0 && (
             <button
               onClick={startOver}
@@ -746,8 +726,8 @@ export default function Home() {
 
             <div className="space-y-3">
               <h2
-                className="hlx-font-display font-bold uppercase leading-none tracking-tight"
-                style={{ fontSize: "clamp(2.25rem, 6vw, 3.5rem)", letterSpacing: "-0.01em" }}
+                className="hlx-font-display hlx-hero-text font-black leading-none"
+                style={{ fontSize: "clamp(1.875rem, 5.5vw, 3rem)", letterSpacing: "0.01em" }}
               >
                 What tone are you after?
               </h2>
@@ -784,171 +764,111 @@ export default function Home() {
               ))}
             </div>
 
-            {/* --- Rig Upload Toggle + Panel (Phase 22) --- */}
-            <div className="w-full max-w-xl">
-              {/* Toggle button */}
-              <button
-                onClick={() => setRigPanelOpen((o) => !o)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[0.8125rem] text-[var(--hlx-text-muted)] hover:text-[var(--hlx-text-sub)] hover:bg-[var(--hlx-surface)] border border-transparent hover:border-[var(--hlx-border)] transition-all"
-              >
-                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                <span>Analyze my pedal rig</span>
-                <svg
-                  className={`w-3.5 h-3.5 transition-transform duration-200 ${rigPanelOpen ? "rotate-180" : ""}`}
-                  fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
+            {/* --- Rig analysis results (Phase 23: shown after camera upload + analyze) --- */}
+            {(isVisionLoading || rigIntent || visionError) && (
+              <div className="w-full max-w-xl space-y-3 text-left">
 
-              {/* Collapsible panel */}
-              {rigPanelOpen && (
-                <div className="mt-2 rounded-xl border border-[var(--hlx-border)] bg-[var(--hlx-surface)] p-4 space-y-3">
-                  {/* Compact inline file row */}
-                  <div className="flex items-center gap-2.5 flex-wrap">
-                    <label className="cursor-pointer">
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        multiple
-                        className="sr-only"
-                        onChange={(e) => {
-                          const files = Array.from(e.target.files || []);
-                          setRigImages(files.slice(0, 3));
-                          setRigIntent(null);
-                          setVisionError(null);
-                        }}
-                      />
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[var(--hlx-border)] bg-[var(--hlx-elevated)] text-[0.8125rem] text-[var(--hlx-text-sub)] hover:border-[var(--hlx-border-warm)] hover:text-[var(--hlx-text)] transition-colors whitespace-nowrap">
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        Choose
-                      </span>
-                    </label>
-                    <span className="text-[0.8125rem] text-[var(--hlx-text-muted)] flex-1 truncate min-w-0">
-                      {rigImages.length === 0
-                        ? "No files selected"
-                        : `${rigImages.length} photo${rigImages.length > 1 ? "s" : ""} selected`}
-                    </span>
-                    <button
-                      onClick={callVision}
-                      disabled={rigImages.length === 0 || isVisionLoading}
-                      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-[0.8125rem] font-medium transition-all whitespace-nowrap ${
-                        rigImages.length === 0 || isVisionLoading
-                          ? "border-[var(--hlx-border)] text-[var(--hlx-text-muted)] bg-[var(--hlx-surface)] cursor-not-allowed opacity-50"
-                          : "border-[var(--hlx-amber)] text-[var(--hlx-text)] bg-[var(--hlx-elevated)] hover:bg-[var(--hlx-surface)] cursor-pointer shadow-[0_0_0_1px_var(--hlx-amber),0_0_12px_rgba(245,158,11,0.10)]"
-                      }`}
-                    >
-                      {isVisionLoading ? (
-                        <>
-                          <svg className="hlx-spin h-4 w-4 flex-shrink-0" viewBox="0 0 24 24" fill="none">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                          </svg>
-                          Analyzing&hellip;
-                        </>
-                      ) : (
-                        <>
-                          <WaveformH className="w-4 h-[13px] text-[var(--hlx-void)]" />
-                          Analyze
-                        </>
-                      )}
-                    </button>
+                {/* Vision loading */}
+                {isVisionLoading && (
+                  <div className="flex items-center gap-2 text-[0.8125rem] text-[var(--hlx-text-muted)]">
+                    <svg className="hlx-spin h-4 w-4 flex-shrink-0" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Analyzing rig photos&hellip;
                   </div>
+                )}
 
-                  {/* Vision error */}
-                  {visionError && (
-                    <div className="text-[0.8125rem] text-red-400 bg-red-950/20 border border-red-900/30 rounded-lg px-3 py-2">
-                      {visionError}
-                    </div>
-                  )}
+                {/* Vision error */}
+                {visionError && (
+                  <div className="text-[0.8125rem] text-red-400 bg-red-950/20 border border-red-900/30 rounded-lg px-3 py-2">
+                    {visionError}
+                  </div>
+                )}
 
-                  {/* RigIntent result */}
-                  {rigIntent && (
-                    <div className="space-y-2">
-                      {/* Per-pedal confidence badges */}
-                      {rigIntent.pedals.map((pedal, i) => (
-                        <div
-                          key={i}
-                          className="flex items-start gap-2.5 rounded-lg border border-[var(--hlx-border)] bg-[var(--hlx-elevated)] px-3 py-2"
+                {/* Per-pedal detection badges */}
+                {rigIntent && (
+                  <div className="space-y-1.5">
+                    {rigIntent.pedals.map((pedal, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center gap-2.5 rounded-lg border border-[var(--hlx-border)] bg-[var(--hlx-elevated)] px-3 py-2"
+                      >
+                        <span
+                          className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide flex-shrink-0 ${
+                            pedal.confidence === "high"
+                              ? "bg-green-950/40 text-green-400 border border-green-900/30"
+                              : pedal.confidence === "medium"
+                              ? "bg-yellow-950/40 text-yellow-400 border border-yellow-900/30"
+                              : "bg-red-950/40 text-red-400 border border-red-900/30"
+                          }`}
                         >
-                          <span
-                            className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide flex-shrink-0 mt-0.5 ${
-                              pedal.confidence === "high"
-                                ? "bg-green-950/40 text-green-400 border border-green-900/30"
-                                : pedal.confidence === "medium"
-                                ? "bg-yellow-950/40 text-yellow-400 border border-yellow-900/30"
-                                : "bg-red-950/40 text-red-400 border border-red-900/30"
+                          {pedal.confidence}
+                        </span>
+                        <p className="text-[0.8125rem] text-[var(--hlx-text)] truncate flex-1 min-w-0">
+                          {pedal.fullName || "(unidentified pedal)"}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Mapping loading */}
+                {isMappingLoading && (
+                  <div className="flex items-center gap-2 text-[0.8125rem] text-[var(--hlx-text-muted)]">
+                    <svg className="hlx-spin h-4 w-4 flex-shrink-0" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Mapping to Helix models&hellip;
+                  </div>
+                )}
+
+                {/* Substitution map + device picker CTA */}
+                {substitutionMap && !isMappingLoading && (
+                  <>
+                    <SubstitutionCard entries={substitutionMap} />
+                    <div className="space-y-3 pt-2 border-t border-[var(--hlx-border)]">
+                      <p className="text-[11px] text-[var(--hlx-text-muted)] uppercase tracking-widest font-semibold text-center">
+                        Which device are you building for?
+                      </p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {([
+                          { id: "helix_lt" as const, label: "LT", desc: "Helix LT" },
+                          { id: "helix_floor" as const, label: "FLOOR", desc: "Helix Floor" },
+                          { id: "pod_go" as const, label: "POD GO", desc: "Pod Go" },
+                        ]).map(({ id, label, desc }) => (
+                          <button
+                            key={id}
+                            disabled={isGenerating}
+                            onClick={() => { setSelectedDevice(id); handleRigGenerate(id); }}
+                            className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
+                              isGenerating && selectedDevice === id
+                                ? "border-[var(--hlx-amber)] bg-[var(--hlx-elevated)] shadow-[0_0_18px_rgba(240,144,10,0.15)]"
+                                : "border-[var(--hlx-border)] bg-[var(--hlx-surface)] hover:border-[var(--hlx-border-warm)] hover:bg-[var(--hlx-elevated)]"
                             }`}
                           >
-                            {pedal.confidence}
-                          </span>
-                          <div className="min-w-0">
-                            <p className="text-[0.8125rem] text-[var(--hlx-text)] truncate">
-                              {pedal.fullName || "(unidentified pedal)"}
-                            </p>
-                            {pedal.confidence !== "high" && (
-                              <p className="text-[11px] text-yellow-400/80 mt-0.5">
-                                Confirm before generating — type the correct pedal name in chat.
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-
-                      {/* Phase 21: Mapping loading indicator */}
-                      {isMappingLoading && (
-                        <div className="flex items-center gap-2 text-[0.8125rem] text-[var(--hlx-text-muted)]">
-                          <svg className="hlx-spin h-4 w-4 flex-shrink-0" viewBox="0 0 24 24" fill="none">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                          </svg>
-                          Mapping to Helix models&hellip;
-                        </div>
-                      )}
-
-                      {/* Phase 21: SubstitutionCard */}
-                      {substitutionMap && !isMappingLoading && (
-                        <SubstitutionCard entries={substitutionMap} />
-                      )}
-
-                      {/* Build Rig Preset CTA — shown after mapping completes */}
-                      {substitutionMap && !isMappingLoading && (
-                        <div className="space-y-2 pt-2 border-t border-[var(--hlx-border)]">
-                          <button
-                            onClick={handleRigGenerate}
-                            disabled={isGenerating}
-                            className="hlx-generate w-full"
-                          >
-                            {isGenerating ? (
-                              <>
-                                <svg className="hlx-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
-                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                </svg>
-                                Building Rig Preset&hellip;
-                              </>
+                            {isGenerating && selectedDevice === id ? (
+                              <svg className="hlx-spin h-4 w-4 text-[var(--hlx-amber)]" viewBox="0 0 24 24" fill="none">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                              </svg>
                             ) : (
-                              <>
-                                <WaveformH className="w-5 h-[17px] text-[var(--hlx-void)]" />
-                                Build Rig Preset
-                              </>
+                              <span className="text-[12px] font-bold tracking-wider text-[var(--hlx-text)]" style={{ fontFamily: "var(--font-mono)" }}>{label}</span>
                             )}
+                            <span className="text-[10px] text-[var(--hlx-text-muted)]">{desc}</span>
                           </button>
-                          <p className="text-[11px] text-[var(--hlx-text-muted)] text-center leading-relaxed">
-                            Or describe your tone in the chat below for a more tailored result
-                          </p>
-                        </div>
-                      )}
+                        ))}
+                      </div>
+                      <p className="text-[11px] text-[var(--hlx-text-muted)] text-center leading-relaxed">
+                        Or describe your tone in the chat below for a more tailored result
+                      </p>
                     </div>
-                  )}
-                </div>
-              )}
-            </div>
+                  </>
+                )}
+
+              </div>
+            )}
 
           </div>
         ) : (
@@ -979,30 +899,41 @@ export default function Home() {
               </div>
             ))}
 
-            {/* --- Generate Button --- */}
-            {/* Device is selected in the header. Show after first AI response. */}
+            {/* --- Device Picker + Generate (Phase 23) --- */}
+            {/* Shown after interview completes. User picks their device → generate fires. */}
             {messages.length >= 2 && !isStreaming && !generatedPreset && (
-              <div className="flex flex-col items-center gap-3 py-6">
-                <button
-                  onClick={() => generatePreset()}
-                  disabled={isGenerating}
-                  className={readyToGenerate ? "hlx-generate" : "hlx-generate opacity-80"}
-                >
-                  {isGenerating ? (
-                    <>
-                      <svg className="hlx-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
-                      {rigIntent ? "Building preset\u2026" : "Generating Preset\u2026"}
-                    </>
-                  ) : (
-                    <>
-                      <WaveformH className="w-5 h-[17px] text-[var(--hlx-void)]" />
-                      Generate Preset
-                    </>
-                  )}
-                </button>
+              <div className="flex flex-col items-center gap-4 py-6">
+                <p className="text-[11px] text-[var(--hlx-text-muted)] uppercase tracking-widest font-semibold">
+                  Which device are you building for?
+                </p>
+                <div className="grid grid-cols-3 gap-3 w-full max-w-sm">
+                  {([
+                    { id: "helix_lt" as const, label: "LT", desc: "Helix LT" },
+                    { id: "helix_floor" as const, label: "FLOOR", desc: "Helix Floor" },
+                    { id: "pod_go" as const, label: "POD GO", desc: "Pod Go" },
+                  ]).map(({ id, label, desc }) => (
+                    <button
+                      key={id}
+                      disabled={isGenerating}
+                      onClick={() => { setSelectedDevice(id); generatePreset(undefined, id); }}
+                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
+                        isGenerating && selectedDevice === id
+                          ? "border-[var(--hlx-amber)] bg-[var(--hlx-elevated)] shadow-[0_0_22px_rgba(240,144,10,0.18)]"
+                          : "border-[var(--hlx-border)] bg-[var(--hlx-surface)] hover:border-[var(--hlx-border-warm)] hover:bg-[var(--hlx-elevated)] hover:shadow-[0_0_14px_rgba(240,144,10,0.07)]"
+                      }`}
+                    >
+                      {isGenerating && selectedDevice === id ? (
+                        <svg className="hlx-spin h-5 w-5 text-[var(--hlx-amber)]" viewBox="0 0 24 24" fill="none">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                      ) : (
+                        <span className="text-[13px] font-bold tracking-wider text-[var(--hlx-text)]" style={{ fontFamily: "var(--font-mono)" }}>{label}</span>
+                      )}
+                      <span className="text-[11px] text-[var(--hlx-text-muted)]">{desc}</span>
+                    </button>
+                  ))}
+                </div>
                 {!readyToGenerate && (
                   <p className="text-[11px] text-[var(--hlx-text-muted)] text-center">
                     Ready when you are &mdash; or keep chatting to refine the tone
@@ -1099,7 +1030,55 @@ export default function Home() {
 
       {/* --- Input Area --- */}
       <div className="px-6 pb-6 pt-2">
-        <form onSubmit={sendMessage} className="flex gap-3 items-end">
+        {/* Hidden file input — triggered by camera button */}
+        <input
+          ref={rigFileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          multiple
+          className="sr-only"
+          onChange={(e) => {
+            const files = Array.from(e.target.files || []);
+            setRigImages(files.slice(0, 3));
+            setRigIntent(null);
+            setVisionError(null);
+            // Reset file input so the same files can be re-selected if needed
+            if (rigFileInputRef.current) rigFileInputRef.current.value = "";
+          }}
+        />
+        <form onSubmit={sendMessage} className="flex gap-2 items-end">
+          {/* Camera button — opens file picker for rig photo upload */}
+          <button
+            type="button"
+            title="Analyze my pedal rig"
+            onClick={() => rigFileInputRef.current?.click()}
+            className={`relative flex-shrink-0 w-[44px] h-[44px] rounded-[11px] border flex items-center justify-center transition-all ${
+              rigIntent
+                ? "border-[var(--hlx-amber)] bg-[rgba(240,144,10,0.08)] text-[var(--hlx-amber)]"
+                : rigImages.length > 0
+                ? "border-[var(--hlx-border-warm)] bg-[var(--hlx-elevated)] text-[var(--hlx-text-sub)]"
+                : "border-[var(--hlx-border)] bg-[var(--hlx-surface)] text-[var(--hlx-text-muted)] hover:text-[var(--hlx-text-sub)] hover:border-[var(--hlx-border-warm)]"
+            }`}
+          >
+            {isVisionLoading ? (
+              <svg className="hlx-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+            ) : (
+              <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            )}
+            {/* Count badge — shown when images are staged but not yet analyzed */}
+            {rigImages.length > 0 && !isVisionLoading && !rigIntent && (
+              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-[var(--hlx-amber)] rounded-full text-[9px] text-[var(--hlx-void)] flex items-center justify-center font-bold leading-none">
+                {rigImages.length}
+              </span>
+            )}
+          </button>
+
           <div className="flex-1">
             <textarea
               ref={inputRef}
@@ -1112,6 +1091,18 @@ export default function Home() {
               disabled={isStreaming}
             />
           </div>
+
+          {/* Analyze button — appears when photos are staged but not yet analyzed */}
+          {rigImages.length > 0 && !rigIntent && !isVisionLoading && (
+            <button
+              type="button"
+              onClick={callVision}
+              className="flex-shrink-0 h-[44px] px-3 rounded-[11px] border border-[var(--hlx-amber)] bg-[rgba(240,144,10,0.06)] text-[var(--hlx-amber)] text-[0.8125rem] font-semibold transition-all hover:bg-[rgba(240,144,10,0.12)] whitespace-nowrap"
+            >
+              Analyze
+            </button>
+          )}
+
           <button
             type="submit"
             disabled={!input.trim() || isStreaming}
