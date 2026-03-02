@@ -1,21 +1,27 @@
 import type { Metadata } from "next";
-import { Fraunces, DM_Sans, JetBrains_Mono } from "next/font/google";
+import { Barlow_Condensed, Barlow, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
+// Display / headline font — condensed industrial, great for big headers
+const barlowCondensed = Barlow_Condensed({
+  variable: "--font-display",
   subsets: ["latin"],
+  weight: ["500", "600", "700", "800"],
+  style: ["normal"],
   display: "swap",
 });
 
-const dmSans = DM_Sans({
-  variable: "--font-dm-sans",
+// Body font — same family for cohesion, comfortable at small sizes
+const barlow = Barlow({
+  variable: "--font-body",
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600"],
   display: "swap",
 });
 
+// Mono — for technical labels, suggestion chips, code blocks
 const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains-mono",
+  variable: "--font-mono",
   subsets: ["latin"],
   display: "swap",
 });
@@ -33,7 +39,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${fraunces.variable} ${dmSans.variable} ${jetbrainsMono.variable} antialiased`}
+        className={`${barlowCondensed.variable} ${barlow.variable} ${jetbrainsMono.variable} antialiased`}
       >
         {/* Film grain overlay */}
         <div className="hlx-grain" aria-hidden="true" />

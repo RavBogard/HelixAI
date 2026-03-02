@@ -3,6 +3,36 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 
+// ---------------------------------------------------------------------------
+// WaveformH — brand mark SVG
+// Two vertical signal bars connected by a sine-wave crossbar = H shape.
+// Reads as the letter H while communicating "audio signal path" simultaneously.
+// ---------------------------------------------------------------------------
+function WaveformH({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 28 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      {/* Left vertical bar */}
+      <path d="M3 1 L3 23" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" />
+      {/* Right vertical bar */}
+      <path d="M25 1 L25 23" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" />
+      {/* Sine wave crossbar */}
+      <path
+        d="M3 12 C6.5 3 10.5 3 14 12 C17.5 21 21.5 21 25 12"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        fill="none"
+      />
+    </svg>
+  );
+}
+
 interface Message {
   role: "user" | "assistant";
   content: string;
@@ -645,17 +675,18 @@ export default function Home() {
     <div className="relative z-10 flex flex-col h-screen max-w-5xl mx-auto">
       {/* --- Header --- */}
       <header className="flex items-center justify-between px-6 py-4">
-        <div className="flex items-center gap-3.5">
-          <div className="hlx-tube hlx-tube-sm">
-            <span className="text-sm font-bold text-white drop-shadow-sm select-none">H</span>
-          </div>
+        <div className="flex items-center gap-3">
+          {/* Waveform-H mark — no box, just the signal path glyph */}
+          <WaveformH className="w-8 h-[26px] text-[var(--hlx-amber)]" />
           <div>
-            <h1 className="hlx-font-display text-lg font-semibold tracking-tight text-[var(--hlx-text)]">
+            <h1 className="hlx-font-display text-xl font-bold tracking-wider uppercase text-[var(--hlx-text)]"
+                style={{ letterSpacing: "0.06em" }}>
               HelixAI
             </h1>
             <div className="flex items-center gap-2">
-              <p className="text-xs text-[var(--hlx-text-muted)]">
-                Helix Preset Builder
+              <p className="text-[11px] text-[var(--hlx-text-muted)] tracking-widest uppercase"
+                 style={{ fontFamily: "var(--font-mono)", letterSpacing: "0.1em" }}>
+                Preset Builder
               </p>
               {premiumKey && (
                 <span className="hlx-pro">
@@ -682,16 +713,23 @@ export default function Home() {
       <div className="flex-1 overflow-y-auto px-6 py-6">
         {messages.length === 0 ? (
           /* --- Welcome Screen --- */
-          <div className="flex flex-col items-center justify-center h-full text-center gap-6 hlx-stagger">
-            <div className="hlx-tube hlx-tube-lg">
-              <span className="text-2xl font-bold text-white drop-shadow-sm select-none">H</span>
+          <div className="flex flex-col items-center justify-center h-full text-center gap-8 hlx-stagger">
+            {/* Glowing hero mark — circle housing the Waveform-H glyph */}
+            <div className="hlx-hero-mark flex items-center justify-center">
+              <WaveformH className="w-10 h-[34px] text-[var(--hlx-amber)]" />
             </div>
 
-            <div>
-              <h2 className="hlx-font-display text-3xl font-semibold mb-2 hlx-hero-text">
+            <div className="space-y-3">
+              <h2
+                className="hlx-font-display font-bold uppercase leading-none tracking-tight"
+                style={{ fontSize: "clamp(2.25rem, 6vw, 3.5rem)", letterSpacing: "-0.01em" }}
+              >
                 What tone are you after?
               </h2>
-              <p className="text-[var(--hlx-text-sub)] max-w-md leading-relaxed text-[0.9375rem]">
+              <p
+                className="text-[var(--hlx-text-sub)] max-w-md leading-relaxed mx-auto"
+                style={{ fontSize: "0.9375rem" }}
+              >
                 Describe an artist, a song, a genre, or just a vibe &mdash;
                 I&apos;ll build you a studio-quality Helix preset.
               </p>

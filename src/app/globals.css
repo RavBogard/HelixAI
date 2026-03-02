@@ -1,40 +1,43 @@
 @import "tailwindcss";
 
 /* ═══════════════════════════════════════════════════
-   HELIX AI — Warm Analog Studio Theme
+   HELIX AI — Precision Instrument Theme
 
-   Aesthetic: High-end audio console meets recording
-   studio. Warm tube glow, premium dark surfaces,
-   the kind of UI that belongs on a Neural DSP
-   or Universal Audio product.
+   Aesthetic: Boutique effects pedal meets high-end
+   recording console. The precision of a Strymon,
+   the warmth of a vintage tube amp, the typography
+   of an analog rack unit faceplate.
+
+   Fonts:   Barlow Condensed (display) + Barlow (body)
+            + JetBrains Mono (technical labels)
    ═══════════════════════════════════════════════════ */
 
 :root {
-  /* Core palette — warm blacks, not cold */
-  --hlx-void: #050404;
-  --hlx-deep: #0c0a09;
-  --hlx-surface: #1a1814;
-  --hlx-elevated: #262420;
-  --hlx-raised: #33302c;
+  /* Core surfaces — slightly cooler darks so amber pops harder */
+  --hlx-void: #06060a;
+  --hlx-deep: #0e0d0c;
+  --hlx-surface: #161513;
+  --hlx-elevated: #1e1c1a;
+  --hlx-raised: #272421;
 
-  /* Warm accent spectrum */
-  --hlx-amber: #f59e0b;
-  --hlx-amber-dim: #b45309;
-  --hlx-copper: #d97706;
-  --hlx-glow: rgba(245, 158, 11, 0.15);
+  /* Warm signal spectrum — tuned amber, like a lit Helix footswitch */
+  --hlx-amber: #f0900a;
+  --hlx-amber-dim: #a85f08;
+  --hlx-copper: #cc7010;
+  --hlx-glow: rgba(240, 144, 10, 0.15);
 
   /* Text — warm, not sterile */
-  --hlx-text: #faf8f5;
-  --hlx-text-sub: #c8c0b4;
-  --hlx-text-muted: #6b6560;
+  --hlx-text: #f2ece4;
+  --hlx-text-sub: #a89880;
+  --hlx-text-muted: #524840;
 
   /* Borders */
-  --hlx-border: rgba(255, 255, 255, 0.06);
-  --hlx-border-warm: rgba(245, 158, 11, 0.12);
+  --hlx-border: rgba(255, 255, 255, 0.055);
+  --hlx-border-warm: rgba(240, 144, 10, 0.14);
 
   /* Status */
-  --hlx-green: #4ade80;
-  --hlx-red: #f87171;
+  --hlx-green: #52d474;
+  --hlx-red: #f47060;
 
   /* Standard mappings */
   --background: var(--hlx-deep);
@@ -44,8 +47,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-dm-sans);
-  --font-mono: var(--font-jetbrains-mono);
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-mono);
 }
 
 /* ─── Base ─── */
@@ -53,139 +56,162 @@
 body {
   background: var(--hlx-deep);
   color: var(--hlx-text);
-  font-family: var(--font-dm-sans), system-ui, sans-serif;
+  font-family: var(--font-body), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ─── Film Grain Overlay ─── */
+/* ─── Film Grain + Scanline Overlay ─── */
 
 .hlx-grain {
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 90;
-  opacity: 0.03;
+  /* Grain */
+  opacity: 0.028;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   background-repeat: repeat;
   background-size: 200px 200px;
 }
 
-/* ─── Ambient Studio Glow ─── */
+/* Faint scanlines — gives the display a slight LCD/console feel */
+.hlx-grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.4;
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 3px,
+    rgba(0, 0, 0, 0.06) 3px,
+    rgba(0, 0, 0, 0.06) 4px
+  );
+  pointer-events: none;
+}
 
+/* ─── Ambient Glow ─── */
+
+/* Glow comes up from the bottom — like light from a rack full of gear below */
 .hlx-ambient {
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 0;
   background:
-    radial-gradient(ellipse 800px 300px at 50% -5%, rgba(245, 158, 11, 0.045) 0%, transparent 70%),
-    radial-gradient(ellipse 300px 500px at 90% 100%, rgba(180, 83, 9, 0.025) 0%, transparent 70%),
-    radial-gradient(ellipse 300px 500px at 10% 80%, rgba(245, 158, 11, 0.015) 0%, transparent 70%);
+    radial-gradient(ellipse 900px 350px at 50% 110%, rgba(240, 144, 10, 0.06) 0%, transparent 65%),
+    radial-gradient(ellipse 400px 600px at 85% 90%, rgba(180, 80, 8, 0.03) 0%, transparent 70%),
+    radial-gradient(ellipse 400px 600px at 15% 85%, rgba(240, 144, 10, 0.02) 0%, transparent 70%);
 }
 
 /* ─── Scrollbar ─── */
 
-::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--hlx-raised); border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--hlx-text-muted); }
 
-/* ─── Tube Glow Logo ─── */
+/* ─── Waveform H Logo Mark ─── */
 
+/*
+ * The header wordmark — no box, just the SVG mark directly.
+ * The `.hlx-tube` class is kept for any legacy use but no longer
+ * renders the orange rounded-rect box.
+ */
 .hlx-tube {
-  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 13px;
-  background: linear-gradient(145deg, #f5a623 0%, var(--hlx-copper) 55%, var(--hlx-amber-dim) 100%);
-  box-shadow:
-    0 0 24px rgba(245, 158, 11, 0.25),
-    0 0 60px rgba(245, 158, 11, 0.07),
-    inset 0 1px 0 rgba(255, 255, 255, 0.22),
-    inset 0 -1px 2px rgba(0, 0, 0, 0.35);
 }
-
 .hlx-tube-sm {
-  width: 36px;
-  height: 36px;
-  border-radius: 11px;
+  width: 34px;
+  height: 28px;
 }
 
-.hlx-tube-lg {
-  width: 76px;
-  height: 76px;
-  border-radius: 22px;
+/* Hero mark — circle with subtle amber glow, houses the waveform H */
+.hlx-hero-mark {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 60%, rgba(240, 144, 10, 0.07) 0%, transparent 70%);
+  border: 1px solid rgba(240, 144, 10, 0.14);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   box-shadow:
-    0 0 50px rgba(245, 158, 11, 0.3),
-    0 0 120px rgba(245, 158, 11, 0.1),
-    0 0 220px rgba(245, 158, 11, 0.04),
-    inset 0 2px 0 rgba(255, 255, 255, 0.18),
-    inset 0 -2px 3px rgba(0, 0, 0, 0.4);
+    0 0 40px rgba(240, 144, 10, 0.10),
+    0 0 80px rgba(240, 144, 10, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+/* Pulsing ring animation on the hero mark */
+@keyframes heroRingPulse {
+  0%, 100% { box-shadow: 0 0 40px rgba(240, 144, 10, 0.10), 0 0 80px rgba(240, 144, 10, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.04); }
+  50%       { box-shadow: 0 0 55px rgba(240, 144, 10, 0.18), 0 0 110px rgba(240, 144, 10, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.04); }
+}
+
+.hlx-hero-mark {
+  animation: heroRingPulse 4s ease-in-out infinite;
 }
 
 /* ─── LED Status Dots ─── */
 
 .hlx-led {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
-  background: var(--hlx-text-muted);
+  background: var(--hlx-raised);
   flex-shrink: 0;
   transition: all 0.3s ease;
 }
 
 .hlx-led-on {
   background: var(--hlx-green);
-  box-shadow: 0 0 6px var(--hlx-green), 0 0 14px rgba(74, 222, 128, 0.3);
+  box-shadow: 0 0 5px var(--hlx-green), 0 0 12px rgba(82, 212, 116, 0.28);
 }
 
 .hlx-led-warm {
   background: var(--hlx-amber);
-  box-shadow: 0 0 6px var(--hlx-amber), 0 0 14px rgba(251, 191, 36, 0.3);
+  box-shadow: 0 0 5px var(--hlx-amber), 0 0 12px rgba(240, 144, 10, 0.3);
 }
 
 /* ─── Rack Unit Divider ─── */
 
 .hlx-rack {
   height: 1px;
-  background: linear-gradient(90deg, transparent 0%, var(--hlx-border) 20%, var(--hlx-border) 80%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, var(--hlx-border) 15%, var(--hlx-border) 85%, transparent 100%);
 }
 
-/* ─── Footswitch-Style Suggestion Buttons ─── */
+/* ─── Footswitch-Style Suggestion Chips ─── */
 
 .hlx-pedal {
   position: relative;
-  padding: 11px 16px;
-  border-radius: 11px;
+  padding: 9px 14px;
+  border-radius: 8px;
   background: var(--hlx-surface);
   border: 1px solid var(--hlx-border);
-  color: var(--hlx-text-sub);
-  font-size: 0.8125rem;
-  line-height: 1.45;
+  color: var(--hlx-text-muted);
+  font-size: 0.75rem;
+  font-family: var(--font-mono), monospace;
+  letter-spacing: 0.01em;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s ease;
   text-align: left;
-  box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 .hlx-pedal:hover {
-  border-color: var(--hlx-border-warm);
-  color: var(--hlx-text);
+  border-color: rgba(240, 144, 10, 0.22);
+  color: var(--hlx-text-sub);
   background: var(--hlx-elevated);
-  transform: translateY(-2px);
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.4),
-    0 0 0 1px var(--hlx-border-warm),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
 }
 
 .hlx-pedal:hover .hlx-led {
   background: var(--hlx-amber);
-  box-shadow: 0 0 6px var(--hlx-amber), 0 0 14px rgba(251, 191, 36, 0.35);
+  box-shadow: 0 0 5px var(--hlx-amber), 0 0 12px rgba(240, 144, 10, 0.32);
 }
 
 /* ─── Generate Button ─── */
@@ -193,45 +219,46 @@ body {
 @keyframes tubeGlow {
   0%, 100% {
     box-shadow:
-      0 0 20px rgba(245, 158, 11, 0.2),
-      0 0 50px rgba(245, 158, 11, 0.08),
-      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      0 0 18px rgba(240, 144, 10, 0.22),
+      0 0 45px rgba(240, 144, 10, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.14);
   }
   50% {
     box-shadow:
-      0 0 30px rgba(245, 158, 11, 0.35),
-      0 0 70px rgba(245, 158, 11, 0.12),
-      0 0 120px rgba(245, 158, 11, 0.04),
-      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      0 0 28px rgba(240, 144, 10, 0.38),
+      0 0 65px rgba(240, 144, 10, 0.13),
+      0 0 110px rgba(240, 144, 10, 0.04),
+      inset 0 1px 0 rgba(255, 255, 255, 0.14);
   }
 }
 
 .hlx-generate {
   position: relative;
-  padding: 15px 36px;
-  border-radius: 14px;
-  background: linear-gradient(140deg, var(--hlx-amber) 0%, var(--hlx-copper) 100%);
-  color: var(--hlx-void);
+  padding: 14px 34px;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #f5a020 0%, var(--hlx-copper) 60%, var(--hlx-amber-dim) 100%);
+  color: #0d0b09;
   font-weight: 700;
   font-size: 0.9375rem;
-  letter-spacing: -0.01em;
+  letter-spacing: 0.01em;
   cursor: pointer;
   border: none;
-  animation: tubeGlow 3s ease-in-out infinite;
+  animation: tubeGlow 3.5s ease-in-out infinite;
   transition: transform 0.2s ease, filter 0.2s ease;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
-  font-family: inherit;
+  font-family: var(--font-body), sans-serif;
 }
 
 .hlx-generate:hover {
   transform: translateY(-2px);
-  filter: brightness(1.08);
+  filter: brightness(1.1);
 }
 
 .hlx-generate:disabled {
-  opacity: 0.55;
+  opacity: 0.5;
   cursor: not-allowed;
   animation: none;
   transform: none;
@@ -241,32 +268,32 @@ body {
 /* ─── Chat Message Animations ─── */
 
 @keyframes msgReveal {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 .hlx-msg {
-  animation: msgReveal 0.3s ease-out both;
+  animation: msgReveal 0.28s ease-out both;
 }
 
 /* Assistant message — left amber accent */
 .hlx-msg-ai {
   position: relative;
   padding-left: 18px;
-  border-left: 2px solid rgba(245, 158, 11, 0.18);
+  border-left: 2px solid rgba(240, 144, 10, 0.18);
   transition: border-color 0.3s ease;
 }
 
 .hlx-msg-ai:hover {
-  border-left-color: rgba(245, 158, 11, 0.35);
+  border-left-color: rgba(240, 144, 10, 0.35);
 }
 
 /* User message — warm amber chip */
 .hlx-msg-user {
-  background: linear-gradient(140deg, rgba(245, 158, 11, 0.10) 0%, rgba(217, 119, 6, 0.06) 100%);
-  border: 1px solid rgba(245, 158, 11, 0.12);
+  background: linear-gradient(140deg, rgba(240, 144, 10, 0.09) 0%, rgba(204, 112, 16, 0.05) 100%);
+  border: 1px solid rgba(240, 144, 10, 0.11);
   border-radius: 18px 18px 6px 18px;
-  padding: 13px 18px;
+  padding: 12px 17px;
 }
 
 /* ─── Markdown Content ─── */
@@ -283,23 +310,24 @@ body {
 
 .message-content h2,
 .message-content h3 {
-  font-family: var(--font-fraunces), Georgia, serif;
-  font-weight: 500;
+  font-family: var(--font-display), sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
   margin-top: 1.1em;
   margin-bottom: 0.5em;
   color: var(--hlx-text);
-  letter-spacing: -0.01em;
 }
 
-.message-content h2 { font-size: 1.2em; }
+.message-content h2 { font-size: 1.25em; }
 .message-content h3 { font-size: 1.05em; }
 
 .message-content code {
   background: rgba(255, 255, 255, 0.05);
   padding: 0.15em 0.4em;
-  border-radius: 5px;
-  font-family: var(--font-jetbrains-mono), monospace;
-  font-size: 0.85em;
+  border-radius: 4px;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.83em;
   border: 1px solid rgba(255, 255, 255, 0.04);
 }
 
@@ -307,17 +335,17 @@ body {
 
 @keyframes cursorPulse {
   0%, 100% { opacity: 0.8; }
-  50% { opacity: 0.15; }
+  50% { opacity: 0.12; }
 }
 
 .typing-cursor::after {
   content: "";
   display: inline-block;
-  width: 9px;
-  height: 18px;
+  width: 8px;
+  height: 17px;
   background: var(--hlx-amber);
   border-radius: 2px;
-  animation: cursorPulse 0.9s ease-in-out infinite;
+  animation: cursorPulse 0.85s ease-in-out infinite;
   margin-left: 3px;
   vertical-align: text-bottom;
 }
@@ -328,8 +356,8 @@ body {
   position: relative;
   background: var(--hlx-surface);
   border: 1px solid var(--hlx-border-warm);
-  border-radius: 18px;
-  padding: 28px;
+  border-radius: 16px;
+  padding: 26px;
   overflow: hidden;
 }
 
@@ -338,43 +366,43 @@ body {
   content: "";
   position: absolute;
   top: 0;
-  left: 10%;
-  right: 10%;
+  left: 8%;
+  right: 8%;
   height: 1px;
   background: linear-gradient(90deg, transparent, var(--hlx-amber), transparent);
-  opacity: 0.35;
+  opacity: 0.28;
 }
 
 /* ─── Staggered Welcome Entrance ─── */
 
 @keyframes staggerUp {
-  from { opacity: 0; transform: translateY(24px); }
+  from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 .hlx-stagger > * {
   opacity: 0;
-  animation: staggerUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: staggerUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 .hlx-stagger > *:nth-child(1) { animation-delay: 0ms; }
-.hlx-stagger > *:nth-child(2) { animation-delay: 120ms; }
-.hlx-stagger > *:nth-child(3) { animation-delay: 240ms; }
-.hlx-stagger > *:nth-child(4) { animation-delay: 400ms; }
+.hlx-stagger > *:nth-child(2) { animation-delay: 100ms; }
+.hlx-stagger > *:nth-child(3) { animation-delay: 210ms; }
+.hlx-stagger > *:nth-child(4) { animation-delay: 360ms; }
 
 /* ─── Text Input ─── */
 
 .hlx-input {
   width: 100%;
   resize: none;
-  border-radius: 14px;
+  border-radius: 12px;
   border: 1px solid var(--hlx-border);
   background: var(--hlx-surface);
-  padding: 14px 18px;
+  padding: 13px 17px;
   font-size: 0.9375rem;
   line-height: 1.5;
   color: var(--hlx-text);
-  font-family: inherit;
-  transition: all 0.25s ease;
+  font-family: var(--font-body), sans-serif;
+  transition: all 0.22s ease;
 }
 
 .hlx-input::placeholder {
@@ -383,11 +411,11 @@ body {
 
 .hlx-input:focus {
   outline: none;
-  border-color: rgba(245, 158, 11, 0.3);
-  background: rgba(26, 24, 20, 0.9);
+  border-color: rgba(240, 144, 10, 0.28);
+  background: rgba(22, 21, 19, 0.95);
   box-shadow:
-    0 0 0 3px rgba(245, 158, 11, 0.06),
-    0 0 30px rgba(245, 158, 11, 0.04);
+    0 0 0 3px rgba(240, 144, 10, 0.06),
+    0 0 25px rgba(240, 144, 10, 0.04);
 }
 
 .hlx-input:disabled {
@@ -397,9 +425,9 @@ body {
 /* ─── Send Button ─── */
 
 .hlx-send {
-  width: 46px;
-  height: 46px;
-  border-radius: 13px;
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
   background: var(--hlx-amber);
   color: var(--hlx-void);
   display: flex;
@@ -408,14 +436,14 @@ body {
   cursor: pointer;
   border: none;
   flex-shrink: 0;
-  transition: all 0.2s ease;
-  box-shadow: 0 0 16px rgba(245, 158, 11, 0.15);
+  transition: all 0.18s ease;
+  box-shadow: 0 0 14px rgba(240, 144, 10, 0.14);
 }
 
 .hlx-send:hover {
   filter: brightness(1.1);
   transform: translateY(-1px);
-  box-shadow: 0 0 24px rgba(245, 158, 11, 0.25);
+  box-shadow: 0 0 22px rgba(240, 144, 10, 0.24);
 }
 
 .hlx-send:disabled {
@@ -430,25 +458,25 @@ body {
 /* ─── Download Button ─── */
 
 .hlx-download {
-  padding: 10px 22px;
-  border-radius: 11px;
+  padding: 9px 20px;
+  border-radius: 10px;
   background: var(--hlx-amber);
-  color: var(--hlx-void);
+  color: #0a0806;
   font-weight: 700;
   font-size: 0.875rem;
   cursor: pointer;
   border: none;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  transition: all 0.2s ease;
-  font-family: inherit;
-  box-shadow: 0 0 16px rgba(245, 158, 11, 0.15);
+  gap: 7px;
+  transition: all 0.18s ease;
+  font-family: var(--font-body), sans-serif;
+  box-shadow: 0 0 14px rgba(240, 144, 10, 0.14);
 }
 
 .hlx-download:hover {
   filter: brightness(1.1);
-  box-shadow: 0 0 24px rgba(245, 158, 11, 0.25);
+  box-shadow: 0 0 22px rgba(240, 144, 10, 0.24);
 }
 
 /* ─── Pro Badge ─── */
@@ -457,32 +485,33 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 3px 9px;
-  border-radius: 7px;
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.14), rgba(217, 119, 6, 0.08));
-  border: 1px solid rgba(245, 158, 11, 0.18);
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, rgba(240, 144, 10, 0.13), rgba(204, 112, 16, 0.07));
+  border: 1px solid rgba(240, 144, 10, 0.18);
   font-size: 0.6rem;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--hlx-amber);
+  font-family: var(--font-mono), monospace;
 }
 
 /* ─── Error ─── */
 
 .hlx-error {
-  padding: 13px 18px;
-  border-radius: 13px;
-  background: rgba(239, 68, 68, 0.07);
-  border: 1px solid rgba(239, 68, 68, 0.18);
-  color: #fca5a5;
+  padding: 12px 17px;
+  border-radius: 11px;
+  background: rgba(244, 112, 96, 0.06);
+  border: 1px solid rgba(244, 112, 96, 0.16);
+  color: #fca09a;
   font-size: 0.875rem;
 }
 
 /* ─── Hero Gradient Title ─── */
 
 .hlx-hero-text {
-  background: linear-gradient(140deg, #faf8f5 10%, #f5a623 55%, var(--hlx-copper) 90%);
+  background: linear-gradient(155deg, #f5f0e6 5%, #f5a520 42%, #d07012 70%, #965008 95%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -496,6 +525,9 @@ body {
 }
 .hlx-spin { animation: hlxSpin 1s linear infinite; }
 
-/* ─── Utility ─── */
+/* ─── Display Font Utility ─── */
 
-.hlx-font-display { font-family: var(--font-fraunces), Georgia, serif; }
+/* Used for headers, preset card titles, etc. */
+.hlx-font-display {
+  font-family: var(--font-display), system-ui, sans-serif;
+}
