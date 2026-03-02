@@ -19,6 +19,86 @@ function getValidModelIds(): Set<string> {
 
 const VALID_IDS = getValidModelIds();
 
+/**
+ * Strict validation that throws on structural errors instead of auto-correcting.
+ * The Knowledge Layer should produce valid specs, so any failure here indicates a bug.
+ * Call this before buildHlxFile in the generate pipeline.
+ */
+export function validatePresetSpec(spec: PresetSpec): void {
+  // 1. Signal chain not empty
+  if (!spec.signalChain || spec.signalChain.length === 0) {
+    throw new Error("PresetSpec has empty signal chain");
+  }
+
+  // 2. At least one amp block
+  if (!spec.signalChain.some(b => b.type === "amp")) {
+    throw new Error("PresetSpec missing amp block");
+  }
+
+  // 3. At least one cab block
+  if (!spec.signalChain.some(b => b.type === "cab")) {
+    throw new Error("PresetSpec missing cab block");
+  }
+
+  // 4. All model IDs valid
+  for (const block of spec.signalChain) {
+    if (!VALID_IDS.has(block.modelId)) {
+      throw new Error(`Invalid model ID '${block.modelId}' for block '${block.modelName}'`);
+    }
+  }
+
+  // 5. Snapshots present
+  if (!spec.snapshots || spec.snapshots.length === 0) {
+    throw new Error("PresetSpec has no snapshots");
+  }
+
+  // 6. Parameter ranges (type-aware)
+  for (const block of spec.signalChain) {
+    for (const [key, value] of Object.entries(block.parameters)) {
+      if (typeof value !== "number") continue;
+
+      // Cab Mic: integer 0-15
+      if (block.type === "cab" && key === "Mic") {
+        if (value < 0 || value > 15 || !Number.isInteger(value)) {
+          throw new Error(`Parameter '${key}' value ${value} out of range for block '${block.modelName}' (expected integer 0-15)`);
+        }
+        continue;
+      }
+
+      // Cab LowCut: 19.9-500.0 Hz
+      if (block.type === "cab" && key === "LowCut") {
+        if (value < 19.9 || value > 500.0) {
+          throw new Error(`Parameter '${key}' value ${value} out of range for block '${block.modelName}' (expected 19.9-500.0 Hz)`);
+        }
+        continue;
+      }
+
+      // Cab HighCut: 1000.0-20100.0 Hz
+      if (block.type === "cab" && key === "HighCut") {
+        if (value < 1000.0 || value > 20100.0) {
+          throw new Error(`Parameter '${key}' value ${value} out of range for block '${block.modelName}' (expected 1000.0-20100.0 Hz)`);
+        }
+        continue;
+      }
+
+      // All other params: 0.0-1.0 normalized
+      if (value < 0.0 || value > 1.0) {
+        throw new Error(`Parameter '${key}' value ${value} out of range for block '${block.modelName}' (expected 0.0-1.0)`);
+      }
+    }
+  }
+
+  // 7. DSP block limits (max 8 non-cab blocks per DSP)
+  const dsp0Count = spec.signalChain.filter(b => b.dsp === 0 && b.type !== "cab").length;
+  const dsp1Count = spec.signalChain.filter(b => b.dsp === 1 && b.type !== "cab").length;
+  if (dsp0Count > 8) {
+    throw new Error(`DSP0 exceeds 8-block limit (${dsp0Count} blocks)`);
+  }
+  if (dsp1Count > 8) {
+    throw new Error(`DSP1 exceeds 8-block limit (${dsp1Count} blocks)`);
+  }
+}
+
 export interface ValidationResult {
   valid: boolean;
   errors: string[];

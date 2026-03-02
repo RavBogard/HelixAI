@@ -6,12 +6,14 @@ import {
   buildSnapshots,
   buildHlxFile,
   summarizePreset,
+  validatePresetSpec,
 } from "@/lib/helix";
-import type { PresetSpec } from "@/lib/helix";
+import type { PresetSpec, DeviceTarget } from "@/lib/helix";
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages } = await req.json();
+    const { messages, device } = await req.json();
+    const deviceTarget: DeviceTarget = device === "helix_floor" ? "helix_floor" : "helix_lt";
 
     if (!messages || messages.length === 0) {
       return NextResponse.json(
@@ -38,8 +40,11 @@ export async function POST(req: NextRequest) {
       snapshots,
     };
 
-    // Step 4: Build .hlx file
-    const hlxFile = buildHlxFile(presetSpec);
+    // Step 4: Strict validation — fail fast on structural errors
+    validatePresetSpec(presetSpec);
+
+    // Step 5: Build .hlx file with device target
+    const hlxFile = buildHlxFile(presetSpec, deviceTarget);
     const summary = summarizePreset(presetSpec);
 
     // Return single result (not multi-provider array)
@@ -48,6 +53,7 @@ export async function POST(req: NextRequest) {
       summary,
       spec: presetSpec,
       toneIntent, // Include for debugging/transparency
+      device: deviceTarget,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
