@@ -7,3 +7,4 @@ export { ToneIntentSchema, EffectIntentSchema, SnapshotIntentSchema } from "./to
 export type { ToneIntent, EffectIntent, SnapshotIntent } from "./tone-intent";
 export { PARAM_TYPE_REGISTRY } from "./param-registry";
 export type { ParamType } from "./param-registry";
+export { assembleSignalChain } from "./chain-rules";
