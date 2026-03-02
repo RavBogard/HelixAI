@@ -64,7 +64,7 @@ Each task was committed atomically:
 1. **Task 1: Verify DSP block limit enforcement produces clear errors** - `26317fa` (test)
 2. **Task 2: Hardware verification on real Helix LT** - DEFERRED (human checkpoint, requires physical hardware)
 
-**Plan metadata:** (pending)
+**Plan metadata:** `8bcfc7d` (docs: complete plan)
 
 ## Files Created/Modified
 - `src/lib/helix/chain-rules.test.ts` - Added DSP0 block limit exceeded error path test (test 21 of 21)
