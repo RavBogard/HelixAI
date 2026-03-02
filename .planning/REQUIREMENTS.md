@@ -64,10 +64,10 @@ Requirements for the rebuilt preset engine. Each maps to roadmap phases.
 
 ### Frontend & UX
 
-- [ ] **UX-01**: Device selector — user chooses Helix LT or Helix Floor before generation
-- [ ] **UX-02**: Warm Analog Studio aesthetic preserved and polished
-- [ ] **UX-03**: Chat-based tone interview flow using Gemini with Google Search grounding
-- [ ] **UX-04**: Single preset download — generate one world-class preset per request (remove multi-provider comparison UI)
+- [x] **UX-01**: Device selector — user chooses Helix LT or Helix Floor before generation
+- [x] **UX-02**: Warm Analog Studio aesthetic preserved and polished
+- [x] **UX-03**: Chat-based tone interview flow using Gemini with Google Search grounding
+- [x] **UX-04**: Single preset download — generate one world-class preset per request (remove multi-provider comparison UI)
 
 ## v2 Requirements
 
@@ -147,10 +147,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | HLX-02 | Phase 4 | Complete |
 | HLX-03 | Phase 4 | Complete |
 | HLX-04 | Phase 4 | Complete |
-| UX-01 | Phase 5 | Pending |
-| UX-02 | Phase 5 | Pending |
-| UX-03 | Phase 5 | Pending |
-| UX-04 | Phase 5 | Pending |
+| UX-01 | Phase 5 | Complete |
+| UX-02 | Phase 5 | Complete |
+| UX-03 | Phase 5 | Complete |
+| UX-04 | Phase 5 | Complete |
 
 **Coverage:**
 - v1 requirements: 36 total
