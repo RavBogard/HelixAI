@@ -1,391 +1,322 @@
 # Testing Patterns
 
-**Analysis Date:** 2026-03-01
+**Analysis Date:** 2026-03-02
 
 ## Test Framework
 
-**Status:** No test framework currently configured
+**Runner:**
+- Vitest 4.0.18
+- Config: `vitest.config.ts`
+- Environment: Node.js
 
-**Finding:** The codebase contains NO test files (no `*.test.*` or `*.spec.*` files detected). Testing infrastructure is absent.
+**Assertion Library:**
+- Vitest built-in (uses expect from vitest)
 
-**Recommended Setup:**
-- Jest or Vitest would be appropriate for this Next.js codebase
-- TypeScript support built-in to modern test runners
-- No existing test configuration files found
+**Run Commands:**
+```bash
+npm test                 # Not shown in package.json; vitest assumed as test script
+npm run vitest          # Not exposed; project uses vitest directly
+vitest                  # Run all tests (via npx vitest or package.json alias)
+vitest --watch          # Watch mode
+vitest --coverage       # Coverage report
+```
 
 ## Test File Organization
 
-**Current State:** Not applicable — no tests present
+**Location:**
+- Co-located with source files using `.test.ts` suffix
+- Examples: `src/lib/helix/chain-rules.test.ts` alongside `src/lib/helix/chain-rules.ts`
+- Tests in parallel directory structure
 
-**Recommended Approach if Added:**
-- **Location:** Co-locate tests with source files or separate `__tests__` directories
-- **Pattern:** Either `src/lib/helix/__tests__/preset-builder.test.ts` or `src/lib/helix/preset-builder.test.ts`
-- **Naming Convention:** `[module].test.ts` or `[module].spec.ts`
+**Naming:**
+- Strict pattern: `[module].test.ts` where module name matches source file exactly
+- Examples: `chain-rules.test.ts`, `param-engine.test.ts`, `snapshot-engine.test.ts`, `rig-mapping.test.ts`
 
-## Test Structure (If Tests Were Present)
+**Structure:**
+```
+src/lib/helix/
+├── chain-rules.ts
+├── chain-rules.test.ts
+├── param-engine.ts
+├── param-engine.test.ts
+├── snapshot-engine.ts
+├── snapshot-engine.test.ts
+└── orchestration.test.ts
+```
 
-Based on codebase patterns, tests would likely follow this structure:
+## Test Structure
 
+**Suite Organization:**
 ```typescript
-// Example pattern for validation tests
-describe("validateAndFixPresetSpec", () => {
-  it("should validate correct preset spec", () => {
-    const spec = createTestPreset();
-    const result = validateAndFixPresetSpec(spec);
-    expect(result.valid).toBe(true);
-    expect(result.errors).toHaveLength(0);
-  });
+// File header: describes module purpose
+// TDD RED phase: These tests define the expected behavior of assembleSignalChain()
 
-  it("should fix invalid model IDs", () => {
-    const spec = createTestPreset({ modelId: "INVALID_ID" });
-    const result = validateAndFixPresetSpec(spec);
-    expect(result.fixed).toBe(true);
-    expect(result.fixedSpec?.signalChain[0].modelId).not.toBe("INVALID_ID");
+import { describe, it, expect } from "vitest";
+import { assembleSignalChain } from "./chain-rules";
+import type { ToneIntent } from "./tone-intent";
+
+// Helper section: Factory functions for creating test fixtures
+function cleanIntent(overrides: Partial<ToneIntent> = {}): ToneIntent {
+  return {
+    ampName: "US Deluxe Nrm",
+    cabName: "1x12 US Deluxe",
+    guitarType: "single_coil",
+    effects: [],
+    snapshots: [
+      { name: "Clean", toneRole: "clean" },
+      // ...
+    ],
+    ...overrides,
+  };
+}
+
+// Main describe block with consistent naming
+describe("assembleSignalChain", () => {
+  it("returns blocks in order: boost > amp > cab > EQ > gain block", () => {
+    const chain = assembleSignalChain(cleanIntent());
+    const names = chain.map((b) => b.modelName);
+    expect(names).toEqual(["Minotaur", "US Deluxe Nrm", ...]);
   });
 });
 ```
 
-## Mocking Recommendations
+**Patterns:**
+- Setup: Test fixtures created via helper functions that accept partial overrides
+- Teardown: None required; tests are stateless
+- Assertion: Direct use of vitest `expect()` API with chainable matchers
+- Describe blocks use function name being tested: `describe("assembleSignalChain", ...)`
+- Test names are full sentences describing the assertion: `"returns blocks in order: boost > amp > cab > EQ > gain block"`
 
-**Framework:** Would use Jest/Vitest mocking utilities
+## Mocking
+
+**Framework:** None detected in project
+
+**Patterns:**
+- No mocking used in helix tests; all tests use real data and fixtures
+- Fixtures created via factory functions: `cleanIntent()`, `highGainIntent()`, `makeBlock()`
+- Tests are pure unit tests with no external dependencies
 
 **What to Mock:**
-- External API calls (`fetch`, AI provider SDKs)
-- Environment variables for sensitive keys
-- File system operations (if any added)
-- Google GenAI, OpenAI, Anthropic SDK calls
-- `next/server` utilities in route handlers
+- Not applicable; project uses deterministic fixtures instead
 
 **What NOT to Mock:**
-- Internal business logic functions like `validateAndFixPresetSpec()`, `buildHlxFile()`
-- Type definitions and interfaces
-- Constants and configuration objects
-
-**Example Mock Pattern for Provider Tests:**
-```typescript
-// Would mock provider SDK calls
-jest.mock("@google/genai");
-jest.mock("openai");
-jest.mock("@anthropic-ai/sdk");
-
-// Mock environment variables
-process.env.GEMINI_API_KEY = "test-key";
-process.env.OPENAI_API_KEY = "test-key";
-process.env.CLAUDE_API_KEY = "test-key";
-
-// Mock individual function
-const mockGenerateContent = jest.fn();
-GoogleGenAI.mockImplementation(() => ({
-  models: { generateContent: mockGenerateContent }
-}));
-```
+- All functions are tested with real data structures
+- Test data uses actual model names from the catalog
 
 ## Fixtures and Factories
 
-**Recommended Approach:**
-
-Create test fixtures in `__tests__/fixtures/` or co-located in test files:
-
+**Test Data:**
 ```typescript
-// Preset spec fixture factory
-function createTestPreset(overrides: Partial<PresetSpec> = {}): PresetSpec {
+// Helper: minimal clean ToneIntent
+function cleanIntent(overrides: Partial<ToneIntent> = {}): ToneIntent {
   return {
-    name: "Test Preset",
-    description: "A test preset",
-    tempo: 120,
-    guitarNotes: "Test notes",
-    signalChain: [
-      {
-        type: "amp",
-        modelId: "HD2_AmpUSDeluxeNrm",
-        modelName: "US Deluxe Nrm",
-        dsp: 0,
-        position: 0,
-        path: 0,
-        enabled: true,
-        stereo: false,
-        parameters: { Drive: 0.45, Bass: 0.35, Master: 1.0 }
-      }
-    ],
+    ampName: "US Deluxe Nrm",
+    cabName: "1x12 US Deluxe",
+    guitarType: "single_coil",
+    effects: [],
     snapshots: [
-      {
-        name: "CLEAN",
-        description: "Clean snapshot",
-        ledColor: 8,
-        blockStates: { block0: true },
-        parameterOverrides: {}
-      }
+      { name: "Clean", toneRole: "clean" },
+      { name: "Rhythm", toneRole: "crunch" },
+      { name: "Lead", toneRole: "lead" },
+      { name: "Ambient", toneRole: "ambient" },
     ],
-    ...overrides
+    ...overrides,
   };
 }
 
-// Provider response fixture
-function createTestProviderResult(overrides = {}): ProviderResult {
+// Helper: create a minimal BlockSpec
+function makeBlock(overrides: Partial<BlockSpec>): BlockSpec {
   return {
-    providerId: "gemini",
-    providerName: "Gemini",
-    preset: createTestHlxFile(),
-    summary: "Test summary",
-    spec: createTestPreset(),
-    ...overrides
-  };
-}
-
-// HLX file fixture
-function createTestHlxFile(): HlxFile {
-  return {
-    version: 6,
-    data: {
-      device: 2162692,
-      device_version: 57671680,
-      meta: {
-        name: "Test",
-        application: "HX Edit",
-        build_sha: "v3.70",
-        modifieddate: Math.floor(Date.now() / 1000),
-        appversion: 57671680
-      },
-      tone: createTestTone()
-    },
-    meta: { original: 0, pbn: 0, premium: 0 },
-    schema: "L6Preset"
+    type: "amp",
+    modelId: "HD2_AmpUSDeluxeNrm",
+    modelName: "US Deluxe Nrm",
+    dsp: 0,
+    position: 0,
+    path: 0,
+    enabled: true,
+    stereo: false,
+    parameters: {},
+    ...overrides,
   };
 }
 ```
 
-**Location:** `src/lib/helix/__tests__/fixtures.ts` or similar
+**Location:**
+- Defined at top of each test file, immediately after imports
+- Named with domain prefix: `cleanIntent()`, `highGainIntent()`, `crunchIntent()`, `makeBlock()`, `makeIntent()`
+- Factory pattern: Functions return complete objects with sensible defaults, allow selective override
 
 ## Coverage
 
-**Status:** Not enforced
+**Requirements:** None enforced in package.json
 
-**Recommendation:** If tests added, enforce minimum coverage:
-- Statements: 80%
-- Branches: 75%
-- Functions: 80%
-- Lines: 80%
-
-**View Coverage Command (if Jest configured):**
+**View Coverage:**
 ```bash
-npm test -- --coverage
-npm test -- --coverage --watch
+vitest --coverage
 ```
 
-## Test Types (Recommended Structure)
+Coverage not mentioned in project—no thresholds or CI gates detected.
 
-### Unit Tests
+## Test Types
 
-**Scope:** Individual functions with pure logic
+**Unit Tests:**
+- **Scope:** Single function behavior in isolation
+- **Approach:** Use factory functions to create inputs, call function, assert output properties
+- **Example:** `chain-rules.test.ts` tests `assembleSignalChain()` with various amp categories and effect combinations
+- **Pattern:** Test single responsibility; one logical assertion per test
+- Examples:
+  - `"returns blocks in order: boost > amp > cab > EQ > gain block for clean amp with no effects"`
+  - `"throws error for unknown amp name"`
+  - `"does not duplicate Minotaur if already in effects list"`
 
-**Examples to Test:**
-- `buildHlxFile()` - core preset building logic
-- `validateAndFixPresetSpec()` - validation and fixing logic
-- `summarizePreset()` - formatting logic
-- `similarity()` and `findClosestModelId()` - string matching logic
-- `buildBlockKeyMap()`, `resolveBlockKey()` - block mapping logic
+**Integration Tests:**
+- **Scope:** Multiple modules working together through the pipeline
+- **Approach:** `orchestration.test.ts` tests full pipeline: `assembleSignalChain` → `resolveParameters` → `buildSnapshots` → `buildHlxFile` → `validatePresetSpec`
+- **Pattern:** Build complete intent → run through full stack → validate output structure
+- Example: `"full pipeline produces valid .hlx JSON structure with correct top-level fields"`
 
-**Approach:** Test with various inputs including edge cases
+**E2E Tests:**
+- **Framework:** Not used
+- **Approach:** Not applicable; project focuses on unit and integration tests
+- **Note:** Orchestration tests serve as integration tests covering end-to-end pipeline
 
+## Common Patterns
+
+**Async Testing:**
 ```typescript
-describe("buildHlxFile", () => {
-  it("should build valid HLX file structure", () => {
-    const spec = createTestPreset();
-    const hlxFile = buildHlxFile(spec);
+// No async patterns detected in test files
+// All functions are synchronous
+// async/await not used in vitest suites
+```
 
-    expect(hlxFile.version).toBe(6);
-    expect(hlxFile.schema).toBe("L6Preset");
-    expect(hlxFile.data.device).toBe(2162692);
-  });
+**Error Testing:**
+```typescript
+// Pattern 1: Throw with specific message
+it("throws error for unknown amp name", () => {
+  expect(() =>
+    assembleSignalChain(cleanIntent({ ampName: "NonExistent Amp" }))
+  ).toThrow(/unknown amp model/i);
+});
 
-  it("should limit preset name to 32 chars", () => {
-    const longName = "A".repeat(50);
-    const spec = createTestPreset({ name: longName });
-    const hlxFile = buildHlxFile(spec);
+// Pattern 2: Specific error message matching via regex
+it("throws a clear error message when DSP0 block limit would be exceeded", () => {
+  expect(() =>
+    assembleSignalChain(cleanIntent({ effects: [...] }))
+  ).toThrow(/DSP0 block limit exceeded.*non-cab blocks.*max 8/);
+});
 
-    expect(hlxFile.data.meta.name.length).toBeLessThanOrEqual(32);
-  });
+// Pattern 3: Validate error message content
+try {
+  assembleSignalChain(intent);
+  expect.fail("Should have thrown");
+} catch (e) {
+  expect(e.message).toContain("unknown");
+}
+```
+
+**Range Testing:**
+```typescript
+// Test numeric ranges with toBeGreaterThanOrEqual/toBeLessThanOrEqual
+it("sets clean amp Drive 0.20-0.30, Master 0.90-1.00, SAG 0.50-0.70", () => {
+  const result = resolveParameters(chain, intent);
+  const amp = result[0];
+
+  expect(amp.parameters.Drive).toBeGreaterThanOrEqual(0.20);
+  expect(amp.parameters.Drive).toBeLessThanOrEqual(0.30);
+  expect(amp.parameters.Master).toBeGreaterThanOrEqual(0.90);
+  expect(amp.parameters.Master).toBeLessThanOrEqual(1.00);
 });
 ```
 
-### Integration Tests
-
-**Scope:** Multiple functions working together
-
-**Examples to Test:**
-- Preset generation pipeline: `getSystemPrompt() → AI → JSON.parse() → validateAndFixPresetSpec() → buildHlxFile()`
-- API route `/api/generate`: request validation → provider generation → response formatting
-- API route `/api/chat`: message formatting → AI streaming → SSE encoding
-
-**Approach:** Test realistic workflows with mocked external dependencies
-
+**Array/Collection Testing:**
 ```typescript
-describe("Preset generation pipeline", () => {
-  it("should generate valid HLX from AI response", async () => {
-    const aiResponse = '{"name":"Test","description":"...","signalChain":[...],"snapshots":[...]}';
+// Pattern: Array length, element order, element properties
+it("returns blocks in order: boost > amp > cab > EQ > gain block", () => {
+  const chain = assembleSignalChain(cleanIntent());
 
-    // Simulate AI response
-    const presetSpec = JSON.parse(aiResponse);
-    const validation = validateAndFixPresetSpec(presetSpec);
-    const hlxFile = buildHlxFile(validation.fixedSpec || presetSpec);
+  // Test array order
+  const names = chain.map((b) => b.modelName);
+  expect(names).toEqual([
+    "Minotaur",
+    "US Deluxe Nrm",
+    "1x12 US Deluxe",
+    "Parametric EQ",
+    "Gain Block",
+  ]);
 
-    expect(hlxFile).toBeDefined();
-    expect(hlxFile.schema).toBe("L6Preset");
-  });
+  // Test array length
+  expect(minotaurBlocks).toHaveLength(1);
 
-  it("should fix invalid model IDs during pipeline", async () => {
-    const aiResponse = '{"name":"Test","signalChain":[{"modelId":"INVALID"}],...}';
-    const presetSpec = JSON.parse(aiResponse);
-
-    const validation = validateAndFixPresetSpec(presetSpec);
-    expect(validation.fixed).toBe(true);
-
-    const hlxFile = buildHlxFile(validation.fixedSpec!);
-    expect(hlxFile).toBeDefined();
-  });
+  // Test subset filtering
+  const dsp0Blocks = chain.filter((b) => b.dsp === 0);
+  expect(dsp0Blocks.map((b) => b.modelName)).toEqual([...]);
 });
 ```
 
-### API Route Tests
-
-**Scope:** Next.js route handlers (if test framework added)
-
-**Key Routes to Test:**
-- `POST /api/chat` - streaming chat responses
-- `POST /api/generate` - multi-provider preset generation
-- `GET /api/providers` - provider availability
-
-**Approach:** Mock `NextRequest`/`NextResponse` and SDK calls
-
+**Immutability Testing:**
 ```typescript
-describe("/api/generate route", () => {
-  it("should return results from all requested providers", async () => {
-    const request = new NextRequest("http://localhost/api/generate", {
-      method: "POST",
-      body: JSON.stringify({
-        messages: [{ role: "user", content: "Test" }],
-        providers: ["gemini", "claude"]
-      })
-    });
+it("returns a new BlockSpec array without mutating the input", () => {
+  const original: BlockSpec[] = [makeBlock(...)];
+  const originalParams = { ...original[0].parameters };
+  const result = resolveParameters(original, intent);
 
-    // Mock provider implementations
-    jest.spyOn(providers, "generateWithProvider")
-      .mockResolvedValue('{"name":"Test",...}');
-
-    const response = await POST(request);
-    const data = await response.json();
-
-    expect(data.results).toHaveLength(2);
-    expect(data.results[0].providerId).toBe("gemini");
-  });
-
-  it("should handle provider errors gracefully", async () => {
-    // Test error handling with Promise.allSettled
-  });
+  // Result should be a different array
+  expect(result).not.toBe(original);
+  // Original block parameters should not be mutated
+  expect(original[0].parameters).toEqual(originalParams);
+  // Result block should be a different object
+  expect(result[0]).not.toBe(original[0]);
 });
 ```
 
-## Common Testing Patterns
-
-### Async Testing
-
-**Pattern for async functions:**
-
+**Property Existence Testing:**
 ```typescript
-it("should validate async preset generation", async () => {
-  const spec = createTestPreset();
+it("uses Gain/Treble/Output param names for Minotaur (not Drive/Tone)", () => {
+  const result = resolveParameters(chain, intent);
+  const boost = result[0];
 
-  // For async operations
-  const result = await generateWithProvider("gemini", "test", "prompt");
-  expect(result).toBeDefined();
+  expect(boost.parameters).toHaveProperty("Gain");
+  expect(boost.parameters).toHaveProperty("Treble");
+  expect(boost.parameters).toHaveProperty("Output");
+  expect(boost.parameters).not.toHaveProperty("Drive");
+  expect(boost.parameters).not.toHaveProperty("Tone");
 });
+```
 
-// Using async/await in test
-it("should handle streaming responses", async () => {
-  const readable = new ReadableStream({ ... });
-  const chunks: string[] = [];
+**Loop Testing Pattern:**
+```typescript
+it("all blocks have path: 0", () => {
+  const chain = assembleSignalChain(cleanIntent({...}));
 
-  const reader = readable.getReader();
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunks.push(new TextDecoder().decode(value));
-    }
-  } finally {
-    reader.releaseLock();
+  for (const block of chain) {
+    expect(block.path).toBe(0);
   }
-
-  expect(chunks.length).toBeGreaterThan(0);
 });
 ```
 
-### Error Testing
+## Test Documentation
 
-**Pattern for error cases:**
+**Comments in Tests:**
+- Section headers with dashes: `// ---------------------------------------------------------------------------`
+- Test numbering: `// Test 1:`, `// Test 2:`, etc.
+- Purpose statements: `// TDD RED: These tests define the expected behavior...`
+- Comment headers: `/** Minimal clean ToneIntent */`
 
+**Test File Headers:**
 ```typescript
-describe("Error handling", () => {
-  it("should throw on missing API key", () => {
-    delete process.env.GEMINI_API_KEY;
-
-    expect(() => createGeminiClient()).toThrow(
-      "GEMINI_API_KEY environment variable is required"
-    );
-  });
-
-  it("should catch JSON parse errors", async () => {
-    const invalidJson = "{ invalid json }";
-
-    expect(() => JSON.parse(invalidJson)).toThrow();
-  });
-
-  it("should validate provider existence before generation", () => {
-    expect(() => {
-      generateWithProvider("invalid-provider", "conv", "prompt");
-    }).toThrow("Unknown provider: invalid-provider");
-  });
-});
+// src/lib/helix/chain-rules.test.ts — Signal chain assembly tests
+// TDD RED phase: These tests define the expected behavior of assembleSignalChain()
 ```
 
-## Critical Test Gaps
+**Helper Documentation:**
+```typescript
+// Helper: minimal clean ToneIntent
+function cleanIntent(overrides: Partial<ToneIntent> = {}): ToneIntent { ... }
 
-The following areas have NO test coverage and are high-priority for testing:
-
-1. **Validation Logic** (`src/lib/helix/validate.ts`)
-   - Model ID validation and fuzzy matching
-   - Block position fixing
-   - Snapshot reference resolution
-   - Parameter clamping
-   - Risk: Invalid presets could be generated undetected
-
-2. **Preset Building** (`src/lib/helix/preset-builder.ts`)
-   - HLX file structure generation
-   - DSP path assignment
-   - Cabinet pairing with amps
-   - Snapshot building
-   - Footswitch auto-assignment
-   - Risk: Malformed .hlx files that don't load in Helix LT
-
-3. **Provider Integration** (`src/lib/providers.ts`)
-   - API key validation
-   - Provider selection and fallback
-   - JSON parsing with markdown fence handling
-   - Risk: Generation failures, wrong model usage
-
-4. **API Routes** (`src/app/api/*/route.ts`)
-   - Request validation
-   - Error handling and status codes
-   - SSE encoding and streaming
-   - Multi-provider parallel generation
-   - Risk: Malformed responses, incomplete data
-
-5. **Client-Side Logic** (`src/app/page.tsx`)
-   - Message streaming and parsing
-   - Provider selection state
-   - Download functionality
-   - Risk: UI state corruption, unhandled race conditions
+// Helper: minimal high-gain ToneIntent
+function highGainIntent(overrides: Partial<ToneIntent> = {}): ToneIntent { ... }
+```
 
 ---
 
-*Testing analysis: 2026-03-01*
+*Testing analysis: 2026-03-02*

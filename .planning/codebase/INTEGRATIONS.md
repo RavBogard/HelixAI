@@ -1,158 +1,124 @@
 # External Integrations
 
-**Analysis Date:** 2026-03-01
+**Analysis Date:** 2026-03-02
 
 ## APIs & External Services
 
-**AI Model Providers (Preset Generation):**
-- **Google Gemini** - Generates Helix LT preset specifications in JSON format
-  - SDK: `@google/genai` 1.42.0
+**AI Models:**
+- Google Gemini API - Chat endpoint for conversational tone consultation
+  - SDK/Client: @google/genai ^1.42.0
   - Auth: `GEMINI_API_KEY` environment variable
-  - Models used:
-    - `gemini-2.5-flash` (standard tier, chat interviews)
-    - `gemini-3.1-pro-preview` (premium tier, preset generation)
-  - Request format: JSON with system instruction and prompt
-  - Response format: JSON preset specification (via `responseMimeType: "application/json"`)
-  - Streaming: Supported for chat via `sendMessageStream()`
+  - Route: `src/app/api/chat/route.ts`
+  - Models: `gemini-2.5-flash` (standard), `gemini-3.1-pro-preview` (premium)
+  - Tools: Google Search integrated into Gemini for artist rig research
 
-- **OpenAI GPT** - Generates Helix LT preset specifications in JSON format
-  - SDK: `openai` 6.25.0
-  - Auth: `OPENAI_API_KEY` environment variable
-  - Model used: `gpt-5.2-pro`
-  - Request format: Messages array with system + user roles
-  - Response format: JSON preset specification (via `response_format: { type: "json_object" }`)
-  - Features: Streaming capable via chat completions API
+- Anthropic Claude API - Three separate use cases:
+  - **Claude Planner** (ToneIntent generation):
+    - SDK/Client: @anthropic-ai/sdk ^0.78.0
+    - Auth: `CLAUDE_API_KEY` environment variable
+    - Route: `src/lib/planner.ts` (called by `src/app/api/generate/route.ts`)
+    - Model: claude-sonnet-4-6
+    - Features: Structured output with Zod schema validation
+    - Prompt caching enabled for system prompts
 
-- **Anthropic Claude** - Generates Helix LT preset specifications in JSON format
-  - SDK: `@anthropic-ai/sdk` 0.78.0
-  - Auth: `CLAUDE_API_KEY` environment variable
-  - Model used: `claude-opus-4-6`
-  - Request format: System prompt + messages array
-  - Response format: JSON preset specification (text extraction from content blocks)
-  - Max tokens: 16384
-  - Features: Native system prompt support
+  - **Vision Extraction** (pedal identification):
+    - SDK/Client: @anthropic-ai/sdk ^0.78.0
+    - Auth: `CLAUDE_API_KEY` environment variable
+    - Route: `src/app/api/vision/route.ts`
+    - Accepts: Base64-encoded images (JPEG, PNG, WebP) up to 900 KB per image
+    - Output: JSON with pedal brand, model, knob positions, and confidence levels
+    - Max: 3 images per request
 
-**Google Fonts (UI Typography):**
-- Fraunces (serif) - Decorative display font
-- DM Sans (sans-serif) - UI body text
-- JetBrains Mono (monospace) - Code/technical display
-- Loaded via `next/font/google` with display=swap for font-display strategy
-- Location: `src/app/layout.tsx`
+  - **Rig Vision Planner** (rig context integration):
+    - SDK/Client: @anthropic-ai/sdk ^0.78.0
+    - Auth: `CLAUDE_API_KEY` environment variable
+    - Module: `src/lib/rig-vision.ts` (called by `/api/vision`)
+    - Used to extract structured pedal data from photographs
 
 ## Data Storage
 
 **Databases:**
-- Not detected - Application is stateless
+- None detected - stateless application
+- All preset data is generated dynamically and downloaded as files
 
 **File Storage:**
-- No cloud file storage integration detected
-- Presets are generated as `.hlx` files (binary format) and delivered to client via HTTP response
-- No server-side persistence of user presets
+- Local filesystem only - Preset files (.hlx, .pgp) generated and downloaded client-side
+- No cloud storage or CDN integrations detected
 
 **Caching:**
-- HTTP caching headers set on streaming responses:
-  - `Cache-Control: no-cache` (SSE streams)
-  - `Connection: keep-alive` (for streaming)
-- No application-level caching detected (Redis, Memcached, etc.)
+- Vercel's Prompt Caching (Claude API feature)
+  - Configured in `src/lib/planner.ts` with `cache_control: { type: "ephemeral" }`
+  - Caches system prompts for Planner to reduce latency and token usage
 
 ## Authentication & Identity
 
 **Auth Provider:**
-- Custom - No third-party auth service
-- Premium tier detection via server-side secret
-  - File: `src/lib/gemini.ts`
-  - Method: `isPremiumKey(premiumKey)` compares client-provided key against `PREMIUM_SECRET` env var
-  - Used to determine which Gemini model tier to use (flash vs pro-preview)
-- No user accounts, login system, or session management
+- Custom implementation (no third-party auth service)
+- Premium tier verification:
+  - Client: URL parameter `?premiumKey=...` checked by `src/app/page.tsx`
+  - Server: Verified against `PREMIUM_SECRET` in `src/lib/gemini.ts` via `isPremiumKey()`
+  - Used to select between standard (Gemini 2.5 Flash) and premium (Gemini 3.1 Pro) models
 
 ## Monitoring & Observability
 
 **Error Tracking:**
-- Not detected - No Sentry, Rollbar, or similar error tracking service
+- None detected
 
 **Logs:**
 - Console logging only
-- Server-side logging via `console.warn()` and `console.error()`
-  - Validation warnings logged: `console.warn(\`[${provider.name}] Validation issues:\`, validation.errors)`
-  - Generation errors logged: `console.error(\`[${provider.name}] Generation failed:\`, errorMsg)`
-  - Preset generation errors: `console.error("Preset generation error:", message)`
-- No structured logging, log aggregation, or log persistence detected
-- Location: `src/app/api/generate/route.ts`, `src/app/api/chat/route.ts`
+  - `console.error()` in API routes for error reporting
+  - Used in `src/app/api/chat/route.ts`, `src/app/api/generate/route.ts`, `src/app/api/vision/route.ts`, `src/app/api/map/route.ts`
+  - No persistent logging service
 
 ## CI/CD & Deployment
 
 **Hosting:**
-- Vercel recommended (see `README.md` - "The easiest way to deploy is on the Vercel Platform")
-- Works on any Node.js-compatible server
-- Next.js native support for serverless functions (AWS Lambda, Google Cloud Functions, etc.)
+- Vercel (inferred from README and `.gitignore`)
+- Next.js deployment optimized for Vercel Edge Runtime
 
 **CI Pipeline:**
-- Not detected - No GitHub Actions, GitLab CI, or similar workflow automation
+- None detected in repository
 
-## Environment Configuration
+**Build Commands:**
+```bash
+npm run dev      # Development server on localhost:3000
+npm run build    # Production build
+npm start        # Production server
+npm run lint     # ESLint check
+```
 
-**Required env vars:**
-- `GEMINI_API_KEY` - Google Gemini API key (required if using Gemini models)
-- `CLAUDE_API_KEY` - Anthropic Claude API key (required if using Claude models)
-- `OPENAI_API_KEY` - OpenAI API key (required if using OpenAI models)
-- `PREMIUM_SECRET` - Server-side secret for premium tier detection
-
-**Optional env vars:**
-- At least one AI provider API key must be set; application checks availability at startup
-- If no API keys are configured, the `/api/providers` endpoint will return empty provider list
-- Application gracefully handles missing API keys with error messages
-
-**Secrets location:**
-- `.env.local` - Contains all API keys and secrets (Git-ignored via `.gitignore`)
-- `.env.local.example` - Template file with dummy values for reference
+**Environment Setup:**
+- `.env.local` file required with three variables:
+  - `GEMINI_API_KEY` - Get from https://aistudio.google.com/apikey
+  - `CLAUDE_API_KEY` - Get from Anthropic console
+  - `PREMIUM_SECRET` - Internal use for premium tier (optional, used if set)
 
 ## Webhooks & Callbacks
 
 **Incoming:**
-- Not detected - No webhook endpoints that receive external data
+- None detected
 
 **Outgoing:**
-- Not detected - No callbacks to external services after preset generation
-- Generated presets are delivered directly to client via HTTP response
+- Google Search tool (integrated into Gemini chat)
+  - Used when Gemini route receives requests with `tools: [{ googleSearch: {} }]`
+  - Called by Gemini during chat conversations for artist rig research
 
-## Request/Response Patterns
+## Function Configuration
 
-**Chat Interview Endpoint (`POST /api/chat`):**
-- Input: `{ messages: Array<{role, content}>, premiumKey?: string }`
-- Output: Server-Sent Events (SSE) stream
-  - Format: `data: {JSON}\n\n` for each chunk
-  - Special close message: `data: [DONE]\n\n`
-- Provider: Gemini (hardcoded, no provider selection)
-- Streaming: Yes, chunks streamed as they arrive
+**Long-running Operations:**
+- Vision extraction (`src/app/api/vision/route.ts`):
+  - Vercel Fluid Compute: `maxDuration = 60` seconds (required for >10s operations)
+  - Must be enabled in Vercel project settings
+  - Configured for image processing and Claude vision analysis
 
-**Preset Generation Endpoint (`POST /api/generate`):**
-- Input: `{ messages: Array<{role, content}>, providers?: string[] }`
-- Output: JSON with preset specification for each requested provider
-- Providers: All three (Gemini, Claude, OpenAI) can be requested simultaneously
-- Processing: Parallel execution via `Promise.allSettled()`
-- Response schema: `{ results: Array<ProviderResult> }`
-  - Each result: `{ providerId, providerName, preset (HlxFile), summary, spec (PresetSpec), error? }`
-- Backwards compatibility: Single provider request also returns flat fields
+## Image Processing
 
-**Provider List Endpoint (`GET /api/providers`):**
-- Output: `{ providers: Array<{id, name, color, available}> }`
-- Filters: Only includes providers with API keys configured
-
-## Model/Temperature Settings
-
-**Chat (Interview) Phase:**
-- Provider: Gemini only
-- Temperature: Not explicitly set (uses Gemini defaults)
-- System instruction: Detailed tone consultation guidance, tool access to Google Search
-- Purpose: Natural conversation to gather tone requirements
-
-**Preset Generation Phase:**
-- Providers: Gemini, Claude, OpenAI
-- Temperature: 0.3 (all providers) - Low temperature for deterministic JSON output
-- Output format: JSON (enforced via provider-specific mechanisms)
-- System prompt: Detailed preset specification schema with parameter guidance
-- Purpose: Generate studio-quality Helix LT preset JSON with exact model IDs
+**Client-side Compression:**
+- browser-image-compression ^2.0.2
+- Used in `src/app/page.tsx` before uploading images to vision API
+- Target compression: ~800 KB for 3 images combined
+- Max per-image base64: 1,200,000 characters (~900 KB raw)
 
 ---
 
-*Integration audit: 2026-03-01*
+*Integration audit: 2026-03-02*

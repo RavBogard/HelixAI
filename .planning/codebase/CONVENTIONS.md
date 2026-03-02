@@ -1,224 +1,135 @@
 # Coding Conventions
 
-**Analysis Date:** 2026-03-01
+**Analysis Date:** 2026-03-02
 
 ## Naming Patterns
 
 **Files:**
-- Lowercase with dashes for multi-word names: `preset-builder.ts`, `route.ts`
-- API route files use `route.ts` convention (Next.js standard): `src/app/api/chat/route.ts`, `src/app/api/generate/route.ts`
-- Index files as barrel exports: `src/lib/helix/index.ts`
+- Lowercase with hyphens for word separation: `chain-rules.ts`, `param-engine.ts`, `rig-mapping.ts`
+- Test files use `.test.ts` suffix: `chain-rules.test.ts`, `param-engine.test.ts`
+- Module/interface definition files use descriptive singular or plural: `types.ts`, `models.ts`, `tone-intent.ts`
 
 **Functions:**
-- camelCase for all functions and async handlers
-- Descriptive verb-noun pairs: `buildHlxFile()`, `validateAndFixPresetSpec()`, `summarizePreset()`, `generateWithProvider()`
-- Private/internal functions prefixed with underscore rarely used; instead use nested functions or grouping with comments
+- camelCase for all functions: `assembleSignalChain()`, `resolveParameters()`, `buildSnapshots()`, `validatePresetSpec()`, `lookupPedal()`
+- Action verbs for function prefixes: `assemble`, `resolve`, `build`, `validate`, `create`, `get`
+- Helper functions in tests use `make` or `clean`/`highGain` patterns: `cleanIntent()`, `makeBlock()`, `highGainIntent()`, `buildChain()`
 
 **Variables:**
-- camelCase for all variables and parameters
-- Boolean variables prefixed with is/has: `isStreaming`, `isGenerating`, `readyToGenerate`, `premiumKey`
-- State hook variables use clear names: `messages`, `input`, `selectedProviders`, `generatedResults`
+- camelCase for all variables: `blockSpec`, `modelId`, `ampName`, `motorCabName`
+- Lowercase constants with underscores for module-level lookup tables: `MINOTAUR`, `SCREAM_808`, `PARAMETRIC_EQ`, `MAX_BLOCKS_PER_DSP`
+- UPPERCASE_WITH_UNDERSCORES for semantic constants: `VALID_IDS`, `AMP_DEFAULTS`, `TOPOLOGY_MID`, `CAB_PARAMS`, `EQ_PARAMS`, `PEDAL_HELIX_MAP`
 
-**Types and Interfaces:**
-- PascalCase for all interfaces and types: `ProviderConfig`, `HlxFile`, `PresetSpec`, `BlockSpec`
-- Interface properties use camelCase
-- Const objects for enums/mappings use UPPER_SNAKE_CASE: `PROVIDERS`, `BLOCK_TYPES`, `CONTROLLERS`, `LED_COLORS`, `STOMP_BLOCK_TYPES`
-
-**Constants:**
-- UPPER_SNAKE_CASE for constants and readonly config: `HLX_VERSION`, `HELIX_LT_DEVICE_ID`, `MODEL_STANDARD`, `MODEL_PREMIUM`
-- Model IDs use HD2_ prefix per Line 6 convention: `HD2_AmpUSDeluxeNrm`, `HD2_AppDSPFlow1Input`
+**Types:**
+- PascalCase for all types: `BlockSpec`, `ToneIntent`, `PresetSpec`, `HlxFile`, `SnapshotSpec`
+- Descriptive suffixes: `Intent` for user input types, `Spec` for intermediate/output specs, `Model` for catalog entries
 
 ## Code Style
 
 **Formatting:**
-- ESLint configured via `eslint.config.mjs` extending Next.js core-web-vitals and TypeScript rules
-- Run with: `npm run lint`
-- Strict TypeScript enabled in `tsconfig.json`
-- No explicit Prettier config; relies on ESLint defaults
+- ESLint with Next.js preset (`eslint-config-next`)
+- Configured via `eslint.config.mjs` using flat config format
+- Includes core-web-vitals and TypeScript rules
 
 **Linting:**
-- ESLint 9 with `eslint-config-next` for Next.js conventions
-- Enforces best practices for React (via `eslint-config-next/typescript`)
-- Strict type checking: `noEmit: true`, `isolatedModules: true`
+- Tool: ESLint 9 with Next.js core web vitals configuration
+- TypeScript strict mode enabled in `tsconfig.json`
+- Key compiler options: `strict: true`, `noEmit: true`, `isolatedModules: true`
 
 ## Import Organization
 
 **Order:**
-1. External dependencies (React, Next.js, third-party libraries)
-2. Internal path alias imports (`@/lib/...`, `@/app/...`)
-3. Type imports using `type` keyword for types-only imports
+1. Node/external libraries (e.g., `import { defineConfig } from "vitest/config"`)
+2. Type imports: `import type { ToneIntent } from "./tone-intent"`
+3. Named value imports: `import { assembleSignalChain } from "./chain-rules"`
+4. Relative imports (local modules)
 
 **Path Aliases:**
-- `@/*` maps to `./src/*` (configured in `tsconfig.json`)
-- Always use `@/lib/...` for library files
-- Always use `@/app/...` for app layer files
-
-**Example from codebase:**
-```typescript
-// src/app/api/chat/route.ts
-import { NextRequest } from "next/server";
-import { createGeminiClient, getSystemPrompt, getModelId, isPremiumKey } from "@/lib/gemini";
-```
-
-```typescript
-// src/app/page.tsx
-import { useState, useRef, useEffect, useCallback } from "react";
-import ReactMarkdown from "react-markdown";
-```
-
-**Barrel Exports:**
-- Use barrel files (`index.ts`) to export public APIs: `src/lib/helix/index.ts` exports all Helix utilities
-- Separate type exports from function exports with `export type { ... }`
+- Single alias used: `@/*` maps to `./src/*` per `tsconfig.json`
+- Applied consistently in source code: `import { createGeminiClient } from "@/lib/gemini"`
+- **Convention in test files:** Tests use relative imports only, NOT `@/` aliases (noted as "project convention" in `src/lib/rig-mapping.test.ts`)
 
 ## Error Handling
 
 **Patterns:**
-- Use `try/catch` for async operations and JSON parsing
-- Always check error type: `error instanceof Error ? error.message : "Unknown error"`
-- API routes return `NextResponse.json()` with appropriate status codes
-- Client-side: catch errors in async functions and set error state for UI display
-- Fallback behavior when APIs fail gracefully (e.g., default to fallback provider)
-
-**Examples:**
-```typescript
-// API error handling
-try {
-  const res = await fetch("/api/chat", { ... });
-  if (!res.ok) {
-    throw new Error(`API error: ${res.status}`);
-  }
-  // ... process response
-} catch (err) {
-  const message = err instanceof Error ? err.message : "Something went wrong";
-  setError(message);
-}
-```
-
-```typescript
-// JSON parsing with fallback
-try {
-  presetSpec = JSON.parse(jsonText);
-} catch {
-  // Handle markdown code fences from some providers
-  const fenceMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
-  const cleaned = fenceMatch ? fenceMatch[1].trim() : jsonText.trim();
-  presetSpec = JSON.parse(cleaned);
-}
-```
-
-**Console Usage:**
-- `console.warn()` for validation warnings with context: `console.warn(`[${provider.name}] Validation issues:`, validation.errors)`
-- `console.error()` for serious failures with context: `console.error("Preset generation error:", message)`
-- Use prefixes like `[ProviderName]` in messages for context
+- Throw descriptive errors with context: `throw new Error("PresetSpec has empty signal chain")`
+- Error messages are lowercase sentence fragments: `"unknown amp model"`, `"DSP0 block limit exceeded: ${dsp0Count} non-cab blocks, max 8"`
+- Validation functions throw immediately on structural errors rather than auto-correcting: `validatePresetSpec()` enforces strict rules
+- Separate functions for strict validation vs. auto-fixing: `validatePresetSpec()` (strict) vs `validateAndFixPresetSpec()` (lenient with fixes)
+- Catch blocks convert error to message: `const message = error instanceof Error ? error.message : "Unknown error"`
+- Console.warn used for auto-correction notifications: `console.warn(`[validate] Cab block has LowCut=${value}...`)`
 
 ## Logging
 
-**Framework:** Native console (no logging library)
+**Framework:** `console` (no dedicated logging library)
 
 **Patterns:**
-- Server-side (Route handlers): Use `console.warn()` and `console.error()`
-- Client-side: Use `console.warn()` for non-fatal issues only
-- Always include provider/context information in log messages
-- Example: `console.warn(`[${provider.name}] Validation issues:`, validation.errors)`
+- Use `console.warn()` when auto-correcting values: `console.warn(`[validate] ...`)`
+- Prefix warning messages with `[context]` for clarity
+- No `console.log()` found in production code—only validation/debug warnings
 
 ## Comments
 
 **When to Comment:**
-- Comment complex algorithms or non-obvious business logic
-- Comment workarounds and why they exist (not just what)
-- Use inline comments sparingly; code should be self-documenting via clear naming
-- Comment tradeoffs and decisions (especially in validation/fixing logic)
+- File headers with module purpose: `// chain-rules.ts — Signal chain assembly module`
+- Section headers with dashes: `// ---------------------------------------------------------------------------`
+- Semantic explanations of WHY, not WHAT: Comments explain intent, not code behavior
+- Inline explanations for lookup tables: `// Amp parameter overrides per category — applied on top of model defaults.`
+- Test section separators: `// Test 1: ...`, `// Test 2: ...`
 
 **JSDoc/TSDoc:**
-- Used for public API functions
-- Document parameters and return types in complex cases
-- Example from codebase:
-```typescript
-/**
- * Auto-assign effect blocks to stomp footswitches (FS5-FS8).
- * Amps, cabs, and EQ are typically "always on" so they're skipped.
- * This gives the user a Snap/Stomp layout:
- *   Bottom row: Snapshots 1-4
- *   Top row: Stomp switches for individual effects
- */
-function buildFootswitchSection(allBlocks: BlockSpec[]): Record<string, unknown>
-```
+- Used sparingly, primarily for public API functions in `validate.ts`
+- Example: `/** Strict validation that throws on structural errors ... */`
+- Document parameters and return types: `@param device - Optional device target for device-specific validation rules`
 
 ## Function Design
 
-**Size:**
-- Keep functions focused on single responsibility
-- Range typically 30-100 lines for complex logic
-- Example: `buildHlxFile()` is 33 lines and handles file structure only
-- Support functions like `buildDsp()` are 82 lines handling DSP-specific logic
+**Size:** Functions range from 5–50 lines; most are 15–25 lines
 
 **Parameters:**
-- Use typed parameters (no `any`)
-- Prefer explicit parameters over large config objects for clarity
-- Use function overloading rarely; prefer separate functions
+- Named parameters via object destructuring when 2+ parameters: `function validatePresetSpec(spec: PresetSpec, device?: DeviceTarget)`
+- Helper functions accept overrides object: `function cleanIntent(overrides: Partial<ToneIntent> = {}): ToneIntent`
+- Partial types used for builder/test helpers to allow selective overrides
 
 **Return Values:**
-- Always type return values explicitly
-- Return structured objects with clear properties rather than tuples
-- Example: `ValidationResult` interface documents all possible return states
-```typescript
-export interface ValidationResult {
-  valid: boolean;
-  errors: string[];
-  fixed: boolean;
-  fixedSpec?: PresetSpec;
-}
-```
+- Explicit types on all functions
+- Pure functions preferred (no mutations): `resolveParameters()` returns new BlockSpec[] without mutating input
+- Use `ValidationResult` interface for complex return types: `{ valid: boolean; errors: string[]; fixed: boolean; fixedSpec?: PresetSpec }`
 
 ## Module Design
 
 **Exports:**
-- Barrel files export both functions and types
-- Types exported with `export type { ... }` syntax
-- Functions exported normally with `export function`
-
-**Example from `src/lib/helix/index.ts`:**
-```typescript
-export { buildHlxFile, summarizePreset } from "./preset-builder";
-export { getModelListForPrompt, getAllModels, LED_COLORS } from "./models";
-export { validateAndFixPresetSpec } from "./validate";
-export type { PresetSpec, BlockSpec, SnapshotSpec, HlxFile } from "./types";
-```
+- Named exports for individual functions: `export function validatePresetSpec(...)`
+- Default export for configs: `export default defineConfig(...)`
+- Re-export convenience: `export * from "./models"` not used; specific imports instead
 
 **Barrel Files:**
-- Used to group related functionality: `src/lib/helix/` exports all Helix utilities
-- Simplify imports: `import { buildHlxFile, validateAndFixPresetSpec } from "@/lib/helix"`
+- `src/lib/helix/index.ts` imports from other helix modules but not demonstrated in samples
+- Main library exports via specific imports
 
-## TypeScript Patterns
+**File Organization Pattern:**
+- Module header comments (purpose + public API)
+- Constants section with clear spacing
+- Helper functions/types section
+- Main export function(s)
+- Tests in parallel `.test.ts` files
 
-**Strict Mode:**
-- Strict mode enabled: all variables must be explicitly typed
-- No implicit any
-- Use `Record<string, T>` for dynamic object maps
-- Use discriminated unions for complex state (example: `ProviderResult` with optional fields)
+## Type Strictness
 
-**Type Safety:**
-- Interfaces for configuration and specification objects: `ProviderConfig`, `PresetSpec`
-- Use `readonly` for immutable constants
-- Use generic types sparingly; prefer concrete types for clarity
+**Pattern:**
+- No `any` types in samples
+- Explicit `type` imports: `import type { BlockSpec }`
+- Discriminated unions used: `type BlockType = "amp" | "cab" | "delay" | "reverb" | "modulation" | "dynamics" | "eq" | "distortion" | "wah" | "volume"`
+- `Partial<T>` for flexible builder helpers
+- `Record<K, V>` for lookup tables: `Record<AmpCategory, Record<string, number>>`
 
-## UI/Component Patterns
+## Array/Object Handling
 
-**React Hooks:**
-- Standard hooks: `useState`, `useRef`, `useEffect`, `useCallback`
-- Custom hooks: None detected; logic kept in page component
-- Effect cleanup: Not extensively used; focus on side effects only
-
-**State Management:**
-- React state for local UI state: messages, input, loading flags
-- No external state management library
-- Separate state for different concerns: `isStreaming`, `isGenerating`, `error`, `selectedProviders`
-
-**Event Handlers:**
-- Named functions for button handlers: `toggleProvider()`, `sendMessage()`, `generatePreset()`, `downloadPreset()`
-- Arrow functions for inline callbacks in event bindings
-- Keyboard handling for textarea: `handleKeyDown()` with shift+enter support
+**Patterns:**
+- Immutable operations preferred: `.filter()`, `.map()` rather than mutations
+- Spread operator for shallow copies: `{ ...block, parameters: {} }`
+- `Object.entries()` for iteration: `for (const [key, value] of Object.entries(block.parameters))`
+- `new Set<T>()` for uniqueness: `const ids = new Set<string>()`
 
 ---
 
-*Convention analysis: 2026-03-01*
+*Convention analysis: 2026-03-02*

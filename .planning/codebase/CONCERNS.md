@@ -1,236 +1,190 @@
 # Codebase Concerns
 
-**Analysis Date:** 2026-03-01
+**Analysis Date:** 2026-03-02
 
 ## Tech Debt
 
-**Missing Input Validation on API Routes:**
-- Issue: Request bodies are parsed with `await req.json()` without schema validation. No type checking on incoming messages or provider selections.
-- Files: `src/app/api/chat/route.ts`, `src/app/api/generate/route.ts`
-- Impact: Malformed requests could crash handlers or bypass intended logic. Provider selection could accept arbitrary strings not in PROVIDERS map.
-- Fix approach: Add Zod schemas (package is already a dependency) to validate request payloads before processing. Example: `z.object({ messages: z.array(...), providers: z.array(z.string()) })`
+**Large Monolithic Files:**
+- Issue: `src/lib/helix/models.ts` (1210 lines) and `src/app/page.tsx` (1131 lines) are significantly oversized. Models.ts contains 600+ model definitions in a single file with no modularization. Page.tsx combines UI logic, state management, API calls, and streaming handlers.
+- Files: `src/lib/helix/models.ts`, `src/app/page.tsx`
+- Impact: Difficult to navigate and maintain. Changes to one model affect the entire file. React component testing is complicated by entangled concerns.
+- Fix approach: Split models.ts by category (amps.ts, cabs.ts, effects.ts). Extract page.tsx features into smaller components (ChatInput, PresetDisplay, VizPanel).
 
-**Incomplete Streaming Error Handling in Chat Route:**
-- Issue: SSE stream errors are silently enqueued but stream is then closed. Client may not properly handle mid-stream error signals. No timeout or connection cleanup on hang.
-- Files: `src/app/api/chat/route.ts` lines 46-50
-- Impact: If Gemini API hangs, stream stays open indefinitely. Client sees no new data but connection never closes.
-- Fix approach: Add ReadableStream abort timeout (e.g., 90 second timeout). Controller.error() instead of enqueue for fatal errors. Proper SSE format for error frames that client can detect.
+**Magic Numeric Constants Scattered Throughout Code:**
+- Issue: Parameter defaults are hardcoded as numeric arrays in multiple files without sufficient context. Example: LowCut values (80.0 Hz) and HighCut values (7000.0 Hz) appear in `src/lib/helix/param-engine.ts` with brief comments referencing "TONE-02, TONE-04".
+- Files: `src/lib/helix/param-engine.ts`, `src/lib/helix/podgo-builder.ts`
+- Impact: Hard to trace where values come from or why they were chosen. Future maintainers cannot easily justify tweaks without archaeological effort.
+- Fix approach: Create a `src/lib/helix/constants.ts` file documenting all tuning values with sources (e.g., "Tonevault 250-preset analysis median"). Add JSDoc comments with reasoning.
 
-**JSON Parsing Fallback is Fragile:**
-- Issue: In `src/app/api/generate/route.ts` lines 70-75, markdown fence detection uses naive regex ````(?:json)?` and assumes clean fenced JSON. If AI wraps in other formatting, parsing fails silently until validation catches it.
-- Files: `src/app/api/generate/route.ts`
-- Impact: Some AI responses may be unparseable, requiring fallback rejection instead of graceful recovery.
-- Fix approach: Implement recursive JSON extraction (try unwrapping nested fences, try extracting from text before/after fences, attempt lenient parsing with json5 library as backup).
-
-**No Rate Limiting or Request Throttling:**
-- Issue: API endpoints `/chat` and `/generate` have no throttling. Authenticated by PREMIUM_SECRET only, no per-user limits.
-- Files: `src/app/api/chat/route.ts`, `src/app/api/generate/route.ts`
-- Impact: Single client can spam multiple AI provider calls simultaneously, consuming API quota rapidly. No DoS protection.
-- Fix approach: Implement rate limiting (e.g., Redis-backed sliding window or in-memory with LRU eviction). Limit concurrent generation requests per IP/session.
-
-**Hardcoded Block Type Mappings:**
-- Issue: `src/lib/helix/preset-builder.ts` function `getBlockType()` has hardcoded numeric type mappings that must match Helix LT firmware expectations. No validation or versioning.
-- Files: `src/lib/helix/preset-builder.ts` lines 406-422
-- Impact: If Helix firmware updates block type IDs, preset generation silently produces invalid files without error.
-- Fix approach: Move block types to models database with firmware version tracking. Validate against expected firmware version before export.
-
-**Large Models Database Not Optimized:**
-- Issue: `src/lib/helix/models.ts` is 842 lines defining every amp/cab/effect model. Entire file is imported and processed on every API request.
-- Files: `src/lib/helix/models.ts`
-- Impact: Large object iteration on every generation call. No caching or lazy loading. Models file will grow as more devices/variants added.
-- Fix approach: Create a dedicated models service that lazily loads/caches models database. Consider splitting into separate files per category.
+**Implicit Type Coercion in Validation:**
+- Issue: `src/lib/helix/validate.ts` conditionally fixes known parameter bugs (e.g., normalizing LowCut/HighCut floats). Uses `console.warn()` to signal corrections but does not propagate this information back to caller or create structured fix records.
+- Files: `src/lib/helix/validate.ts`
+- Impact: Silent corrections hide potential upstream bugs. If a corrected value reaches a user, there's no audit trail of what was wrong and why it was fixed.
+- Fix approach: Add an optional `fixes` array to the `ValidationResult` interface documenting each correction (parameter name, original value, corrected value, reason). Expose this to the caller.
 
 ## Known Bugs
 
-**Preset Name Truncation Doesn't Handle Multi-Byte Characters:**
-- Issue: `src/app/api/generate/route.ts` lines 88-90 use `.slice(0, 32)` to enforce 32-char limit, but JavaScript slice counts UTF-16 code units, not characters. Emoji or accented names are truncated mid-character.
-- Files: `src/app/api/generate/route.ts`
-- Trigger: Generate a preset for "Björk Vespertine ethereal clean" — name gets cut mid-character
-- Workaround: Use provider names without emoji/accents in generated preset names
+**Snapshot Name Truncation Without Feedback:**
+- Symptoms: In `src/lib/planner.ts`, snapshot names longer than 10 characters are silently truncated using `.slice(0, 10)`. Users receive no indication that their requested name "CLEAN CHIME" was shortened to "CLEAN CHI".
+- Files: `src/lib/planner.ts` (lines 141-144), `src/lib/helix/types.ts` (snapshot name schema)
+- Trigger: Call Claude Planner with a snapshot name > 10 characters; the response will be silently truncated before Zod validation.
+- Workaround: None. The truncation happens post-parse, so validation cannot catch oversized names.
 
-**Block Key Mapping Assumes Correct Per-DSP Indexing:**
-- Issue: `src/lib/helix/validate.ts` `resolveBlockKey()` assumes blocks are indexed sequentially within each DSP. If AI generates out-of-order blocks, mapping could fail.
-- Files: `src/lib/helix/validate.ts` lines 173-204
-- Trigger: AI generates `block0, block2, block1` for DSP0 — key resolution fails
-- Workaround: Auto-correction reorders blocks during validation, but if count mismatches, blocks can be silently dropped
+**Incomplete Error Context in Vision Route:**
+- Symptoms: If `src/app/api/vision/route.ts` fails to parse JSON body (line 44), the error message is suppressed and reported as "Vision extraction failed". Users cannot diagnose if the issue was invalid base64, corrupt image data, or API timeout.
+- Files: `src/app/api/vision/route.ts` (line 107)
+- Trigger: Send malformed JSON in the POST body; the error instanceof check swallows the real error message.
+- Workaround: Check browser console for detailed error, but this is not user-friendly.
 
-**Silent Snapshot Block Reference Loss:**
-- Issue: In `src/lib/helix/validate.ts` lines 71-96, snapshot blockStates that don't resolve to valid blocks are dropped without warning to user. If AI-generated blockStates don't match final signal chain, snapshot becomes incomplete.
-- Files: `src/lib/helix/validate.ts`
-- Trigger: AI generates snapshot with `block0, block1, block2` but validation removes `block2` — snapshot loses control over that block
-- Workaround: Validation errors are logged to console but not returned to user
+**Pod Go Model List Generation Not Tested:**
+- Symptoms: Pod Go models are filtered from the global model list using `getModelListForPrompt(device)` in `src/lib/planner.ts`, but there are NO tests confirming that Pod Go devices receive only compatible models.
+- Files: `src/lib/planner.ts` (lines 97), `src/lib/helix/types.ts` (model filtering logic)
+- Trigger: Create a Pod Go preset using a Helix-only amp (e.g., "Litigator"); the planner may suggest it if the model list filtering is broken.
+- Workaround: Manual testing of Pod Go model list output.
 
 ## Security Considerations
 
-**Premium Key Validation is String Equality:**
-- Risk: Premium feature access relies on exact string match of environment variable `PREMIUM_SECRET`. No cryptographic validation, no expiration, no per-session tokens.
-- Files: `src/lib/gemini.ts` lines 12-18
-- Current mitigation: Secret is environment-only, not hardcoded
-- Recommendations: (1) Use opaque token format (e.g., JWT with signature), (2) Add expiration dates, (3) Consider rate limiting premium requests, (4) Log premium feature usage for audit trail
+**Environment Variable Exposure Risk:**
+- Risk: `src/lib/planner.ts` reads `CLAUDE_API_KEY` from `process.env` at runtime (line 93). If an unhandled error occurs before the API call, the error stack trace sent to the client could inadvertently include the env var name or reference.
+- Files: `src/lib/planner.ts`
+- Current mitigation: Basic error handling in `src/app/api/generate/route.ts` catches and sanitizes errors before returning.
+- Recommendations: Add explicit env var validation at server startup (before routes are registered). Use a utility to sanitize error messages of env var references.
 
-**API Keys Exposed in Environment and System Prompts:**
-- Risk: Gemini/Claude/OpenAI API keys stored in `.env.local` without encryption. System prompts in `src/lib/gemini.ts` generate tokens on every chat message (date injection at line 98).
-- Files: `.env.local` (forbidden read), `src/lib/gemini.ts` lines 98
-- Current mitigation: `.env*` is in .gitignore
-- Recommendations: (1) Use encrypted secret management (AWS Secrets Manager, HashiCorp Vault), (2) Rotate API keys monthly, (3) Set up alerts for key usage anomalies, (4) Move date injection to client-side
+**Base64 Image Size Validation:**
+- Risk: `src/app/api/vision/route.ts` limits base64 images to 1,200,000 characters (≈900 KB). However, the client-side compression in `browser-image-compression` is NOT enforced; a user could bypass it by manually crafting a POST request with larger images.
+- Files: `src/app/api/vision/route.ts` (line 36), client-side compression not enforced
+- Current mitigation: Server-side size limit; Anthropic API also enforces 5 MB per-image limit.
+- Recommendations: Document the 900 KB guideline in client-side warnings. Consider adding rate limiting or user quotas.
 
-**No Input Sanitization on Message Content:**
-- Risk: Chat and generation routes accept arbitrary message content strings. No XSS protection if messages are echoed back or used in prompts without escaping.
-- Files: `src/app/api/chat/route.ts` line 30, `src/app/api/generate/route.ts` line 53
-- Current mitigation: Messages are passed to API providers as string content (not HTML), so API-side risk is low. Frontend uses ReactMarkdown which sanitizes.
-- Recommendations: (1) Validate message length (current unbounded), (2) Reject messages with suspicious patterns (null bytes, control chars), (3) Use react-markdown's allowedElements config to restrict HTML
-
-**Fallback to Any Cab in Preset Builder:**
-- Risk: `src/lib/helix/preset-builder.ts` line 155 has `|| blocks.find(b => b.type === "cab")` fallback that could pair wrong amp with wrong cab if signal chain is malformed.
-- Files: `src/lib/helix/preset-builder.ts` lines 154-155
-- Current mitigation: Validation ensures all amps have a paired cab
-- Recommendations: (1) Throw error instead of silent fallback if amp lacks cab, (2) Require explicit amp-cab pairing in BlockSpec
+**RigIntent Validation Missing Post-Vision:**
+- Risk: `src/app/api/vision/route.ts` returns a RigIntent from the vision planner but does NOT validate the returned object against RigIntent schema. The intent is assumed to be valid and stored in client state.
+- Files: `src/app/api/vision/route.ts` (line 102)
+- Current mitigation: The vision planner is called with structured output, but there's no runtime validation of the response.
+- Recommendations: Add Zod validation in the vision route before returning: `RigIntentSchema.parse(rigIntent)`.
 
 ## Performance Bottlenecks
 
-**String Similarity Search on Every Invalid Model ID:**
-- Problem: `src/lib/helix/validate.ts` `findClosestModelId()` iterates all valid IDs on every validation error. With 842+ models, this is O(n*m) character comparison.
-- Files: `src/lib/helix/validate.ts` lines 142-156
-- Cause: No index structure for fast lookup. Full table scan with similarity scoring.
-- Improvement path: (1) Pre-build trigram index on startup, (2) Implement levenshtein distance cache, (3) Use BK-tree or similar for fast approximate matching
+**Synchronous Model Lookup on Every Request:**
+- Problem: `src/lib/helix/validate.ts` calls `getValidModelIds()` at module load time, building a Set of 600+ model IDs (lines 6-24). This is done synchronously before the first request. For a Pod Go preset, a second lookup builds suffixes dynamically (lines 27-40).
+- Files: `src/lib/helix/validate.ts`, `src/lib/helix/models.ts`
+- Cause: Model ID validation must happen in the hot path (/api/generate), so lookups are cached at module load. The suffixed model ID set is rebuilt per-request for Pod Go.
+- Improvement path: Precompute the Pod Go suffixed ID set at module load (similar to VALID_IDS). Use a flag in the device target to pick the correct set.
 
-**JSON Stringify/Parse on Every Snapshot Validation:**
-- Problem: `src/lib/helix/validate.ts` line 35 does `JSON.parse(JSON.stringify(spec))` to deep clone. Unnecessary for validation-only operations.
-- Files: `src/lib/helix/validate.ts`
-- Cause: Defensive cloning to avoid mutations, but cloning is expensive for large signal chains
-- Improvement path: (1) Implement shallow copy with immutable updates, (2) Only clone if mutations detected, (3) Use structuredClone if available
+**models.ts Parsing Time:**
+- Problem: `src/lib/helix/models.ts` is a 1210-line file with 1000+ lines of hard-coded model definitions. On first module load, this entire file must be parsed and all 600+ HelixModel objects instantiated.
+- Files: `src/lib/helix/models.ts`
+- Cause: All models are exported as immutable objects, so TypeScript and Node.js must parse and instantiate them on import.
+- Improvement path: Consider lazy-loading models by category (dynamic import) or moving model definitions to a JSON file loaded at runtime. Profile startup time before optimizing.
 
-**Fetching Provider List on Every Page Load:**
-- Problem: `src/app/page.tsx` lines 46-62 fetch `/api/providers` on component mount with no caching.
-- Files: `src/app/page.tsx`
-- Cause: Providers are static (determined by env vars at startup), yet fetched every session
-- Improvement path: (1) Cache provider list in localStorage, (2) Add `/api/providers` response caching header (Cache-Control: public, max-age=3600), (3) Only refetch on explicit user action
+**Snapshot Engine Parameter Calculations:**
+- Problem: `src/lib/helix/snapshot-engine.ts` iterates over the entire signal chain and parameters for each of the 8 snapshots (for Helix) or 4 snapshots (for Pod Go). For a chain with 12 blocks × 8 snapshots × 10 parameters, this is ~960 parameter assignments.
+- Files: `src/lib/helix/snapshot-engine.ts`
+- Cause: Parameter resolution for each snapshot is currently not memoized or optimized.
+- Improvement path: Profile the actual impact; this is likely negligible for typical presets but could be optimized with caching of unchanged parameters across snapshots.
 
 ## Fragile Areas
 
-**Message History Conversion for Gemini:**
-- Files: `src/app/api/chat/route.ts` lines 12-15
-- Why fragile: Assumes message format with `role` and `content` fields. No TypeScript narrowing. If client sends different format, fails at runtime.
-- Safe modification: Add message validation schema before conversion. Type the conversion function with strict input types.
-- Test coverage: No tests for message format handling
+**Type-Unsafe Cast in Generate Route:**
+- Files: `src/app/api/generate/route.ts` (line 49)
+- Why fragile: The code casts `rigIntent` to `RigIntent` type without runtime validation: `const typedRigIntent = rigIntent as RigIntent`. The comment claims "the data was already Zod-validated at the vision route," but the vision route does NOT validate (see Security Considerations). If a malformed object reaches this point, the cast hides the error and can cause runtime crashes downstream.
+- Safe modification: Add Zod validation in the vision route (see Security Considerations). Alternatively, validate again here before the cast.
+- Test coverage: No tests confirm that invalid rigIntent objects are rejected.
 
-**Snapshot Parameter Override Resolution:**
-- Files: `src/lib/helix/preset-builder.ts` lines 219-231
-- Why fragile: Multiple overlapping block key mappings (per-DSP vs global). Easy to introduce off-by-one errors if adding new DSP paths or block types.
-- Safe modification: Add comprehensive unit tests for all block key mappings. Extract block key logic into standalone, tested utility function.
-- Test coverage: No tests for blockKeyMap resolution
+**Rig Mapping Fallback Behavior Not Tested:**
+- Files: `src/lib/rig-mapping.ts` (lines 340–449)
+- Why fragile: The three-tier substitution fallback logic ("direct" > "close" > "approximate") is complex and handles edge cases (unknown category, no fallback available). The `mapRigToSubstitutions()` function can return an empty array if all pedals fall through to `null` returns, but there are NO tests confirming this behavior.
+- Safe modification: Add tests for each fallback tier (e.g., missing category returns "close" with category fallback, not "approximate"). Document the expected behavior in comments.
+- Test coverage: 5 test files exist, but `rig-mapping.test.ts` does not cover the fallback cascade.
 
-**AI-Generated Preset Specification Compliance:**
-- Files: `src/lib/helix/preset-builder.ts`, `src/lib/helix/validate.ts`
-- Why fragile: Validation auto-corrects many AI errors (invalid model IDs, wrong block positions, missing block states). If AI consistently violates rules, fixes hide the root problem.
-- Safe modification: Log all auto-corrections with context. Alert if >3 corrections needed per preset. Fail fast on structural errors instead of auto-fix.
-- Test coverage: No regression tests for common AI mistakes
-
-**CAB Microphone Parameter Type Ambiguity:**
-- Files: `src/lib/helix/preset-builder.ts` lines 123-125, `src/lib/helix/validate.ts` lines 120-124
-- Why fragile: Mic parameter is an integer index (0-7), not normalized 0-1. Comment documents this at two places but AI might not follow. If treated as float, rounding errors occur.
-- Safe modification: Create typed Mic parameter enum. Add runtime assertion that Mic is integer. Reject float Mic values in validation.
-- Test coverage: No tests for integer vs float parameter handling
+**PresetSpec Validation Happens Too Late:**
+- Files: `src/app/api/generate/route.ts` (line 89)
+- Why fragile: Validation in `validatePresetSpec()` is called AFTER the Knowledge Layer pipeline completes but BEFORE file generation. If validation fails, the entire preset is discarded. However, there is no clear contract about what the Knowledge Layer should guarantee—are invalid specs possible?
+- Safe modification: Add a JSDoc comment to `validatePresetSpec()` explaining when failures occur and why (e.g., "Only fails if Knowledge Layer or device constraints are violated"). Consider adding earlier validation in `assembleSignalChain()`.
+- Test coverage: Integration tests should confirm that valid ToneIntents always produce valid PresetSpecs.
 
 ## Scaling Limits
 
-**Chat History Stored in React State:**
-- Current capacity: Browser memory (typically 50-500MB available)
-- Limit: Long conversations (>1000 messages) will cause memory bloat and UI lag
-- Scaling path: (1) Implement message pagination/windowing, (2) Move history to IndexedDB, (3) Server-side session storage with API pagination
+**Pod Go Effect Count Hard Limit:**
+- Current capacity: 4 user effects (POD_GO_MAX_USER_EFFECTS = 4)
+- Limit: Line 283 in `src/lib/helix/chain-rules.ts` truncates effects to 4 without warning. If a user's tone interview suggests 5 effects, the 5th is silently dropped.
+- Scaling path: If Pod Go firmware is updated to support more effects, update POD_GO_MAX_USER_EFFECTS and retest chain assembly.
 
-**Single-Threaded JSON Parsing on Large Specs:**
-- Current capacity: Full signal chain parsing blocks UI for <100ms on typical hardware
-- Limit: Very large presets (100+ blocks, 20+ snapshots) will freeze UI during generation
-- Scaling path: (1) Move validation to Web Worker, (2) Implement streaming JSON parser, (3) Split generation into stages with progress updates
+**Block Limit Per DSP:**
+- Current capacity: 8 non-cab blocks per DSP (Helix LT/Floor)
+- Limit: Validation in `src/lib/helix/validate.ts` (lines 132–140) rejects presets with >8 blocks per DSP. A user requesting 9 effects + amp + cab would exceed this limit.
+- Scaling path: Helix firmware updates could increase the slot count. Monitor Helix firmware release notes and update MAX_BLOCKS_PER_DSP if capacity increases.
 
-**Provider Parallel Execution No Concurrency Limit:**
-- Current capacity: Unrestricted - could spawn N parallel API calls
-- Limit: 10+ simultaneous generation requests will hit provider rate limits and timeout
-- Scaling path: (1) Implement queue with configurable concurrency, (2) Add exponential backoff retry, (3) Circuit breaker for provider failures
-
-**Models Database Linear Search:**
-- Current capacity: 842 models = ~50μs per lookup on typical CPU
-- Limit: At 10,000+ models, linear search becomes measurable overhead
-- Scaling path: (1) Implement B-tree index by category, (2) Use trie for name prefix matching, (3) Separate models into lazy-loaded chunks
+**Model Database Size:**
+- Current capacity: 600+ HelixModel definitions in `src/lib/helix/models.ts`
+- Limit: The file is now 1210 lines. Adding 100+ more models (e.g., new firmware updates) would make the file unwieldy.
+- Scaling path: Modularize models.ts by category before it exceeds 1500 lines. Consider automated model extraction from HX Edit data dumps.
 
 ## Dependencies at Risk
 
-**Zod v4.3.6 - Minor Version Specified:**
-- Risk: Zod is installed with `^4.3.6`. Patch versions could introduce breaking changes in edge cases (rare but documented in their changelog).
-- Impact: If zod@4.3.7+ changes validation behavior, validation logic could silently break
-- Migration plan: (1) Pin to exact version `4.3.6` in package.json, (2) Set up automated dependency audits, (3) Test against latest zod before minor upgrades
+**Old Anthropic SDK Version:**
+- Risk: `package.json` specifies `@anthropic-ai/sdk@^0.78.0`. The latest version (as of Feb 2025) is much newer. The 0.78.0 line may have missing features or unfixed bugs.
+- Impact: Prompt caching, structured output format (zodOutputFormat), and vision API stability depend on SDK version.
+- Migration plan: Test with the latest SDK version (e.g., ^1.x). Run full test suite to confirm no breaking changes in the planner and vision routes.
 
-**@google/genai v1.42.0 - Rapidly Evolving API:**
-- Risk: Google's SDK is young and API surface changes between versions. Multi-major version upgrades likely within 12 months.
-- Impact: Chat and generation endpoints may break on major version bump
-- Migration plan: (1) Create provider abstraction wrapper, (2) Implement version-specific SDK bridges, (3) Add integration tests for each provider SDK version
+**Zod Version Constraints:**
+- Risk: `package.json` specifies `zod@^4.3.6`. While ^4.x is fairly stable, Zod 5.x may introduce schema breaking changes.
+- Impact: ToneIntentSchema and RigIntentSchema could require updates if Zod API changes.
+- Migration plan: Monitor Zod release notes. When 5.x is stable, test with a minor version bump and review schema compatibility.
 
-**React v19.2.3 with Concurrent Features:**
-- Risk: React 19 is bleeding-edge. Concurrent rendering can expose subtle state management bugs.
-- Impact: Race conditions in message state updates if multiple effects fire simultaneously
-- Migration plan: (1) Verify concurrent rendering compatibility, (2) Use useTransition for async state updates, (3) Test with Strict Mode enabled
+**Unvended browser-image-compression:**
+- Risk: `package.json` includes `browser-image-compression@^2.0.2`. This is a third-party library with limited maintenance activity.
+- Impact: Image compression for vision input depends on this library. If it becomes unmaintained and a security issue is found, there's no upgrade path.
+- Migration plan: Review compression code in `src/app/page.tsx` and consider inlining the compression logic using Canvas or a more actively maintained library.
 
 ## Missing Critical Features
 
-**No Preset Export Versioning:**
-- Problem: `.hlx` files have hardcoded Helix FW version (3.70). No way to export for different FW versions or devices (Floor, Native, etc).
-- Blocks: Users on older FW or different devices cannot use exported presets
-- Impact: Feature request ticket from users on FW 3.50, Helix Floor users
+**No Preset Metadata Auditing:**
+- Problem: Presets are generated and served to the user, but there's no way to track which presets were generated from which RigIntents or user sessions.
+- Blocks: Users cannot retrieve or rebuild a previously generated preset without re-running the interview.
+- Recommended: Add preset versioning and metadata storage (even if just in IndexedDB on the client side).
 
-**No Undo/Redo in Chat UI:**
-- Problem: Once a message is sent, no way to edit or resend with different wording
-- Blocks: Users must start over if a single chat message doesn't guide AI correctly
-- Impact: Frustrating UX, especially with long setup conversations
+**No A/B Comparison of Models:**
+- Problem: The planner generates a single ToneIntent with fixed model choices. If the user wants to hear what the same preset would sound like with a different amp, they must restart the interview.
+- Blocks: Advanced users cannot quickly iterate on model choices.
+- Recommended: Allow the planner to generate multiple ToneIntent variants (e.g., "same tone, 3 different amps"). Return all variants and let the user pick.
 
-**No Preset Comparison Beyond Side-By-Side Display:**
-- Problem: Multiple provider presets shown as cards but no diff view, no parameter-by-parameter comparison
-- Blocks: Users can't understand why Claude's reverb mix differs from Gemini's
-- Impact: Users don't understand which provider fits their workflow
-
-**No Offline Mode:**
-- Problem: All AI providers require online connection. No fallback to cached presets or local baseline
-- Blocks: Users traveling or in poor connectivity cannot generate
-- Impact: Feature request from mobile/on-location users
+**No Rig Inventory Persistence:**
+- Problem: Vision analysis of a rig produces a RigIntent, but this is not saved. If the user uploads the same rig photo again, it must be re-analyzed.
+- Blocks: Users with large rigs must re-upload photos for multiple presets.
+- Recommended: Cache RigIntent in localStorage (or a backend service) keyed by image hash, with user controls to invalidate.
 
 ## Test Coverage Gaps
 
-**API Route Error Handling:**
-- What's not tested: Happy path and error paths for `/api/chat` and `/api/generate`
-- Files: `src/app/api/chat/route.ts`, `src/app/api/generate/route.ts`
-- Risk: Regression in error responses, streaming format breaks, unhandled exceptions
-- Priority: **High** - API errors directly impact user experience
+**Rig Mapping Fallback Tiers Not Covered:**
+- What's not tested: The "close" and "approximate" substitution tiers in `src/lib/rig-mapping.ts` have no dedicated tests. Only the happy path (direct matches) is verified.
+- Files: `src/lib/rig-mapping.test.ts`
+- Risk: If category fallback logic is accidentally broken, tests will not catch it. Users would receive "approximate" matches instead of "close" matches without knowing.
+- Priority: High
 
-**Preset Validation Edge Cases:**
-- What's not tested: Invalid model ID auto-correction, block key resolution with mismatched counts, parameter clamping
-- Files: `src/lib/helix/validate.ts`
-- Risk: Silent data loss (blocks dropped, snapshots incomplete), invalid presets exported
-- Priority: **High** - Invalid presets render unusable in Helix hardware
+**Pod Go Block Limit Enforcement Not Tested:**
+- What's not tested: `src/lib/helix/chain-rules.ts` enforces a 10-block limit for Pod Go, but there are no tests confirming that a chain with 11+ blocks is rejected.
+- Files: `src/lib/helix/chain-rules.test.ts`
+- Risk: A regression could allow invalid Pod Go presets to be generated, causing HX Edit import failures.
+- Priority: High
 
-**Message Stream Parsing:**
-- What's not tested: SSE frame parsing, partial frames, malformed JSON in stream
-- Files: `src/app/page.tsx` lines 140-169
-- Risk: Parser crashes on edge cases, incomplete messages displayed, error frames missed
-- Priority: **High** - Chat reliability critical to UX
+**Vision Route Validation Roundtrip:**
+- What's not tested: The vision route (`src/app/api/vision/route.ts`) accepts images and returns a RigIntent, but there are no end-to-end tests confirming that the returned RigIntent is valid and can be passed to `/api/generate` without errors.
+- Files: No E2E tests found
+- Risk: A bug in the vision planner could return invalid RigIntent, which would crash the generate route.
+- Priority: Medium
 
-**Provider Abstraction Consistency:**
-- What's not tested: Identical input produces compatible JSON across all three providers, response format normalization
-- Files: `src/lib/providers.ts`
-- Risk: Inconsistent preset output quality between providers, JSON parsing failures for one provider
-- Priority: **Medium** - Multi-provider feature correctness
+**Snapshot DSP Assignment Not Covered:**
+- What's not tested: `src/lib/helix/snapshot-engine.ts` assigns parameters to blocks across both DSPs, but there are no tests confirming that DSP0/DSP1 parameters are correctly partitioned.
+- Files: `src/lib/helix/snapshot-engine.test.ts`
+- Risk: A block could be assigned to the wrong DSP, causing audio routing issues in the final preset.
+- Priority: Medium
 
-**UI State Management:**
-- What's not tested: Concurrent state updates during generation, provider toggle logic, message deduplication
-- Files: `src/app/page.tsx`
-- Risk: Race conditions, stale provider selection, duplicate messages in chat
-- Priority: **Medium** - UI correctness and usability
-
-**File Download and Export:**
-- What's not tested: HLX file format validity, filename sanitization, large preset serialization
-- Files: `src/app/page.tsx` lines 241-253
-- Risk: Corrupt files exported, security issues with special characters in filenames
-- Priority: **Medium** - Export reliability
+**Empty Substitution Map Handling:**
+- What's not tested: In `src/app/api/generate/route.ts`, the code checks `if (substitutionMap && substitutionMap.length > 0)` before building toneContext. But there are no tests confirming that an empty substitution map (all pedals unmapped) is handled gracefully.
+- Files: `src/lib/rig-mapping.test.ts`
+- Risk: Silent failure or undefined behavior if all user pedals fall through to null.
+- Priority: Low
 
 ---
 
-*Concerns audit: 2026-03-01*
+*Concerns audit: 2026-03-02*

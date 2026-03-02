@@ -1,119 +1,91 @@
 # Technology Stack
 
-**Analysis Date:** 2026-03-01
+**Analysis Date:** 2026-03-02
 
 ## Languages
 
 **Primary:**
-- TypeScript 5.x - Application code, API routes, utilities
-- JSX/TSX - React components and Next.js page components
+- TypeScript 5.x - Full codebase (frontend and backend)
+- JavaScript - Configuration files (ESLint, PostCSS)
 
 **Secondary:**
-- CSS - Styling via Tailwind CSS
-- JavaScript - Configuration files (eslint, postcss, next config)
+- JSX/TSX - React components in `src/app/` and `src/lib/`
 
 ## Runtime
 
 **Environment:**
-- Node.js (version unspecified in lockfile, inferred from Next.js 16.x compatibility)
+- Node.js (inferred from Next.js 16.1.6 requirements - LTS 20.x or 22.x)
 
 **Package Manager:**
-- npm (Node Package Manager)
-- Lockfile: `package-lock.json` (present)
+- npm (inferred from `package.json` and `package-lock.json`)
+- Lockfile: Present (`package-lock.json`)
 
 ## Frameworks
 
 **Core:**
-- Next.js 16.1.6 - Full-stack React framework with App Router, API routes, streaming
-- React 19.2.3 - UI component framework
-- React DOM 19.2.3 - React rendering
+- Next.js 16.1.6 - Full-stack React framework with App Router
+- React 19.2.3 - UI component library
+- React DOM 19.2.3 - DOM rendering for React
 
 **Styling:**
 - Tailwind CSS 4.x - Utility-first CSS framework
-- @tailwindcss/postcss 4.x - PostCSS integration for Tailwind
+- @tailwindcss/postcss 4.x - PostCSS plugin for Tailwind
+- PostCSS 4.x - CSS processing (configured in `postcss.config.mjs`)
+
+**Testing:**
+- Vitest 4.0.18 - Unit test runner
+- Node test environment (configured in `vitest.config.ts`)
 
 **Build/Dev:**
-- TypeScript 5.x - Type checking and compilation
-- ESLint 9.x - Code linting with Next.js configuration
-- PostCSS - CSS transformation pipeline
+- TypeScript 5.x - Type checking and transpilation
+- ESLint 9.x - Code linting (configured in `eslint.config.mjs`)
+- eslint-config-next 16.1.6 - Next.js ESLint rules
+- Babel (transitive) - Code transformation (via @babel/* packages)
 
 ## Key Dependencies
 
 **Critical:**
-- `@anthropic-ai/sdk` 0.78.0 - Anthropic Claude API client for AI preset generation
-- `@google/genai` 1.42.0 - Google Gemini API client for AI preset generation
-- `openai` 6.25.0 - OpenAI GPT API client for AI preset generation
-- `react-markdown` 10.1.0 - Markdown rendering for chat responses and documentation
-- `zod` 4.3.6 - TypeScript-first schema validation for API request/response contracts
+- @anthropic-ai/sdk ^0.78.0 - Anthropic Claude API client (used for chat, planner, and vision routes)
+- @google/genai ^1.42.0 - Google Gemini API client (used for chat route)
 
-**Infrastructure:**
-- `@types/node` 20.x - Node.js type definitions
-- `@types/react` 19.x - React type definitions
-- `@types/react-dom` 19.x - React DOM type definitions
-- `eslint-config-next` 16.1.6 - Next.js ESLint configuration
-- `next-env.d.ts` - Next.js type definitions (generated)
+**UI/Rendering:**
+- react-markdown ^10.1.0 - Markdown rendering for chat responses
+
+**Data Validation:**
+- zod ^4.3.6 - TypeScript-first schema validation (used for structured output and type safety)
+
+**Image Processing:**
+- browser-image-compression ^2.0.2 - Client-side image compression (used before vision API calls)
+
+**Fonts:**
+- next/font - Next.js built-in Google Fonts optimization (Barlow Condensed, Barlow, JetBrains Mono imported in `src/app/layout.tsx`)
 
 ## Configuration
 
 **Environment:**
-- `.env.local` - Contains runtime API keys and secrets (file exists, not committed)
-- `.env.local.example` - Template showing required environment variables
-- Required env vars: `GEMINI_API_KEY`, `CLAUDE_API_KEY`, `OPENAI_API_KEY`, `PREMIUM_SECRET`
+- `.env.local` required (generated from `.env.local.example`)
+- Environment variables:
+  - `GEMINI_API_KEY` - Google Gemini API authentication
+  - `CLAUDE_API_KEY` - Anthropic Claude API authentication
+  - `PREMIUM_SECRET` - Server-side secret for premium tier verification
 
 **Build:**
-- `tsconfig.json` - TypeScript compiler configuration with strict mode enabled
-  - Target: ES2017
-  - Module resolution: bundler
-  - Path alias: `@/*` → `./src/*`
-  - JSX: react-jsx
-  - Strict mode: enabled
-- `next.config.ts` - Next.js configuration (minimal, uses defaults)
-- `postcss.config.mjs` - PostCSS configuration for Tailwind CSS
-- `eslint.config.mjs` - ESLint configuration using Next.js presets (core-web-vitals, typescript)
+- `tsconfig.json` - TypeScript compiler configuration (strict mode enabled, ES2017 target, path alias `@/*` → `./src/*`)
+- `next.config.ts` - Next.js configuration (minimal, allows for custom config)
+- `vitest.config.ts` - Test runner configuration with Node environment and `@/` path alias
 
 ## Platform Requirements
 
 **Development:**
-- Node.js 18+ (inferred from Next.js 16.x compatibility)
-- npm 8+ (or yarn/pnpm)
-- TypeScript 5.x
-- Modern browser with ES2017+ support
+- Node.js 20.x or 22.x (LTS) recommended
+- npm 10.x or later
+- TypeScript 5.x knowledge required
 
 **Production:**
-- Deployment target: Vercel (recommended for Next.js, see README)
-- Can run on any Node.js-compatible server
-- Requires environment variables for all three AI provider APIs (or subset if not using all providers)
-
-## APIs & Services Integration
-
-**AI Providers (Core to Application):**
-- Google Gemini API - via `@google/genai` SDK
-- OpenAI GPT API - via `openai` SDK
-- Anthropic Claude API - via `@anthropic-ai/sdk` SDK
-- All three providers are available simultaneously; UI shows which are configured
-
-**Google Fonts:**
-- Fraunces (serif font) - from `next/font/google`
-- DM Sans (sans-serif font) - from `next/font/google`
-- JetBrains Mono (monospace font) - from `next/font/google`
-
-## Notable Architectural Patterns
-
-**Multi-Provider Strategy:**
-- Abstraction layer in `src/lib/providers.ts` allows swapping AI providers
-- Configuration-driven: each provider has id, name, model, color, and API key env var
-- Supports parallel generation from multiple providers simultaneously
-
-**API Routes:**
-- `src/app/api/chat/route.ts` - Streaming chat endpoint (Gemini-based interview)
-- `src/app/api/generate/route.ts` - Preset JSON generation endpoint (supports all three providers)
-- `src/app/api/providers/route.ts` - Lists available providers based on configured API keys
-
-**Data Validation:**
-- Zod schemas used for preset specification validation
-- Located in `src/lib/helix/validate.ts`
-- Auto-correction of invalid presets with detailed error logging
+- Deployment target: Vercel (inferred from README and `.vercel` in `.gitignore`)
+- Next.js 16.1.6 compatible hosting (Node.js 20.x+)
+- Fluid Compute for Vercel required for long-running functions (configured in `src/app/api/vision/route.ts` with `maxDuration: 60`)
 
 ---
 
-*Stack analysis: 2026-03-01*
+*Stack analysis: 2026-03-02*
