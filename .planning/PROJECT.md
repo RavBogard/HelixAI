@@ -12,25 +12,33 @@ Generated presets must sound professional enough to compete with custom presets 
 
 ### Validated
 
-- ✓ Chat-based tone interview flow — existing
-- ✓ .hlx file generation that loads on Helix LT — existing (structure works, tone doesn't)
-- ✓ Warm Analog Studio frontend design — existing
+- ✓ Chat-based tone interview flow — v1.0
+- ✓ .hlx file generation that loads on Helix LT/Floor — v1.0
+- ✓ Warm Analog Studio frontend design — v1.0
 - ✓ Vercel deployment pipeline — existing
 - ✓ Google Search grounding for artist/rig research — existing
+- ✓ World-class preset tone quality (mix-ready, category-specific params) — v1.0
+- ✓ Dynamic responsiveness (volume knob cleanup, natural breakup via SAG/Bias) — v1.0
+- ✓ Professional signal chain engineering (deterministic chain rules) — v1.0
+- ✓ Correct cab filtering and EQ (LowCut 80-100Hz, HighCut 5-8kHz) — v1.0
+- ✓ Pro-grade amp parameter settings by category (clean/crunch/high-gain) — v1.0
+- ✓ Always-on utility blocks (Minotaur/Scream 808 boost, post-cab EQ, noise gate) — v1.0
+- ✓ Snapshot design with volume-balanced scenes (Clean/Rhythm/Lead/Ambient) — v1.0
+- ✓ Helix LT + Helix Floor support — v1.0
+- ✓ Claude Sonnet 4.6 as single AI provider with structured output — v1.0
+- ✓ Rebuilt preset engine (planner-executor architecture) — v1.0
+- ✓ Refined frontend (device selector, single-preset UX) — v1.0
 
 ### Active
 
-- [ ] World-class preset tone quality (mix-ready, not muddy/thin/lifeless)
-- [ ] Dynamic responsiveness (cleans up with volume knob, natural breakup)
-- [ ] Professional signal chain engineering (right blocks, right order, smart settings)
-- [ ] Correct cab filtering and EQ to eliminate muddiness and add sparkle
-- [ ] Pro-grade amp parameter settings by category (clean/crunch/high-gain)
-- [ ] Always-on utility blocks (Klon boost, post-cab EQ, noise gate)
-- [ ] Snapshot design with volume-balanced scenes (clean/crunch/lead/ambient)
-- [ ] Helix LT + Helix Floor support (same .hlx format)
-- [ ] Single best AI provider (research which produces best preset specs)
-- [ ] Rebuilt preset engine from scratch
-- [ ] Refined frontend (keep Warm Analog Studio aesthetic, polish further)
+- [ ] Fix stomp footswitch `@fs_enabled` — hardware responds on first press
+- [ ] Fix snapshot `@pedalstate` computation — pedal LEDs reflect active stomps per snapshot
+- [ ] Prompt caching for API cost reduction (~50% savings)
+- [ ] Genre-aware effect parameter defaults (delay times, reverb mixes, modulation rates)
+- [ ] Smarter snapshot effect toggling (ambient enables reverb+delay, clean disables drive)
+- [ ] Broader .hlx format audit against HX Edit expectations
+- [ ] Signal chain visualization in UI (show what's in the preset before download)
+- [ ] Tone description card (human-readable preset summary)
 
 ### Out of Scope
 
@@ -40,13 +48,24 @@ Generated presets must sound professional enough to compete with custom presets 
 - IR (impulse response) loading — stick with stock Helix cabs
 - Multi-provider comparison UI — going single provider for quality focus
 
+## Current Milestone: v1.1 Polish & Precision
+
+**Goal:** Fix hardware-facing bugs, deepen preset intelligence, and give users a window into what they're downloading.
+
+**Target features:**
+- Fix stomp `@fs_enabled` and snapshot `@pedalstate` hardware bugs
+- Prompt caching for 50% API cost reduction
+- Genre-aware effect parameters and smarter snapshot toggling
+- .hlx format audit for hardware correctness
+- Signal chain visualization and tone description card in UI
+
 ## Context
 
-The current app generates .hlx files that load correctly on the Helix LT but sound mediocre. The tones are muddy, lack sparkle, and the overall preset engineering (pedal choices, default settings, parameter values, signal chain design) is mid-tier at best. Two test presets confirmed the issue.
+v1.0 rebuilt the entire preset engine from scratch: type contracts, Knowledge Layer (chain rules, param engine, snapshot engine), AI integration with Claude Sonnet 4.6 structured output, end-to-end orchestration, frontend polish, and hardening. The system generates .hlx files that load on Helix LT/Floor with category-specific amp parameters, cab filtering, always-on utility blocks, and 4 volume-balanced snapshots.
 
-The previous approach relied heavily on AI prompt engineering to guide parameter values, but the fundamental problem is that the preset builder logic, model defaults database, and generation prompt all need to be rebuilt with deep knowledge of what makes Helix presets actually sound good.
+Hardware testing revealed two bugs: stomp footswitches are hardcoded `@fs_enabled: false` (requiring multiple presses), and `@pedalstate` is hardcoded to `2` in all snapshots (pedal LEDs don't reflect active stomps per snapshot). Both are preset-builder fixes.
 
-Key insight: professional Helix preset makers succeed because they understand cab filtering, EQ sculpting, gain staging, and snapshot design at a deep level — not just "pick an amp and set some knobs." The rebuild must encode this expertise into the system.
+Key architecture: Planner-Executor pattern where Claude selects creative model choices (~15 fields in ToneIntent) and the deterministic Knowledge Layer generates all parameter values. This separation ensures tone quality is encoded in code, not dependent on AI accuracy.
 
 Existing codebase map available at `.planning/codebase/` with architecture, stack, conventions, and concerns documentation.
 
@@ -63,11 +82,11 @@ Existing codebase map available at `.planning/codebase/` with architecture, stac
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Full rebuild over incremental fixes | Current preset engine is fundamentally mid — patching won't get to world-class | — Pending |
-| Single AI provider over multi-provider | Focus produces better results than spreading across 3 providers | — Pending |
-| Helix LT + Floor over LT-only | Same .hlx format, no extra work, bigger audience | — Pending |
-| Keep Warm Analog Studio frontend | Design is strong, just needs polish — no reason to throw it away | — Pending |
-| Template-hybrid approach for .hlx building | TBD during research — likely templates for structure, AI for creative choices | — Pending |
+| Full rebuild over incremental fixes | Current preset engine is fundamentally mid — patching won't get to world-class | ✓ Good |
+| Single AI provider (Claude Sonnet 4.6) | Focus produces better results than spreading across 3 providers | ✓ Good |
+| Helix LT + Floor over LT-only | Same .hlx format, no extra work, bigger audience | ✓ Good |
+| Keep Warm Analog Studio frontend | Design is strong, just needs polish — no reason to throw it away | ✓ Good |
+| Planner-Executor architecture | AI selects models (~15 fields), Knowledge Layer generates all params deterministically | ✓ Good |
 
 ---
-*Last updated: 2026-03-01 after initialization*
+*Last updated: 2026-03-02 after v1.1 milestone start*
