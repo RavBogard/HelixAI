@@ -57,9 +57,9 @@ Requirements for the rebuilt preset engine. Each maps to roadmap phases.
 
 ### .hlx File Quality
 
-- [ ] **HLX-01**: Generated .hlx files load without errors on Helix LT hardware
-- [ ] **HLX-02**: Generated .hlx files load without errors on Helix Floor hardware (same format, different device ID)
-- [ ] **HLX-03**: Fail-fast validation — structural errors cause generation failure, not silent auto-correction
+- [x] **HLX-01**: Generated .hlx files load without errors on Helix LT hardware
+- [x] **HLX-02**: Generated .hlx files load without errors on Helix Floor hardware (same format, different device ID)
+- [x] **HLX-03**: Fail-fast validation — structural errors cause generation failure, not silent auto-correction
 - [ ] **HLX-04**: Block state keys rebuilt programmatically after validation (prevents silent snapshot corruption)
 
 ### Frontend & UX
@@ -143,9 +143,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AI-03 | Phase 3 | Complete |
 | AI-04 | Phase 3 | Complete |
 | AI-05 | Phase 3 | Complete |
-| HLX-01 | Phase 4 | Pending |
-| HLX-02 | Phase 4 | Pending |
-| HLX-03 | Phase 4 | Pending |
+| HLX-01 | Phase 4 | Complete |
+| HLX-02 | Phase 4 | Complete |
+| HLX-03 | Phase 4 | Complete |
 | HLX-04 | Phase 4 | Pending |
 | UX-01 | Phase 5 | Pending |
 | UX-02 | Phase 5 | Pending |

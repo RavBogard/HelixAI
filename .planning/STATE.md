@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: unknown
-last_updated: "2026-03-02T01:39:47.191Z"
+status: in-progress
+last_updated: "2026-03-02T01:55:05Z"
 progress:
-  total_phases: 3
+  total_phases: 4
   completed_phases: 3
-  total_plans: 8
-  completed_plans: 8
+  total_plans: 10
+  completed_plans: 9
 ---
 
 # Project State
@@ -18,23 +18,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-01)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** Phase 3 complete — AI Integration (generate route wired to Planner -> Knowledge Layer pipeline)
+**Current focus:** Phase 4 in progress — Orchestration (device target + validation)
 
 ## Current Position
 
-Phase: 3 of 6 (AI Integration) — COMPLETE
-Plan: 2 of 2 in current phase (03-02 complete, phase done)
-Status: Phase 3 complete. Generate route refactored, generation dead code removed.
-Last activity: 2026-03-02 — Completed Plan 03-02 (generate route refactor + provider cleanup)
+Phase: 4 of 6 (Orchestration)
+Plan: 1 of 2 in current phase (04-01 complete)
+Status: Plan 04-01 complete. Device-aware buildHlxFile and strict validatePresetSpec added.
+Last activity: 2026-03-02 — Completed Plan 04-01 (device target + strict validation)
 
-Progress: [████████░░] 44%
+Progress: [█████████░] 50%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
+- Total plans completed: 9
 - Average duration: ~5 min
-- Total execution time: ~41 min
+- Total execution time: ~43 min
 
 **By Phase:**
 
@@ -43,9 +43,10 @@ Progress: [████████░░] 44%
 | 1. Foundation | 3 | ~19 min | ~6 min |
 | 2. Knowledge Layer | 3 | ~12 min | ~4 min |
 | 3. AI Integration | 2/2 | ~10 min | ~5 min |
+| 4. Orchestration | 1/2 | ~2 min | ~2 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-01 (4m), 02-02 (4m), 02-03 (4m), 03-01 (7m), 03-02 (3m)
+- Last 5 plans: 02-02 (4m), 02-03 (4m), 03-01 (7m), 03-02 (3m), 04-01 (2m)
 - Trend: stable (fast)
 
 *Updated after each plan completion*
@@ -77,6 +78,9 @@ Recent decisions affecting current work:
 - [Phase 3, Plan 02]: Flat { preset, summary, spec, toneIntent } response shape -- frontend update deferred to Phase 5
 - [Phase 3, Plan 02]: Keep PROVIDERS config for /api/providers route -- frontend still uses it for UI display
 - [Phase 3, Plan 02]: Remove validateAndFixPresetSpec -- Knowledge Layer produces valid specs deterministically
+- [Phase 4, Plan 01]: Strict validatePresetSpec throws instead of auto-correcting -- bugs surface immediately
+- [Phase 4, Plan 01]: DeviceTarget defaults to helix_lt for backward compatibility
+- [Phase 4, Plan 01]: Unknown device values in request body default to helix_lt (not rejected)
 
 ### Pending Todos
 
@@ -91,5 +95,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed 03-02-PLAN.md (generate route refactor + provider cleanup). Phase 3 complete.
+Stopped at: Completed 04-01-PLAN.md (device target + strict validation). Plan 04-02 next.
 Resume file: None
