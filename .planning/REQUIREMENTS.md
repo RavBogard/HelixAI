@@ -75,27 +75,27 @@ Requirements for Polish & Precision milestone. Bug fixes, preset intelligence, c
 
 ### Hardware Correctness
 
-- [ ] **HW-01**: Stomp footswitch `@fs_enabled` set to `true` for all stomp-assigned blocks so hardware responds on first press
-- [ ] **HW-02**: Snapshot `@pedalstate` bitmask computed from each snapshot's block enable/disable states so pedal LEDs reflect active stomps per snapshot
-- [ ] **HW-03**: Broader .hlx format audit — export real HX Edit presets, diff against generated output, fix any discovered field mismatches
+- [x] **HW-01**: Stomp footswitch `@fs_enabled` set to `true` for all stomp-assigned blocks so hardware responds on first press
+- [x] **HW-02**: Snapshot `@pedalstate` bitmask computed from each snapshot's block enable/disable states so pedal LEDs reflect active stomps per snapshot
+- [x] **HW-03**: Broader .hlx format audit — export real HX Edit presets, diff against generated output, fix any discovered field mismatches
 
 ### Preset Intelligence
 
-- [ ] **INTL-01**: Genre-aware effect parameter defaults — delay time, reverb mix, and modulation rate tuned to `genreHint` (e.g., slapback for blues, long+wet for ambient, dry for metal)
-- [ ] **INTL-02**: Smarter snapshot effect toggling — ambient snapshot enables reverb+delay with elevated Mix, clean snapshot disables drive-type effects, based on block `intentRole`
+- [x] **INTL-01**: Genre-aware effect parameter defaults — delay time, reverb mix, and modulation rate tuned to `genreHint` (e.g., slapback for blues, long+wet for ambient, dry for metal)
+- [x] **INTL-02**: Smarter snapshot effect toggling — ambient snapshot enables reverb+delay with elevated Mix, clean snapshot disables drive-type effects, based on block `intentRole`
 
 ### Cost & Performance
 
-- [ ] **PERF-01**: Prompt caching via `cache_control: { type: "ephemeral" }` on system prompt for ~50% API input cost reduction
+- [x] **PERF-01**: Prompt caching via `cache_control: { type: "ephemeral" }` on system prompt for ~50% API input cost reduction
 
 ### Frontend Transparency
 
-- [ ] **FXUI-01**: Signal chain visualization — show the amp, effects, and signal flow of the generated preset before download
-- [ ] **FXUI-02**: Tone description card — human-readable summary showing amp/cab pair, effect list, snapshot names, and guitar notes
+- [x] **FXUI-01**: Signal chain visualization — show the amp, effects, and signal flow of the generated preset before download
+- [x] **FXUI-02**: Tone description card — human-readable summary showing amp/cab pair, effect list, snapshot names, and guitar notes
 
 ### Branding
 
-- [ ] **BRAND-01**: "Project of Daniel Bogard" footer with link to danielbogard.com on all pages
+- [x] **BRAND-01**: "Project of Daniel Bogard" footer with link to danielbogard.com on all pages
 
 ## v2 Requirements
 
@@ -177,22 +177,22 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UX-02 | Phase 5 | Complete |
 | UX-03 | Phase 5 | Complete |
 | UX-04 | Phase 5 | Complete |
-| HW-01 | Phase 7 | Pending |
-| HW-02 | Phase 7 | Pending |
-| HW-03 | Phase 7 | Pending |
-| PERF-01 | Phase 8 | Pending |
-| INTL-01 | Phase 9 | Pending |
-| INTL-02 | Phase 10 | Pending |
-| FXUI-01 | Phase 11 | Pending |
-| FXUI-02 | Phase 11 | Pending |
-| BRAND-01 | Phase 11 | Pending |
+| HW-01 | Phase 7 | Complete |
+| HW-02 | Phase 7 | Complete |
+| HW-03 | Phase 7 | Complete |
+| PERF-01 | Phase 8 | Complete |
+| INTL-01 | Phase 9 | Complete |
+| INTL-02 | Phase 10 | Complete |
+| FXUI-01 | Phase 11 | Complete |
+| FXUI-02 | Phase 11 | Complete |
+| BRAND-01 | Phase 11 | Complete |
 
 **Coverage:**
 - v1 requirements: 36 total (all complete)
-- v1.1 requirements: 9 total
+- v1.1 requirements: 9 total (all complete)
 - Mapped to phases: 36 (v1 Phases 1-6) + 9 (v1.1 Phases 7-11)
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-01*
-*Last updated: 2026-03-02 — v1.1 traceability complete (all 9 requirements mapped to Phases 7-11)*
+*Last updated: 2026-03-02 — v1.1 complete (all 9 requirements shipped)*

@@ -3,7 +3,7 @@
 ## Milestones
 
 - [x] **v1.0 Full Rebuild** - Phases 1-6 (shipped 2026-03-02)
-- [ ] **v1.1 Polish & Precision** - Phases 7-11 (in progress)
+- [x] **v1.1 Polish & Precision** - Phases 7-11 (shipped 2026-03-02)
 
 ## Phases
 
@@ -196,12 +196,12 @@ Phases execute in numeric order: 1 > 2 > 3 > 4 > 5 > 6 > 7 > 8 > 9 > 10 > 11
 | 4. Orchestration | v1.0 | 2/2 | Complete | 2026-03-02 |
 | 5. Frontend Polish | v1.0 | 2/2 | Complete | 2026-03-02 |
 | 6. Hardening | v1.0 | 2/2 | Complete | 2026-03-02 |
-| 7. Hardware Bug Fixes and .hlx Audit | v1.1 | 0/2 | Not started | - |
-| 8. Prompt Caching | v1.1 | 0/1 | Not started | - |
-| 9. Genre-Aware Effect Defaults | v1.1 | 0/1 | Not started | - |
-| 10. Smarter Snapshot Effect Toggling | v1.1 | 0/1 | Not started | - |
-| 11. Frontend Transparency | v1.1 | 0/2 | Not started | - |
+| 7. Hardware Bug Fixes and .hlx Audit | v1.1 | 2/2 | Complete | 2026-03-02 |
+| 8. Prompt Caching | v1.1 | 1/1 | Complete | 2026-03-02 |
+| 9. Genre-Aware Effect Defaults | v1.1 | 1/1 | Complete | 2026-03-02 |
+| 10. Smarter Snapshot Effect Toggling | v1.1 | 1/1 | Complete | 2026-03-02 |
+| 11. Frontend Transparency | v1.1 | 2/2 | Complete | 2026-03-02 |
 
 ---
 *Roadmap created: 2026-03-01*
-*Last updated: 2026-03-02 — v1.1 phases 7-11 added (9 requirements, 5 phases)*
+*Last updated: 2026-03-02 — v1.1 milestone complete (all 5 phases shipped)*
