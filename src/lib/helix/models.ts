@@ -1023,6 +1023,19 @@ export const VOLUME_MODELS: Record<string, HelixModel> = {
   "Gain Block": { id: "HD2_VolPanGain", name: "Gain Block", basedOn: "Line 6 Original Gain", category: "gain", blockType: BLOCK_TYPES.VOLUME, defaultParams: { Gain: 0.0 } },
 };
 
+// Model name tuples for z.enum() constraints in ToneIntentSchema
+// z.enum() requires a non-empty tuple: [string, ...string[]]
+export const AMP_NAMES = Object.keys(AMP_MODELS) as [string, ...string[]];
+export const CAB_NAMES = Object.keys(CAB_MODELS) as [string, ...string[]];
+// Combine user-selectable effect categories (exclude EQ, WAH, VOLUME -- Knowledge Layer handles those)
+export const EFFECT_NAMES = [
+  ...Object.keys(DISTORTION_MODELS),
+  ...Object.keys(DELAY_MODELS),
+  ...Object.keys(REVERB_MODELS),
+  ...Object.keys(MODULATION_MODELS),
+  ...Object.keys(DYNAMICS_MODELS),
+] as [string, ...string[]];
+
 // Convenience lookup: all models by ID
 export function getAllModels(): Record<string, HelixModel> {
   return {
