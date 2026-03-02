@@ -557,8 +557,14 @@ export default function Home() {
     const a = document.createElement("a");
     const baseName = generatedPreset.spec?.name || "HelixAI_Preset";
     const ext = generatedPreset.fileExtension || ".hlx";
+    // Include device in filename so users can spot a mismatch before importing
+    const deviceSuffix =
+      generatedPreset.device === "helix_lt" ? "_LT"
+      : generatedPreset.device === "helix_floor" ? "_Floor"
+      : generatedPreset.device === "pod_go" ? "_PodGo"
+      : "";
     a.href = url;
-    a.download = `${baseName.replace(/[^a-zA-Z0-9_()-]/g, "_")}${ext}`;
+    a.download = `${baseName.replace(/[^a-zA-Z0-9_()-]/g, "_")}${deviceSuffix}${ext}`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -1026,6 +1032,15 @@ export default function Home() {
                       <h3 className="hlx-font-display text-base font-semibold text-[var(--hlx-text)]">
                         {generatedPreset.spec?.name || "HelixAI Preset"}
                       </h3>
+                      {/* Device badge — tells user which device this preset targets */}
+                      <span
+                        className="px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider border border-[var(--hlx-border)] text-[var(--hlx-text-muted)] bg-[var(--hlx-elevated)]"
+                        style={{ fontFamily: "var(--font-mono)" }}
+                      >
+                        {generatedPreset.device === "helix_lt" ? "LT"
+                          : generatedPreset.device === "helix_floor" ? "FLOOR"
+                          : "POD GO"}
+                      </span>
                     </div>
                     <button onClick={downloadPreset} className="hlx-download text-xs px-3 py-1.5">
                       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
