@@ -43,12 +43,17 @@ Plans:
 **Depends on**: Phase 1
 **Requirements**: CHAIN-01, CHAIN-02, CHAIN-03, CHAIN-04, CHAIN-05, CHAIN-06, TONE-01, TONE-02, TONE-03, TONE-04, TONE-05, TONE-06, SNAP-01, SNAP-02, SNAP-03, SNAP-04, SNAP-05, DYN-01, DYN-02, DYN-03
 **Success Criteria** (what must be TRUE):
-  1. A generated PresetSpec always contains blocks in the correct order (Gate → Boost → Amp → Cab → EQ → Mod → Delay → Reverb) regardless of what the AI requested
+  1. A generated PresetSpec always contains blocks in the correct order (Gate > Boost > Amp > Cab > EQ > Mod > Delay > Reverb) regardless of what the AI requested
   2. Every generated cab block has LowCut between 80-100 Hz and HighCut between 5-8 kHz — no cab block passes validation without these
   3. Every preset includes an always-on boost block (Minotaur for clean/crunch, Scream 808 for high-gain) that the engine inserts without AI involvement
   4. A preset loaded in the validator shows 4 snapshots (Clean, Rhythm, Lead, Ambient) with volume-balanced ChVol overrides — the lead snapshot is audibly +2-3 dB louder than clean
   5. Amp parameter defaults by category are deterministic: clean amps receive Master 9-10/Drive 2-3/SAG 5-7, high-gain amps receive Drive 3-5/Master 3-6/SAG 2-3
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — chain-rules.ts: signal chain assembly, mandatory block insertion, DSP assignment (CHAIN-01, CHAIN-02, CHAIN-03, CHAIN-04, CHAIN-05, CHAIN-06)
+- [ ] 02-02-PLAN.md — param-engine.ts: category-specific amp/cab/effect parameter resolution, topology-aware mid EQ (TONE-01, TONE-02, TONE-03, TONE-04, TONE-05, TONE-06, DYN-01, DYN-02, DYN-03)
+- [ ] 02-03-PLAN.md — snapshot-engine.ts: 4-snapshot generation, volume balancing, block state tables, barrel exports (SNAP-01, SNAP-02, SNAP-03, SNAP-04, SNAP-05)
 
 ### Phase 3: AI Integration
 **Goal**: Claude Sonnet 4.6 generates creative model choices constrained to valid IDs — never numeric parameter values
@@ -99,12 +104,12 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
+Phases execute in numeric order: 1 > 2 > 3 > 4 > 5 > 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 3/3 | Complete | 2026-03-01 |
-| 2. Knowledge Layer | 0/TBD | Not started | - |
+| 2. Knowledge Layer | 0/3 | Planned | - |
 | 3. AI Integration | 0/TBD | Not started | - |
 | 4. Orchestration | 0/TBD | Not started | - |
 | 5. Frontend Polish | 0/TBD | Not started | - |
@@ -112,4 +117,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 ---
 *Roadmap created: 2026-03-01*
-*Last updated: 2026-03-01 — Phase 1 COMPLETE (3/3 plans, all 5 FNDN requirements verified)*
+*Last updated: 2026-03-01 — Phase 2 Knowledge Layer planned (3 plans, 20 requirements)*
