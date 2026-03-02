@@ -2,7 +2,7 @@
 
 ## What This Is
 
-An AI-powered tone consultant that interviews guitarists about the sound they're after — an artist, a song, a genre, or a vibe — then generates a downloadable .hlx preset file for Line 6 Helix LT and Helix Floor. The presets must be world-class: mix-ready out of the box, dynamically responsive to playing, and built with the same signal chain intelligence as paid professional presets.
+An AI-powered tone consultant that interviews guitarists about the sound they're after — an artist, a song, a genre, a vibe, or their existing physical rig — then generates a downloadable preset file for Line 6 Helix LT, Helix Floor, and Pod Go. Presets must be world-class: mix-ready out of the box, dynamically responsive to playing, and built with the same signal chain intelligence as paid professional presets.
 
 ## Core Value
 
@@ -34,12 +34,20 @@ Generated presets must sound professional enough to compete with custom presets 
 - ✓ Smarter snapshot effect toggling via intentRole — v1.1
 - ✓ Signal chain visualization + tone description card — v1.1
 - ✓ Daniel Bogard branding footer — v1.1
+- ✓ Pod Go preset generation (.pgp format, device 2162695) — v1.2
+- ✓ Pod Go device selector in UI + .pgp download — v1.2
+- ✓ Pod Go-specific signal chain rules (single DSP, 4-effect limit) — v1.2
+- ✓ Pod Go model catalog with Mono/Stereo suffix convention — v1.2
+- ✓ Device-filtered planner prompt (Pod Go only sees Pod Go models) — v1.2
 
 ### Active
 
-- [ ] Pod Go preset generation — different DSP architecture, file format, and block constraints
-- [ ] Pod Go device selector in UI
-- [ ] Pod Go-specific signal chain rules and parameter engine
+- [ ] Flexible rig input: text description, image upload, or both — in the existing tone interview chat
+- [ ] Claude Vision analysis of pedal photos: extract model name and knob positions
+- [ ] Rig-to-Helix/Pod Go model mapping with closest-match substitution logic
+- [ ] Substitution summary card: each physical pedal → Helix block with reasoning
+- [ ] Physical knob position → Helix parameter value translation
+- [ ] Rig emulation mode works for Helix LT, Helix Floor, and Pod Go
 
 ### Out of Scope
 
@@ -48,36 +56,41 @@ Generated presets must sound professional enough to compete with custom presets 
 - MIDI configuration — focus on tone, not hardware routing
 - IR (impulse response) loading — stick with stock cabs
 - Multi-provider comparison UI — going single provider for quality focus
+- Full pedalboard OCR (auto-detect all pedals from a single board photo) — too unreliable at launch, per-pedal photos are the baseline
 
-## Current Milestone: v1.2 Pod Go Support
+## Current Milestone: v1.3 Rig Emulation
 
-**Goal:** Extend HelixAI to generate presets for Line 6 Pod Go — a single-DSP device with different block limits, file format, and routing constraints.
+**Goal:** Extend the tone interview to accept physical rig descriptions — text, pedal photos, or both — and generate a Helix/Pod Go preset that emulates the user's actual gear, with transparent substitution mapping.
 
 **Target features:**
-- Pod Go preset file generation (different format from Helix .hlx)
-- Pod Go-specific signal chain rules (single DSP, limited blocks)
-- Pod Go-specific parameter engine (different amp/effect models and constraints)
-- Pod Go device selector in the frontend
-- Shared AI planner (ToneIntent works for both devices)
+- Image upload in the chat UI (one or more pedal photos with visible knob positions)
+- Claude Vision extracts pedal model name + knob positions from each photo
+- Rig description parser handles text input (e.g., "TS9 → Blues Breaker → Fender Twin Reverb")
+- Rig-to-Helix mapping layer: physical pedal names → closest Helix/Pod Go models
+- Knob position translator: physical knob percentages → Helix parameter values
+- Substitution card in the results UI: "TS9 Tube Screamer → Teemah! — closest gain structure and mid-hump EQ"
+- Works for Helix LT, Helix Floor, and Pod Go (same device selector)
 
 ## Context
 
 v1.0 rebuilt the entire preset engine from scratch: type contracts, Knowledge Layer (chain rules, param engine, snapshot engine), AI integration with Claude Sonnet 4.6 structured output, end-to-end orchestration, frontend polish, and hardening. The system generates .hlx files that load on Helix LT/Floor with category-specific amp parameters, cab filtering, always-on utility blocks, and 4 volume-balanced snapshots.
 
-Hardware testing revealed two bugs: stomp footswitches are hardcoded `@fs_enabled: false` (requiring multiple presses), and `@pedalstate` is hardcoded to `2` in all snapshots (pedal LEDs don't reflect active stomps per snapshot). Both are preset-builder fixes.
+v1.1 fixed hardware-facing bugs (stomp footswitches, pedalstate bitmask), added prompt caching, genre-aware effect defaults, smarter snapshot toggling via intentRole, and signal chain visualization.
+
+v1.2 added full Pod Go support: new device type, Mono/Stereo suffixed model catalog, device-aware chain rules and validator, podgo-builder.ts for .pgp generation, and Pod Go in the device selector.
 
 Key architecture: Planner-Executor pattern where Claude selects creative model choices (~15 fields in ToneIntent) and the deterministic Knowledge Layer generates all parameter values. This separation ensures tone quality is encoded in code, not dependent on AI accuracy.
 
-Existing codebase map available at `.planning/codebase/` with architecture, stack, conventions, and concerns documentation.
+For rig emulation, the Planner layer will be extended to accept vision input (base64 encoded images) alongside the conversation, and a new RigIntent schema will carry the extracted/mapped rig data into ToneIntent.
 
 ## Constraints
 
-- **Hardware**: Line 6 Helix LT and Helix Floor — dual DSP, 8 snapshots, specific .hlx JSON format
-- **Deployment**: Vercel (free tier), serverless functions for AI calls
+- **Hardware**: Line 6 Helix LT, Helix Floor, Pod Go — specific file formats (.hlx, .pgp)
+- **Deployment**: Vercel (free tier), serverless functions for AI calls — image payload size matters
 - **Frontend**: Next.js + TypeScript + Tailwind CSS, keep Warm Analog Studio design
-- **AI Provider**: Single provider — research and pick the best one for structured .hlx spec generation
-- **File Format**: .hlx JSON must match HX Edit export format exactly (block types, parameter names, routing)
-- **No Reference Preset**: No gold standard .hlx file available — quality judged by ear on real hardware
+- **AI Provider**: Claude Sonnet 4.6 — supports vision input natively (base64 images in messages API)
+- **Image limits**: Vercel serverless body limit ~4.5MB — must validate/compress uploads client-side
+- **Mapping quality**: Physical pedal → Helix model mapping must be curated, not guessed — encyclopedic knowledge of guitar gear required
 
 ## Key Decisions
 
@@ -88,8 +101,9 @@ Existing codebase map available at `.planning/codebase/` with architecture, stac
 | Helix LT + Floor over LT-only | Same .hlx format, no extra work, bigger audience | ✓ Good |
 | Keep Warm Analog Studio frontend | Design is strong, just needs polish — no reason to throw it away | ✓ Good |
 | Planner-Executor architecture | AI selects models (~15 fields), Knowledge Layer generates all params deterministically | ✓ Good |
-
-| Pod Go as v1.2 (not v2.0) | Building on existing architecture, not replacing — new device is additive | — Pending |
+| Pod Go as v1.2 (not v2.0) | Building on existing architecture, not replacing — new device is additive | ✓ Good |
+| Rig emulation as part of the tone interview | No new mode — the chat detects rig descriptions and switches into emulation mode naturally | — Pending |
+| Per-pedal photos over full pedalboard OCR | Per-pedal is reliable; whole-board OCR too error-prone for v1.3 | — Pending |
 
 ---
-*Last updated: 2026-03-02 after v1.2 milestone start*
+*Last updated: 2026-03-02 after v1.3 milestone start*

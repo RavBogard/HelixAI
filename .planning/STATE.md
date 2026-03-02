@@ -1,14 +1,14 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.2
-milestone_name: Pod Go Support
-status: complete
+milestone: v1.3
+milestone_name: Rig Emulation
+status: planning
 last_updated: "2026-03-02T00:00:00Z"
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 5
-  completed_plans: 5
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** v1.2 complete — Pod Go Support fully implemented
+**Current focus:** v1.3 — Rig Emulation (defining requirements)
 
 ## Current Position
 
-Phase: 16 of 16 (Integration, UI, Testing) — COMPLETE
-Plan: All complete
-Status: Milestone complete
-Last activity: 2026-03-02 — All 5 phases (12-16) implemented and verified
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-02 — Milestone v1.3 started
 
-Progress: [██████████] 100% (v1.2)
+Progress: [░░░░░░░░░░] 0% (v1.3)
 
 ## Performance Metrics
 
@@ -62,6 +62,12 @@ Progress: [██████████] 100% (v1.2)
 | 15. Pod Go Preset Builder | 1 | Complete |
 | 16. Integration, UI, Testing | 1 | Complete |
 
+**By Phase (v1.3):**
+
+| Phase | Plans | Status |
+|-------|-------|--------|
+| (phases TBD — roadmap not yet created) | — | — |
+
 ## Accumulated Context
 
 ### Decisions
@@ -76,6 +82,8 @@ Progress: [██████████] 100% (v1.2)
 - [v1.2]: chain-rules.ts accepts deviceTarget parameter; builder and validator are separate functions per device
 - [v1.2]: Pod Go effect model IDs use Mono/Stereo suffix convention derived from 18 real .pgp files
 - [v1.2]: Planner prompt filtered by device — Pod Go only sees Pod Go-available models
+- [v1.3]: Rig emulation lives in the tone interview — chat detects rig descriptions, no separate mode
+- [v1.3]: Per-pedal photos over full pedalboard OCR — more reliable for v1.3
 
 ### Pending Todos
 
@@ -83,10 +91,10 @@ None.
 
 ### Blockers/Concerns
 
-None — all phases complete, TypeScript compilation clean, all 62 existing tests pass, Next.js build succeeds.
+None — v1.2 complete, defining v1.3 requirements.
 
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: v1.2 milestone complete — all 5 phases implemented
+Stopped at: v1.3 milestone start — defining requirements
 Resume file: None
