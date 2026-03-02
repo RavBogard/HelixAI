@@ -22,12 +22,12 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 
 ## Current Position
 
-Phase: 19 — Vision Extraction API
+Phase: 20 — Planner Integration & Orchestration
 Plan: 01 (complete)
-Status: Phase 19 complete — ready for Phase 20
-Last activity: 2026-03-02 — Phase 19 Plan 01 complete (rig-vision.ts, /api/vision route, upload panel UI, browser-image-compression)
+Status: Phase 20 complete — ready for Phase 21
+Last activity: 2026-03-02 — Phase 20 Plan 01 complete (toneContext injection, parseRigText, generate route orchestration, page.tsx substitutionMap state)
 
-Progress: [██████░░░░] 60% (v1.3)
+Progress: [████████░░] 80% (v1.3)
 
 ## Performance Metrics
 
@@ -69,7 +69,7 @@ Progress: [██████░░░░] 60% (v1.3)
 | 17. Schemas & Types Foundation | 1 | Complete |
 | 18. Pedal Mapping Engine | 1 | Complete |
 | 19. Vision Extraction API | 1 | Complete |
-| 20. Planner Integration & Orchestration | — | Not Started |
+| 20. Planner Integration & Orchestration | 1 | Complete |
 | 21. Substitution Card & End-to-End Polish | — | Not Started |
 
 ## Accumulated Context
@@ -92,6 +92,9 @@ Progress: [██████░░░░] 60% (v1.3)
 - [v1.3]: detectCategory() uses word-boundary regex, not includes() — prevents "od" matching "module"
 - [v1.3]: Vision route uses manual JSON extraction (extractJson) not output_config — incompatible with image content block arrays in Anthropic SDK
 - [v1.3]: browser-image-compression dynamically imported inside callVision() — prevents SSR failure on Next.js build
+- [v1.3]: toneContext appended to user message only (not system prompt) — preserves prompt caching hash on callClaudePlanner
+- [v1.3]: parseRigText not exported from @/lib/helix barrel — server-only utility, accessed via @/lib/rig-mapping
+- [v1.3]: buildToneContext is private (not exported) in generate/route.ts — formats SubstitutionMap as planner-readable bullet list
 
 ### Pending Todos
 
@@ -104,5 +107,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed Phase 19-01-PLAN.md (Vision Extraction API)
+Stopped at: Phase 20 Plan 01 complete — moving to Phase 21
 Resume file: None
