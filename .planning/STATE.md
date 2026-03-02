@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Rig Emulation
-status: planning
-last_updated: "2026-03-02T00:00:00Z"
+status: in_progress
+last_updated: "2026-03-02T12:43:00Z"
 progress:
   total_phases: 5
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  completed_phases: 1
+  total_plans: 2
+  completed_plans: 2
 ---
 
 # Project State
@@ -22,12 +22,12 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 
 ## Current Position
 
-Phase: Not started (roadmap complete — ready to plan Phase 17)
-Plan: —
-Status: Ready for execution — run /gsd:plan-phase 17
-Last activity: 2026-03-02 — Roadmap and requirements defined (5 phases, 26 requirements)
+Phase: 18 — Pedal Mapping Engine
+Plan: 01 (complete)
+Status: Phase 18 complete — ready for Phase 19
+Last activity: 2026-03-02 — Phase 18 Plan 01 complete (rig-mapping.ts, 53-entry PEDAL_HELIX_MAP, 46 tests, 108 total passing)
 
-Progress: [░░░░░░░░░░] 0% (v1.3)
+Progress: [████░░░░░░] 40% (v1.3)
 
 ## Performance Metrics
 
@@ -66,7 +66,11 @@ Progress: [░░░░░░░░░░] 0% (v1.3)
 
 | Phase | Plans | Status |
 |-------|-------|--------|
-| (phases TBD — roadmap not yet created) | — | — |
+| 17. Schemas & Types Foundation | 1 | Complete |
+| 18. Pedal Mapping Engine | 1 | Complete |
+| 19. Vision Extraction API | — | Not Started |
+| 20. Planner Integration & Orchestration | — | Not Started |
+| 21. Substitution Card & End-to-End Polish | — | Not Started |
 
 ## Accumulated Context
 
@@ -84,6 +88,8 @@ Progress: [░░░░░░░░░░] 0% (v1.3)
 - [v1.2]: Planner prompt filtered by device — Pod Go only sees Pod Go-available models
 - [v1.3]: Rig emulation lives in the tone interview — chat detects rig descriptions, no separate mode
 - [v1.3]: Per-pedal photos over full pedalboard OCR — more reliable for v1.3
+- [v1.3]: blockType in PedalMapEntry is a lowercase string ("distortion", "dynamics", etc.), not a BLOCK_TYPES number — getModelIdForDevice uses it as a key in POD_GO_EFFECT_SUFFIX
+- [v1.3]: detectCategory() uses word-boundary regex, not includes() — prevents "od" matching "module"
 
 ### Pending Todos
 
@@ -91,10 +97,10 @@ None.
 
 ### Blockers/Concerns
 
-None — v1.2 complete, defining v1.3 requirements.
+None.
 
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: v1.3 roadmap and requirements complete — ready for Phase 17 planning
+Stopped at: Completed Phase 18-01-PLAN.md (Pedal Mapping Engine)
 Resume file: None
