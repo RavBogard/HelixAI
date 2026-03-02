@@ -35,11 +35,11 @@ Requirements for the rebuilt preset engine. Each maps to roadmap phases.
 
 ### Snapshot System
 
-- [ ] **SNAP-01**: 4-snapshot minimum per preset (Clean, Rhythm, Lead, Ambient) with per-snapshot block states
-- [ ] **SNAP-02**: Volume-balanced snapshots via Channel Volume overrides — each snapshot plays at equivalent perceived loudness
-- [ ] **SNAP-03**: Lead snapshot volume boost (+2-3 dB) via Volume block controlled by snapshot
-- [ ] **SNAP-04**: Delay and reverb trails enabled by default — no abrupt cutoffs when switching snapshots
-- [ ] **SNAP-05**: Programmatic block state generation from final signal chain (never trust AI-generated block keys)
+- [x] **SNAP-01**: 4-snapshot minimum per preset (Clean, Rhythm, Lead, Ambient) with per-snapshot block states
+- [x] **SNAP-02**: Volume-balanced snapshots via Channel Volume overrides — each snapshot plays at equivalent perceived loudness
+- [x] **SNAP-03**: Lead snapshot volume boost (+2-3 dB) via Volume block controlled by snapshot
+- [x] **SNAP-04**: Delay and reverb trails enabled by default — no abrupt cutoffs when switching snapshots
+- [x] **SNAP-05**: Programmatic block state generation from final signal chain (never trust AI-generated block keys)
 
 ### AI Integration
 
@@ -130,11 +130,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TONE-04 | Phase 2 | Complete |
 | TONE-05 | Phase 2 | Complete |
 | TONE-06 | Phase 2 | Complete |
-| SNAP-01 | Phase 2 | Pending |
-| SNAP-02 | Phase 2 | Pending |
-| SNAP-03 | Phase 2 | Pending |
-| SNAP-04 | Phase 2 | Pending |
-| SNAP-05 | Phase 2 | Pending |
+| SNAP-01 | Phase 2 | Complete |
+| SNAP-02 | Phase 2 | Complete |
+| SNAP-03 | Phase 2 | Complete |
+| SNAP-04 | Phase 2 | Complete |
+| SNAP-05 | Phase 2 | Complete |
 | DYN-01 | Phase 2 | Complete |
 | DYN-02 | Phase 2 | Complete |
 | DYN-03 | Phase 2 | Complete |
