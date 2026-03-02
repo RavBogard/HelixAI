@@ -4,7 +4,8 @@
 
 - [x] **v1.0 Full Rebuild** - Phases 1-6 (shipped 2026-03-02)
 - [x] **v1.1 Polish & Precision** - Phases 7-11 (shipped 2026-03-02)
-- [ ] **v1.2 Pod Go Support** - Phases 12-16 (in progress)
+- [x] **v1.2 Pod Go Support** - Phases 12-16 (shipped 2026-03-02)
+- [ ] **v1.3 Rig Emulation** - Phases 17-21 (in progress)
 
 ## Phases
 
@@ -185,78 +186,119 @@ Plans:
 
 </details>
 
-### v1.2 Pod Go Support (In Progress)
-
-**Milestone Goal:** Extend HelixAI to generate presets for Line 6 Pod Go — a single-DSP device with different block limits, file format, and model catalog. Pod Go presets must match the same professional tone quality standard as Helix presets.
-
-- [ ] **Phase 12: Format Foundation and Types** - Pod Go type definitions, device constants, and block type encoding
-- [ ] **Phase 13: Pod Go Model Catalog** - Effect model IDs with Mono/Stereo suffixes, device-filtered model list
-- [ ] **Phase 14: Chain Rules, Validation, and Planner** - Device-aware signal chain assembly, Pod Go validation, planner prompt filtering
-- [ ] **Phase 15: Pod Go Preset Builder** - .pgp file generation with correct format, snapshots, and tone quality
-- [ ] **Phase 16: Integration, UI, and Testing** - Pod Go in device selector, .pgp download, end-to-end verification
-
-## Phase Details
+<details>
+<summary>v1.2 Pod Go Support (Phases 12-16) — SHIPPED 2026-03-02</summary>
 
 ### Phase 12: Format Foundation and Types
 **Goal**: Every downstream Pod Go component has verified type contracts and format constants to build against — no guesswork on device IDs, block types, or file structure
 **Depends on**: Phase 11
 **Requirements**: PGP-01, PGP-02, PGP-03, PGP-04, PGP-05
-**Success Criteria** (what must be TRUE):
-  1. A `DeviceTarget` union type includes `"pod_go"` alongside `"helix_lt"` and `"helix_floor"` — TypeScript rejects any code passing an unrecognized device string
-  2. `BLOCK_TYPES_PODGO` constant map contains verified Pod Go @type values (delay=5, modulation=0, reverb=5, EQ_STATIC=6) that differ from Helix values — using Helix @type values for a Pod Go preset is a compile-time or test-time error
-  3. `PgpFile` and `PodGoTone` interfaces exist with `input`/`output` keys (not `inputA`/`outputA`), no `@path`, `@stereo`, or `@topology` fields, and `P34_AppDSPFlow*` I/O model references
-  4. `DEVICE_IDS` includes `pod_go: 2162695` and Pod Go firmware constants (`device_version`, `appversion`, `build_sha`) are defined and ready for the builder
-  5. The type system enforces that Pod Go cab blocks are numbered chain blocks (not a separate `cab0` key) and that `dsp1` is always empty
-**Plans**: TBD
 
 ### Phase 13: Pod Go Model Catalog
 **Goal**: The model registry knows which amps and effects are available on Pod Go, with correct Mono/Stereo suffixed IDs, so the AI planner never offers an unavailable model
 **Depends on**: Phase 12
 **Requirements**: PGMOD-01, PGMOD-02, PGMOD-03, PGMOD-04
-**Success Criteria** (what must be TRUE):
-  1. Effect model entries in the registry include Pod Go-specific IDs with Mono/Stereo suffixes (e.g., `HD2_DistScream808Mono` not `HD2_DistScream808`) — a test verifies every Pod Go effect ID ends in `Mono` or `Stereo`
-  2. Amp model entries are correctly shared between Helix and Pod Go without suffix transformation — the same amp ID works for both devices
-  3. `getModelsForDevice("pod_go")` excludes Tone Sovereign, Clawthorn Drive, Cosmos Echo, Poly Pitch, and Space Echo — these models never appear in a Pod Go-targeted generation
-  4. `getModelListForPrompt("pod_go")` returns a device-filtered model list that the AI planner prompt consumes — the prompt contains only Pod Go-available model IDs
-**Plans**: TBD
 
 ### Phase 14: Chain Rules, Validation, and Planner
 **Goal**: Signal chain assembly enforces Pod Go's single-DSP, 4-effect-block constraint, the validator catches Pod Go-specific errors, and the AI planner generates Pod Go-appropriate creative choices
 **Depends on**: Phase 13
 **Requirements**: PGCHAIN-01, PGCHAIN-02, PGCHAIN-03
-**Success Criteria** (what must be TRUE):
-  1. `assembleSignalChain()` with `deviceTarget: "pod_go"` assigns all blocks to dsp:0 and enforces a maximum of 4 user-assignable effect blocks — a 5th effect block causes a validation error, not silent truncation
-  2. Pod Go chain assembly does not insert Parametric EQ or Gain Block — the DSP budget is fully reserved for user-facing effects (amp, cab, and up to 4 effects)
-  3. The AI planner system prompt for Pod Go says "Pod Go preset" and passes only Pod Go-available model IDs — a generation request for Pod Go never produces a ToneIntent referencing Helix-only models or dsp:1 assignments
-  4. `validatePodGoPresetSpec()` exists as a separate validation function that catches Pod Go-specific errors (dsp1 blocks, >4 effects, excluded models) without modifying Helix validation logic
-**Plans**: TBD
 
 ### Phase 15: Pod Go Preset Builder
 **Goal**: The builder produces a valid .pgp file that loads in Pod Go Edit without errors, with 4 volume-balanced snapshots and the same professional tone quality as Helix presets
 **Depends on**: Phase 14
 **Requirements**: PGSNAP-01, PGSNAP-02, PGQUAL-01, PGQUAL-02
-**Success Criteria** (what must be TRUE):
-  1. `buildPgpFile()` produces a .pgp JSON file with exactly 4 snapshots (snapshot0-snapshot3) using `@controller: 4` for snapshot recall — Pod Go Edit imports the file without errors
-  2. The 4 snapshots (Clean, Rhythm, Lead, Ambient) are volume-balanced with per-snapshot block states and a Lead boost of +2-3 dB — matching the Helix quality standard for snapshot design
-  3. Pod Go presets receive the same category/genre/topology-aware parameter defaults from param-engine as Helix presets — a clean Pod Go preset has the same Master/Drive/SAG values as a clean Helix preset
-  4. Pod Go presets have proper cab filtering (LowCut 80-100 Hz, HighCut 5-8 kHz), dynamic responsiveness (volume knob cleanup), and a professional signal chain — the tone quality is mix-ready, not a degraded subset of Helix
-**Plans**: TBD
 
 ### Phase 16: Integration, UI, and Testing
 **Goal**: Pod Go is fully wired into the application — selectable in the UI, generating downloadable .pgp files, and verified end-to-end with no Helix regressions
 **Depends on**: Phase 15
 **Requirements**: PGUX-01, PGUX-02, PGUX-03
+
+</details>
+
+### v1.3 Rig Emulation (In Progress)
+
+**Milestone Goal:** Extend the tone interview to accept physical rig descriptions — text, pedal photos, or both — and generate a Helix/Pod Go preset that emulates the user's actual gear, with transparent substitution mapping shown before download.
+
+- [ ] **Phase 17: Schemas & Types Foundation** - Zod schemas for all v1.3 data contracts
+- [ ] **Phase 18: Pedal Mapping Engine** - PEDAL_HELIX_MAP curated table + three-tier match logic
+- [ ] **Phase 19: Vision Extraction API** - /api/vision route + client-side image upload + compression
+- [ ] **Phase 20: Planner Integration & Route Orchestration** - toneContext injection + text rig parsing + pipeline wiring
+- [ ] **Phase 21: Substitution Card & End-to-End Polish** - substitution UI + progressive loading + full device verification
+
+## Phase Details
+
+### Phase 17: Schemas & Types Foundation
+**Goal**: All new type contracts for v1.3 are defined and exported — downstream phases build on verified, compiled schemas with no guesswork on data shapes
+**Depends on**: Phase 16
+**Requirements**: RIG-06
 **Success Criteria** (what must be TRUE):
-  1. The device selector dropdown includes "Pod Go" as an option alongside Helix LT and Helix Floor — selecting Pod Go routes the generation request through the Pod Go pipeline
-  2. Completing a Pod Go tone generation produces a downloadable file with `.pgp` extension (not `.hlx`) — the browser download dialog shows the correct file name and extension
-  3. The signal chain visualization and tone description card display 4 snapshots (not 8) when viewing a Pod Go preset — the UI reflects Pod Go's actual hardware capability
-  4. All existing Helix test suites pass without modification after Pod Go code is added — no Helix regression from the Pod Go integration
+  1. `PhysicalPedalSchema` compiles with Zod and includes: `brand`, `model`, `fullName`, `knobPositions` (as a `Record<string, "low" | "medium-low" | "medium-high" | "high">` or clock-position description), `imageIndex`, and `confidence: "high" | "medium" | "low"`
+  2. `RigIntentSchema` compiles and wraps an array of `PhysicalPedal` entries plus optional `rigDescription` (plain text) and `extractionNotes` fields — the schema can represent both photo-extracted and text-described rigs
+  3. `SubstitutionEntrySchema` compiles with: `physicalPedal` (string), `helixModel` (internal ID), `helixModelDisplayName` (human-readable name from models.ts), `substitutionReason` (plain English rationale), `parameterMapping` (optional knob zone overrides), and `confidence: "direct" | "close" | "approximate"`
+  4. `SubstitutionMapSchema` compiles as a wrapper around an array of `SubstitutionEntry` entries — represents the full pedal → Helix mapping result for a rig
+  5. All new schemas are exported from `src/lib/helix/index.ts` — downstream phases import types from the existing barrel without new import paths
+  6. TypeScript compiler produces zero errors after schema additions — no conflicts with existing ToneIntent, PresetSpec, or DeviceTarget types
+**Plans**: TBD
+
+### Phase 18: Pedal Mapping Engine
+**Goal**: The deterministic rig mapping layer converts physical pedal names to Helix equivalents with three match tiers and coarse knob zone translation — no AI guessing in the mapping logic
+**Depends on**: Phase 17
+**Requirements**: MAP-01, MAP-02, MAP-03, MAP-04, MAP-05
+**Success Criteria** (what must be TRUE):
+  1. `PEDAL_HELIX_MAP` in `src/lib/rig-mapping.ts` contains at least 40 entries covering the most common pedal categories — overdrives (TS9, TS808, BD-2, SD-1, Klon Centaur, ProCo Rat), distortions (DS-1, Big Muff Pi, MXR Distortion+), delays (DD-3, DM-2, Deluxe Memory Man), reverbs (Hall of Fame, Big Sky), modulation (Phase 90, Small Clone, CE-2), compression (Dyna Comp, Ross Compressor), and boost (EP Booster, Soul Food)
+  2. `lookupPedal(pedalName: string, device: DeviceTarget)` returns a `SubstitutionEntry` with the correct `confidence` tier: `"direct"` for exact table match, `"close"` for category best-match, `"approximate"` for speculative match — no silent confident-wrong mapping for boutique pedals not in the table
+  3. For an unknown boutique pedal not in the table, `lookupPedal()` returns `confidence: "approximate"` with a category-based best guess — it never returns `confidence: "direct"` for a pedal that required fuzzy/category fallback
+  4. The mapping table stores both `helixModel` (internal `HD2_*` ID used by the preset builder) and `helixModelDisplayName` (human-readable name from `models.ts` used by the UI) — no internal IDs leak to the display layer
+  5. `mapRigToSubstitutions(rigIntent, device)` returns a `SubstitutionMap` — a unit test confirms that passing `device: "pod_go"` produces Pod Go-suffixed model IDs (`HD2_DistTeemahMono`) while `device: "helix_lt"` produces standard IDs (`HD2_DistTeemah`)
+  6. A unit test confirms that a pedal in the table (e.g., "ibanez ts9") returns `confidence: "direct"` and a pedal not in the table (e.g., "mythos mjolnir") does not return `confidence: "direct"`
+**Plans**: TBD
+
+### Phase 19: Vision Extraction API
+**Goal**: Claude Vision extracts pedal identifications and coarse knob zones from user-uploaded photos via an isolated `/api/vision` route — client-side compression keeps all uploads within Vercel's 4.5MB limit and the existing generation pipeline is completely unaffected
+**Depends on**: Phase 17
+**Requirements**: RIG-01, RIG-02, RIG-03, VIS-01, VIS-02, VIS-03, VIS-04, API-01, API-02
+**Success Criteria** (what must be TRUE):
+  1. The `/api/vision` route exists at `src/app/api/vision/route.ts` with `export const maxDuration = 60` — it accepts `multipart/FormData` with image files, calls Claude Sonnet 4.6 with vision, and returns a `RigIntent` JSON response
+  2. The `/api/generate` route is byte-for-byte identical to its v1.2 state — no new parameters, no changed request shape, no new logic paths; a text-only generation request produces exactly the same response as before v1.3
+  3. The image upload UI in `page.tsx` enforces: max 3 files, accepted types `image/jpeg image/png image/webp`, client-side compression via `browser-image-compression` targeting 800KB/1568px — uploading a 6MB smartphone photo results in a compressed file under 1MB reaching the server
+  4. A network inspection of a 3-photo upload shows total POST body size under 4.5MB — the Vercel hard limit is never hit
+  5. Uploading a blurry or poorly-lit photo returns `PhysicalPedal.confidence: "low"` or `"medium"` — the UI prompts the user to confirm or type the pedal name rather than silently proceeding with the extraction result
+  6. The vision extraction prompt explicitly instructs Claude to return `modelName: null` when the pedal is not legibly identifiable — a test with a photo of a non-pedal object (e.g., a book cover) returns `modelName: null` rather than a fabricated pedal name
+  7. Knob position output uses clock-position descriptions or coarse zone labels — no raw 0-100 percentage values appear in the `PhysicalPedal.knobPositions` schema output
+**Plans**: TBD
+
+### Phase 20: Planner Integration & Route Orchestration
+**Goal**: The Planner accepts rig context through the user messages array without breaking prompt caching, the generate route orchestrates vision → mapping → planner cleanly, and text rig descriptions work end-to-end without any image upload
+**Depends on**: Phase 18, Phase 19
+**Requirements**: RIG-04, RIG-05, PLAN-01, PLAN-02, PLAN-03, API-02, API-03
+**Success Criteria** (what must be TRUE):
+  1. `callClaudePlanner(messages, device, toneContext?)` compiles — the third parameter is optional; existing call sites without `toneContext` remain unchanged
+  2. When `toneContext` is provided, it is appended to the conversation text (user message content) — NOT added to the system prompt; `buildPlannerPrompt()` function signature is unchanged
+  3. After a rig emulation generation, the Anthropic API response shows `cache_read_input_tokens > 0` — prompt caching is confirmed intact; the system prompt did not change
+  4. The generate route (`/api/generate`) orchestrates: parse body → if `rigIntent` present, call `mapRigToSubstitutions()` → build `toneContext` string → call `callClaudePlanner(messages, device, toneContext)` → Knowledge Layer → file build. Zero new routes involved; only the generate route gains this optional path
+  5. A text-only rig description ("TS9 into a Fender Twin Reverb") typed in the chat without any image upload: the Gemini interview detects it as a rig description, the generate call receives it as conversation context, `mapRigToSubstitutions()` runs against the text, and the resulting preset uses Helix equivalents with a substitution map returned to the UI
+  6. A vision failure (e.g., `/api/vision` returns an error) does not prevent the user from generating a preset — the UI offers the text description fallback path immediately without requiring a page refresh
+**Plans**: TBD
+
+### Phase 21: Substitution Card & End-to-End Polish
+**Goal**: The substitution mapping is visible and readable before preset generation, progressive loading states guide users through the multi-step flow, all three devices work end-to-end with rig emulation, and no regressions exist in the existing non-rig generation path
+**Depends on**: Phase 20
+**Requirements**: SUBST-01, SUBST-02, SUBST-03, SUBST-04, PROGUX-01, PROGUX-02
+**Success Criteria** (what must be TRUE):
+  1. The substitution card renders in the chat flow immediately after vision extraction and mapping complete — before the user clicks Generate — showing each `[Original Pedal Name] → [Helix Display Name]` entry with a one-sentence plain-English rationale in guitarist vocabulary (e.g., "mid-hump EQ character and asymmetric clipping structure", "tape-style echo warmth")
+  2. No `HD2_*` strings appear anywhere in the rendered substitution card or any other user-facing UI element — inspecting the DOM confirms only human-readable display names are rendered
+  3. Exact-match entries (confidence: "direct") display with full card emphasis; approximate-match entries (confidence: "close" or "approximate") display with a "Best available match" label and visually reduced emphasis — the visual differentiation is apparent without reading the label
+  4. An unknown boutique pedal not in `PEDAL_HELIX_MAP` shows a card entry offering "We don't have [Pedal Name] in our database. You can describe its sound instead, or we'll treat it as a [category] pedal." — the user has a clear text escape hatch and is never stuck
+  5. Loading states show distinct labeled stages: "Analyzing pedal photo…" → "Mapping to Helix models…" → "Building preset…" — no blank spinner for the full 15-20 second rig emulation flow; each stage is visible for at least 1 second before the next begins
+  6. Selecting Pod Go as the device and uploading a pedal photo produces a valid `.pgp` file — the substitution card shows Pod Go-compatible model names (not Helix-only models) and the downloaded preset loads in Pod Go Edit
+  7. Generating a text-only Helix LT preset (no rig input, no images) produces identical output to v1.2 — no new loading states, no new API calls, no changed response shape visible in the network tab
 **Plans**: TBD
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 > 2 > 3 > 4 > 5 > 6 > 7 > 8 > 9 > 10 > 11 > 12 > 13 > 14 > 15 > 16
+Phases execute in numeric order: 1 > 2 > 3 > 4 > 5 > 6 > 7 > 8 > 9 > 10 > 11 > 12 > 13 > 14 > 15 > 16 > 17 > 18 > 19 > 20 > 21
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -271,12 +313,17 @@ Phases execute in numeric order: 1 > 2 > 3 > 4 > 5 > 6 > 7 > 8 > 9 > 10 > 11 > 1
 | 9. Genre-Aware Effect Defaults | v1.1 | 1/1 | Complete | 2026-03-02 |
 | 10. Smarter Snapshot Effect Toggling | v1.1 | 1/1 | Complete | 2026-03-02 |
 | 11. Frontend Transparency | v1.1 | 2/2 | Complete | 2026-03-02 |
-| 12. Format Foundation and Types | v1.2 | 0/TBD | Not started | - |
-| 13. Pod Go Model Catalog | v1.2 | 0/TBD | Not started | - |
-| 14. Chain Rules, Validation, and Planner | v1.2 | 0/TBD | Not started | - |
-| 15. Pod Go Preset Builder | v1.2 | 0/TBD | Not started | - |
-| 16. Integration, UI, and Testing | v1.2 | 0/TBD | Not started | - |
+| 12. Format Foundation and Types | v1.2 | 1/1 | Complete | 2026-03-02 |
+| 13. Pod Go Model Catalog | v1.2 | 1/1 | Complete | 2026-03-02 |
+| 14. Chain Rules, Validation, and Planner | v1.2 | 1/1 | Complete | 2026-03-02 |
+| 15. Pod Go Preset Builder | v1.2 | 1/1 | Complete | 2026-03-02 |
+| 16. Integration, UI, and Testing | v1.2 | 1/1 | Complete | 2026-03-02 |
+| 17. Schemas & Types Foundation | v1.3 | 0/TBD | Not started | - |
+| 18. Pedal Mapping Engine | v1.3 | 0/TBD | Not started | - |
+| 19. Vision Extraction API | v1.3 | 0/TBD | Not started | - |
+| 20. Planner Integration & Route Orchestration | v1.3 | 0/TBD | Not started | - |
+| 21. Substitution Card & End-to-End Polish | v1.3 | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-03-01*
-*Last updated: 2026-03-02 — v1.2 Pod Go Support phases 12-16 added*
+*Last updated: 2026-03-02 — v1.2 phases 12-16 marked complete; v1.3 Rig Emulation phases 17-21 added*

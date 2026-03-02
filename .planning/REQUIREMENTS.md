@@ -103,40 +103,92 @@ Requirements for Pod Go Support milestone. Extend HelixAI to generate presets fo
 
 ### Pod Go File Format
 
-- [ ] **PGP-01**: Generated .pgp file with device ID 2162695 loads in Pod Go Edit without errors
-- [ ] **PGP-02**: Block @type values use Pod Go-specific encoding (delay=5, modulation=0, reverb=5, EQ_STATIC=6 — complete remap from Helix values)
-- [ ] **PGP-03**: I/O uses `input`/`output` keys with `P34_AppDSPFlow*` models — no @path, @stereo, or @topology fields present
-- [ ] **PGP-04**: Cab placed as numbered block in signal chain (not separate `cab0` key like Helix)
-- [ ] **PGP-05**: Single-DSP structure — all blocks on dsp0, `dsp1: {}` always empty
+- [x] **PGP-01**: Generated .pgp file with device ID 2162695 loads in Pod Go Edit without errors
+- [x] **PGP-02**: Block @type values use Pod Go-specific encoding (delay=5, modulation=0, reverb=5, EQ_STATIC=6 — complete remap from Helix values)
+- [x] **PGP-03**: I/O uses `input`/`output` keys with `P34_AppDSPFlow*` models — no @path, @stereo, or @topology fields present
+- [x] **PGP-04**: Cab placed as numbered block in signal chain (not separate `cab0` key like Helix)
+- [x] **PGP-05**: Single-DSP structure — all blocks on dsp0, `dsp1: {}` always empty
 
 ### Pod Go Model Catalog
 
-- [ ] **PGMOD-01**: Effect model IDs use correct Mono/Stereo suffixes (e.g., `HD2_DistScream808Mono` not `HD2_DistScream808`)
-- [ ] **PGMOD-02**: Amp model IDs shared directly with Helix — no suffix transformation needed
-- [ ] **PGMOD-03**: Pod Go-excluded models (Tone Sovereign, Clawthorn Drive, Cosmos Echo, Poly Pitch, Space Echo) never offered by AI planner
-- [ ] **PGMOD-04**: Device-filtered model list passed to AI planner prompt so Pod Go presets only reference Pod Go-available models
+- [x] **PGMOD-01**: Effect model IDs use correct Mono/Stereo suffixes (e.g., `HD2_DistScream808Mono` not `HD2_DistScream808`)
+- [x] **PGMOD-02**: Amp model IDs shared directly with Helix — no suffix transformation needed
+- [x] **PGMOD-03**: Pod Go-excluded models (Tone Sovereign, Clawthorn Drive, Cosmos Echo, Poly Pitch, Space Echo) never offered by AI planner
+- [x] **PGMOD-04**: Device-filtered model list passed to AI planner prompt so Pod Go presets only reference Pod Go-available models
 
 ### Pod Go Signal Chain
 
-- [ ] **PGCHAIN-01**: Series-only routing with maximum 4 user-assignable effect blocks enforced (10 total: 6 fixed + 4 flexible)
-- [ ] **PGCHAIN-02**: No auto-inserted Parametric EQ or Gain Block for Pod Go — DSP budget reserved for user-facing effects
-- [ ] **PGCHAIN-03**: Chain assembly assigns all blocks to dsp:0, never splits across DSPs
+- [x] **PGCHAIN-01**: Series-only routing with maximum 4 user-assignable effect blocks enforced (10 total: 6 fixed + 4 flexible)
+- [x] **PGCHAIN-02**: No auto-inserted Parametric EQ or Gain Block for Pod Go — DSP budget reserved for user-facing effects
+- [x] **PGCHAIN-03**: Chain assembly assigns all blocks to dsp:0, never splits across DSPs
 
 ### Pod Go Snapshots
 
-- [ ] **PGSNAP-01**: Exactly 4 snapshots generated (snapshot0-snapshot3) with `@controller: 4` for snapshot recall
-- [ ] **PGSNAP-02**: Volume-balanced snapshot design (Clean, Rhythm, Lead, Ambient) matching Helix quality standard with per-snapshot block states
+- [x] **PGSNAP-01**: Exactly 4 snapshots generated (snapshot0-snapshot3) with `@controller: 4` for snapshot recall
+- [x] **PGSNAP-02**: Volume-balanced snapshot design (Clean, Rhythm, Lead, Ambient) matching Helix quality standard with per-snapshot block states
 
 ### Pod Go Preset Quality
 
-- [ ] **PGQUAL-01**: Shared param-engine resolution — Pod Go presets receive same category/genre/topology-aware parameter defaults as Helix
-- [ ] **PGQUAL-02**: Mix-ready tone quality — proper cab filtering, dynamic responsiveness, and professional signal chain on Pod Go presets
+- [x] **PGQUAL-01**: Shared param-engine resolution — Pod Go presets receive same category/genre/topology-aware parameter defaults as Helix
+- [x] **PGQUAL-02**: Mix-ready tone quality — proper cab filtering, dynamic responsiveness, and professional signal chain on Pod Go presets
 
 ### Pod Go Frontend & UX
 
-- [ ] **PGUX-01**: Pod Go appears as device option in the device selector dropdown
-- [ ] **PGUX-02**: Pod Go generation produces downloadable .pgp file with correct extension
-- [ ] **PGUX-03**: Signal chain visualization and tone card display 4 snapshots (not 8) for Pod Go presets
+- [x] **PGUX-01**: Pod Go appears as device option in the device selector dropdown
+- [x] **PGUX-02**: Pod Go generation produces downloadable .pgp file with correct extension
+- [x] **PGUX-03**: Signal chain visualization and tone card display 4 snapshots (not 8) for Pod Go presets
+
+## v1.3 Requirements
+
+Requirements for Rig Emulation milestone. Extend the tone interview to accept physical rig descriptions — text, pedal photos, or both — and generate a Helix/Pod Go preset that emulates the user's actual gear with transparent substitution mapping.
+
+### Image Upload & Rig Input
+
+- [ ] **RIG-01**: User can upload up to 3 pedal photos in the tone interview chat — drag-and-drop or file picker, individual pedal photos only (not full pedalboard)
+- [ ] **RIG-02**: Photos are compressed client-side to under 800KB each before upload — smartphone photos never exceed the 4.5MB Vercel body limit; user sees "Compressing…" status, not a silent failure
+- [ ] **RIG-03**: File type validation client-side — only image/jpeg, image/png, image/webp accepted; other file types show a clear user-facing error message
+- [ ] **RIG-04**: User can describe their rig as plain text ("TS9 → Blues Breaker → Fender Twin Reverb") without any photos — text description is the primary input path; image upload is an enhancement
+- [ ] **RIG-05**: Rig emulation integrates into the existing tone interview chat — no separate mode; the Gemini interview naturally accepts rig descriptions and photo attachments
+- [ ] **RIG-06**: RigIntentSchema, PhysicalPedalSchema, SubstitutionEntrySchema, and SubstitutionMapSchema defined with Zod — single source of truth for TypeScript types and vision extraction output validation
+
+### Vision Extraction Quality
+
+- [ ] **VIS-01**: Vision extraction schema includes a confidence field (high/medium/low) — low-confidence identifications prompt user confirmation before proceeding to mapping
+- [ ] **VIS-02**: Knob positions extracted as coarse zones (low/medium-low/medium-high/high, expressed as clock positions) — never raw percentages that misrepresent Claude's spatial reasoning accuracy for rotary dials
+- [ ] **VIS-03**: When Claude cannot identify a pedal with confidence, it returns `modelName: null` with a description of what it observed — user is then prompted to type the pedal name; no silent wrong identification
+- [ ] **VIS-04**: Vision API route (`/api/vision`) exports `maxDuration = 60` and requires Vercel Fluid Compute — no 504 timeouts for cold-start vision calls in production
+
+### Pedal Mapping Engine
+
+- [ ] **MAP-01**: `PEDAL_HELIX_MAP` static curated lookup table covers 40+ common pedals (Boss DS-1, Boss BD-2, Boss DD-3, Ibanez TS9, TS808, MXR Phase 90, Electro-Harmonix Big Muff Pi, ProCo Rat, etc.) with `helixModel`, `helixModelDisplayName`, `substitutionReason`, and `category`
+- [ ] **MAP-02**: Mapping lookup returns three explicit match tiers — `exact` (pedal in table), `category` (pedal type known, best available Helix equivalent), `unknown` (no match possible) — each tier surfaces differently in the UI
+- [ ] **MAP-03**: Unknown boutique pedals are presented as "best available match" with explicit uncertainty — never a confident exact-match mapping for a pedal not in the curated table
+- [ ] **MAP-04**: Knob zone → Helix parameter value translation included in mapping entries for supported pedals — low/mid/high zones map to appropriate parameter ranges per pedal model's non-linear response
+- [ ] **MAP-05**: Mapping layer works identically for Helix LT, Helix Floor, and Pod Go — device-aware model selection applies correct Pod Go suffixes (Mono/Stereo) when target is Pod Go
+
+### Planner Integration
+
+- [ ] **PLAN-01**: `callClaudePlanner()` gains an optional `toneContext` parameter that is appended to the user messages array (never to the system prompt) — existing `cache_control: ephemeral` block is preserved and prompt caching continues to function
+- [ ] **PLAN-02**: After v1.3 deployment, `cache_read_input_tokens > 0` is verified in Anthropic API responses for rig emulation generation requests — confirmed via API response inspection
+- [ ] **PLAN-03**: Text rig descriptions are parsed and passed through the mapping layer before the Planner call — the Planner receives `toneContext` with mapped Helix/Pod Go equivalents listed, not raw physical gear names
+
+### API Architecture
+
+- [ ] **API-01**: New `/api/vision` route handles image → RigIntent extraction independently — `/api/generate` contract is unchanged; adding images never modifies the existing request/response shape for text-only users
+- [ ] **API-02**: Existing text-only generation flow is bit-for-bit identical post-v1.3 deployment — no new API calls, no changed loading states, no response shape changes for users who do not upload images
+- [ ] **API-03**: Vision failure does not block preset generation — if `/api/vision` fails or returns low-confidence results, the user can fall back to text description and proceed normally through `/api/generate`
+
+### Substitution Card UI
+
+- [ ] **SUBST-01**: Substitution card appears in the chat flow before the Generate button — each entry shows `[Original Pedal Name] → [Helix Display Name]` with one-sentence plain-English rationale using guitarist vocabulary
+- [ ] **SUBST-02**: No internal model IDs (`HD2_*`) appear anywhere in the substitution card or in any user-facing UI element — only human-readable display names (e.g., "Teemah!", "Minotaur", "Glitz Reverb")
+- [ ] **SUBST-03**: Visual differentiation between exact matches and approximate/category matches — exact matches show full confident card, approximate matches show "Best available match" label with lower visual emphasis
+- [ ] **SUBST-04**: Unknown pedals offer a text description escape hatch — "We don't have [Pedal Name] in our database. You can describe its sound instead, or we'll treat it as a [category] pedal" — user is never stuck
+
+### Progressive UX
+
+- [ ] **PROGUX-01**: Loading shows distinct labeled phases during rig emulation flow — "Analyzing pedal photo…" → "Mapping to Helix models…" → "Building preset…" — no blank spinner during the 15-20 second combined operation
+- [ ] **PROGUX-02**: Rig emulation works with all three devices using the existing device selector — Helix LT, Helix Floor, and Pod Go all produce correct device-specific presets from the same rig input
 
 ## v2 Requirements
 
@@ -160,6 +212,12 @@ Deferred to future milestones. Tracked but not in current roadmap.
 - **PG-V2-02**: Live DSP budget calculation with per-effect DSP cost estimates
 - **PG-V2-03**: Stomp mode footswitch layout optimization for Pod Go (musical logic-based FS assignment)
 
+### Extended Rig Emulation
+
+- **RIG-V2-01**: Full pedalboard OCR from a single board photo — detect and identify all pedals automatically (deferred — too error-prone at v1.3 launch)
+- **RIG-V2-02**: Rig emulation memory — save a rig description and regenerate for different devices without re-uploading
+- **RIG-V2-03**: Expanded mapping table beyond 40 entries — community-sourced additions, boutique manufacturer coverage
+
 ### Infrastructure
 
 - **INFRA-V2-02**: Telemetry for AI correction rate — log and alert if >2 corrections per generation
@@ -179,6 +237,8 @@ Explicitly excluded. Documented to prevent scope creep.
 | Maximum gain / extreme saturation defaults | Cap drive at 6; use 808 boost for saturation — prevents muddy, compressed presets |
 | Parallel dual-amp paths as default | Serial single-path is correct; dual-path only for specific genre patterns |
 | Global EQ as tone fix | Apply all tone shaping in the preset itself via cab block and post-cab EQ |
+| Full pedalboard OCR (single photo) | Too error-prone at launch — per-pedal photos are the reliable baseline (v1.3 scope) |
+| Gemini/Google Vision for pedal extraction | Zero accuracy advantage over Claude for rotary knob reading; adds SDK complexity and API key management |
 
 ## Traceability
 
@@ -233,33 +293,61 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FXUI-01 | Phase 11 | Complete |
 | FXUI-02 | Phase 11 | Complete |
 | BRAND-01 | Phase 11 | Complete |
-| PGP-01 | Phase 12 | Pending |
-| PGP-02 | Phase 12 | Pending |
-| PGP-03 | Phase 12 | Pending |
-| PGP-04 | Phase 12 | Pending |
-| PGP-05 | Phase 12 | Pending |
-| PGMOD-01 | Phase 13 | Pending |
-| PGMOD-02 | Phase 13 | Pending |
-| PGMOD-03 | Phase 13 | Pending |
-| PGMOD-04 | Phase 13 | Pending |
-| PGCHAIN-01 | Phase 14 | Pending |
-| PGCHAIN-02 | Phase 14 | Pending |
-| PGCHAIN-03 | Phase 14 | Pending |
-| PGSNAP-01 | Phase 15 | Pending |
-| PGSNAP-02 | Phase 15 | Pending |
-| PGQUAL-01 | Phase 15 | Pending |
-| PGQUAL-02 | Phase 15 | Pending |
-| PGUX-01 | Phase 16 | Pending |
-| PGUX-02 | Phase 16 | Pending |
-| PGUX-03 | Phase 16 | Pending |
+| PGP-01 | Phase 12 | Complete |
+| PGP-02 | Phase 12 | Complete |
+| PGP-03 | Phase 12 | Complete |
+| PGP-04 | Phase 12 | Complete |
+| PGP-05 | Phase 12 | Complete |
+| PGMOD-01 | Phase 13 | Complete |
+| PGMOD-02 | Phase 13 | Complete |
+| PGMOD-03 | Phase 13 | Complete |
+| PGMOD-04 | Phase 13 | Complete |
+| PGCHAIN-01 | Phase 14 | Complete |
+| PGCHAIN-02 | Phase 14 | Complete |
+| PGCHAIN-03 | Phase 14 | Complete |
+| PGSNAP-01 | Phase 15 | Complete |
+| PGSNAP-02 | Phase 15 | Complete |
+| PGQUAL-01 | Phase 15 | Complete |
+| PGQUAL-02 | Phase 15 | Complete |
+| PGUX-01 | Phase 16 | Complete |
+| PGUX-02 | Phase 16 | Complete |
+| PGUX-03 | Phase 16 | Complete |
+| RIG-01 | Phase 19 | Pending |
+| RIG-02 | Phase 19 | Pending |
+| RIG-03 | Phase 19 | Pending |
+| RIG-04 | Phase 20 | Pending |
+| RIG-05 | Phase 20 | Pending |
+| RIG-06 | Phase 17 | Pending |
+| VIS-01 | Phase 19 | Pending |
+| VIS-02 | Phase 19 | Pending |
+| VIS-03 | Phase 19 | Pending |
+| VIS-04 | Phase 19 | Pending |
+| MAP-01 | Phase 18 | Pending |
+| MAP-02 | Phase 18 | Pending |
+| MAP-03 | Phase 18 | Pending |
+| MAP-04 | Phase 18 | Pending |
+| MAP-05 | Phase 18 | Pending |
+| PLAN-01 | Phase 20 | Pending |
+| PLAN-02 | Phase 20 | Pending |
+| PLAN-03 | Phase 20 | Pending |
+| API-01 | Phase 19 | Pending |
+| API-02 | Phase 20 | Pending |
+| API-03 | Phase 20 | Pending |
+| SUBST-01 | Phase 21 | Pending |
+| SUBST-02 | Phase 21 | Pending |
+| SUBST-03 | Phase 21 | Pending |
+| SUBST-04 | Phase 21 | Pending |
+| PROGUX-01 | Phase 21 | Pending |
+| PROGUX-02 | Phase 21 | Pending |
 
 **Coverage:**
 - v1 requirements: 36 total (all complete)
 - v1.1 requirements: 9 total (all complete)
-- v1.2 requirements: 19 total (all mapped to phases 12-16)
-- Mapped to phases: 36 (v1 Phases 1-6) + 9 (v1.1 Phases 7-11) + 19 (v1.2 Phases 12-16)
-- Unmapped: 0
+- v1.2 requirements: 19 total (all complete)
+- v1.3 requirements: 26 total (mapped to phases 17-21)
+- Mapped to phases: 36 (v1) + 9 (v1.1) + 19 (v1.2) + 26 (v1.3)
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-01*
-*Last updated: 2026-03-02 — v1.2 requirements mapped to phases 12-16 (19 Pod Go requirements)*
+*Last updated: 2026-03-02 — v1.3 Rig Emulation requirements added (26 requirements, phases 17-21); v1.2 requirements marked complete*
