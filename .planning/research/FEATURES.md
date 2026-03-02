@@ -1,146 +1,312 @@
 # Feature Research
 
-**Domain:** AI-powered Helix preset generation — v1.1 Polish & Precision
+**Domain:** AI-powered Pod Go preset generation — v1.2 Pod Go Device Support
 **Researched:** 2026-03-02
-**Confidence:** HIGH (existing codebase inspected directly; Anthropic prompt caching docs verified via official source; genre effect parameter conventions verified via multiple community and manufacturer sources; tone description card conventions verified via Line 6 CustomTone and professional preset seller patterns)
+**Confidence:** HIGH (18 real .pgp preset files inspected directly; compared against 12 real .hlx Helix files; Line 6 community forums and official product pages verified; all file format findings are empirical from actual device files)
 
 ---
 
-## Context: What Already Exists
+## Context: What Already Exists vs. What This Milestone Adds
 
-v1.0 shipped a complete Planner-Executor architecture. The AI (Claude Sonnet 4.6) generates a narrow ToneIntent (~15 fields), and the deterministic Knowledge Layer (chain-rules.ts, param-engine.ts, snapshot-engine.ts) generates all parameter values. The app produces downloadable .hlx files for Helix LT and Helix Floor. All table-stakes and differentiator features from the v1.0 feature research are implemented and verified.
+The existing HelixAI codebase generates `.hlx` preset files for Helix LT and Helix Floor. The generation pipeline is:
 
-v1.1 adds five specific improvements on top of this foundation. The feature research below focuses exclusively on those five areas.
+```
+Chat interview → ToneIntent (AI) → chain-rules.ts → param-engine.ts → snapshot-engine.ts → preset-builder.ts → .hlx file
+```
+
+This milestone adds Pod Go as a third device target. The AI interview and ToneIntent remain unchanged. The Knowledge Layer needs Pod Go-aware variants that emit `.pgp` files instead of `.hlx` files.
+
+---
+
+## Pod Go Hardware Capabilities: What It Can and Cannot Do
+
+This section is the foundation for all feature decisions. Sourced from direct inspection of 18 real `.pgp` files and Line 6 community documentation.
+
+### Block Architecture
+
+**Total blocks: exactly 10 (block0 through block9).** Every Pod Go preset has exactly 10 blocks — confirmed across all 18 inspected presets.
+
+**Fixed blocks (always present, always at specific types, user can move order):**
+| Role | Typical position | @type |
+|------|-----------------|-------|
+| Volume/Wah expression (one of each) | block0–block1 | 0 |
+| FX Loop send/return | varies | 5 |
+| Amp | varies | 1 |
+| Cab or IR | immediately after amp | 0 (CabMicIr) or 2 (simple cab) |
+| EQ | varies | 0 or 6 |
+
+**Flexible blocks (4 slots for any effects):** Users fill these with distortion, delay, reverb, modulation, compression, pitch, wah, gate, etc. from the Pod Go model library.
+
+**Result:** In practice, a Pod Go preset has: 1 wah + 1 volume + 1 amp + 1 cab/IR + 1 EQ + 1 FX loop = 6 fixed-role blocks + 4 user-chosen effects = 10 total blocks.
+
+**DSP constraint:** Not all 4 flexible slots can be filled with heavy effects simultaneously. Ganymede/Searchlight reverbs (~33% DSP each) or Benzin amp (~33%) leave little room. DSP is consumed at runtime — Pod Go Edit shows a DSP usage bar. The app cannot predict this statically without a DSP cost table.
+
+### Routing
+
+**Series only. No parallel paths.** Pod Go has a single signal path. There is no `@topology` field in the `.pgp` global section (Helix has `@topology0` / `@topology1`). `dsp1` is always `{}` (empty).
+
+**Mono/stereo signal collapse behavior:** Distortion, Dynamics, and Pitch/Synth blocks are all mono. Placing a distortion block after a stereo delay/reverb collapses the signal to mono at that point.
+
+**Pod Go vs Helix routing summary:**
+| Capability | Pod Go | Helix LT/Floor |
+|-----------|--------|----------------|
+| Signal paths | 1 (series) | Up to 4 (series + parallel) |
+| DSP chips | 1 | 2 (dual DSP) |
+| Parallel routing | No | Yes (split + join) |
+| Max blocks | 10 | 32+ (up to 8 per DSP × 2 DSPs + paths) |
+
+### Snapshots
+
+**Pod Go: exactly 4 snapshots (snapshot0–snapshot3).** Helix has 8 (snapshot0–snapshot7).
+
+Snapshot structure is **identical to Helix** at the JSON schema level:
+- `@name`, `@valid`, `@ledcolor`, `@tempo`, `@pedalstate` — same fields
+- `blocks.dsp0.blockN: true/false` — same format (block on/off)
+- `controllers.dsp0.blockN.paramName.@value` — same format (parameter values per snapshot)
+
+**What snapshots control:**
+- Block bypass state (on/off) for all 10 blocks
+- Parameter values for any controller-assigned parameters (up to 64 per preset)
+- Tempo (if set to "Per Snapshot" in global settings)
+
+**What snapshots cannot control:**
+- Amp model (cannot switch between different amp models across snapshots)
+- Cab model (cannot switch cabs, though can switch IRs)
+- Block count/positions (chain is fixed per preset)
+
+### Footswitch / Stomp Mode
+
+**6 built-in footswitches (FS1–FS6), expandable to 8 with external TRS switches (FS7–FS8).**
+
+In Stomp mode: up to 6 built-in stomps assignable to blocks. Each block's footswitch is tracked in the `footswitch` section of the `.pgp` file:
+
+```json
+"footswitch": {
+  "dsp0": {
+    "block3": {
+      "@fs_index": 5,
+      "@fs_primary": true,
+      "@fs_enabled": true,
+      "@fs_ledcolor": 525824,
+      "@fs_momentary": false,
+      "@fs_label": "Compulsive Drive"
+    }
+  }
+}
+```
+
+**Key difference from Helix:** Pod Go footswitch metadata lives in the `footswitch` section AND in the `controller` section (as `@fs_*` fields on controller assignments). Helix footswitch section is often empty — footswitch assignments are done differently in Helix via the controller section with `@fs_enabled`. Pod Go unifies footswitch metadata into both sections.
+
+**`@fs_index` values 0–5** correspond to physical footswitch positions A, B, C, D, Up, Down. `@fs_index: 9` = not assigned to a switch.
+
+### Model Library
+
+**86 amp models, 206+ effect models** (as of firmware 2.50, January 2025). Roughly a subset of the Helix library, but not a strict subset — a few models are Pod Go-only.
+
+**Critical insight from file inspection: Pod Go effect model IDs append `Mono` or `Stereo` suffix; Helix model IDs do not.**
+
+| Category | Pod Go model ID | Helix model ID |
+|---------|----------------|----------------|
+| Distortion | `HD2_DistScream808Mono` | `HD2_DistScream808` |
+| Distortion | `HD2_DistKinkyBoostMono` | `HD2_DistKinkyBoost` |
+| Wah | `HD2_WahFasselStereo` | `HD2_WahFassel` |
+| Delay | `HD2_DelayTransistorTapeStereo` | `HD2_DelayTransistorTape` |
+| Reverb | `HD2_ReverbHallStereo` | `HD2_ReverbHall` |
+| Comp | `HD2_CompressorDeluxeCompMono` | `HD2_CompressorDeluxeComp` |
+| Modulation | `HD2_ChorusStereo` | `HD2_Chorus` |
+| Tremolo | `HD2_TremoloTremoloStereo` | `HD2_TremoloTremolo` |
+
+**Amp model IDs are IDENTICAL between Pod Go and Helix.** All 13 amp models confirmed in real Pod Go presets (`HD2_AmpUSDeluxeNrm`, `HD2_AmpPlacaterDirty`, etc.) are already in `models.ts` and use the same ID strings.
+
+**Cab model IDs: mostly shared, partially different.** `HD2_CabMicIr_*` models share naming. Simple `HD2_Cab*` models are largely shared. However Pod Go has a different set of available cabs vs. Helix (different speaker cab models were ported).
+
+**Models exclusive to Pod Go (not in Helix, from firmware 2.50):**
+- `Line 6 Clarity`, `Line 6 Aristocrat`, `Line 6 Carillon`, `Line 6 Voltage`, `Line 6 Kinetic`, `Line 6 Oblivion` — six Catalyst Series Original Amp Designs
+- These use `HD2_AmpLine6*` prefix (e.g., `HD2_AmpLine6Clarity`)
+
+**Models in Helix NOT in Pod Go (DSP-heavy, omitted from Pod Go):**
+- `Tone Sovereign`, `Clawthorn Drive`, `Cosmos Echo` — confirmed omissions per Line 6 FAQ
+- Poly Pitch, Space Echo — too DSP-intensive for single-chip Pod Go
+- Advanced reverbs (Ganymede, Searchlight) — present but limited availability due to DSP cost
+
+### File Format
+
+**Pod Go uses `.pgp` files (plain JSON).** Inspecting real files confirms:
+
+```
+schema: "L6Preset"    ← SAME as Helix .hlx
+version: 6            ← SAME as Helix .hlx
+device: 2162695       ← DIFFERENT (Helix LT=2162692, Helix Floor=2162688)
+```
+
+**`device_version` field:** Present in Pod Go `.pgp` files (e.g., `33619968` for firmware 2.00). NOT present in Helix `.hlx` files. This field must be included in generated Pod Go files.
+
+**Meta section differences:**
+- Pod Go meta includes: `tnid`, `song`, `author`, `band` (extra community fields)
+- Helix meta does NOT include these
+- `application` field = `"POD Go Edit"` for Pod Go (vs `"HX Edit"` for Helix)
+
+---
+
+## Helix vs Pod Go: Full Feature Comparison Table
+
+| Feature | Helix LT/Floor | Pod Go | HelixAI Impact |
+|---------|----------------|--------|----------------|
+| File format | `.hlx` (JSON) | `.pgp` (JSON) | New file extension + device ID |
+| Schema | `L6Preset` v6 | `L6Preset` v6 | Same schema wrapper |
+| Device ID | 2162692 / 2162688 | 2162695 | Add to `DEVICE_IDS` in types.ts |
+| `device_version` field | Absent | Present | Add to pod-go builder |
+| DSP chips | 2 (dsp0 + dsp1) | 1 (dsp0 only, dsp1={}) | Remove dsp1 logic for Pod Go |
+| Block slots | 32+ across 2 DSPs | 10 (block0–block9) | Simpler chain assembly |
+| Signal routing | Series + Parallel | Series only | No split/join needed |
+| Snapshots | 8 | 4 | Fewer snapshots to generate |
+| Amp model IDs | `HD2_Amp*` (no suffix) | `HD2_Amp*` (no suffix) | ALL SAME — reuse existing |
+| Effect model IDs | `HD2_DistX` (no suffix) | `HD2_DistXMono` (Mono/Stereo suffix) | Need Pod Go model catalog |
+| Cab model IDs | `HD2_Cab*` / `HD2_CabMicIr_*` | Slightly different set | Pod Go cab catalog needed |
+| @topology | `@topology0`/`@topology1` in global | ABSENT | Don't emit for Pod Go |
+| @cursor_dsp/path/position | Present in global | ABSENT | Don't emit for Pod Go |
+| @model in global | Absent | `"@global_params"` | Emit for Pod Go |
+| inputA / outputA keys | `inputA`, `outputA` | `input`, `output` | Different DSP I/O key names |
+| Input @model | `HD2_AppDSPFlow1Input` | `P34_AppDSPFlowInput` | Different input model string |
+| Output @model | `HD2_AppDSPFlowOutput` | `P34_AppDSPFlowOutput` | Different output model string |
+| @path on blocks | Present (0 or 1) | ABSENT | Don't emit `@path` for Pod Go |
+| @stereo on blocks | Present | ABSENT | Don't emit `@stereo` for Pod Go |
+| Delay @type | 7 | 5 | Different @type encoding |
+| Reverb @type | 7 | 5 | Different @type encoding |
+| FX Loop @type | 9 | 5 | Different @type encoding |
+| Modulation @type | 4 | 0 | Different @type encoding |
+| EQ_STATIC @type | 0 | 6 | Different @type encoding |
+| Simple cab @type | 4 (CAB_IN_SLOT) | 2 | Different @type encoding |
+| CabMicIr @type | 4 (CAB_IN_SLOT) | 0 | Different @type encoding |
+| cab0 key | Present (separate cab entry) | ABSENT (cab is a block) | No cab0 for Pod Go |
+| Snapshot controller # | 19 | 4 | Different snapshot controller ID |
+| Controller @fs_* fields | ABSENT | Present (rich footswitch metadata) | New footswitch section pattern |
+| Snapshot count | 8 | 4 | Generate only 4 snapshots |
+| Max amp models | ~120+ | 86 | Smaller model catalog |
 
 ---
 
 ## Feature Landscape
 
-### Table Stakes (Users Expect These — Missing = Feature Feels Incomplete)
-
-These are the behaviors users assume will be present in the new features. Missing any of them makes the implementation feel half-done.
+### Table Stakes (Users Expect These — Missing = Product Feels Broken)
 
 | Feature | Why Expected | Complexity | Depends On |
 |---------|--------------|------------|------------|
-| **Prompt caching on the system prompt** | The Planner system prompt contains ~1,500 tokens of static content (model list, schema instructions). Every generation call re-pays for this. Caching the static portion is the standard practice for apps with stable system prompts. Users paying API costs expect this to be optimized. | LOW | `callClaudePlanner()` in `src/lib/planner.ts`. System prompt text is already in `buildPlannerPrompt()`. Add `cache_control: { type: "ephemeral" }` to the system content block. No architectural change needed. |
-| **Genre-aware delay time (tempo-relative)** | Guitarists know that delay timing should match the song's feel. Blues players expect slapback (100-140 ms, 1 repeat). Ambient players expect long, evolving echoes. Metal players expect tight, minimal delay. Currently `resolveDefaultParams()` uses a single model default regardless of `genreHint`. | MEDIUM | `param-engine.ts` `resolveDefaultParams()` for delay blocks. Needs `genreHint` passed from `ToneIntent` into the delay parameter resolver. No new modules — extend existing 3-layer resolution strategy. |
-| **Genre-aware reverb mix** | Ambient and post-rock tones require high reverb mix (40-60%). Metal requires near-zero reverb. Blues requires subtle warmth. Using the same reverb defaults across genres produces wrong results for extreme cases. | MEDIUM | Same as delay: `resolveDefaultParams()` for reverb blocks needs `genreHint` context. Same extension point as delay — can be done in a single pass. |
-| **Genre-aware modulation rate** | Chorus and vibrato on metal sounds wrong at the slow rates that work for jazz. Tremolo for country needs a specific rate and depth that a generic default will miss. | LOW | `resolveDefaultParams()` for modulation blocks. Lower priority than delay/reverb because modulation is less genre-defining. |
-| **Ambient snapshot enables reverb and delay** | In the existing `snapshot-engine.ts`, reverb is always ON and delay is ON for lead and ambient. This is already mostly correct, but the ambient snapshot should also enable modulation (chorus/phaser creates lushness) and should not simply inherit lead's delay state. The expected behavior: ambient = reverb ON + delay ON + modulation ON. Currently modulation is ambient-only which is correct, but the logic needs verification against `EffectIntent.role === "ambient"`. | LOW | `snapshot-engine.ts` `getBlockEnabled()`. Ambient effects with `role === "ambient"` in the ToneIntent should all be enabled in the ambient snapshot. The current code enables modulation only for ambient — verify this correctly handles the `role` field from EffectIntent. |
-| **Clean snapshot disables drive blocks** | The existing snapshot engine already handles this: distortion blocks (non-boost) are OFF for clean and ambient. This is table stakes — if it's broken, the clean snapshot sounds wrong. Verify correctness as part of smarter toggling work. | LOW | `snapshot-engine.ts` `getBlockEnabled()`. Already implemented — this is a verification/hardening task, not new code. |
-| **Tone description card shows all 4 snapshots** | When users see the preset summary, they expect to see what each snapshot does (which blocks are on, what the tone character is). Currently `summarizePreset()` in `preset-builder.ts` returns a text summary. Users expect snapshot names, roles, and key block states to be visible before downloading. | MEDIUM | `summarizePreset()` in `src/lib/helix/preset-builder.ts` and the `generatedPreset` state in `page.tsx`. The `spec` object is already returned in the API response — the UI component needs to render it. |
-| **Signal chain visualization shows block types clearly** | Users need to understand what's in the preset. The expected format mirrors HX Edit's own UI: left-to-right horizontal flow, block icons or labels by type (Drive, Amp, Cab, EQ, Delay, Reverb), enabled/disabled state, DSP boundary visible. This is the standard format every signal chain editor uses. | MEDIUM | Read-only visualization from `presetSpec.signalChain` already returned in API response. Pure frontend work in `page.tsx` — no backend changes. |
-| **.hlx audit validates all required keys are present** | Users expect that if the app generates a file, it will load on hardware without error. The audit should check for: `@pedalstate` in snapshots, `@fs_enabled` on controller assignments, correct `@type` values, required cab fields (LowCut, HighCut). The two known v1.0 hardware bugs (`@fs_enabled` hardcoded false, `@pedalstate` hardcoded 2) are symptoms of insufficient audit coverage. | MEDIUM | `preset-builder.ts` and `validate.ts`. The audit is a systematic review of what HX Edit expects vs. what the builder produces. Hardware testing is the ground truth. |
-| **`@fs_enabled` bug fixed** | Footswitches require multiple presses due to hardcoded `@fs_enabled: false`. This is a known hardware bug from v1.0. Expected behavior: stomp footswitches are enabled on first press. | LOW | `preset-builder.ts` `buildFootswitchSection()` — find where `@fs_enabled` is set and correct the value. Likely a one-line fix once the correct value is identified. |
-| **`@pedalstate` computed per snapshot** | Pedal LEDs don't reflect active stomps per snapshot because `@pedalstate` is hardcoded to `2`. Expected behavior: each snapshot's `@pedalstate` reflects the blocks that are enabled in that snapshot. | MEDIUM | `preset-builder.ts` `buildSnapshot()` — `@pedalstate` needs to be computed from the snapshot's `blockStates` rather than hardcoded. The `@pedalstate` value is a bitmask or index of the active footswitch state. |
+| **Download `.pgp` file** | The only deliverable. A Pod Go user selected Pod Go — they expect a file that loads in Pod Go Edit without error. | MEDIUM | New `preset-builder-podgo.ts` or device-aware path in existing builder. Must emit correct device ID, `device_version`, Pod Go JSON structure. |
+| **Correct device ID (2162695)** | Pod Go Edit rejects files with wrong device number with "incompatible device" error. This is the #1 import blocker. | LOW | Add `pod_go: 2162695` to `DEVICE_IDS` in `types.ts`. One-line addition. |
+| **Series-only signal chain (no dsp1, no split/join)** | Pod Go has one DSP chip. Emitting `dsp1` blocks or split/join will produce an invalid file or hardware misbehavior. | LOW | Ensure chain builder assigns all blocks to dsp0 only. `dsp1: {}` always. |
+| **10-block chain (block0–block9)** | Pod Go has exactly 10 block slots. The physical device displays 10 positions. Fewer blocks = empty slots (valid). More = overflow (invalid). | MEDIUM | Pod Go chain-rules must assemble exactly up to 10 blocks. Current Helix builder uses up to 16 slots across 2 DSPs. |
+| **4 snapshots only (snapshot0–snapshot3)** | Pod Go has exactly 4 snapshot slots. Helix generates 8. Emitting snapshot4–snapshot7 would produce an invalid file. | LOW | Pod Go snapshot engine generates 4 snapshots. The existing 4-snapshot role pattern (clean, crunch, lead, ambient) maps 1:1. No new logic needed. |
+| **Pod Go effect model IDs with Mono/Stereo suffix** | Pod Go uses `HD2_DistScream808Mono` not `HD2_DistScream808`. Loading a Helix model ID into Pod Go produces "unrecognized model" warnings or silence. | HIGH | New Pod Go model catalog with correct suffixed model IDs. Cannot reuse Helix model IDs for effects. Amp IDs are fine (shared). |
+| **Correct @type values for all block types** | Pod Go @type encoding is completely different from Helix. Delay=5 (not 7), Reverb=5 (not 7), Modulation=0 (not 4), EQ_STATIC=6 (not 0). Wrong @type = block not recognized. | HIGH | New `BLOCK_TYPES_PODGO` constant map (or device-aware block type resolution in models). Cannot reuse Helix BLOCK_TYPES constants for Pod Go. |
+| **`input`/`output` keys (not `inputA`/`outputA`)** | Pod Go DSP I/O uses `input` and `output` key names. `inputA`/`outputA` = Helix format. Wrong key names = file parse error in Pod Go Edit. | LOW | Builder uses `input`/`output` when generating Pod Go files. |
+| **Correct input/output @model strings** | Pod Go input is `P34_AppDSPFlowInput`, Helix is `HD2_AppDSPFlow1Input`. Output: `P34_AppDSPFlowOutput` vs `HD2_AppDSPFlowOutput`. | LOW | Config constant per device. Verified from 18 real Pod Go files. |
+| **No `@path` field on blocks** | Helix blocks have `@path: 0` or `@path: 1` (routing path). Pod Go has single-path, no `@path` field. Emitting `@path` may cause Pod Go Edit to misinterpret block routing. | LOW | Omit `@path` when building Pod Go blocks. |
+| **Snapshot controller number 4 (not 19)** | Helix uses `@controller: 19` for snapshot assignments. Pod Go uses `@controller: 4`. Wrong controller number = parameter values not recalling per snapshot. | MEDIUM | Pod Go controller section uses `@controller: 4`. Emit `@fs_*` metadata per controller assignment for the footswitch section. |
+| **Footswitch section with `@fs_*` metadata** | Pod Go footswitch section has rich metadata (`@fs_index`, `@fs_label`, `@fs_enabled`, `@fs_ledcolor`, `@fs_momentary`, `@fs_primary`) per block. Helix footswitch section is often empty. Pod Go Edit reads this section to display footswitch assignments. Without it, no footswitch assignments are displayed in the editor. | MEDIUM | New `buildFootswitchSection()` for Pod Go using real `.pgp` format as reference. |
+| **`device_version` field present** | Pod Go `.pgp` files always have `data.device_version`. Helix `.hlx` files do not. Pod Go Edit likely validates this field. Current firmware 2.50 = `device_version` values in range seen from real files. | LOW | Add `device_version` to the Pod Go `HlxFile` equivalent. Use a sensible firmware version constant (e.g., `33619968` = v2.00). |
+| **`@global_params` @model in global section** | Pod Go global section has `"@model": "@global_params"`. Helix global does not have this `@model` field. Whether required is unclear, but all 18 real files include it. | LOW | Emit `"@model": "@global_params"` in Pod Go global section. |
+| **No @topology fields in global** | Helix global has `@topology0`/`@topology1`. Pod Go global does not. Emitting these fields may be ignored or cause parsing issues. | LOW | Don't emit `@topology*` fields for Pod Go. |
 
 ---
 
-### Differentiators (Competitive Advantage — Beyond What Competitors Do)
-
-Features that make v1.1 meaningfully better than the v1.0 baseline and better than competing tools.
+### Differentiators (Competitive Advantage — Beyond Basic Compatibility)
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| **Genre-specific delay parameter tables** | Providing slapback (100-140 ms, 1 repeat, high mix) for blues vs. dotted-eighth note sync for rock vs. long atmospheric delays for ambient is the difference between a generic preset and one that sounds right for the style. ToneBuilder.ai has no genre awareness at the parameter level. | MEDIUM | Implement as a `GENRE_EFFECT_PARAMS` lookup table in `param-engine.ts`, keyed by genre keyword patterns extracted from `genreHint`. This is a data problem, not an architecture problem. The lookup is a new 3rd resolution layer on top of model defaults. |
-| **Effect role-aware snapshot toggling** | The `EffectIntent.role` field ("always_on", "toggleable", "ambient") already carries the AI's intent for how each effect should behave in snapshots. Currently `snapshot-engine.ts` uses block type (delay, reverb, modulation) as the proxy for on/off decisions — but the role field is more precise. An effect marked "ambient" should only be on in the ambient snapshot. An effect marked "always_on" should be on in all snapshots. Wiring role into block state decisions makes snapshots more musically intelligent. | MEDIUM | `snapshot-engine.ts` needs access to the original `EffectIntent[]` array to look up each block's role. Currently it only receives `BlockSpec[]` which doesn't carry the role. Either extend `BlockSpec` with an optional `role` field, or pass a role lookup map alongside the chain. |
-| **Horizontal signal chain visualization** | A read-only left-to-right block flow showing [Input] → [Drive] → [Amp] → [Cab] → [EQ] → [Delay] → [Reverb] → [Volume] → [Output] is instantly scannable and matches how HX Edit displays the signal chain. Users can see what they're downloading without decoding the raw JSON. No competitor AI preset tool shows this. | MEDIUM | Pure React component in `page.tsx`. Read from `presetSpec.signalChain` which is already in the API response. Use `block.type` for icons/labels, `block.enabled` for visual state, `block.dsp` for DSP boundary marker. No new API or backend work. |
-| **Tone description card with key specs** | A structured human-readable card showing: preset name, genre/style, amp and cab choice, 4 snapshot names with their tone roles, pickup type hint, and one-line guitarist tip. This is what professional Helix preset sellers include with every product (Alex Price, Glenn DeLaune pattern). Currently the app returns a `summary` string, but users benefit from a structured card. | LOW | `summarizePreset()` in `preset-builder.ts` already generates a text summary. The description card extends this into a structured data object that the UI renders as a card. Alternatively, pass the `toneIntent` and `spec` objects (already returned) to a new `ToneDescriptionCard` React component that renders them directly. No new data needed. |
-| **Prompt caching for ~50% API cost reduction on system prompt** | The Planner system prompt is 1,000-2,000 tokens and identical on every call (model list + instructions are static). Cache reads cost 0.1x the normal input token price — that is a 90% reduction on the cached portion. For a 1,500-token system prompt cached on 100 generations per day, this is meaningful cost savings. | LOW | Add `cache_control: { type: "ephemeral" }` to the system field of the `client.messages.create()` call in `callClaudePlanner()`. The Anthropic SDK supports this as of `@anthropic-ai/sdk 0.78.0` which is already installed. The cache lasts 5 minutes by default; sufficient for typical usage patterns. No new dependencies. |
-| **Broader .hlx format audit with hardware verification checklist** | Beyond fixing the two known bugs, a systematic review of what HX Edit expects in each JSON section catches silent failures before users hit them on hardware. The audit should cover: all 8 snapshot slots, controller section structure, footswitch section structure, global section fields, DSP topology fields. This prevents the next round of hardware bugs from accumulating. | MEDIUM | Not purely code — involves exporting known-good presets from HX Edit and comparing JSON structure field-by-field against what the builder produces. Findings feed targeted fixes in `preset-builder.ts`. Document expected values as assertions in `validate.ts`. |
+| **Pod Go-specific model catalog with complete model list** | A correct model catalog with all 86 amps, 206+ effects at their proper Pod Go model IDs means better amp/effect matching in the AI generation. Without it, the app is limited to the ~13 amps confirmed from real files. | HIGH | Requires building a `models-podgo.ts` catalog with Mono/Stereo suffixed effect IDs. Source: Line 6's official models page and firmware 2.50 release notes list all 86 amps. Cross-reference with Helix models.ts for defaultParams. |
+| **4-snapshot generation tuned for Pod Go's 4-snapshot limit** | Helix generates 8 snapshots; Pod Go only uses 4. The existing snapshot logic already generates clean/crunch/lead/ambient as the first 4 — this is a perfect fit with no changes needed to the snapshot engine. The differentiator is explicitly documenting and testing this mapping. | LOW | The snapshot engine already generates exactly 4 active snapshots (0–3) and leaves 4–7 empty. Pod Go simply omits the empty ones. No new logic. |
+| **Cab-as-block placement (not cab0 key)** | Pod Go places the cab as a regular block (not as a separate `cab0` key like Helix). The cab block is positioned after the amp in the chain with its own position number. This is architecturally different from how the current preset builder works. | MEDIUM | Pod Go builder emits cab as `block5` or `block6` (after amp), not as `cab0`. The `@type` for CabMicIr is 0 (not 4). The block has the same fields as Helix cab (`LowCut`, `HighCut`, `@mic`, `Level`, etc.) — just stored differently. |
+| **DSP usage awareness for Pod Go** | Pod Go has ~half the DSP of Helix. A chain-rules module that limits complex effects (no double reverb + reverb, no Ganymede-class reverbs by default) produces files that are guaranteed to load without DSP overflow. | MEDIUM | Pod Go chain-rules should prefer "light" effect models (simple delay, room reverb, basic chorus) over DSP-heavy variants. The DSP budget is not computable without an official DSP cost table, but heuristic rules avoid known heavy combos. |
+| **Tone description card shows Pod Go context** | When showing the preset summary card, noting "Pod Go preset" in the UI gives users confirmation they downloaded the right format. A single field change on the existing `ToneDescriptionCard` component. | LOW | Add `device` label to `ToneDescriptionCard`. No backend changes. |
 
 ---
 
 ### Anti-Features (Do NOT Build These)
 
-Features that seem like natural extensions but create problems for v1.1 scope or user experience.
-
 | Feature | Why Requested | Why Problematic | Alternative |
 |---------|---------------|-----------------|-------------|
-| **Editable signal chain in UI** | Users want to tweak the generated chain before downloading | Turns a download-and-play tool into a full preset editor, which is HX Edit's job. Scope explosion: would need block picker, parameter sliders, drag-to-reorder, validation feedback. Ships nothing while building everything. | Provide the read-only visualization (differentiator above) and download flow. Users can open in HX Edit for tweaks. |
-| **Genre selector dropdown in UI** | Users want to pick genre before generating to guide the AI | The chat interview already collects genre through natural language. Adding a dropdown creates a second input channel that can conflict with what the user said in the chat ("I said blues but the dropdown says metal"). Also fragments the prompt engineering. | Keep genre as a natural language field in the interview. The `genreHint` already flows from ToneIntent into param-engine — no UI change needed. |
-| **Multiple parameter variation downloads** | Users want to see 2-3 variants of the same tone | Same problem as the v1.0 multi-provider comparison UI: dilutes focus, increases cost, creates choice paralysis. The prompt caching work actually makes generating a single excellent preset cheaper, not a justification for generating more. | Keep single download. The tone description card and signal chain visualization give users enough confidence to download the one generated preset. |
-| **Snapshot customization in UI** | Users want to rename snapshots or toggle which effects are on per snapshot | HX Edit already does this better than a web UI ever could. The user has the hardware; they can adjust snapshot states there. Building this in the web app duplicates HX Edit functionality with worse UX. | Generate musically intelligent snapshots using the effect role awareness improvement (differentiator above). The generated presets should be correct enough that users rarely need to adjust. |
-| **Live API cost display** | Users want to see how much the generation cost | Exposes API cost mechanics to end users, which creates pricing expectations and invites cost-minimization behavior that degrades quality. Also complex to implement accurately with caching and streaming. | Internal telemetry only. If cost monitoring is needed, use server-side logging in the generate route, not a user-facing display. |
-| **Automatic 1-hour cache duration** | The 1-hour cache option costs 2x the write price and lasts longer | For a 5-minute-cycle user interaction (interview → generate → download), the default 5-minute ephemeral cache is sufficient. The 1-hour cache is for batch processing scenarios where many requests hit the same context over hours. Paying 2x to cache for 1 hour when 5 minutes covers the use case wastes money. | Use the default 5-minute ephemeral cache. Revisit if usage patterns show multiple generations per session exceeding 5 minutes apart. |
+| **Parallel signal paths on Pod Go** | Helix supports parallel routing and users may request it | Pod Go hardware has no parallel routing. `dsp1` is always empty. Emitting split/join blocks produces invalid files. The AI prompt must not generate split topology for Pod Go. | Series-only chain. If user describes a wet/dry blend tone, map it to a single-path chain with appropriate delay/reverb mix levels. |
+| **8-snapshot generation for Pod Go** | Helix generates 8 snapshots, some users may expect parity | Pod Go has exactly 4 snapshot slots. Emitting `snapshot4`–`snapshot7` produces a file that either fails to load or causes editor confusion. | Generate exactly 4 snapshots. The existing clean/crunch/lead/ambient pattern is the perfect 4-snapshot split. |
+| **Helix model IDs in Pod Go files** | Reusing `models.ts` directly would be faster to implement | `HD2_DistScream808` loads as "unrecognized model" on Pod Go. Every effect model needs the Mono/Stereo suffix. Loading wrong model IDs produces silent failure (effect silently replaced or skipped by Pod Go Edit). | New Pod Go model catalog with correct suffixed IDs. Amp IDs are the exception — they ARE shared. |
+| **Live DSP budget calculation** | Users want to know if their preset will fit in Pod Go's DSP | No official DSP cost table from Line 6. Any calculation would be guesswork. A wrong "fits!" indication misleads users; a wrong "too heavy!" blocks valid chains. | Heuristic chain-rules that avoid known DSP-heavy combinations (no Ganymede + Searchlight together, no heavy dual reverb). The Pod Go Edit software shows the real DSP bar when the file loads. |
+| **Full Helix feature parity on Pod Go** | Users see Helix features and ask why Pod Go doesn't have them | Pod Go is intentionally limited. Dual-amp, dual-cab, MIDI Command Center, VDI — none exist on Pod Go. Attempting to generate these creates files that malfunction on the device. | Scope Pod Go generation to what Pod Go actually does: one amp, one cab, 4 flexible effects, 4 snapshots, series chain. Generate excellent single-path presets within these constraints. |
 
 ---
 
 ## Feature Dependencies
 
 ```
-Prompt Caching
-    └── no dependencies — isolated to callClaudePlanner() in planner.ts
-    └── depends on: @anthropic-ai/sdk 0.78.0 (already installed, cache_control supported)
+Device Selector adds "Pod Go"
+    └──requires──> DEVICE_IDS["pod_go"] = 2162695 in types.ts
+                   └──requires──> PodGoDeviceTarget type added to DeviceTarget union
 
-Genre-Aware Effect Parameters
-    ├── requires: ToneIntent.genreHint flows into resolveParameters() in param-engine.ts
-    │   └── currently: genreHint is in ToneIntent but NOT passed to resolveParameters()
-    │   └── fix: add genreHint as parameter to resolveParameters() and resolveDefaultParams()
-    └── requires: GENRE_EFFECT_PARAMS lookup table (new data, same param-engine.ts file)
+Pod Go .pgp File Generation
+    ├──requires──> Pod Go model catalog (podgo-models.ts or models.ts extension)
+    │              └──requires──> Effect model IDs with Mono/Stereo suffixes
+    │              └──note──> Amp IDs already in models.ts (shared with Helix)
+    ├──requires──> Pod Go-specific BLOCK_TYPES constants (different @type values)
+    ├──requires──> Pod Go chain-rules variant (single DSP, 10 blocks, series only)
+    ├──requires──> Pod Go preset-builder (device ID, no topology, input/output keys, cab as block)
+    └──requires──> Pod Go snapshot engine (4 snapshots only, @controller=4 for snapshot)
 
-Smarter Snapshot Toggling (Effect Role Awareness)
-    ├── requires: EffectIntent.role accessible at snapshot-engine.ts evaluation time
-    │   └── currently: buildSnapshots() receives BlockSpec[] only (role field not present)
-    │   └── fix option A: add optional role field to BlockSpec (set in chain-rules.ts)
-    │   └── fix option B: pass ToneIntent.effects[] as a parallel lookup map to buildSnapshots()
-    ├── enhances: Genre-Aware Effect Parameters (both improve effect intelligence)
-    └── depends on: chain-rules.ts correctly propagating EffectIntent.role into the chain
+Pod Go chain-rules
+    ├──requires──> Pod Go model catalog (to pick models with correct IDs)
+    ├──requires──> NO split/join logic (series only)
+    └──enhances──> DSP-awareness heuristics (avoid heavy effect combos)
 
-.hlx Format Audit
-    ├── requires: hardware testing on real Helix LT (ground truth for expected values)
-    ├── fixes: @fs_enabled bug → preset-builder.ts buildFootswitchSection()
-    ├── fixes: @pedalstate bug → preset-builder.ts buildSnapshot()
-    └── outputs: assertions added to validate.ts for audited fields
+Pod Go snapshot engine (4 snapshots)
+    └──requires──> Existing snapshot engine logic (block on/off, param overrides)
+    └──simplification──> Drops snapshot4-7 generation — cleaner, not more complex
 
-Signal Chain Visualization
-    ├── requires: presetSpec.signalChain in API response (already present in spec field)
-    ├── requires: no backend changes — pure frontend React component
-    └── enhances: Tone Description Card (both surface preset internals to the user)
+Pod Go footswitch section builder
+    ├──requires──> Block assignments from chain-rules (which block → which @fs_index)
+    └──requires──> @fs_* metadata (label from model name, ledcolor from block type, index from position)
 
-Tone Description Card
-    ├── requires: toneIntent and spec objects in API response (already present)
-    ├── requires: no backend changes — React component reads existing response data
-    └── enhances: Signal Chain Visualization (together they form the preset preview)
-
-Hardware Bug Fixes (@fs_enabled, @pedalstate)
-    ├── requires: .hlx Format Audit (audit identifies the correct values)
-    └── requires: inspection of real HX Edit .hlx exports to determine expected values
+UI device selector adds "Pod Go"
+    └──requires──> Pod Go builder in the generate API route
+    └──enhances──> ToneDescriptionCard (adds "Pod Go" label)
 ```
 
 ### Dependency Notes
 
-- **Genre-aware params require genreHint threading**: `genreHint` is in `ToneIntent` but `resolveParameters()` currently only receives `(chain, intent)`. The `intent` is already passed, so `genreHint` is accessible as `intent.genreHint` — the fix is to use it in `resolveDefaultParams()`. No signature change needed.
+- **Effect model ID mapping is the highest-risk dependency.** Every effect model in the Pod Go builder must use the suffixed form (`HD2_DistScream808Mono`). This requires a complete Pod Go effect model catalog. Amp models are already correct (shared IDs). This is the one area that cannot be shortcutted.
 
-- **Effect role awareness requires a design decision**: `BlockSpec` does not carry `EffectIntent.role`. The cleanest fix is to extend `BlockSpec` with an optional `intentRole?: "always_on" | "toggleable" | "ambient"` field, set in `chain-rules.ts` when the block comes from an `EffectIntent`. This avoids passing the full ToneIntent down to the snapshot engine.
+- **`@type` encoding is a complete remap, not an extension.** The existing `BLOCK_TYPES` constants in `models.ts` are wrong for Pod Go (delay=7 in Helix, delay=5 in Pod Go). This requires either a `BLOCK_TYPES_PODGO` constant set, or a device-aware `getBlockType(device, blockCategory)` function.
 
-- **Visualization and description card share no dependencies on each other**: they can be developed and shipped independently. Both are read-only UI work consuming already-returned API data.
+- **Cab placement architecture differs.** Helix uses a `cab0` key separate from the block chain. Pod Go places the cab as a numbered block in the chain (block6 or block7, after the amp). The preset builder's `buildHlxFile()` currently generates `cab0`. A Pod Go builder needs to omit `cab0` and instead include the cab as a block at the correct position.
 
-- **Hardware bug fixes unblock signal chain visualization**: the visualization shows `block.enabled` states which reflect snapshot-engine decisions. If `@pedalstate` and `@fs_enabled` are incorrect on hardware, visualization accuracy is a secondary concern until hardware behavior is correct.
+- **Snapshots are a simplification, not a complexity.** Going from 8 to 4 snapshots removes work. The existing snapshot-engine generates 4 active snapshots (0–3) and 4 placeholder snapshots (4–7). Pod Go builder just omits the placeholders.
 
 ---
 
 ## MVP Definition
 
-### Ship in v1.1 (All Active Requirements)
+### Launch With (Pod Go v1.0)
 
-These are the items explicitly listed as active in PROJECT.md. Every one of them is in scope.
+The minimum viable Pod Go support that a Pod Go owner can actually use:
 
-- [ ] **Fix `@fs_enabled`** — stomp footswitches respond on first press. One-line fix in `preset-builder.ts` once correct value is determined from HX Edit export. LOW complexity, HIGH impact (hardware usability).
-- [ ] **Fix `@pedalstate` computation** — pedal LEDs reflect active stomps per snapshot. Requires computing bitmask from snapshot `blockStates` in `buildSnapshot()`. MEDIUM complexity, HIGH impact.
-- [ ] **Prompt caching** — `cache_control: { type: "ephemeral" }` on system prompt in `callClaudePlanner()`. ~50% savings on Planner API calls. LOW complexity, MEDIUM impact.
-- [ ] **Genre-aware effect defaults** — delay time, reverb mix, modulation rate vary by `genreHint`. MEDIUM complexity, HIGH quality impact (presently blues and metal presets use identical delay defaults).
-- [ ] **Smarter snapshot effect toggling** — wire `EffectIntent.role` into `snapshot-engine.ts` block state decisions. MEDIUM complexity, MEDIUM quality impact.
-- [ ] **.hlx format audit** — systematic comparison of builder output vs. real HX Edit exports; findings fed into validate.ts assertions and preset-builder.ts fixes. MEDIUM complexity, HIGH reliability impact.
-- [ ] **Signal chain visualization** — read-only horizontal block flow in UI before download. MEDIUM frontend complexity, HIGH UX impact (users see what they're downloading).
-- [ ] **Tone description card** — structured human-readable summary card (preset name, amp, cab, snapshots, guitar tips). LOW complexity (data already returned in API response), HIGH UX impact.
+- [ ] **Device selector: add "Pod Go" option** — User can choose Pod Go at the start of the interview. Downstream everything uses the Pod Go path.
+- [ ] **Pod Go effect model catalog** — Pod Go-specific model IDs for the 18 presences confirmed in real files + expanded to cover common effect types (dist, delay, reverb, modulation, dynamics, EQ, wah, volume). The Mono/Stereo suffixed IDs are non-negotiable.
+- [ ] **Pod Go BLOCK_TYPES constants** — Correct @type values for Pod Go (delay=5, reverb=5, modulation=0, EQ_STATIC=6, simple cab=2, CabMicIr=0).
+- [ ] **Pod Go chain-rules** — Single DSP (block0–block9), series only, no split/join, cab as block (not cab0). The structural rules are simpler than Helix — this is a smaller module.
+- [ ] **Pod Go preset builder** — Emits valid `.pgp` JSON with correct device=2162695, `device_version`, `input`/`output` keys (not `inputA`/`outputA`), `P34_AppDSPFlow*` input/output models, no `@path` or `@stereo` on blocks, `@model: "@global_params"` in global, no `@topology*`.
+- [ ] **Pod Go snapshot engine** — Generates exactly 4 snapshots using existing clean/crunch/lead/ambient logic. Uses `@controller: 4` (not 19) for snapshot assignments.
+- [ ] **Pod Go footswitch section** — Emits `footswitch.dsp0.blockN` with `@fs_index` (0–5 for the 4 flexible effects + FX loop + EQ), `@fs_label`, `@fs_enabled: true`, `@fs_ledcolor`, `@fs_momentary: false`, `@fs_primary: true`.
+- [ ] **`.pgp` download** — API returns `.pgp` file with correct MIME type (`application/json` or `application/octet-stream` with `.pgp` extension). Currently the download triggers `.hlx`.
 
-### Defer to v1.2+ (Not in This Milestone)
+### Add After Validation (v1.x)
 
-- Pickup-aware tone calibration (single-coil vs. humbucker EQ) — TONE-V2-01
-- Dual cab/dual mic blending — TONE-V2-02
-- Snapshots 5-8 with genre-specific variations — SNAP-V2-01
-- Stomp mode footswitch layout (Command Center assignments) — SNAP-V2-02
+Features that improve quality but are not required for an MVP Pod Go preset:
+
+- [ ] **Complete Pod Go amp catalog (86 models)** — The MVP can launch with the 13 amps confirmed from real files + any additional ones from the Helix models.ts that share IDs. The full 86-model catalog (including the Catalyst Series amp designs) adds richness.
+- [ ] **DSP-aware effect selection** — Heuristic rules in Pod Go chain-rules that avoid heavy DSP combinations (no Ganymede reverb with double-time delay). Valid for v1.x once the basic MVP is validated.
+- [ ] **Pod Go-specific tone description card** — Show "Pod Go preset" badge, remove references to Helix-specific features (parallel paths, 8 snapshots) from the UI.
+
+### Future Consideration (v2+)
+
+- [ ] **Pod Go Wireless support** — Pod Go Wireless uses the same device ID and .pgp format as Pod Go. Would require only a display name change, not a format change. Defer until confirmed.
+- [ ] **Pod Go stomp mode layout optimization** — Assigning blocks to specific `@fs_index` positions based on musical logic (e.g., drive on FS3, delay toggle on FS4). Current MVP just assigns sequentially.
 
 ---
 
@@ -148,147 +314,136 @@ These are the items explicitly listed as active in PROJECT.md. Every one of them
 
 | Feature | User Value | Implementation Cost | Priority |
 |---------|------------|---------------------|----------|
-| Fix `@fs_enabled` | HIGH (hardware usability) | LOW | P1 |
-| Fix `@pedalstate` | HIGH (hardware usability) | LOW-MEDIUM | P1 |
-| .hlx format audit | HIGH (reliability) | MEDIUM | P1 |
-| Genre-aware effect defaults | HIGH (tone quality) | MEDIUM | P1 |
-| Signal chain visualization | HIGH (UX confidence) | MEDIUM | P1 |
-| Tone description card | HIGH (UX clarity) | LOW | P1 |
-| Smarter snapshot toggling | MEDIUM (tone quality) | MEDIUM | P2 |
-| Prompt caching | MEDIUM (cost reduction) | LOW | P2 |
+| Device selector + Pod Go device ID | HIGH (prerequisite) | LOW | P1 |
+| Pod Go effect model catalog | HIGH (correctness) | MEDIUM | P1 |
+| Pod Go BLOCK_TYPES constants | HIGH (correctness) | LOW | P1 |
+| Pod Go chain-rules (series, 10 blocks, cab as block) | HIGH (prerequisite) | MEDIUM | P1 |
+| Pod Go preset builder (.pgp format) | HIGH (prerequisite) | MEDIUM | P1 |
+| Pod Go snapshot engine (4 snapshots, @controller=4) | HIGH (correctness) | LOW | P1 |
+| Pod Go footswitch section | MEDIUM (usability) | MEDIUM | P1 |
+| `.pgp` download endpoint | HIGH (prerequisite) | LOW | P1 |
+| Complete 86-amp catalog | MEDIUM (quality) | MEDIUM | P2 |
+| DSP-aware effect selection | MEDIUM (quality) | MEDIUM | P2 |
+| Pod Go device label in tone card | LOW (polish) | LOW | P2 |
 
 **Priority key:**
-- P1: Must ship in v1.1 (user-facing quality or reliability impact)
-- P2: Should ship in v1.1 (cost or secondary quality improvement)
-- P3: Defer (not in v1.1 scope)
+- P1: Must ship for any Pod Go preset to be loadable on hardware
+- P2: Improves quality/completeness after basic functionality works
+- P3: Defer (not needed for initial Pod Go support)
 
 ---
 
-## Technical Notes by Feature
+## Pod Go vs Helix: Code Reuse Assessment
 
-### Prompt Caching Implementation
+The following existing modules translate **directly** to Pod Go with no or minimal changes:
 
-The Anthropic SDK supports two caching modes. For the Planner use case, explicit cache breakpoints on the system content block are the right approach (as opposed to automatic caching at the request level). The system prompt is static per deployment and benefits most from a stable cache hit.
+| Module | Reuse Level | What Changes |
+|--------|-------------|-------------|
+| `tone-intent.ts` (ToneIntent schema) | 100% reuse | Nothing — ToneIntent is device-agnostic |
+| `planner.ts` (AI generation) | 100% reuse | Nothing — AI generates ToneIntent, not device files |
+| `param-engine.ts` (parameter resolution) | ~90% reuse | May need to add amp model lookup for Pod Go-exclusive amps |
+| `snapshot-engine.ts` (snapshot logic) | ~80% reuse | Pass `maxSnapshots: 4` (not 8). Change snapshot controller from 19 to 4 |
+| `chain-rules.ts` (chain assembly) | ~40% reuse | New Pod Go variant: single DSP, 10 blocks, no split/join, different model catalog |
+| `preset-builder.ts` (file generation) | ~30% reuse | New Pod Go builder: different device ID, different I/O keys, cab as block, no cab0, no @path/@stereo |
+| `validate.ts` (file validation) | ~50% reuse | New validation rules for Pod Go format constraints |
+| `models.ts` (model catalog) | ~70% reuse | Amp IDs reused entirely; effect IDs need new suffixed catalog |
 
-Implementation in `callClaudePlanner()`:
-```typescript
-const response = await client.messages.create({
-  model: "claude-sonnet-4-6",
-  max_tokens: 4096,
-  system: [
-    {
-      type: "text",
-      text: systemPrompt,
-      cache_control: { type: "ephemeral" }, // 5-minute cache, 0.1x read price
-    }
-  ],
-  messages: [{ role: "user", content: conversationText }],
-  output_config: { format: zodOutputFormat(ToneIntentSchema) },
-});
-```
+The modules that need the most new work are: Pod Go model catalog, Pod Go preset builder, and Pod Go chain-rules. The AI layer (planner) and tone modeling layer (param-engine, snapshot-engine) are largely reusable because they operate on `ToneIntent` and `PresetSpec`, not on device-specific file formats.
 
-Minimum token threshold: Anthropic requires a minimum of 1,024 tokens for cache eligibility. The Planner system prompt (model list + instructions) is approximately 1,500-2,000 tokens, which clears this threshold. Confidence: HIGH (official Anthropic docs verified).
+---
 
-Cache savings rate: cached tokens cost 0.1x the base input token price. A 1,500-token system prompt costs $0.0045 normally ($3/million), cached it costs $0.00045. At 100 generations per day, this saves ~$0.405/day. Not dramatic at current scale, but meaningful and free to implement.
+## Technical Reference: Pod Go File Format Spec
 
-### Genre-Aware Effect Parameter Defaults
+Sourced from direct inspection of 18 real `.pgp` files (firmware v1.00 through v2.00, downloaded from Line 6 CustomTone). All values are HIGH confidence — observed in actual device files.
 
-The current `resolveDefaultParams()` in `param-engine.ts` falls through to `model.defaultParams` for delay, reverb, and modulation — a single set of values regardless of genre. The genre-aware extension is a new lookup layer:
-
-Genre keyword patterns to detect (from `genreHint` string, case-insensitive):
-- blues / blues-rock / rockabilly / country → slapback delay (120 ms, 1 repeat, 35% mix), warm reverb (15-20% mix)
-- metal / djent / thrash / progressive metal → minimal delay (off or 20ms pre-delay), near-zero reverb (5-8% mix)
-- ambient / post-rock / shoegaze / atmospheric → long delay (450-700 ms, 35-50% feedback, 50-60% mix), high reverb (40-60% mix)
-- jazz / fusion / smooth → room reverb (20-25% mix), no delay or short hall delay
-- classic rock / hard rock (default) → quarter-note delay at tempo (40% mix), medium hall reverb (20% mix)
-
-These are normalized 0-1 values derived from community consensus and effect manufacturer documentation (BOSS, Strymon, Line 6). Confidence: MEDIUM (multiple consistent sources, community consensus).
-
-### Smarter Snapshot Toggling: Effect Role Awareness
-
-The cleanest implementation extends `BlockSpec` with an optional `intentRole` field:
-
-```typescript
-// In types.ts
-export interface BlockSpec {
-  // ... existing fields ...
-  intentRole?: "always_on" | "toggleable" | "ambient"; // from EffectIntent.role
+### Top-Level Structure
+```json
+{
+  "version": 6,
+  "schema": "L6Preset",
+  "meta": { "pbn": 0, "premium": 0, "original": 0 },
+  "data": {
+    "device": 2162695,
+    "device_version": 33619968,
+    "meta": {
+      "appversion": 33554432,
+      "name": "Preset Name",
+      "application": "POD Go Edit",
+      "build_sha": "v2.00-5-g665e64e",
+      "modifieddate": 1734146822
+    },
+    "tone": { ... }
+  }
 }
 ```
 
-`chain-rules.ts` sets this when building from user effects:
-```typescript
-// In buildBlockSpec(), when originating from EffectIntent:
-intentRole: effectIntent.role, // propagated from ToneIntent.effects[].role
+### Tone Structure
+```
+tone:
+  dsp0:         ← all 10 blocks, input, output
+  dsp1: {}      ← always empty
+  snapshot0..3  ← exactly 4 snapshots
+  controller    ← parameter controller assignments
+  footswitch    ← footswitch assignments per block
+  global        ← tempo, cursor, @model: "@global_params"
 ```
 
-`snapshot-engine.ts` `getBlockEnabled()` adds a role-aware check before the existing type-based logic:
-```typescript
-// Check explicit role intent first (overrides type-based defaults)
-if (block.intentRole === "always_on") return true;
-if (block.intentRole === "ambient") return role === "ambient";
-if (block.intentRole === "toggleable") {
-  // Use existing type-based logic for toggleable effects
+### Block @type Values (Pod Go vs Helix)
+| Block Category | Pod Go @type | Helix @type |
+|----------------|-------------|------------|
+| Distortion, Dynamics, Wah, Vol, Pitch | 0 | 0 |
+| `HD2_CabMicIr_*` (mic'd IR cab) | 0 | 4 |
+| Modulation (chorus, flanger, phaser, tremolo, rotary) | 0 | 4 |
+| Amp (without cab0) | 1 | 1 |
+| `HD2_Cab*` (simple cab) | 2 | 4 |
+| Delay, Reverb, FX Loop | 5 | 7, 9 |
+| `HD2_EQ_STATIC_*` | 6 | 0 |
+| `HD2_ImpulseResponse1024Mono` (user IR) | 2 | 5 |
+| Looper | 4 | 6 |
+
+### Input/Output Models
+| Field | Pod Go | Helix |
+|-------|--------|-------|
+| dsp0 input key | `input` | `inputA` |
+| dsp0 output key | `output` | `outputA` |
+| input `@model` | `P34_AppDSPFlowInput` | `HD2_AppDSPFlow1Input` |
+| output `@model` | `P34_AppDSPFlowOutput` | `HD2_AppDSPFlowOutput` |
+
+### Global Section
+```json
+"global": {
+  "@model": "@global_params",
+  "@current_snapshot": 0,
+  "@cursor_group": "block5",
+  "@pedalstate": 2,
+  "@tempo": 120
 }
 ```
+Note: No `@topology0`/`@topology1`. No `@cursor_dsp`/`@cursor_path`/`@cursor_position`.
 
-Mandatory blocks (boost, EQ, gate, volume) do not come from `EffectIntent` and will have `intentRole: undefined`, so existing logic handles them unchanged.
-
-### Signal Chain Visualization
-
-The visualization reads `presetSpec.signalChain` (already in API response as `spec.signalChain`). A horizontal flow component:
-
-Block display format per block:
-- Icon or label based on `block.type` (Drive, Amp, Cab, EQ, Delay, Reverb, Mod, Vol)
-- Enabled state from `block.enabled` (dimmed if false)
-- DSP boundary marker between DSP0 and DSP1 blocks
-- Model name in smaller text below the type label
-
-The Warm Analog Studio design language (warm amber tones, tube-glow aesthetics) should be applied. No drag/reorder needed — this is purely read-only. No external library needed; a simple `flex` row of styled div elements is sufficient.
-
-### Tone Description Card
-
-The `generatedPreset` state already contains `toneIntent` and `spec`. A `ToneDescriptionCard` component renders:
-1. Preset name + one-line description (from `spec.description`)
-2. Amp model and cab model (from `toneIntent.ampName`, `toneIntent.cabName`)
-3. Genre/style hint (from `toneIntent.genreHint`)
-4. Four snapshot pills: name + toneRole color-coded (clean=blue, crunch=orange, lead=red, ambient=teal)
-5. Guitar notes / setup tips (from `spec.guitarNotes`)
-
-This is a pure rendering component — no new API calls, no new state. All data is already in the response.
-
-### .hlx Format Audit Methodology
-
-The audit is an empirical comparison process, not a code-only task:
-1. Export 5-8 representative presets from HX Edit (cover: simple clean, high-gain, ambient, with snapshots)
-2. Compare JSON field-by-field against what `buildHlxFile()` generates for equivalent inputs
-3. Document discrepancies as a findings list
-4. Fix discrepancies in `preset-builder.ts` (structural) or `validate.ts` (assertions)
-5. Verify fixes on real Helix LT hardware
-
-Known discrepancies to investigate:
-- `@fs_enabled` on footswitch controller assignments (currently hardcoded `false`)
-- `@pedalstate` on snapshot objects (currently hardcoded `2`, should be computed)
-- Whether `@valid` on empty snapshots (5-8) should be `false` vs `true`
-- Whether the footswitch section requires specific key names for stomp assignments
-- Whether the `global.@pedalstate` differs from snapshot-level `@pedalstate`
+### Snapshot Controller Number
+- Pod Go: `@controller: 4` (snapshot recall)
+- Helix: `@controller: 19` (snapshot recall)
+- EXP Pedal 1: `@controller: 1` (same on both)
+- EXP Pedal 2: `@controller: 2` (same on both)
 
 ---
 
 ## Sources
 
-- [Anthropic Prompt Caching Official Documentation](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) — HIGH confidence (official, verified 2026-03-02). Confirms 0.1x read price, 1024 token minimum, `cache_control: { type: "ephemeral" }` syntax, 5-minute default TTL.
-- [Anthropic Prompt Caching Pricing](https://platform.claude.com/docs/en/about-claude/pricing) — HIGH confidence (official Anthropic pricing page). Claude Sonnet 4.6 at $3/M input, $0.30/M cached reads.
-- [BOSS Articles — Using Delay for Specific Genres](https://articles.boss.info/using-delay-for-specific-genres/) — MEDIUM confidence (manufacturer editorial, genre-specific delay conventions). Slapback 100-140 ms for blues, ambient long delay patterns confirmed.
-- [Sonicbids — Cheat Sheet for Delay and Reverb Effects](https://blog.sonicbids.com/get-the-guitar-sound-you-want-cheat-sheet-for-delay-and-reverb-effects/) — MEDIUM confidence (community blog, widely cited parameter ranges).
-- [Premier Guitar — A Beginner's Guide to Ambient Guitar](https://www.premierguitar.com/lessons/beginner/beginners-guide-to-ambient-guitar) — MEDIUM confidence (industry publication). High reverb mix 40-60% for ambient confirmed.
-- [Line 6 CustomTone — Preset Library](https://line6.com/customtone/browse/helix/) — HIGH confidence (official Line 6 preset sharing platform). Tone description card format informed by how professional presets document themselves there.
-- [Alex Price Musician — Helix Complete Preset Library](https://www.alexpricemusician.com/helix) — MEDIUM confidence (professional Helix preset seller). Documents tone description card conventions: name, one-liner, amp/cab, snapshot map, pickup notes.
-- [Glenn DeLaune — Helix Presets](https://glenndelaune.com/helix-patches.htm) — MEDIUM confidence (leading Helix preset professional). Documents same tone description card patterns.
-- [Line 6 Community — Documentation on the .hlx JSON format](https://line6.com/support/topic/33381-documentation-on-the-hlx-json-format/) — MEDIUM confidence (official forum, community reverse engineering). Confirms no official schema exists; empirical inspection required.
-- Direct codebase inspection (`src/lib/helix/`, `src/lib/planner.ts`, `src/app/api/generate/route.ts`) — HIGH confidence. Feature dependency analysis derived from actual TypeScript source.
+- **Direct inspection of 18 real Pod Go `.pgp` preset files** (firmware v1.00–v2.00, downloaded from Line 6 CustomTone) — HIGH confidence. All file format findings verified empirically. Files located at `C:/Users/dsbog/Downloads/*.pgp`.
+- **Direct inspection of 12 real Helix `.hlx` preset files** (firmware v3.70) — HIGH confidence. Comparison baseline for structural differences. Files located at `C:/Users/dsbog/Downloads/*.hlx`.
+- **Direct inspection of `src/lib/helix/models.ts`** — HIGH confidence. Confirmed all 13 Pod Go amp model IDs already exist in models.ts with matching ID strings.
+- [Line 6 POD Go FAQ](https://line6.com/support/topic/53806-pod-go-faq/) — HIGH confidence (official Line 6 support). Confirms block structure, fixed vs. flexible blocks, 3 omitted models (Tone Sovereign, Clawthorn Drive, Cosmos Echo).
+- [POD Go Block Restrictions — Line 6 Community](https://line6.com/support/topic/62007-pod-go-block-restrictions/) — MEDIUM confidence (community forum). Confirms 4 flexible blocks, DSP constraints, practical workarounds.
+- [POD Go 2.50 — Line 6 Community](https://line6.com/support/page/kb/pod/pod-go/pod-go-250-r1085/) — HIGH confidence (official Line 6 KB). Confirms firmware 2.50 adds 11 guitar amps, 2 bass amps, 11 guitar cabs, 2 bass cabs, 2 effects (Jan 2025).
+- [Line 6 POD Go Models Page](https://line6.com/podgo-models/) — HIGH confidence (official Line 6 product page). Lists 86 amp models by name; no internal HD2_ IDs shown.
+- [File Formats, Custom Tools and API — Line 6 Community](https://line6.com/support/topic/63502-fileformats-custom-tools-and-api/) — MEDIUM confidence (community reverse engineering). Confirms `.pgp` is plain JSON. Community notes `dsp0`-only structure.
+- [AI Generation of Presets — Line 6 Community](https://line6.com/support/topic/70120-ai-generation-of-presets/) — MEDIUM confidence (community). Confirms file format is text-based JSON; AI-generated files fail due to structural inaccuracies (not model inaccuracies).
+- [Pod Go vs Helix LT — Line 6 Community](https://line6.com/support/topic/56025-pod-go-vs-helix-lt/) — MEDIUM confidence (community). Confirms series-only routing, single DSP, 4 snapshots vs 8.
+- [POD Go 2.50 Firmware Update Overview](https://www.noiseharmony.com/post/line-6-pod-go-2-50-firmware-update-what-s-new) — MEDIUM confidence (editorial). Lists Catalyst Series amp designs added in 2.50 (Line 6 Clarity, Aristocrat, Carillon, Voltage, Kinetic, Oblivion).
 
 ---
 
-*Feature research for: HelixAI v1.1 Polish & Precision*
+*Feature research for: HelixAI Pod Go Support Milestone*
 *Researched: 2026-03-02*

@@ -1,18 +1,49 @@
-# Architecture Research
+# Architecture Research: Pod Go Integration
 
-**Domain:** AI-powered Helix preset generation — v1.1 feature integration
+**Domain:** Line 6 Pod Go preset generation — adding to existing HelixAI architecture
 **Researched:** 2026-03-02
-**Confidence:** HIGH (direct codebase inspection + official Claude API docs)
+**Confidence:** HIGH (direct codebase inspection, community reverse-engineering sources, Line 6 official docs)
 
 ---
 
 ## Context: What This Document Covers
 
-This document addresses v1.1 specifically: how six new features integrate with the existing Planner-Executor architecture. The v1.0 architecture (already implemented and working) is documented in `.planning/codebase/ARCHITECTURE.md`. This document focuses on integration points, new components, data flow changes, and build order for v1.1.
+This document addresses the Pod Go milestone specifically: how Pod Go preset generation integrates with the existing Helix-based architecture. Every decision is component-level: which modules share, which fork, which are new, and in what order to build.
 
 ---
 
-## Existing Architecture (Stable, Do Not Change)
+## Hardware Differences: Pod Go vs. Helix
+
+Understanding the hardware constraints drives every architectural decision.
+
+| Dimension | Helix LT / Floor | Pod Go |
+|-----------|-----------------|--------|
+| Signal paths | 2 (dsp0 + dsp1) | 1 (dsp0 only) |
+| Total blocks | 16+ (8 per DSP) | 10 total |
+| Assignable effect slots | ~8 per DSP | 4 user-assignable |
+| Fixed blocks | none (all user-configurable) | Wah, Volume, FX Loop, Amp, Cab, EQ — 6 fixed |
+| Snapshots per preset | 8 | 4 |
+| Footswitches (stomp) | FS5-FS8 (4 stomps in Snap/Stomp layout) | FS1, FS2, FS4, FS5, FS6 (up to 5) |
+| DSP chips | 2 (dual DSP) | 1 (single DSP) |
+| Parallel routing | Yes (AB, SABJ topologies) | No |
+| File extension | .hlx | .pgp |
+| File format | JSON (schema: "L6Preset") | JSON (community-confirmed) |
+| Schema name | "L6Preset" | Not publicly documented — needs verification |
+| Device ID (data.device) | helix_lt: 2162692, helix_floor: 2162688 | Unknown — requires .pgp file inspection |
+
+**Confidence on hardware facts:** HIGH — Line 6 official FAQ, community forums, multiple sources confirm single DSP, 4 assignable slots, 4 snapshots.
+
+**Confidence on .pgp JSON structure:** MEDIUM — community members confirm it is plain JSON and shares footswitch/snapshot field names with .hlx, but no official schema exists. The device ID value for Pod Go must be determined by inspecting a real .pgp export before building `podgo-builder.ts`.
+
+Sources:
+- [POD Go Block Restrictions](https://line6.com/support/topic/62007-pod-go-block-restrictions/)
+- [POD Go FAQ](https://kb.line6.com/kb/live/pod-go-faq)
+- [Fileformats, custom tools and API thread](https://line6.com/support/topic/63502-fileformats-custom-tools-and-api/)
+- [Zavsek POD_GO-Helix_converter](https://github.com/Zavsek/POD_GO-Helix_converter)
+
+---
+
+## Existing Architecture (Stable Reference)
 
 ```
 User Chat (Gemini SSE)
@@ -32,652 +63,676 @@ User Chat (Gemini SSE)
 [validatePresetSpec()]          validate.ts
 [buildHlxFile()]                preset-builder.ts
         |
-        | HlxFile JSON + summary + spec + toneIntent
+        | HlxFile JSON
         v
-POST /api/generate response     api/generate/route.ts
-        |
-        v
-page.tsx preset card            (summary as ReactMarkdown)
-```
-
-The Knowledge Layer (chain-rules, param-engine, snapshot-engine) is deterministic. The Planner (Claude with structured output) is the only AI call in the generation path. This separation is intentional and must be preserved.
-
----
-
-## Standard Architecture (v1.1 Additions)
-
-### System Overview
-
-```
-User Chat (Gemini SSE)
-        |
-        | conversation history
-        v
-[callClaudePlanner()]           planner.ts  <-- ADD: cache_control on system prompt
-        |
-        | ToneIntent
-        v
-[assembleSignalChain()]         chain-rules.ts  (unchanged)
-[resolveParameters()]           param-engine.ts  <-- ADD: genre-aware effect param tables
-[buildSnapshots()]              snapshot-engine.ts  <-- MODIFY: smarter toggle logic
-        |
-        | PresetSpec
-        v
-[validatePresetSpec()]          validate.ts  (unchanged)
-[buildHlxFile()]                preset-builder.ts  <-- FIX: @fs_enabled + @pedalstate bugs
-        |
-        | HlxFile JSON + summary + spec + toneIntent
-        v
-POST /api/generate response     <-- ADD: signalChainViz[] to response
-        |
-        v
-page.tsx preset card            <-- ADD: ToneDescriptionCard + SignalChainViz components
+POST /api/generate response
 ```
 
 ---
 
-## Component Responsibilities (v1.1 delta)
+## Integration Strategy: What Changes and What Does Not
 
-| Component | v1.0 State | v1.1 Change |
-|-----------|------------|-------------|
-| `planner.ts` | Calls Claude without caching | Add `cache_control: { type: "ephemeral" }` to `client.messages.create()` — caches the system prompt (model list + instructions) on first call; each subsequent call reads from cache at 0.10x token cost |
-| `param-engine.ts` | Uses model `defaultParams` for delay/reverb/modulation | Add genre-aware lookup tables for effect parameters keyed on `ToneIntent.genreHint` |
-| `snapshot-engine.ts` | `getBlockEnabled()` uses fixed rules for delay (lead+ambient), modulation (ambient only) | Extend rules: ambient snapshot enables reverb+delay at higher mix; clean snapshot disables all drive blocks; crunch enables boost but disables delay |
-| `preset-builder.ts` | `@fs_enabled: false` hardcoded; `@pedalstate: 2` hardcoded | Fix `@fs_enabled` to `true`; compute `@pedalstate` per-snapshot from active stomp assignments |
-| `api/generate/route.ts` | Returns `{ preset, summary, spec, toneIntent, device }` | Add `signalChainViz` to response: derives from `presetSpec.signalChain`, no new computation needed |
-| `page.tsx` | Renders summary as ReactMarkdown in preset card | Add `ToneDescriptionCard` component (structured summary); add `SignalChainViz` component (block diagram) |
+### Decision Principle
+
+The Planner-Executor separation is the core design invariant. ToneIntent is the contract between AI and Knowledge Layer. The only reason to touch ToneIntent is if Pod Go genuinely needs information the AI must provide that the Knowledge Layer cannot derive. Everything else adapts below ToneIntent.
 
 ---
 
-## Recommended Project Structure (v1.1 additions)
+## Component-by-Component Decisions
 
-```
-src/
-├── app/
-│   ├── api/
-│   │   └── generate/
-│   │       └── route.ts         MODIFY — add signalChainViz to response shape
-│   └── page.tsx                 MODIFY — add two new UI components inline or extracted
-│
-└── lib/
-    ├── planner.ts               MODIFY — add cache_control to client.messages.create()
-    └── helix/
-        ├── param-engine.ts      MODIFY — add GENRE_EFFECT_DEFAULTS lookup table
-        ├── snapshot-engine.ts   MODIFY — extend getBlockEnabled() for ambient/clean rules
-        ├── preset-builder.ts    FIX — @fs_enabled + per-snapshot @pedalstate
-        ├── viz.ts               NEW — buildSignalChainViz() pure function
-        └── index.ts             MODIFY — export buildSignalChainViz
-```
+### ToneIntent — Extend, Do Not Fork
 
-No new API routes needed. No new npm packages needed. All six features integrate with existing files or add one new utility module.
+**Decision: Add one optional field. No forking.**
 
----
+ToneIntent is device-agnostic today. The AI selects amps, cabs, and effects by name. These names are strings, and the same HD2 model names exist in both Helix and Pod Go (Pod Go is a subset of the Helix model library, confirmed by Line 6). The AI does not need to know which device it is generating for — that is a Knowledge Layer and builder concern.
 
-## Feature Integration Details
-
-### Feature 1: Prompt Caching
-
-**Integration point:** `src/lib/planner.ts`, function `callClaudePlanner()`
-
-**What changes:** One field addition to `client.messages.create()`. The Anthropic SDK v0.78.0 supports top-level `cache_control` on `MessageCreateParamsBase`. This caches everything in the request up to the last cacheable block — in practice, the entire system prompt including the model list (the longest and most stable content).
-
-**Before:**
-```typescript
-const response = await client.messages.create({
-  model: "claude-sonnet-4-6",
-  max_tokens: 4096,
-  system: systemPrompt,
-  messages: [{ role: "user", content: conversationText }],
-  output_config: { format: zodOutputFormat(ToneIntentSchema) },
-});
-```
-
-**After:**
-```typescript
-const response = await client.messages.create({
-  model: "claude-sonnet-4-6",
-  max_tokens: 4096,
-  cache_control: { type: "ephemeral" },  // <-- single line addition
-  system: systemPrompt,
-  messages: [{ role: "user", content: conversationText }],
-  output_config: { format: zodOutputFormat(ToneIntentSchema) },
-});
-```
-
-**Cost mechanics:** System prompt + model list is roughly 800-1200 tokens. At Sonnet 4.6 pricing: $3/MTok base, $3.75/MTok write, $0.30/MTok read. First call costs 1.25x, every subsequent call within 5 minutes costs 0.10x. For a session where the user iterates (e.g., generates 3 presets), calls 2 and 3 save ~90% of input token cost on the system prompt portion. Since the system prompt is ~60-70% of total input tokens per generation call, this yields roughly 50-60% overall input token savings per session.
-
-**Constraint:** The 5-minute TTL means caching helps within a session (multiple generates) but not across sessions. This is the expected use case — a user typically generates 1-3 presets in one sitting.
-
-**Compatibility:** `cache_control` at top level is available in Anthropic SDK `^0.78.0` (currently installed). The field coexists with `output_config` — both are independent parameters on `MessageCreateParamsBase`. No incompatibility.
-
-**Confidence:** HIGH — verified in SDK type definitions at `node_modules/@anthropic-ai/sdk/src/resources/messages/messages.ts` line 2643, and cross-referenced with official Anthropic docs.
-
----
-
-### Feature 2: Genre-Aware Effect Defaults
-
-**Integration point:** `src/lib/helix/param-engine.ts`, function `resolveDefaultParams()`
-
-**Current behavior:** Delay, reverb, and modulation blocks use `model.defaultParams` directly from `models.ts`. The defaults are reasonable but genre-agnostic — a blues delay sounds the same as a metal delay.
-
-**What changes:** Add a `GENRE_EFFECT_DEFAULTS` lookup table in `param-engine.ts`. The `resolveParameters()` function already receives `ToneIntent` as its second argument (for `ampName` lookup). `genreHint` is on `ToneIntent` and available. No signature changes needed.
-
-**New lookup table structure:**
-```typescript
-// Maps genreHint keywords to parameter overrides by block type
-const GENRE_EFFECT_DEFAULTS: Record<string, Partial<Record<BlockSpec["type"], Record<string, number>>>> = {
-  blues:      { delay: { Mix: 0.25, Time: 0.45 }, reverb: { Mix: 0.20 } },
-  metal:      { delay: { Mix: 0.15, Time: 0.35 }, reverb: { Mix: 0.10 } },
-  ambient:    { delay: { Mix: 0.45, Time: 0.60 }, reverb: { Mix: 0.40 } },
-  country:    { delay: { Mix: 0.30, Time: 0.40 }, reverb: { Mix: 0.15 } },
-  jazz:       { delay: { Mix: 0.20 }, reverb: { Mix: 0.25 }, modulation: { Mix: 0.30 } },
-  worship:    { delay: { Mix: 0.40, Time: 0.55 }, reverb: { Mix: 0.35 } },
-  rock:       { delay: { Mix: 0.20 }, reverb: { Mix: 0.15 } },
-};
-```
-
-**Resolution flow:**
-```
-resolveDefaultParams(block, ampCategory, genreHint)
-  1. Get model.defaultParams (base)
-  2. Normalize genreHint to a keyword (lowercase, strip qualifier words)
-  3. Look up GENRE_EFFECT_DEFAULTS[keyword]?.[block.type]
-  4. Merge: { ...modelDefaults, ...genreOverrides }
-  5. Return merged params
-```
-
-**Keyword normalization:** `genreHint` from Claude is a free-form string (e.g., "blues rock", "modern metal", "80s new wave"). Need to match against known keywords by substring. Simple approach: iterate known genre keys, check if `genreHint.toLowerCase().includes(key)`. First match wins. If no match, fall through to model defaults unchanged.
-
-**Signature change required:** `resolveDefaultParams` is currently private (not exported). The `resolveParameters()` function passes `intent` down to `resolveBlockParams()` which currently does not accept genreHint. Need to thread `intent.genreHint` through: `resolveParameters() → resolveBlockParams() → resolveDefaultParams()`.
-
-**Scope:** Only delay, reverb, and modulation blocks apply genre overrides. Amp, cab, distortion, dynamics, eq, volume use unchanged resolution paths.
-
-**Confidence:** HIGH — integration path is direct, no new dependencies.
-
----
-
-### Feature 3: Smarter Snapshot Effect Toggling
-
-**Integration point:** `src/lib/helix/snapshot-engine.ts`, function `getBlockEnabled()`
-
-**Current behavior:** The existing logic (lines 77-126 of snapshot-engine.ts) handles:
-- Amp/EQ/volume/dynamics: always ON
-- Boost (Minotaur/808): ON except clean snapshot on clean amp
-- Distortion: ON for crunch and lead only
-- Delay: ON for lead and ambient
-- Reverb: always ON
-- Modulation: ON for ambient only
-
-**Problems this creates:**
-1. Ambient snapshot should have reverb at higher mix, not just "on" — same mix as other snapshots
-2. Clean snapshot should disable ALL drive blocks (including user-added distortion)
-3. Crunch snapshot should have delay off (delay muddies rhythm playing)
-
-**What changes:** Extend `getBlockEnabled()` with two targeted rule adjustments:
+The only change needed: the amp/cab/effect enum validation currently points to the full Helix model list. Pod Go has a subset. The planner prompt must be told which device it is generating for so it receives the correct allowed model list.
 
 ```typescript
-// Revised delay rule: off for crunch (currently only lead+ambient get delay)
-if (block.type === "delay") {
-  return role === "lead" || role === "ambient";  // unchanged — crunch already excluded
-}
+// tone-intent.ts — no schema change needed
+// The device-specific model list is passed to buildPlannerPrompt() at call time
+// ToneIntentSchema stays identical
+```
 
-// Revised distortion rule: ambient also disables drive (ambient is clean + effects)
-if (block.type === "distortion") {
-  return role === "crunch" || role === "lead";  // unchanged — already correct
+The route.ts passes `deviceTarget` to `buildPlannerPrompt()`, which already accepts a `modelList` string. The model list for Pod Go omits models unavailable on Pod Go.
+
+**What changes in planner.ts:**
+- `buildPlannerPrompt(modelList)` signature stays the same
+- `callClaudePlanner(messages, deviceTarget)` receives device target
+- It calls `getModelListForPrompt(deviceTarget)` to get the device-filtered list
+- System prompt says "Helix LT preset" or "Pod Go preset" based on deviceTarget
+
+**Confidence:** HIGH — the model list is already a parameter; this is a 3-line change.
+
+---
+
+### models.ts — Shared Database with Device Flags
+
+**Decision: Single database, add `devices` flag per model. Do not fork.**
+
+Forking models.ts into `helix-models.ts` and `podgo-models.ts` creates permanent duplication. Every new model added to one must be manually synced to the other. This is a maintenance anti-pattern.
+
+Instead, add a `devices` field to `HelixModel`:
+
+```typescript
+export interface HelixModel {
+  id: string;
+  name: string;
+  basedOn: string;
+  category: string;
+  ampCategory?: AmpCategory;
+  topology?: TopologyTag;
+  cabAffinity?: string[];
+  defaultParams: Record<string, number>;
+  blockType: number;
+  devices?: DeviceTarget[];  // NEW: which devices support this model
+                             // undefined = all devices (backwards compatible)
 }
 ```
 
-The bigger change is parameter overrides for the ambient snapshot — the ambient snapshot needs Mix parameter boosts on delay and reverb blocks, not just enabled states. This requires extending `buildSnapshots()` to inject `parameterOverrides` for effect blocks in the ambient snapshot.
+`devices: undefined` means available everywhere (backwards-compatible, no existing entries break). Pod Go-only or Helix-only models can be flagged explicitly.
 
-**Current parameterOverrides:** Only amp ChVol and Gain Block Gain are overridden. Need to add reverb Mix and delay Mix overrides for ambient.
+A new helper function `getModelsForDevice(deviceTarget)` returns the filtered subset. `getModelListForPrompt(deviceTarget?)` uses this to build the prompt's allowed model list.
 
-**New ambient overrides table:**
-```typescript
-const AMBIENT_EFFECT_OVERRIDES: Partial<Record<BlockSpec["type"], Record<string, number>>> = {
-  reverb: { Mix: 0.45 },   // boosted from genre default
-  delay:  { Mix: 0.40 },   // boosted from genre default
-  modulation: { Mix: 0.40, Rate: 0.30 },  // gentle modulation
-};
-```
+**Pod Go model subset reality:** Pod Go firmware 2.50 has 50+ guitar amp models. Most names match Helix exactly (same HD2_ IDs). Three effects are absent: Tone Sovereign, Clawthorn Drive, Cosmos Echo. All distortions/dynamics/pitch are mono only. Bass amps are present but not relevant to this app. The specific list of omitted models requires a Pod Go Edit export to confirm exhaustively — flag this as needing verification during implementation.
 
-**Architecture note:** The snapshot engine already has access to the full `BlockSpec[]` chain and can iterate by `block.type`. Adding Mix overrides for ambient is additive — it extends the existing `parameterOverrides` building loop in `buildSnapshots()`.
-
-**Confidence:** HIGH — change is additive to existing `getBlockEnabled()` and `buildSnapshots()` logic.
+**Confidence:** HIGH for the architecture. MEDIUM for the exact list of excluded models.
 
 ---
 
-### Feature 4: .hlx Format Audit (Hardware Bug Fixes)
+### chain-rules.ts — Shared, Add Pod Go Path Guard
 
-**Integration point:** `src/lib/helix/preset-builder.ts`
+**Decision: Shared module, add device-aware block limit validation.**
 
-This addresses two confirmed hardware bugs documented in `PROJECT.md`.
+`assembleSignalChain()` is device-agnostic in its model resolution logic. The signal chain slot ordering (wah > drive > boost > amp > cab > gate > eq > mod > delay > reverb > gain) applies to Pod Go too.
 
-**Bug 1: `@fs_enabled: false` hardcoded**
+What changes: the block limit check.
 
-Location: `buildFootswitchSection()`, line 393:
+Currently:
 ```typescript
-"@fs_enabled": false,  // BUG: should be true for stomp to respond on first press
+const MAX_BLOCKS_PER_DSP = 8;
+// validates dsp0 and dsp1 separately
 ```
 
-Fix: Change to `true`. This is the correct value for stomp switches that should be active and respond on first press. The `false` value causes the hardware to require two presses (toggle off then on) before the stomp engages.
+Pod Go needs:
+- Only dsp0 (no dsp1 blocks)
+- Maximum 4 assignable effect slots (the 6 fixed blocks don't count against BlockSpec limits because they are implicit in the device — they don't appear in the .pgp's user block list the same way)
 
-**Bug 2: `@pedalstate: 2` hardcoded in all snapshots**
+**Recommended approach:** Pass `deviceTarget` into `assembleSignalChain(intent, deviceTarget)`. Add a Pod Go path that:
+1. Forces all blocks to `dsp: 0` (no dsp1 assignment)
+2. Validates against a 4-effect-block limit (amp, cab, eq, wah, volume, gate are fixed/free — only the 4 user effects count toward the assignable limit)
+3. Still inserts mandatory blocks (boost, Parametric EQ, Gain Block) but treats them as fixed-position Pod Go blocks
 
-`@pedalstate` is a bitmask encoding which stomp footswitches are active (LED lit) per snapshot. Hardcoding `2` means stomps always show their default state regardless of what snapshot-level block states say. This causes pedal LEDs to be incorrect.
+**Critical nuance on Pod Go fixed blocks:** Pod Go's fixed EQ block is already present on the device. If the Knowledge Layer inserts a Parametric EQ into the chain, it occupies one of the 4 assignable slots on Pod Go (because it is placed as a user block, not the device's built-in EQ). This means the 4-slot budget is tighter than it looks. Consider whether Pod Go presets should use the built-in EQ slot (by not inserting a separate EQ BlockSpec) or insert it anyway and accept it consumes one assignable slot.
 
-Location: `buildSnapshot()`, line 239:
-```typescript
-"@pedalstate": 2,  // BUG: should reflect which stomps are active in this snapshot
-```
+**Recommended:** For Pod Go, skip inserting a separate Parametric EQ BlockSpec. The device's built-in EQ position is always present and can be configured via the fixed block mechanism in the .pgp builder. This preserves all 4 assignable slots for user effects.
 
-**Computing correct `@pedalstate`:** The footswitch section assigns specific blocks to specific stomp indices (FS5-FS8, hardware indices 7-10). The snapshot's `blockStates` tells us whether each block is enabled or bypassed in that snapshot. Cross-referencing them computes the bitmask.
+Similarly, the Gain Block (volume pedal) is a fixed Pod Go block — do not insert it as a user BlockSpec for Pod Go presets.
 
-```typescript
-function computePedalState(
-  snapshotBlockStates: Record<string, boolean>,  // blockKey -> enabled
-  footswitchAssignments: FootswitchAssignment[],  // { blockKey, fsIndex }
-): number {
-  let pedalstate = 0;
-  for (const assignment of footswitchAssignments) {
-    const isEnabled = snapshotBlockStates[assignment.blockKey] ?? false;
-    if (isEnabled) {
-      pedalstate |= (1 << assignment.fsIndex);
-    }
-  }
-  return pedalstate;
-}
-```
-
-**Requires:** `buildSnapshot()` needs access to the footswitch assignments built by `buildFootswitchSection()`. Currently these are built independently. The fix requires either:
-- Computing footswitch assignments before snapshot building and passing them in (preferred — clean data flow)
-- Or computing `@pedalstate` in a post-processing step that has both snapshot block states and footswitch assignments
-
-**Preferred approach:** Extract footswitch assignment computation as a separate pure function `computeFootswitchAssignments(signalChain) → FootswitchAssignment[]`, call it once in `buildTone()`, pass result to both `buildFootswitchSection()` and `buildSnapshot()`.
-
-**Confidence:** HIGH — both bugs are confirmed by hardware testing (documented in PROJECT.md). Fix approach is deterministic.
+**Confidence:** HIGH for the architecture approach. MEDIUM for the exact fixed-block mechanics until a real .pgp file is inspected.
 
 ---
 
-### Feature 5: Signal Chain Visualization
+### param-engine.ts — Shared, No Changes Required
 
-**Integration point:** New file `src/lib/helix/viz.ts` + `api/generate/route.ts` + `page.tsx`
+**Decision: Fully shared, no modification needed.**
 
-**What this feature delivers:** Before downloading, the user sees a visual representation of the signal chain — which blocks are in the preset, their order, and their DSP path.
+`resolveParameters()` operates on BlockSpec arrays. It does not care about device target. The 3-layer resolution (model defaults → category overrides → genre overrides) produces correct numeric values for any Helix-family device. The underlying parameter encoding (normalized 0-1 floats, Hz-encoded LowCut/HighCut, integer Mic index) is identical between Helix and Pod Go — they share the same HX modeling engine.
 
-**Data already exists:** `presetSpec.signalChain` is a `BlockSpec[]` with all the information needed: `modelName`, `type`, `dsp`, `position`, `enabled`. No new computation in the generation pipeline.
+No changes to param-engine.ts.
 
-**New function: `buildSignalChainViz(spec: PresetSpec): SignalChainVizData`**
-
-```typescript
-// src/lib/helix/viz.ts
-
-export interface VizBlock {
-  modelName: string;
-  type: BlockSpec["type"];
-  dsp: 0 | 1;
-  position: number;
-  enabled: boolean;
-  isBoost: boolean;
-  isMandatory: boolean;  // parametric EQ, noise gate, gain block
-}
-
-export interface SignalChainVizData {
-  dsp0: VizBlock[];   // sorted by position
-  dsp1: VizBlock[];   // sorted by position
-  snapshotNames: string[];  // names of 4 snapshots
-  tempoHint?: number;
-}
-
-export function buildSignalChainViz(spec: PresetSpec): SignalChainVizData {
-  // Pure transformation — no side effects
-}
-```
-
-**API route change:** `api/generate/route.ts` adds one line:
-```typescript
-const signalChainViz = buildSignalChainViz(presetSpec);
-
-return NextResponse.json({
-  preset: hlxFile,
-  summary,
-  spec: presetSpec,
-  toneIntent,
-  device: deviceTarget,
-  signalChainViz,   // <-- added
-});
-```
-
-**Frontend change:** `page.tsx` state type gains `signalChainViz` field. New `SignalChainViz` component renders DSP0 and DSP1 as horizontal block chains. Component is purely presentational — receives `SignalChainVizData` props, renders block badges by type with color coding matching the Warm Analog Studio design system (`hlx-*` CSS classes).
-
-**Rendering approach:** No SVG/canvas needed. Use CSS flexbox with block type badges. Two rows: DSP1 (top, pre-amp) and DSP2 (bottom, post-amp). Arrow separators between blocks. Cab block shown as a branch below the amp block.
-
-**Confidence:** HIGH — feature is pure data transformation from existing `PresetSpec`. No new dependencies or APIs.
+**Confidence:** HIGH.
 
 ---
 
-### Feature 6: Tone Description Card
+### snapshot-engine.ts — Shared, Snapshot Count Adaptation
 
-**Integration point:** `page.tsx` (frontend only), possibly `preset-builder.ts` for structured data
+**Decision: Shared module, caller passes correct intent count.**
 
-**Current state:** `summarizePreset()` in `preset-builder.ts` generates a Markdown string that is rendered via ReactMarkdown in the preset card. The data is correct but the rendering is generic prose.
+`buildSnapshots(chain, intents)` accepts any array of `SnapshotIntent` objects. It does not hardcode 8 snapshots — it maps over whatever the caller provides. The existing 4-snapshot output for Helix is already the correct count for Pod Go.
 
-**What changes:** The Tone Description Card is a structured UI component that replaces or supplements the ReactMarkdown summary. It surfaces:
-- Amp + Cab pair (most important spec — what the tone is built on)
-- Snapshot lineup (4 snapshots with their roles and LED colors)
-- Stomp switch assignments (what FS5-FS8 do)
-- Guitar notes (pickup/tone knob suggestions)
-- Tempo if set
+The Helix preset-builder generates 8 snapshot slots (snapshot0-snapshot7), marking slots 4-7 as `@valid: false`. The Pod Go preset-builder will only need to write snapshot0-snapshot3.
 
-**Two implementation paths:**
+No changes to snapshot-engine.ts. The route.ts already passes exactly 4 SnapshotIntents (enforced by ToneIntent schema `min(4).max(4)`).
 
-**Path A — Frontend-only (use existing `spec` response):** The `spec` field in the API response is already a full `PresetSpec` object, returned as `spec: presetSpec` in the route. The frontend can derive all card content from `spec.signalChain`, `spec.snapshots`, `spec.guitarNotes`, and `spec.tempo`. No backend changes needed.
-
-```typescript
-// page.tsx — ToneDescriptionCard receives spec prop
-interface ToneDescriptionCardProps {
-  spec: PresetSpec;
-  toneIntent: ToneIntent;
-}
-```
-
-**Path B — Add structured summary to API response:** Extend the response with a `toneCard` field that is a pre-computed structured object. Slightly more work but keeps computation server-side.
-
-**Recommendation: Path A.** The `spec` object is already in the response. The card is a pure UI component. Adding a `toneCard` field would duplicate data already available in `spec`. Frontend extracts what it needs.
-
-**LED color mapping for display:** The `ledColor` integer in `SnapshotSpec` needs to be mapped to a display color. `LED_COLORS` constants are in `models.ts` and already exported. Add a reverse mapping in `viz.ts` or the component itself:
-```typescript
-const LED_COLOR_HEX: Record<number, string> = {
-  1: "#ef4444",  // RED — lead
-  2: "#f97316",  // ORANGE — crunch
-  5: "#14b8a6",  // TURQUOISE — ambient
-  6: "#3b82f6",  // BLUE — clean
-};
-```
-
-**Confidence:** HIGH — frontend-only change using data already in the response. No new API surface needed.
+**Confidence:** HIGH.
 
 ---
 
-## Data Flow (v1.1 complete picture)
+### validate.ts — Fork (Add Pod Go Validator)
 
-```
-Step 1: User chat (unchanged)
-  Gemini SSE chat → conversation history
+**Decision: New function `validatePodGoPresetSpec()`, keep existing `validatePresetSpec()` for Helix.**
 
-Step 2: POST /api/generate (minor addition)
-  Input: { messages, device }
+The Pod Go validation rules differ:
+- No dsp1 blocks allowed
+- Max 4 user-effect blocks (amp, cab, and fixed-position blocks don't count)
+- Model IDs must be in the Pod Go subset
 
-Step 3: callClaudePlanner() (caching added)
-  cache_control: { type: "ephemeral" } → system prompt cached after first call
-  Output: ToneIntent (unchanged shape)
-
-Step 4: assembleSignalChain() (unchanged)
-
-Step 5: resolveParameters() (genre defaults added)
-  Reads toneIntent.genreHint → applies GENRE_EFFECT_DEFAULTS to effect blocks
-  Output: BlockSpec[] with genre-tuned effect parameters
-
-Step 6: buildSnapshots() (smarter toggling added)
-  Ambient snapshot: reverb+delay enabled at boosted Mix values
-  Clean snapshot: all drive blocks disabled
-  Output: SnapshotSpec[] with correct effect states
-
-Step 7: validatePresetSpec() (unchanged)
-
-Step 8: buildHlxFile() (bug fixes applied)
-  @fs_enabled: true (fixed)
-  @pedalstate: computed from block states × stomp assignments (fixed)
-  Output: HlxFile
-
-Step 9: buildSignalChainViz() (NEW)
-  Input: PresetSpec
-  Output: SignalChainVizData (pure transformation)
-
-Step 10: Response assembly
-  {
-    preset: HlxFile,
-    summary: string,
-    spec: PresetSpec,
-    toneIntent: ToneIntent,
-    device: DeviceTarget,
-    signalChainViz: SignalChainVizData,   // NEW
+```typescript
+// validate.ts additions
+export function validatePodGoPresetSpec(spec: PresetSpec): void {
+  // 1. No dsp1 blocks
+  const dsp1Blocks = spec.signalChain.filter(b => b.dsp === 1);
+  if (dsp1Blocks.length > 0) {
+    throw new Error(`Pod Go preset has dsp1 blocks — Pod Go is single-path only`);
   }
 
-Step 11: Frontend render
-  ToneDescriptionCard (reads from spec + toneIntent)   // NEW component
-  SignalChainViz (reads from signalChainViz)           // NEW component
-  Download button (unchanged)
+  // 2. User effect slot limit (4 assignable)
+  const userEffectTypes = new Set(["distortion", "delay", "reverb", "modulation", "wah", "pitch", "dynamics"]);
+  const userEffectCount = spec.signalChain.filter(b => userEffectTypes.has(b.type)).length;
+  if (userEffectCount > 4) {
+    throw new Error(`Pod Go preset has ${userEffectCount} user effects — max 4 assignable slots`);
+  }
+
+  // 3. Model IDs valid for Pod Go
+  // (use getModelsForDevice("pod_go") set)
+  ...
+}
+```
+
+**Confidence:** HIGH for the approach. Implementation details depend on .pgp inspection.
+
+---
+
+### preset-builder.ts — Fork (New podgo-builder.ts)
+
+**Decision: New file `podgo-builder.ts`. Do not modify Helix's `preset-builder.ts`.**
+
+This is the highest-impact change. The .pgp file format differs from .hlx in ways that are not parameterizable:
+
+1. **File extension and schema name:** `.pgp` vs `.hlx`, likely different schema field
+2. **Device ID:** Different numeric device identifier (must be verified from a real .pgp export)
+3. **Single DSP only:** No dsp1 section in the tone object
+4. **Snapshot count:** Only snapshot0-snapshot3 (4 slots)
+5. **Fixed block handling:** Amp, cab, wah, volume, FX loop, EQ have special positions in Pod Go's JSON that differ from Helix's block0/block1 pattern
+6. **Footswitch layout:** Pod Go uses FS1, FS2, FS4, FS5, FS6 (not Helix's FS5-FS8 layout)
+7. **Topology fields:** No @topology1 (single path); @topology0 behavior may differ
+8. **Firmware version fields:** Different device_version, build_sha values
+
+The new file:
+```typescript
+// src/lib/helix/podgo-builder.ts
+export function buildPgpFile(spec: PresetSpec, device: "pod_go" | "pod_go_wireless"): PgpFile {
+  // ...
+}
+```
+
+**PgpFile type:** Needs its own interface. Until a real .pgp is inspected, define it as a type alias or extend HlxFile with overrides. Post-inspection, create proper `PgpFile` and `PgpTone` interfaces alongside the existing types.
+
+**Critical first step:** Before writing podgo-builder.ts, open a real .pgp file from POD Go Edit in a text editor and capture the exact JSON structure. This is a 5-minute task that unlocks all builder decisions. Without this, any builder is guesswork.
+
+**Where to put it:** `src/lib/helix/podgo-builder.ts` — same directory as `preset-builder.ts`. The `helix/` directory is already established as the Knowledge Layer directory. Renaming it to `device/` would be premature — both devices share the same HD2 engine.
+
+**Confidence:** HIGH that a separate builder is needed. LOW on specific .pgp field names until a real file is inspected.
+
+---
+
+### types.ts — Extend DeviceTarget, Add PgpFile Types
+
+**Decision: Add `pod_go` and `pod_go_wireless` to DeviceTarget. Add PgpFile interfaces.**
+
+```typescript
+// Current:
+export type DeviceTarget = "helix_lt" | "helix_floor";
+
+// New:
+export type DeviceTarget = "helix_lt" | "helix_floor" | "pod_go" | "pod_go_wireless";
+
+export const DEVICE_IDS: Record<DeviceTarget, number> = {
+  helix_lt: 2162692,
+  helix_floor: 2162688,
+  pod_go: 0,           // PLACEHOLDER — verify from real .pgp export
+  pod_go_wireless: 0,  // PLACEHOLDER — verify from real .pgp export
+};
+```
+
+New PgpFile interfaces live in types.ts alongside HlxFile. They share the snapshot-related types (HlxSnapshot, HlxControllerSection) where field names overlap.
+
+**Confidence:** HIGH for the approach. Specific device IDs are PLACEHOLDER until verified.
+
+---
+
+### route.ts — Route Branching by Device
+
+**Decision: Single route, device-conditional builder call.**
+
+```typescript
+// api/generate/route.ts
+const deviceTarget: DeviceTarget = parseDeviceTarget(device);
+const isHelixDevice = deviceTarget === "helix_lt" || deviceTarget === "helix_floor";
+const isPodGoDevice = deviceTarget === "pod_go" || deviceTarget === "pod_go_wireless";
+
+// Steps 1-3 are shared (chain, params, snapshots)
+const chain = assembleSignalChain(toneIntent, deviceTarget);
+const parameterized = resolveParameters(chain, toneIntent);
+const snapshots = buildSnapshots(parameterized, toneIntent.snapshots);
+
+// Step 4: Device-specific build
+let presetFile: HlxFile | PgpFile;
+if (isHelixDevice) {
+  validatePresetSpec(presetSpec);
+  presetFile = buildHlxFile(presetSpec, deviceTarget);
+} else if (isPodGoDevice) {
+  validatePodGoPresetSpec(presetSpec);
+  presetFile = buildPgpFile(presetSpec, deviceTarget);
+}
+```
+
+The response JSON changes: instead of always returning a `.hlx` file, it returns `.pgp` or `.hlx` based on device. The frontend download link must use the correct extension.
+
+**Confidence:** HIGH.
+
+---
+
+### Frontend (page.tsx) — Add Pod Go to Device Selector
+
+**Decision: Extend existing device selector array.**
+
+```typescript
+// Current:
+const [selectedDevice, setSelectedDevice] = useState<"helix_lt" | "helix_floor">("helix_lt");
+
+// New:
+const [selectedDevice, setSelectedDevice] = useState<DeviceTarget>("helix_lt");
+
+// Device selector buttons:
+{(["helix_lt", "helix_floor", "pod_go", "pod_go_wireless"] as const).map((device) => (
+  // display names: "Helix LT", "Helix Floor", "Pod Go", "Pod Go Wireless"
+))}
+```
+
+The download button must use `.pgp` extension for Pod Go devices and `.hlx` for Helix devices.
+
+The signal chain visualization (VizBlock, dsp labels) currently shows "Path 1 (DSP 1)" and "Path 2 (DSP 2)". For Pod Go, only Path 1 exists. The visualization conditionally hides DSP 2.
+
+**Confidence:** HIGH.
+
+---
+
+## Complete Data Flow: Pod Go Path
+
+```
+User Chat
+        |
+        | conversation + deviceTarget="pod_go"
+        v
+callClaudePlanner(messages, deviceTarget)
+        |
+        | uses getModelListForPrompt("pod_go") — Pod Go model subset
+        | ToneIntent (same 15 fields, Pod Go-valid model names only)
+        v
+assembleSignalChain(intent, deviceTarget)
+        |
+        | Pod Go mode: all blocks → dsp0, no dsp1
+        | No Parametric EQ BlockSpec (fixed device block)
+        | No Gain Block BlockSpec (fixed device block)
+        | Max 4 user-effect blocks validated
+        | BlockSpec[] (all dsp:0, max 4 user effects + amp + cab + boost + gate)
+        v
+resolveParameters(chain, intent)           ← UNCHANGED
+        |
+        | BlockSpec[] with all parameters filled
+        v
+buildSnapshots(parameterized, intents)     ← UNCHANGED
+        |
+        | SnapshotSpec[] (4 snapshots only, snapshot0-snapshot3)
+        v
+validatePodGoPresetSpec(presetSpec)        ← NEW
+        |
+        v
+buildPgpFile(presetSpec, deviceTarget)     ← NEW
+        |
+        | PgpFile JSON
+        v
+POST /api/generate response
+        |
+        | preset (PgpFile), summary, spec, toneIntent, device
+        v
+page.tsx: download as .pgp
+```
+
+---
+
+## System Overview
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Frontend (page.tsx)                     │
+│  Device Selector: [Helix LT] [Helix Floor] [Pod Go] [Pod Go W]│
+└─────────────────────┬───────────────────────────────────────┘
+                      │ POST /api/generate { messages, device }
+┌─────────────────────▼───────────────────────────────────────┐
+│              API Route (route.ts) — branching point          │
+│  callClaudePlanner(messages, deviceTarget)                   │
+│  assembleSignalChain ← SHARED (device-aware limits)         │
+│  resolveParameters  ← SHARED (unchanged)                    │
+│  buildSnapshots     ← SHARED (unchanged)                    │
+│                                                              │
+│  if helix:   validatePresetSpec → buildHlxFile → .hlx       │
+│  if pod_go:  validatePodGoPresetSpec → buildPgpFile → .pgp  │
+└─────────────────────────────────────────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────────────────┐
+│              Knowledge Layer (src/lib/helix/)                │
+│                                                              │
+│  SHARED (no/minor changes):                                  │
+│  ┌─────────────┐  ┌──────────────┐  ┌─────────────────┐    │
+│  │ chain-rules │  │ param-engine │  │ snapshot-engine │    │
+│  └─────────────┘  └──────────────┘  └─────────────────┘    │
+│                                                              │
+│  EXTENDED:                                                   │
+│  ┌──────────┐  ┌─────────────────────────────────────────┐  │
+│  │ models   │  │ types (DeviceTarget + PgpFile ifaces)   │  │
+│  │ +devices │  └─────────────────────────────────────────┘  │
+│  │  flag   │                                                 │
+│  └──────────┘                                                │
+│                                                              │
+│  NEW:                                                        │
+│  ┌──────────────────┐  ┌──────────────────────────────────┐ │
+│  │ podgo-builder.ts │  │ validate (+ Pod Go validator fn) │ │
+│  └──────────────────┘  └──────────────────────────────────┘ │
+│                                                              │
+│  UNCHANGED:                                                  │
+│  ┌───────────────┐  ┌────────────┐  ┌────────────────────┐  │
+│  │ preset-builder│  │  config    │  │  param-registry    │  │
+│  └───────────────┘  └────────────┘  └────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────────────────┐
+│                 Model Database (models.ts)                    │
+│  HD2_Amp* / HD2_Cab* / HD2_Dist* / HD2_Delay* / ...         │
+│  HelixModel.devices?: DeviceTarget[]                         │
+│  getModelsForDevice(target) → filtered subset               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Recommended Project Structure (After Pod Go Milestone)
+
+```
+src/lib/helix/
+├── types.ts              EXTENDED — DeviceTarget, DEVICE_IDS, PgpFile interfaces
+├── models.ts             EXTENDED — HelixModel.devices field, getModelsForDevice()
+├── tone-intent.ts        UNCHANGED — ToneIntentSchema is device-agnostic
+├── chain-rules.ts        MODIFIED — device-aware block limit, dsp assignment
+├── param-engine.ts       UNCHANGED
+├── snapshot-engine.ts    UNCHANGED
+├── preset-builder.ts     UNCHANGED — Helix-specific .hlx builder
+├── podgo-builder.ts      NEW — Pod Go-specific .pgp builder
+├── validate.ts           MODIFIED — adds validatePodGoPresetSpec()
+├── config.ts             MODIFIED — adds Pod Go firmware version constants
+├── planner.ts            MODIFIED — passes deviceTarget, device-filtered model list
+├── param-registry.ts     UNCHANGED
+└── index.ts              MODIFIED — exports new Pod Go symbols
 ```
 
 ---
 
 ## Architectural Patterns
 
-### Pattern 1: Non-Breaking Additions to Existing Functions
+### Pattern 1: Device-Conditional at the Edges, Shared in the Middle
 
-All Knowledge Layer changes (genre defaults, snapshot toggling) are additive: new lookup tables layered on top of existing resolution logic. The existing `resolveDefaultParams()` and `getBlockEnabled()` functions continue to work correctly when no genre hint is present or when block types have no genre overrides. This preserves the deterministic quality of v1.0 while extending it.
+**What:** Route.ts branches by device at call-in and call-out. The Knowledge Layer pipeline (chain-rules, param-engine, snapshot-engine) stays device-agnostic. Device-specific logic lives only in the builder and validator.
 
-**When to use:** Feature adds specialization to existing behavior without changing the default path.
+**When to use:** When the core computation is identical and only the output format and input constraints differ.
+
+**Trade-offs:** Adds a small device context threading requirement (DeviceTarget flows into assembleSignalChain and planner) but avoids duplicating the entire pipeline.
 
 **Example:**
 ```typescript
-// New genre-aware resolveDefaultParams — non-breaking
-function resolveDefaultParams(
-  block: BlockSpec,
-  genreHint?: string,  // new optional param — undefined = no change to existing behavior
-): Record<string, number> {
-  const model = findModel(block.modelName, block.type);
-  const base = model ? { ...model.defaultParams } : { ...block.parameters };
+// route.ts — branch only at builder stage
+const chain = assembleSignalChain(toneIntent, deviceTarget);  // context-aware limits
+const parameterized = resolveParameters(chain, toneIntent);   // identical
+const snapshots = buildSnapshots(parameterized, toneIntent.snapshots); // identical
 
-  // Genre overlay: only applies when hint present and block type has genre defaults
-  if (genreHint && GENRE_EFFECT_TYPES.has(block.type)) {
-    const genreKey = matchGenreKey(genreHint);
-    const genreOverrides = genreKey ? GENRE_EFFECT_DEFAULTS[genreKey]?.[block.type] : undefined;
-    if (genreOverrides) return { ...base, ...genreOverrides };
-  }
-
-  return base;
-}
+// Branch at builder
+const file = isHelixDevice
+  ? buildHlxFile(presetSpec, deviceTarget)
+  : buildPgpFile(presetSpec, deviceTarget);
 ```
 
-### Pattern 2: Pure Data Transformation for Visualization
+### Pattern 2: Shared Model Database with Device Flags
 
-`buildSignalChainViz()` follows the same pattern as `buildHlxFile()` and `summarizePreset()` — it is a pure function that takes a `PresetSpec` and returns a new data structure. No side effects, no state, no API calls.
+**What:** Single `models.ts` with per-model `devices?: DeviceTarget[]` property. `undefined` means all devices.
 
-**When to use:** New UI data derived from existing domain data. Keeps computation server-side where all knowledge layer context is available.
+**When to use:** When model data is mostly shared and per-device differences are sparse exceptions.
 
-### Pattern 3: Top-Level Cache Control
+**Trade-offs:** Slightly more complex filtering logic but eliminates sync problems between two separate databases.
 
-Adding `cache_control: { type: "ephemeral" }` at the `client.messages.create()` call level (not on individual content blocks) uses the SDK's automatic caching mode. The system automatically caches everything up to the last cacheable block. For the planner call, this means the system prompt + model list is cached.
+**Example:**
+```typescript
+// Models available everywhere (devices undefined = all)
+"US Deluxe Nrm": { id: "HD2_AmpUSDeluxeNrm", ..., devices: undefined }
 
-**When to use:** Single-turn generation calls where the system prompt is large, stable, and reused frequently within a session.
+// Model exclusive to Helix (not on Pod Go)
+"Tone Sovereign": { id: "HD2_DistToneSovereign", ..., devices: ["helix_lt", "helix_floor"] }
 
-### Pattern 4: Bitmask State from Block State Map
-
-`@pedalstate` is computed by cross-referencing snapshot block states against footswitch assignments. The core insight: footswitch assignments map blocks to hardware indices; snapshot block states record per-block enabled/disabled. The intersection is the pedalstate bitmask.
-
-**When to use:** Hardware state that must reflect logical state — where a UI/hardware indicator should match the current functional state of assigned blocks.
-
----
-
-## Component Boundaries
-
-```
-planner.ts
-  └── reads: helix/models.ts (for getModelListForPrompt)
-  └── calls: Anthropic SDK client.messages.create() WITH cache_control
-
-param-engine.ts (MODIFIED)
-  └── new: GENRE_EFFECT_DEFAULTS lookup table
-  └── resolveParameters() threads genreHint down to resolveDefaultParams()
-  └── no new imports
-
-snapshot-engine.ts (MODIFIED)
-  └── extended getBlockEnabled() — ambient disables non-ambient effects more aggressively
-  └── extended buildSnapshots() — ambient snapshot adds Mix overrides for reverb/delay
-
-preset-builder.ts (FIXED)
-  └── new: computeFootswitchAssignments() pure function (extracted)
-  └── buildFootswitchSection() uses extracted function
-  └── buildSnapshot() receives footswitch assignments, computes @pedalstate
-  └── @fs_enabled fixed to true
-
-viz.ts (NEW)
-  └── reads: types.ts (PresetSpec, BlockSpec, SnapshotSpec)
-  └── reads: models.ts (BOOST_MODEL_IDS or equivalent for isBoost flag)
-  └── no AI calls, no external dependencies
-  └── exports: buildSignalChainViz, SignalChainVizData, VizBlock
-
-api/generate/route.ts (MINOR)
-  └── imports: buildSignalChainViz from @/lib/helix
-  └── adds signalChainViz to response
-
-page.tsx (UI)
-  └── state gains signalChainViz field
-  └── new ToneDescriptionCard component (inline or extracted)
-  └── new SignalChainViz component (inline or extracted)
+// Hypothetical Pod Go-only model
+"PG Exclusive": { id: "HD2_PGExclusive", ..., devices: ["pod_go", "pod_go_wireless"] }
 ```
 
-**Invariant preserved:** Knowledge Layer (chain-rules, param-engine, snapshot-engine) never imports from the AI layer. Data flows one way. This invariant is not broken by any v1.1 change.
+### Pattern 3: File Format Discovery Before Builder Implementation
 
----
+**What:** Before writing `podgo-builder.ts`, export one preset from Pod Go Edit and inspect the raw JSON to capture exact field names, nesting structure, and device ID.
 
-## Build Order (Dependency Graph)
+**When to use:** Always, when the output format is reverse-engineered rather than officially documented.
 
-The six features have natural dependencies that determine safe build order:
+**Trade-offs:** 5-minute task that prevents weeks of debugging incorrect .pgp structure.
 
-```
-Level 0 — No dependencies (build first):
-  Feature 4: .hlx format audit (preset-builder.ts bug fixes)
-    - Self-contained. Fixes @fs_enabled and @pedalstate.
-    - Does not affect any other v1.1 feature.
-    - Can be tested independently on hardware.
-
-Level 1 — Depends on stable Knowledge Layer:
-  Feature 1: Prompt caching (planner.ts)
-    - One-line change. No downstream dependencies.
-    - Verify via usage.cache_read_input_tokens in response.
-
-  Feature 2: Genre-aware effect defaults (param-engine.ts)
-    - Additive tables. Does not affect snapshot engine.
-    - Can be tested with unit tests against genreHint values.
-
-Level 2 — Depends on Feature 2 being stable (or independent):
-  Feature 3: Smarter snapshot toggling (snapshot-engine.ts)
-    - Depends on param-engine being stable (snapshot reads block params).
-    - Ambient Mix overrides interact with genre defaults — test together.
-
-Level 3 — Depends on all backend features being complete:
-  Feature 5: Signal chain visualization (viz.ts + route + page.tsx)
-    - viz.ts depends on PresetSpec shape (stable after L0-L2).
-    - route.ts change is additive.
-    - page.tsx SignalChainViz component is UI-only.
-
-  Feature 6: Tone description card (page.tsx)
-    - Pure frontend. Reads from existing spec/toneIntent in response.
-    - No backend dependencies.
-    - Can be built at any point (uses data already in response).
-```
-
-**Recommended build sequence:**
-1. Feature 4 (.hlx audit) — fix hardware bugs, verify on device
-2. Feature 1 (prompt caching) — one-line, verify savings
-3. Feature 2 (genre defaults) — lookup tables, unit test
-4. Feature 3 (snapshot toggling) — test with Feature 2's genre hints
-5. Feature 5 (signal chain viz) — backend + frontend together
-6. Feature 6 (tone description card) — pure frontend polish
-
-This order allows hardware testing at step 1 (before other changes risk destabilizing preset output), cost savings immediately at step 2, and UI features last when all backend data is confirmed stable.
+**Example discovery checklist:**
+- What is `data.device` numeric value for pod_go vs pod_go_wireless?
+- Is the schema still `"L6Preset"` or something else?
+- Is there a `dsp1` key present (even empty) or entirely absent?
+- How are the 6 fixed blocks (wah, volume, FX loop, amp, cab, EQ) represented?
+- Are snapshot keys snapshot0-snapshot3 or snapshot1-snapshot4?
+- What firmware version fields (device_version, appversion, build_sha) should be used?
 
 ---
 
 ## Anti-Patterns
 
-### Anti-Pattern 1: Putting Genre Logic in the Planner Prompt
+### Anti-Pattern 1: Forking chain-rules.ts and param-engine.ts
 
-**What people do:** Add genre-specific parameter guidance to the Claude system prompt to make the Planner suggest better effect settings.
+**What people do:** Copy chain-rules.ts to podgo-chain-rules.ts and param-engine.ts to podgo-param-engine.ts to handle Pod Go differences.
 
-**Why it's wrong:** The Planner-Executor architecture exists precisely to keep AI out of parameter decisions. Adding numeric parameter guidance to the prompt reverts to the v1.0 pattern that produced "decent starting points" instead of "world-class presets." The AI will ignore or misapply specific values.
+**Why it's wrong:** These modules are the most complex and well-tested in the codebase. Forking them doubles the surface area for bugs and means every future improvement (new genre profiles, new topology handling) must be applied twice. Pod Go's differences are primarily output-format constraints (single DSP, fewer blocks) not algorithmic differences.
 
-**Do this instead:** Genre-aware defaults belong in `param-engine.ts` as deterministic lookup tables. The Planner's `genreHint` field (already in `ToneIntent`) provides the genre context needed by the Knowledge Layer. No prompt changes required.
+**Do this instead:** Pass `deviceTarget` as a parameter and add a small device-conditional block at the constraint-check point. The core logic is shared.
+
+### Anti-Pattern 2: Writing podgo-builder.ts Without Inspecting a Real .pgp File
+
+**What people do:** Look at the .hlx format, assume .pgp is structurally similar, and write the builder based on that assumption.
+
+**Why it's wrong:** Community sources confirm .pgp is JSON and shares some field names with .hlx, but the device ID, topology fields, fixed block representation, and snapshot count all differ. Building without verification risks producing files that import as "incompatible device."
+
+**Do this instead:** Export one preset from Pod Go Edit, open it in a text editor, and verify the structure before writing a single line of `podgo-builder.ts`. This is the single highest-value step in the entire milestone.
+
+### Anti-Pattern 3: Adding Pod Go Logic to ToneIntentSchema
+
+**What people do:** Add a `deviceTarget` field to ToneIntent, then use it inside chain-rules and param-engine to branch behavior.
+
+**Why it's wrong:** ToneIntent is the AI output contract. Polluting it with infrastructure concerns (which device the user selected) conflates creative intent with execution context. The device selection is a UI concern that flows through route.ts, not through Claude's output.
+
+**Do this instead:** Thread `deviceTarget` as a separate function parameter through the Knowledge Layer functions that need it. Keep ToneIntentSchema clean.
+
+### Anti-Pattern 4: Single models.ts Split Into Two Files
+
+**What people do:** Create `helix-models.ts` and `podgo-models.ts`.
+
+**Why it's wrong:** Synchronization hell. Pod Go uses ~95% of the same models as Helix. Maintaining two files that are mostly identical creates guaranteed drift.
+
+**Do this instead:** Single models.ts with `devices` flag. Pod Go gets a filtered view via `getModelsForDevice("pod_go")`.
 
 ---
 
-### Anti-Pattern 2: Computing `@pedalstate` in the Frontend
+## Build Order
 
-**What people do:** Try to compute the bitmask in `page.tsx` from the `signalChainViz` data to avoid changing `preset-builder.ts`.
+The build order is constrained by dependencies. Each step can only proceed after its prerequisites are done.
 
-**Why it's wrong:** `@pedalstate` is a field in the `.hlx` file that ships to the hardware. It must be computed server-side before `buildHlxFile()` runs. Frontend cannot retroactively fix a field baked into the HlxFile JSON.
+### Phase 1: Foundation (No Risk, No Unknown)
 
-**Do this instead:** Fix `@pedalstate` in `buildSnapshot()` where it is written, using the footswitch assignment map built earlier in `buildTone()`. This is the only place where both the snapshot block states and the footswitch index assignments are available.
+**Step 1.1: Inspect a real .pgp file**
+Before any code. Open Pod Go Edit, create a minimal preset (one amp, one reverb, 4 snapshots), export it, open the .pgp in a text editor. Document: device ID, schema name, exact field structure, snapshot key naming, fixed block representation.
 
----
+This step has zero code risk and eliminates all LOW-confidence assumptions about the file format.
 
-### Anti-Pattern 3: A New API Route for Visualization
+**Step 1.2: Extend types.ts**
+- Add `pod_go` and `pod_go_wireless` to DeviceTarget
+- Add PgpFile interface (from .pgp inspection)
+- Add DEVICE_IDS for Pod Go (from .pgp inspection)
+- Create PgpTone, PgpDsp interfaces
 
-**What people do:** Add a `/api/viz` endpoint to serve signal chain visualization separately from generation.
+**Step 1.3: Extend models.ts**
+- Add `devices?: DeviceTarget[]` to HelixModel interface
+- Add `getModelsForDevice(target)` helper
+- Mark Pod Go-excluded models (Tone Sovereign, Clawthorn Drive, Cosmos Echo) with `devices: ["helix_lt", "helix_floor"]`
+- Update `getModelListForPrompt(deviceTarget?)` to use device filtering
 
-**Why it's wrong:** The visualization data is derived from the same `PresetSpec` that is already computed and returned by `/api/generate`. Adding a round-trip to fetch viz data after generation adds latency and network overhead for data that costs nothing to compute alongside the preset.
+No tests break. No existing behavior changes (undefined = all devices).
 
-**Do this instead:** Add `signalChainViz` to the existing `/api/generate` response. One request, one payload, all data the UI needs.
+### Phase 2: Knowledge Layer Adaptation (Low Risk)
 
----
+**Step 2.1: Modify chain-rules.ts**
+- Add `deviceTarget` parameter to `assembleSignalChain(intent, deviceTarget)`
+- Pod Go path: all blocks forced to dsp:0; no dsp1
+- Pod Go path: skip Parametric EQ BlockSpec (use fixed device EQ)
+- Pod Go path: skip Gain Block BlockSpec (use fixed device volume)
+- Pod Go path: validate max 4 user effect blocks
+- Update chain-rules.test.ts with Pod Go test cases
 
-### Anti-Pattern 4: Replacing `summarizePreset()` Instead of Augmenting
+**Step 2.2: Modify planner.ts**
+- Add `deviceTarget` parameter to `callClaudePlanner(messages, deviceTarget)`
+- Pass deviceTarget to `getModelListForPrompt(deviceTarget)`
+- Update system prompt to say "Pod Go preset" vs "Helix LT preset"
 
-**What people do:** Rewrite `summarizePreset()` to return structured data instead of Markdown, breaking the existing summary display.
+### Phase 3: New Components (Medium Risk — File Format Uncertainty)
 
-**Why it's wrong:** The Markdown summary (`generatedPreset.summary`) is used in the existing ReactMarkdown render. Changing its format breaks the existing display without adding user value.
+**Step 3.1: Write podgo-builder.ts**
+- Uses findings from Step 1.1 (real .pgp inspection)
+- `buildPgpFile(spec, device)` → PgpFile
+- Single DSP section only
+- 4 snapshots only (snapshot0-snapshot3)
+- Pod Go footswitch layout (FS1, FS2, FS4, FS5, FS6)
+- Correct device ID and firmware version fields
 
-**Do this instead:** Leave `summarizePreset()` unchanged. The Tone Description Card reads from `spec` and `toneIntent` which are already in the response — it does not need `summarizePreset()` to change. The card can be added alongside the existing Markdown summary or conditionally replace it.
+**Step 3.2: Add validatePodGoPresetSpec() to validate.ts**
+- No dsp1 blocks
+- Max 4 user effects
+- Model IDs valid for Pod Go
+
+### Phase 4: Integration and Wiring
+
+**Step 4.1: Modify route.ts**
+- Parse `pod_go` and `pod_go_wireless` device values
+- Branch at builder stage
+- Return correct file extension in response
+
+**Step 4.2: Modify page.tsx**
+- Add Pod Go options to device selector
+- Use `.pgp` extension for Pod Go downloads
+- Conditionally hide DSP 2 row in signal chain visualization
+
+**Step 4.3: Update index.ts**
+- Export new Pod Go symbols
+- Export PgpFile type, buildPgpFile, validatePodGoPresetSpec
+
+### Phase 5: Testing
+
+**Step 5.1: Integration test**
+- Generate a Pod Go preset end-to-end
+- Import the .pgp file into POD Go Edit on hardware
+- Verify it loads without "incompatible device" error
+- Verify signal chain, snapshots, and block assignments are correct
+
+**Step 5.2: Regression test**
+- Verify existing Helix LT and Helix Floor generation still works unchanged
+- Run existing test suite
 
 ---
 
 ## Integration Points
 
-### Internal Boundaries
+### External Boundaries
 
 | Boundary | Communication | Notes |
 |----------|---------------|-------|
-| planner.ts → Anthropic SDK | `client.messages.create()` with `cache_control` | cache_control is top-level param, coexists with output_config |
-| param-engine.ts → ToneIntent | `intent.genreHint` string | Already on ToneIntent, threads through resolveParameters() |
-| snapshot-engine.ts → BlockSpec[] | reads `block.type`, `modelId` for isBoost | No shape change needed |
-| preset-builder.ts internal | `buildTone()` calls `computeFootswitchAssignments()` first, passes to `buildSnapshot()` | Refactor only, no interface change |
-| viz.ts → PresetSpec | pure read of signalChain + snapshots | No mutations |
-| route.ts → viz.ts | calls `buildSignalChainViz(presetSpec)` | After validatePresetSpec, before response |
-| page.tsx → API response | reads `signalChainViz` from response JSON | Requires state type update |
+| Claude API ↔ planner.ts | Structured output (zodOutputFormat) | ToneIntentSchema unchanged; only model list changes |
+| route.ts ↔ chain-rules | Function call with new deviceTarget param | Backwards-compatible if deviceTarget defaults to "helix_lt" |
+| route.ts ↔ podgo-builder | Direct function call | New dependency |
+| page.tsx ↔ /api/generate | POST body adds no new fields; response same shape | file content and extension differ per device |
 
-### External Services
+### Internal Boundaries
 
-| Service | Integration Pattern | Notes |
-|---------|---------------------|-------|
-| Anthropic API (Claude Sonnet 4.6) | `cache_control: { type: "ephemeral" }` on messages.create | Supported in SDK 0.78.0, verified in type definitions |
-| Gemini API (chat phase) | Unchanged | v1.1 does not touch the interview/chat phase |
+| Module A | Module B | Change | Notes |
+|----------|----------|--------|-------|
+| route.ts | planner.ts | Modified | deviceTarget threads through |
+| route.ts | chain-rules | Modified | deviceTarget parameter added |
+| route.ts | podgo-builder | New | new import |
+| route.ts | validate.ts | Modified | calls validatePodGoPresetSpec |
+| models.ts | tone-intent.ts | Modified | getModelListForPrompt(deviceTarget?) |
+| param-engine.ts | models.ts | Unchanged | no interface changes affect param-engine |
+| snapshot-engine.ts | — | Unchanged | fully device-agnostic |
 
 ---
 
 ## Scaling Considerations
 
-| Scale | Architecture Notes |
-|-------|--------------------|
-| Current (low traffic) | All v1.1 changes are O(1) or O(n) on signal chain length (max ~15 blocks). No scaling concerns. |
-| Medium traffic | Prompt caching actively helps — system prompt cached across concurrent users hitting the same model version. TTL resets on each hit. |
-| High traffic | No changes needed for v1.1 features. Existing Vercel serverless constraints unchanged. |
+| Scale | Architecture Adjustment |
+|-------|------------------------|
+| 2 devices (now) | Single builder per device, shared Knowledge Layer |
+| 3-4 devices (HX Stomp, Helix Native) | Same pattern — new *-builder.ts per device, shared core |
+| 5+ devices | Consider a builder registry pattern: `BUILDERS: Record<DeviceTarget, BuilderFn>` |
+
+The current architecture supports 3-4 devices without structural changes. A builder registry only becomes valuable when the number of devices makes the if/else chain in route.ts unwieldy.
+
+---
+
+## Gaps and Open Questions
+
+| Question | Impact | Resolution |
+|----------|--------|------------|
+| Exact .pgp device ID for pod_go and pod_go_wireless | Blocks podgo-builder.ts | Step 1.1: inspect real .pgp file |
+| Exact .pgp JSON schema name (is it "L6Preset"?) | Blocks PgpFile type | Step 1.1 |
+| How Pod Go's fixed blocks appear in .pgp JSON | Blocks podgo-builder.ts | Step 1.1 |
+| Complete list of models absent from Pod Go | Affects model flag completeness | Inspect Pod Go Edit's model browser or a full Pod Go preset |
+| Pod Go firmware version constants (device_version, build_sha) | Blocks config.ts for Pod Go | Step 1.1 |
+| Are Pod Go snapshot keys 0-indexed (snapshot0) or 1-indexed? | Affects podgo-builder.ts | Step 1.1 |
+
+All gaps resolve from a single 5-minute action: exporting and inspecting one real .pgp file. This is the critical path blocker for the entire milestone.
+
+---
+
+## Confidence Assessment
+
+| Area | Confidence | Reasoning |
+|------|------------|-----------|
+| Pod Go hardware constraints (single DSP, 4 slots, 4 snapshots) | HIGH | Line 6 official FAQ + multiple community sources confirm |
+| .pgp is JSON format | HIGH | Community members confirmed, converter tools exist |
+| Model names/IDs are same HD2_ namespace | HIGH | Line 6 states same HX engine; Pod Go is subset |
+| ToneIntent unchanged | HIGH | Design invariant — device is execution context, not intent |
+| param-engine, snapshot-engine fully shared | HIGH | No device-specific logic exists in these modules |
+| Specific .pgp field names and device ID | LOW | No official docs; requires real file inspection |
+| Exact Pod Go model exclusion list | MEDIUM | Known exclusions documented; exhaustive list needs verification |
+| Fixed block representation in .pgp | LOW | Inferred from architecture; requires real file inspection |
 
 ---
 
 ## Sources
 
-- `C:/Users/dsbog/HelixAI/src/lib/planner.ts` — callClaudePlanner() implementation, cache_control integration point (HIGH confidence — direct inspection)
-- `C:/Users/dsbog/HelixAI/src/lib/helix/param-engine.ts` — resolveParameters() and resolveDefaultParams() (HIGH confidence — direct inspection)
-- `C:/Users/dsbog/HelixAI/src/lib/helix/snapshot-engine.ts` — getBlockEnabled() and buildSnapshots() (HIGH confidence — direct inspection)
-- `C:/Users/dsbog/HelixAI/src/lib/helix/preset-builder.ts` — buildFootswitchSection() and buildSnapshot(), confirmed bug locations (HIGH confidence — direct inspection)
-- `C:/Users/dsbog/HelixAI/node_modules/@anthropic-ai/sdk/src/resources/messages/messages.ts` — MessageCreateParamsBase.cache_control at line 2643 (HIGH confidence — SDK source)
-- [Anthropic Prompt Caching Docs](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) — top-level cache_control syntax, TypeScript examples, pricing (HIGH confidence — official docs, fetched 2026-03-02)
-- `.planning/PROJECT.md` — confirmed hardware bugs: @fs_enabled and @pedalstate (HIGH confidence — project documentation)
-- `.planning/codebase/CONCERNS.md` — bug analysis and fragile area documentation (HIGH confidence — codebase audit)
+- [POD Go Block Restrictions — Line 6 Community](https://line6.com/support/topic/62007-pod-go-block-restrictions/)
+- [POD Go FAQ — Line 6 Knowledge Base](https://kb.line6.com/kb/live/pod-go-faq)
+- [POD Go vs. Helix HX — Line 6 Community](https://line6.com/support/topic/58152-pod-go-vs-helix-hx/)
+- [POD Go Signal Flow Logic — Line 6 Community](https://line6.com/support/topic/56557-signal-flow-logic/)
+- [Fileformats, Custom Tools and API — Line 6 Community](https://line6.com/support/topic/63502-fileformats-custom-tools-and-api/)
+- [POD Go / Helix Converter — Line 6 Community](https://line6.com/support/topic/64226-pod-gohelix-converter/)
+- [Zavsek POD_GO-Helix_converter — GitHub](https://github.com/Zavsek/POD_GO-Helix_converter)
+- [POD Go Models Page — Line 6](https://line6.com/podgo-models/)
+- [POD Go FAQ Page 4 — Line 6 Community](https://line6.com/support/topic/53806-pod-go-faq/page/4/)
+- [Pod Go DSP Use of Every Block — Ivan Pesut](https://buymeacoffee.com/ivanpe/line-6-pod-go-dsp-use-of-every-block)
+- Direct codebase inspection: src/lib/helix/* (2026-03-02)
 
 ---
 
-*Architecture research for: HelixAI v1.1 feature integration*
+*Architecture research for: HelixAI — Pod Go integration milestone*
 *Researched: 2026-03-02*
