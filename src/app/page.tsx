@@ -464,7 +464,9 @@ export default function Home() {
   }
 
   // CHANGE 4-C: pass rigIntent in generate body; store substitutionMap from response
-  async function generatePreset() {
+  // overrideMessages: used by handleRigGenerate() when calling from the welcome screen,
+  // where React state hasn't flushed yet. Falls back to messages state for the chat flow.
+  async function generatePreset(overrideMessages?: Message[]) {
     setIsGenerating(true);
     setError(null);
 
@@ -474,7 +476,7 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages,
+          messages: overrideMessages ?? messages,
           premiumKey,
           device: selectedDevice,
           // Phase 20: pass rigIntent if vision extraction was performed
@@ -499,6 +501,19 @@ export default function Home() {
     } finally {
       setIsGenerating(false);
     }
+  }
+
+  // handleRigGenerate — called from the welcome screen "Build Rig Preset" button.
+  // Injects a synthetic user message so the /api/generate route's messages.length > 0
+  // guard passes, then calls generatePreset() with the local message list before React
+  // flushes state. Switches the UI to the chat flow by setting messages state.
+  async function handleRigGenerate() {
+    const syntheticMsg: Message = {
+      role: "user",
+      content: "Build a preset from my pedal rig",
+    };
+    setMessages([syntheticMsg]);
+    await generatePreset([syntheticMsg]);
   }
 
   function downloadPreset() {
@@ -842,6 +857,60 @@ export default function Home() {
                   {substitutionMap && !isMappingLoading && (
                     <SubstitutionCard entries={substitutionMap} />
                   )}
+
+                  {/* Build Rig Preset CTA — shown after mapping completes */}
+                  {substitutionMap && !isMappingLoading && (
+                    <div className="space-y-3 pt-2 border-t border-[var(--hlx-border)] mt-3">
+                      {/* Device selector */}
+                      <div className="space-y-2">
+                        <p className="text-[11px] uppercase tracking-widest text-[var(--hlx-text-muted)] font-semibold">
+                          Target Device
+                        </p>
+                        <div className="flex gap-2 flex-wrap">
+                          {(["helix_lt", "helix_floor", "pod_go"] as const).map((dev) => (
+                            <button
+                              key={dev}
+                              onClick={() => setSelectedDevice(dev)}
+                              className={`inline-flex items-center gap-2 px-3 py-2 rounded-[10px] border text-[0.8125rem] font-medium transition-all cursor-pointer ${
+                                selectedDevice === dev
+                                  ? "border-[var(--hlx-amber)] text-[var(--hlx-text)] bg-[var(--hlx-elevated)] shadow-[0_0_0_1px_var(--hlx-amber),0_0_12px_rgba(245,158,11,0.15)]"
+                                  : "border-[var(--hlx-border)] text-[var(--hlx-text-muted)] bg-[var(--hlx-surface)] hover:border-[var(--hlx-border-warm)] hover:text-[var(--hlx-text-sub)] hover:bg-[var(--hlx-elevated)]"
+                              }`}
+                            >
+                              <span className={`hlx-led ${selectedDevice === dev ? "hlx-led-warm" : ""}`} />
+                              {dev === "helix_lt" ? "Helix LT" : dev === "helix_floor" ? "Helix Floor" : "Pod Go"}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Generate from rig button */}
+                      <button
+                        onClick={handleRigGenerate}
+                        disabled={isGenerating}
+                        className="hlx-generate w-full"
+                      >
+                        {isGenerating ? (
+                          <>
+                            <svg className="hlx-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                            </svg>
+                            Building Rig Preset&hellip;
+                          </>
+                        ) : (
+                          <>
+                            <span className="w-5 h-5 rounded-md bg-[var(--hlx-void)] flex items-center justify-center text-[10px] font-bold text-[var(--hlx-amber)]">H</span>
+                            Build Rig Preset
+                          </>
+                        )}
+                      </button>
+
+                      <p className="text-[11px] text-[var(--hlx-text-muted)] text-center leading-relaxed">
+                        Or describe your tone in the chat below for a more tailored result
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -901,7 +970,7 @@ export default function Home() {
                   </div>
                 </div>
 
-                <button onClick={generatePreset} disabled={isGenerating} className="hlx-generate">
+                <button onClick={() => generatePreset()} disabled={isGenerating} className="hlx-generate">
                   {isGenerating ? (
                     <>
                       <svg className="hlx-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
