@@ -94,7 +94,11 @@ Plans:
   2. The Warm Analog Studio aesthetic is intact and the UI presents no visual regressions from the current design
   3. The chat interview flow using Gemini with Google Search grounding works end-to-end from conversation to preset download
   4. The generation screen presents a single download button for one world-class preset — no multi-provider comparison UI is visible
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — Refactor page.tsx: remove multi-provider UI, add device selector, single preset card, update footer/branding (UX-01, UX-02, UX-03, UX-04)
+- [ ] 05-02-PLAN.md — Delete dead provider code (providers.ts, /api/providers route), clean orphaned CSS, visual verification checkpoint (UX-02, UX-04)
 
 ### Phase 6: Hardening
 **Goal**: The system is verified against real hardware and the known "looks done but isn't" failure modes are closed before launch
@@ -120,9 +124,9 @@ Phases execute in numeric order: 1 > 2 > 3 > 4 > 5 > 6
 | 2. Knowledge Layer | 3/3 | Complete | 2026-03-02 |
 | 3. AI Integration | 2/2 | Complete | 2026-03-02 |
 | 4. Orchestration | 2/2 | Complete | 2026-03-02 |
-| 5. Frontend Polish | 0/TBD | Not started | - |
+| 5. Frontend Polish | 0/2 | Not started | - |
 | 6. Hardening | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-03-01*
-*Last updated: 2026-03-02 — Phase 4 planned (2 plans). Phases 1-3 complete (8/8 plans).*
+*Last updated: 2026-03-02 — Phase 5 planned (2 plans). Phases 1-4 complete (10/10 plans).*
