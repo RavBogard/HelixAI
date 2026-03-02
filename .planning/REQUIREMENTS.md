@@ -69,6 +69,34 @@ Requirements for the rebuilt preset engine. Each maps to roadmap phases.
 - [x] **UX-03**: Chat-based tone interview flow using Gemini with Google Search grounding
 - [x] **UX-04**: Single preset download — generate one world-class preset per request (remove multi-provider comparison UI)
 
+## v1.1 Requirements
+
+Requirements for Polish & Precision milestone. Bug fixes, preset intelligence, cost optimization, and UI transparency.
+
+### Hardware Correctness
+
+- [ ] **HW-01**: Stomp footswitch `@fs_enabled` set to `true` for all stomp-assigned blocks so hardware responds on first press
+- [ ] **HW-02**: Snapshot `@pedalstate` bitmask computed from each snapshot's block enable/disable states so pedal LEDs reflect active stomps per snapshot
+- [ ] **HW-03**: Broader .hlx format audit — export real HX Edit presets, diff against generated output, fix any discovered field mismatches
+
+### Preset Intelligence
+
+- [ ] **INTL-01**: Genre-aware effect parameter defaults — delay time, reverb mix, and modulation rate tuned to `genreHint` (e.g., slapback for blues, long+wet for ambient, dry for metal)
+- [ ] **INTL-02**: Smarter snapshot effect toggling — ambient snapshot enables reverb+delay with elevated Mix, clean snapshot disables drive-type effects, based on block `intentRole`
+
+### Cost & Performance
+
+- [ ] **PERF-01**: Prompt caching via `cache_control: { type: "ephemeral" }` on system prompt for ~50% API input cost reduction
+
+### Frontend Transparency
+
+- [ ] **FXUI-01**: Signal chain visualization — show the amp, effects, and signal flow of the generated preset before download
+- [ ] **FXUI-02**: Tone description card — human-readable summary showing amp/cab pair, effect list, snapshot names, and guitar notes
+
+### Branding
+
+- [ ] **BRAND-01**: "Project of Daniel Bogard" footer with link to danielbogard.com on all pages
+
 ## v2 Requirements
 
 Deferred to future milestones. Tracked but not in current roadmap.
@@ -87,9 +115,7 @@ Deferred to future milestones. Tracked but not in current roadmap.
 
 ### Infrastructure
 
-- **INFRA-V2-01**: Firmware version parameterization — support FW 3.71-3.80 model additions
 - **INFRA-V2-02**: Telemetry for AI correction rate — log and alert if >2 corrections per generation
-- **INFRA-V2-03**: Test suite for Knowledge Layer — assert parameter ranges per amp category, DSP limits, cab filter presence
 
 ## Out of Scope
 
@@ -152,12 +178,22 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UX-03 | Phase 5 | Complete |
 | UX-04 | Phase 5 | Complete |
 
+| HW-01 | TBD | Pending |
+| HW-02 | TBD | Pending |
+| HW-03 | TBD | Pending |
+| INTL-01 | TBD | Pending |
+| INTL-02 | TBD | Pending |
+| PERF-01 | TBD | Pending |
+| FXUI-01 | TBD | Pending |
+| FXUI-02 | TBD | Pending |
+| BRAND-01 | TBD | Pending |
+
 **Coverage:**
-- v1 requirements: 36 total
-- Mapped to phases: 36 (Phases 1-5)
-- Unmapped: 0
-- Phase 6 (Hardening): addresses launch-readiness concerns from research — no v1 requirements assigned; see ROADMAP.md Phase 6 note
+- v1 requirements: 36 total (all complete)
+- v1.1 requirements: 9 total
+- Mapped to phases: 36 (v1 Phases 1-6) + 0 (v1.1 — pending roadmap)
+- Unmapped: 9 (v1.1 — pending roadmap creation)
 
 ---
 *Requirements defined: 2026-03-01*
-*Last updated: 2026-03-01 after roadmap creation (traceability confirmed 36/36)*
+*Last updated: 2026-03-02 after v1.1 requirements definition*
