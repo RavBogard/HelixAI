@@ -7,5 +7,7 @@ export { ToneIntentSchema, EffectIntentSchema, SnapshotIntentSchema } from "./to
 export type { ToneIntent, EffectIntent, SnapshotIntent } from "./tone-intent";
 export { PARAM_TYPE_REGISTRY } from "./param-registry";
 export type { ParamType } from "./param-registry";
+// Knowledge Layer (Phase 2)
 export { assembleSignalChain } from "./chain-rules";
 export { resolveParameters } from "./param-engine";
+export { buildSnapshots } from "./snapshot-engine";
