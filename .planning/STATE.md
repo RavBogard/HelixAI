@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Rig Emulation
 status: in_progress
-last_updated: "2026-03-02T12:43:00Z"
+last_updated: "2026-03-02T00:00:00Z"
 progress:
   total_phases: 5
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  total_plans: 3
+  completed_plans: 3
 ---
 
 # Project State
@@ -22,12 +22,12 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 
 ## Current Position
 
-Phase: 18 — Pedal Mapping Engine
+Phase: 19 — Vision Extraction API
 Plan: 01 (complete)
-Status: Phase 18 complete — ready for Phase 19
-Last activity: 2026-03-02 — Phase 18 Plan 01 complete (rig-mapping.ts, 53-entry PEDAL_HELIX_MAP, 46 tests, 108 total passing)
+Status: Phase 19 complete — ready for Phase 20
+Last activity: 2026-03-02 — Phase 19 Plan 01 complete (rig-vision.ts, /api/vision route, upload panel UI, browser-image-compression)
 
-Progress: [████░░░░░░] 40% (v1.3)
+Progress: [██████░░░░] 60% (v1.3)
 
 ## Performance Metrics
 
@@ -68,7 +68,7 @@ Progress: [████░░░░░░] 40% (v1.3)
 |-------|-------|--------|
 | 17. Schemas & Types Foundation | 1 | Complete |
 | 18. Pedal Mapping Engine | 1 | Complete |
-| 19. Vision Extraction API | — | Not Started |
+| 19. Vision Extraction API | 1 | Complete |
 | 20. Planner Integration & Orchestration | — | Not Started |
 | 21. Substitution Card & End-to-End Polish | — | Not Started |
 
@@ -90,6 +90,8 @@ Progress: [████░░░░░░] 40% (v1.3)
 - [v1.3]: Per-pedal photos over full pedalboard OCR — more reliable for v1.3
 - [v1.3]: blockType in PedalMapEntry is a lowercase string ("distortion", "dynamics", etc.), not a BLOCK_TYPES number — getModelIdForDevice uses it as a key in POD_GO_EFFECT_SUFFIX
 - [v1.3]: detectCategory() uses word-boundary regex, not includes() — prevents "od" matching "module"
+- [v1.3]: Vision route uses manual JSON extraction (extractJson) not output_config — incompatible with image content block arrays in Anthropic SDK
+- [v1.3]: browser-image-compression dynamically imported inside callVision() — prevents SSR failure on Next.js build
 
 ### Pending Todos
 
@@ -102,5 +104,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed Phase 18-01-PLAN.md (Pedal Mapping Engine)
+Stopped at: Completed Phase 19-01-PLAN.md (Vision Extraction API)
 Resume file: None
