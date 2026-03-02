@@ -36,12 +36,16 @@ function buildTone(spec: PresetSpec): HlxTone {
   const dsp0 = buildDsp(dsp0Blocks, 0);
   const dsp1 = buildDsp(dsp1Blocks, 1);
 
-  // Build snapshots
+  // Build footswitch section FIRST — we need stomp assignments for @pedalstate
+  const footswitch = buildFootswitchSection(spec.signalChain);
+  const stompAssignments = getStompAssignments(spec.signalChain);
+
+  // Build snapshots (with @pedalstate computed from stomp assignments + block states)
   const snapshots: Record<string, HlxSnapshot> = {};
   for (let i = 0; i < 8; i++) {
     const snapshotSpec = spec.snapshots[i];
     if (snapshotSpec) {
-      snapshots[`snapshot${i}`] = buildSnapshot(snapshotSpec, spec.signalChain, spec.tempo, i);
+      snapshots[`snapshot${i}`] = buildSnapshot(snapshotSpec, spec.signalChain, spec.tempo, i, stompAssignments);
     } else {
       snapshots[`snapshot${i}`] = buildEmptySnapshot(i);
     }
@@ -49,9 +53,6 @@ function buildTone(spec: PresetSpec): HlxTone {
 
   // Build controller section for snapshot-controlled parameters
   const controller = buildControllerSection(spec);
-
-  // Build footswitch section — auto-assign toggleable blocks to stomp switches
-  const footswitch = buildFootswitchSection(spec.signalChain);
 
   const tone: HlxTone = {
     dsp0,
@@ -170,11 +171,57 @@ function buildDsp(blocks: BlockSpec[], dspIndex: number): HlxDsp {
   return dsp;
 }
 
+// A stomp assignment: which block key on which DSP is assigned to which footswitch index
+interface StompAssignment {
+  dspKey: string;   // "dsp0" or "dsp1"
+  blockKey: string; // "block0", "block1", etc. (per-DSP key)
+  fsIndex: number;  // Footswitch index (7-10 for FS5-FS8)
+}
+
+/**
+ * Compute @pedalstate bitmask from snapshot block states and stomp assignments.
+ * Each bit corresponds to a footswitch index. The bit is SET when the stomp
+ * block assigned to that footswitch is ENABLED in this snapshot.
+ *
+ * @pedalstate encoding (empirically derived):
+ * - Bit 0 (value 1) = FS1, Bit 1 (value 2) = FS2, ... Bit N (value 2^N) = FS(N+1)
+ * - For stomp footswitches FS5-FS8 (indices 7-10): bits 7-10
+ * - Default value 2 (bit 1 = FS2) represents "snapshot mode active" base state
+ */
+function computePedalState(
+  blockStates: Record<string, boolean>,
+  stompAssignments: StompAssignment[],
+  blockKeyMap: Map<string, { dsp: number; perDspKey: string }>,
+): number {
+  // Base value: bit 1 (FS2) = snapshot mode indicator
+  let pedalstate = 2;
+
+  for (const assignment of stompAssignments) {
+    // Find which global block key maps to this per-DSP key
+    let blockEnabled = false;
+    for (const [globalKey, mapping] of Array.from(blockKeyMap.entries())) {
+      if (mapping.perDspKey === assignment.blockKey &&
+          (mapping.dsp === 0 ? "dsp0" : "dsp1") === assignment.dspKey) {
+        // Check if this block is enabled in this snapshot's block states
+        blockEnabled = blockStates[globalKey] ?? false;
+        break;
+      }
+    }
+
+    if (blockEnabled) {
+      pedalstate |= (1 << assignment.fsIndex);
+    }
+  }
+
+  return pedalstate;
+}
+
 function buildSnapshot(
   spec: SnapshotSpec,
   allBlocks: BlockSpec[],
   tempo: number,
   _index: number,
+  stompAssignments: StompAssignment[] = [],
 ): HlxSnapshot {
   const blocks: { dsp0?: Record<string, boolean>; dsp1?: Record<string, boolean> } = {
     dsp0: {},
@@ -229,11 +276,14 @@ function buildSnapshot(
     }
   }
 
+  // Compute @pedalstate from stomp assignments and this snapshot's block states
+  const pedalstate = computePedalState(spec.blockStates, stompAssignments, blockKeyMap);
+
   return {
     "@name": spec.name.substring(0, 10).toUpperCase(),
     "@tempo": tempo,
     "@valid": true,
-    "@pedalstate": 2,
+    "@pedalstate": pedalstate,
     "@ledcolor": spec.ledColor,
     "@custom_name": false,
     blocks,
@@ -354,6 +404,41 @@ const STOMP_BLOCK_TYPES = new Set([
 ]);
 
 /**
+ * Get stomp assignments (which blocks are assigned to which footswitches).
+ * Used by buildFootswitchSection for the .hlx and by buildSnapshot for @pedalstate.
+ */
+function getStompAssignments(allBlocks: BlockSpec[]): StompAssignment[] {
+  const assignments: StompAssignment[] = [];
+  let dsp0Idx = 0;
+  let dsp1Idx = 0;
+
+  const candidates: { block: BlockSpec; dspKey: string; blockKey: string }[] = [];
+  for (const block of allBlocks) {
+    if (block.type === "cab") continue;
+    const dspKey = block.dsp === 0 ? "dsp0" : "dsp1";
+    const idx = block.dsp === 0 ? dsp0Idx : dsp1Idx;
+    const blockKey = `block${idx}`;
+    if (block.dsp === 0) dsp0Idx++;
+    else dsp1Idx++;
+
+    if (STOMP_BLOCK_TYPES.has(block.type)) {
+      candidates.push({ block, dspKey, blockKey });
+    }
+  }
+
+  const toAssign = candidates.slice(0, STOMP_FS_INDICES.length);
+  for (let i = 0; i < toAssign.length; i++) {
+    assignments.push({
+      dspKey: toAssign[i].dspKey,
+      blockKey: toAssign[i].blockKey,
+      fsIndex: STOMP_FS_INDICES[i],
+    });
+  }
+
+  return assignments;
+}
+
+/**
  * Auto-assign effect blocks to stomp footswitches (FS5-FS8).
  * Amps, cabs, and EQ are typically "always on" so they're skipped.
  * This gives the user a Snap/Stomp layout:
@@ -390,7 +475,7 @@ function buildFootswitchSection(allBlocks: BlockSpec[]): Record<string, unknown>
   for (let i = 0; i < toAssign.length; i++) {
     const { block, dspKey, blockKey } = toAssign[i];
     footswitch[dspKey][blockKey] = {
-      "@fs_enabled": false,
+      "@fs_enabled": true,
       "@fs_index": STOMP_FS_INDICES[i],
       "@fs_label": block.modelName.substring(0, 16),
       "@fs_ledcolor": FS_LED_COLORS[block.type] || 65536,
