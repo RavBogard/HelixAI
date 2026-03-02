@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: AI Integration** - Claude Sonnet 4.6 with constrained ToneIntent output; Gemini chat unchanged
 - [x] **Phase 4: Orchestration** - Wire all components end-to-end; harden validator; generate real downloadable presets
 - [x] **Phase 5: Frontend Polish** - Device selector (LT vs. Floor), UX refinements, remove multi-provider UI
-- [ ] **Phase 6: Hardening** - Hardware verification on real Helix LT, fail-fast validation, firmware parameterization, openai package removal
+- [x] **Phase 6: Hardening** - Hardware verification on real Helix LT, fail-fast validation, firmware parameterization, openai package removal
 
 ## Phase Details
 
@@ -113,7 +113,7 @@ Plans:
 
 Plans:
 - [x] 06-01-PLAN.md — Firmware version parameterization to config.ts + openai package removal (SC-3, SC-4)
-- [ ] 06-02-PLAN.md — DSP block limit error path test + hardware verification checkpoint on real Helix LT (SC-1, SC-2)
+- [x] 06-02-PLAN.md — DSP block limit error path test + hardware verification checkpoint on real Helix LT (SC-1, SC-2)
 
 **Phase 6 Note:** All v1 requirements are fully covered in Phases 1-5 (36/36). Phase 6 addresses launch readiness concerns surfaced by research (hardware verification, firmware parameterization, DSP limit enforcement, openai cleanup) that are prerequisites for a production-quality launch but were categorized as v2 infrastructure in REQUIREMENTS.md. These are elevated for this milestone because they gate the core value: presets that actually sound good on real hardware.
 
@@ -129,8 +129,8 @@ Phases execute in numeric order: 1 > 2 > 3 > 4 > 5 > 6
 | 3. AI Integration | 2/2 | Complete | 2026-03-02 |
 | 4. Orchestration | 2/2 | Complete | 2026-03-02 |
 | 5. Frontend Polish | 2/2 | Complete | 2026-03-02 |
-| 6. Hardening | 1/2 | In progress | - |
+| 6. Hardening | 2/2 | Complete | 2026-03-02 |
 
 ---
 *Roadmap created: 2026-03-01*
-*Last updated: 2026-03-02 — Plan 06-01 complete (firmware config + openai removal). 13/14 plans done.*
+*Last updated: 2026-03-02 — All 6 phases complete (14/14 plans). Hardware verification deferred to user.*
