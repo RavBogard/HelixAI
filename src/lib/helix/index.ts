@@ -17,3 +17,6 @@ export { resolveParameters } from "./param-engine";
 export { buildSnapshots } from "./snapshot-engine";
 // Pod Go builder (Phase 15)
 export { buildPgpFile, summarizePodGoPreset } from "./podgo-builder";
+// Rig Emulation schemas (Phase 17)
+export { PhysicalPedalSchema, RigIntentSchema, SubstitutionEntrySchema, SubstitutionMapSchema } from "./rig-intent";
+export type { PhysicalPedal, RigIntent, SubstitutionEntry, SubstitutionMap } from "./rig-intent";
