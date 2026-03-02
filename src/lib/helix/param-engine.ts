@@ -122,6 +122,83 @@ const GAIN_BLOCK_PARAMS: Record<string, number> = {
 };
 
 // ============================================================
+// GENRE-AWARE EFFECT DEFAULTS (INTL-01)
+// ============================================================
+// Outermost resolution layer: applied AFTER model defaults.
+// All values use normalized floats matching the model database encoding:
+//   - Delay Time: 0.0-1.0 (0.375 ≈ 375ms)
+//   - Mix: 0.0-1.0 (0.30 = 30%)
+//   - Modulation Speed: 0.0-1.0
+
+interface GenreEffectProfile {
+  delay?: Record<string, number>;
+  reverb?: Record<string, number>;
+  modulation?: Record<string, number>;
+}
+
+const GENRE_EFFECT_DEFAULTS: Record<string, GenreEffectProfile> = {
+  blues: {
+    delay: { Time: 0.15, Feedback: 0.20, Mix: 0.20 },
+    reverb: { Mix: 0.20, DecayTime: 0.4 },
+    modulation: { Speed: 0.3, Depth: 0.4 },
+  },
+  rock: {
+    delay: { Time: 0.30, Feedback: 0.25, Mix: 0.20 },
+    reverb: { Mix: 0.20, DecayTime: 0.45 },
+    modulation: { Speed: 0.35, Depth: 0.45 },
+  },
+  metal: {
+    delay: { Time: 0.375, Feedback: 0.20, Mix: 0.12 },
+    reverb: { Mix: 0.12, DecayTime: 0.35 },
+    modulation: { Speed: 0.3, Depth: 0.3 },
+  },
+  jazz: {
+    delay: { Time: 0.30, Feedback: 0.20, Mix: 0.15 },
+    reverb: { Mix: 0.22, DecayTime: 0.5 },
+    modulation: { Speed: 0.35, Depth: 0.45 },
+  },
+  country: {
+    delay: { Time: 0.15, Feedback: 0.25, Mix: 0.25 },
+    reverb: { Mix: 0.20, DecayTime: 0.4 },
+    modulation: { Speed: 0.3, Depth: 0.4 },
+  },
+  ambient: {
+    delay: { Time: 0.50, Feedback: 0.50, Mix: 0.40 },
+    reverb: { Mix: 0.50, DecayTime: 0.8 },
+    modulation: { Speed: 0.25, Depth: 0.6 },
+  },
+  worship: {
+    delay: { Time: 0.45, Feedback: 0.40, Mix: 0.35 },
+    reverb: { Mix: 0.40, DecayTime: 0.7 },
+    modulation: { Speed: 0.25, Depth: 0.5 },
+  },
+  funk: {
+    delay: { Time: 0.20, Feedback: 0.15, Mix: 0.15 },
+    reverb: { Mix: 0.15, DecayTime: 0.3 },
+    modulation: { Speed: 0.5, Depth: 0.5 },
+  },
+  pop: {
+    delay: { Time: 0.375, Feedback: 0.30, Mix: 0.25 },
+    reverb: { Mix: 0.25, DecayTime: 0.5 },
+    modulation: { Speed: 0.4, Depth: 0.5 },
+  },
+};
+
+/**
+ * Match a genreHint string to a GENRE_EFFECT_DEFAULTS key using substring lookup.
+ * Returns undefined if no match — callers fall back to model defaults.
+ */
+function matchGenre(genreHint: string | undefined): GenreEffectProfile | undefined {
+  if (!genreHint) return undefined;
+  const hint = genreHint.toLowerCase();
+  if (GENRE_EFFECT_DEFAULTS[hint]) return GENRE_EFFECT_DEFAULTS[hint];
+  for (const [genre, profile] of Object.entries(GENRE_EFFECT_DEFAULTS)) {
+    if (hint.includes(genre)) return profile;
+  }
+  return undefined;
+}
+
+// ============================================================
 // MODEL LOOKUP HELPERS
 // ============================================================
 
@@ -184,12 +261,13 @@ export function resolveParameters(
 
   const ampCategory: AmpCategory = ampModel.ampCategory ?? "clean";
   const topology: TopologyTag = ampModel.topology ?? "not_applicable";
+  const genreProfile = matchGenre(intent.genreHint);
 
   // Build new array — never mutate input
   return chain.map((block) => {
     const resolved: BlockSpec = {
       ...block,
-      parameters: resolveBlockParams(block, ampCategory, topology),
+      parameters: resolveBlockParams(block, ampCategory, topology, genreProfile),
     };
     return resolved;
   });
@@ -202,6 +280,7 @@ function resolveBlockParams(
   block: BlockSpec,
   ampCategory: AmpCategory,
   topology: TopologyTag,
+  genreProfile?: GenreEffectProfile,
 ): Record<string, number> {
   switch (block.type) {
     case "amp":
@@ -218,8 +297,8 @@ function resolveBlockParams(
       return resolveVolumeParams(block);
     default:
       // delay, reverb, modulation, wah, pitch, send_return:
-      // Use model's defaultParams from the database
-      return resolveDefaultParams(block);
+      // Use model defaults, then apply genre overrides as outermost layer
+      return resolveDefaultParams(block, genreProfile);
   }
 }
 
@@ -337,13 +416,28 @@ function resolveVolumeParams(block: BlockSpec): Record<string, number> {
 }
 
 /**
- * Default parameter resolution — look up model's defaultParams from the database.
+ * Default parameter resolution — look up model's defaultParams from the database,
+ * then apply genre-specific overrides as outermost layer (INTL-01).
+ *
+ * Resolution order: model defaults -> genre overrides
+ * Genre overrides only apply to matching block types (delay/reverb/modulation).
  */
-function resolveDefaultParams(block: BlockSpec): Record<string, number> {
+function resolveDefaultParams(block: BlockSpec, genreProfile?: GenreEffectProfile): Record<string, number> {
   const model = findModel(block.modelName, block.type);
-  if (model) {
-    return { ...model.defaultParams };
+  const params = model ? { ...model.defaultParams } : { ...block.parameters };
+
+  // Apply genre overrides as outermost layer (only for effect types with genre profiles)
+  if (genreProfile) {
+    const genreOverrides = genreProfile[block.type as keyof GenreEffectProfile];
+    if (genreOverrides) {
+      for (const [key, value] of Object.entries(genreOverrides)) {
+        // Only override params that exist on the model (don't add foreign params)
+        if (key in params) {
+          params[key] = value;
+        }
+      }
+    }
   }
-  // If model not found in database, preserve existing parameters
-  return { ...block.parameters };
+
+  return params;
 }
