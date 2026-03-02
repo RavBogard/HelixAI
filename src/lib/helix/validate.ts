@@ -65,16 +65,16 @@ export function validatePresetSpec(spec: PresetSpec): void {
         continue;
       }
 
-      // Cab LowCut: 19.9-500.0 Hz
-      if (block.type === "cab" && key === "LowCut") {
+      // LowCut: Hz-encoded for cab, reverb, and delay blocks (19.9-500.0 Hz)
+      if ((block.type === "cab" || block.type === "reverb" || block.type === "delay") && key === "LowCut") {
         if (value < 19.9 || value > 500.0) {
           throw new Error(`Parameter '${key}' value ${value} out of range for block '${block.modelName}' (expected 19.9-500.0 Hz)`);
         }
         continue;
       }
 
-      // Cab HighCut: 1000.0-20100.0 Hz
-      if (block.type === "cab" && key === "HighCut") {
+      // HighCut: Hz-encoded for cab, reverb, and delay blocks (1000.0-20100.0 Hz)
+      if ((block.type === "cab" || block.type === "reverb" || block.type === "delay") && key === "HighCut") {
         if (value < 1000.0 || value > 20100.0) {
           throw new Error(`Parameter '${key}' value ${value} out of range for block '${block.modelName}' (expected 1000.0-20100.0 Hz)`);
         }
