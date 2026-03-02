@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-02T02:22:47.896Z"
+last_updated: "2026-03-02T02:33:51Z"
 progress:
-  total_phases: 5
+  total_phases: 6
   completed_phases: 5
-  total_plans: 12
-  completed_plans: 12
+  total_plans: 14
+  completed_plans: 13
 ---
 
 # Project State
@@ -18,23 +18,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-01)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** Phase 5 complete — Frontend Polish done. Phase 6 next.
+**Current focus:** Phase 6 in progress — Hardening. Plan 01 complete, Plan 02 next.
 
 ## Current Position
 
-Phase: 5 of 6 (Frontend Polish) -- COMPLETE
-Plan: 2 of 2 in current phase (all complete)
-Status: Phase 5 complete. Dead provider code removed, CSS cleaned. Ready for Phase 6.
-Last activity: 2026-03-02 — Completed Plan 05-02 (dead provider code removal + CSS cleanup)
+Phase: 6 of 6 (Hardening)
+Plan: 1 of 2 in current phase (06-01 complete)
+Status: Plan 06-01 complete. Firmware config centralized, openai removed. Plan 06-02 (DSP limit + hardware verification) next.
+Last activity: 2026-03-02 — Completed Plan 06-01 (firmware parameterization + openai removal)
 
-Progress: [██████████] 100%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 12
+- Total plans completed: 13
 - Average duration: ~4 min
-- Total execution time: ~50 min
+- Total execution time: ~52 min
 
 **By Phase:**
 
@@ -45,14 +45,16 @@ Progress: [██████████] 100%
 | 3. AI Integration | 2/2 | ~10 min | ~5 min |
 | 4. Orchestration | 2/2 | ~5 min | ~2.5 min |
 | 5. Frontend Polish | 2/2 | ~4 min | ~2 min |
+| 6. Hardening | 1/2 | ~2 min | ~2 min |
 
 **Recent Trend:**
-- Last 5 plans: 03-02 (3m), 04-01 (2m), 04-02 (3m), 05-01 (2m), 05-02 (2m)
+- Last 5 plans: 04-01 (2m), 04-02 (3m), 05-01 (2m), 05-02 (2m), 06-01 (2m)
 - Trend: stable (fast)
 
 *Updated after each plan completion*
 | Phase 05-frontend-polish P01 | 2min | 2 tasks | 2 files |
 | Phase 05-frontend-polish P02 | 2min | 2 tasks | 3 files |
+| Phase 06-hardening P01 | 2min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -89,6 +91,8 @@ Recent decisions affecting current work:
 - [Phase 5, Plan 01]: Inline Tailwind classes for device toggle buttons -- CSS class extraction deferred to Plan 02
 - [Phase 5, Plan 01]: No error result display in preset card -- existing catch/error state handles generation errors
 - [Phase 5, Plan 02]: Cleared .next/types cache after file deletion -- stale Next.js type validator referenced deleted route
+- [Phase 6, Plan 01]: FIRMWARE_CONFIG as single const object with 'as const' assertion for type safety
+- [Phase 6, Plan 01]: JSDoc on config.ts explaining that firmware updates require editing only this file
 
 ### Pending Todos
 
@@ -103,5 +107,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed 05-02-PLAN.md (dead provider code removal + CSS cleanup). Phase 5 complete.
+Stopped at: Completed 06-01-PLAN.md (firmware parameterization + openai removal). Plan 06-02 next.
 Resume file: None

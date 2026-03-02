@@ -112,7 +112,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 06-01-PLAN.md — Firmware version parameterization to config.ts + openai package removal (SC-3, SC-4)
+- [x] 06-01-PLAN.md — Firmware version parameterization to config.ts + openai package removal (SC-3, SC-4)
 - [ ] 06-02-PLAN.md — DSP block limit error path test + hardware verification checkpoint on real Helix LT (SC-1, SC-2)
 
 **Phase 6 Note:** All v1 requirements are fully covered in Phases 1-5 (36/36). Phase 6 addresses launch readiness concerns surfaced by research (hardware verification, firmware parameterization, DSP limit enforcement, openai cleanup) that are prerequisites for a production-quality launch but were categorized as v2 infrastructure in REQUIREMENTS.md. These are elevated for this milestone because they gate the core value: presets that actually sound good on real hardware.
@@ -129,8 +129,8 @@ Phases execute in numeric order: 1 > 2 > 3 > 4 > 5 > 6
 | 3. AI Integration | 2/2 | Complete | 2026-03-02 |
 | 4. Orchestration | 2/2 | Complete | 2026-03-02 |
 | 5. Frontend Polish | 2/2 | Complete | 2026-03-02 |
-| 6. Hardening | 0/2 | Not started | - |
+| 6. Hardening | 1/2 | In progress | - |
 
 ---
 *Roadmap created: 2026-03-01*
-*Last updated: 2026-03-02 — Phase 6 planned (2 plans). Phases 1-5 complete (12/12 plans).*
+*Last updated: 2026-03-02 — Plan 06-01 complete (firmware config + openai removal). 13/14 plans done.*
