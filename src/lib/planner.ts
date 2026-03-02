@@ -91,7 +91,13 @@ export async function callClaudePlanner(
   const response = await client.messages.create({
     model: "claude-sonnet-4-6",
     max_tokens: 4096,
-    system: systemPrompt,
+    system: [
+      {
+        type: "text" as const,
+        text: systemPrompt,
+        cache_control: { type: "ephemeral" as const },
+      },
+    ],
     messages: [{ role: "user", content: conversationText }],
     output_config: {
       format: zodOutputFormat(ToneIntentSchema),
