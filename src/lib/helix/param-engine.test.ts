@@ -92,17 +92,8 @@ describe("resolveParameters", () => {
     expect(amp.parameters.Sag).toBeLessThanOrEqual(0.30);
   });
 
-  // Test 4: Topology-aware mid adjustment
-  it("sets cathode_follower Mid 0.40-0.50 and plate_fed Mid 0.55-0.65 for high-gain", () => {
-    // ANGL Meteor is high_gain + cathode_follower
-    const cfChain: BlockSpec[] = [
-      makeBlock({ type: "amp", modelId: "HD2_AmpANGLMeteor", modelName: "ANGL Meteor" }),
-    ];
-    const cfIntent = makeIntent({ ampName: "ANGL Meteor" });
-    const cfResult = resolveParameters(cfChain, cfIntent);
-    expect(cfResult[0].parameters.Mid).toBeGreaterThanOrEqual(0.40);
-    expect(cfResult[0].parameters.Mid).toBeLessThanOrEqual(0.50);
-
+  // Test 4: Topology-aware mid adjustment for high-gain
+  it("sets plate_fed high-gain Mid 0.55-0.65 (topology override)", () => {
     // Cali Rectifire is high_gain + plate_fed
     const pfChain: BlockSpec[] = [
       makeBlock({ type: "amp", modelId: "HD2_AmpCaliRectifire", modelName: "Cali Rectifire" }),
@@ -111,6 +102,27 @@ describe("resolveParameters", () => {
     const pfResult = resolveParameters(pfChain, pfIntent);
     expect(pfResult[0].parameters.Mid).toBeGreaterThanOrEqual(0.55);
     expect(pfResult[0].parameters.Mid).toBeLessThanOrEqual(0.65);
+
+    // PV Panama is also high_gain + plate_fed -- verify consistency
+    const pvChain: BlockSpec[] = [
+      makeBlock({ type: "amp", modelId: "HD2_AmpPVPanama", modelName: "PV Panama" }),
+    ];
+    const pvIntent = makeIntent({ ampName: "PV Panama" });
+    const pvResult = resolveParameters(pvChain, pvIntent);
+    expect(pvResult[0].parameters.Mid).toBeGreaterThanOrEqual(0.55);
+    expect(pvResult[0].parameters.Mid).toBeLessThanOrEqual(0.65);
+  });
+
+  // Test 4b: Clean cathode_follower amps do NOT get topology mid override (only high-gain does)
+  it("does not apply topology mid override for clean cathode_follower amps", () => {
+    // Essex A30 is clean + cathode_follower
+    const chain: BlockSpec[] = [
+      makeBlock({ type: "amp", modelId: "HD2_AmpEssexA30", modelName: "Essex A30" }),
+    ];
+    const intent = makeIntent({ ampName: "Essex A30" });
+    const result = resolveParameters(chain, intent);
+    // Clean amp Mid should be ~0.50 (from clean category defaults), NOT 0.40-0.50 cathode_follower override
+    expect(result[0].parameters.Mid).toBe(0.50);
   });
 
   // Test 5: Cab block gets Hz-encoded LowCut/HighCut and integer Mic index
@@ -147,16 +159,29 @@ describe("resolveParameters", () => {
   });
 
   // Test 7: Parametric EQ block gets LowGain < 0.50 and HighGain > 0.50
-  it("sets Parametric EQ with LowGain < 0.50 (cut) and HighGain > 0.50 (boost)", () => {
+  // For crunch/high-gain, LowGain < 0.50 = cut (anti-mud). Clean = 0.50 (unity, no cut needed).
+  it("sets Parametric EQ with LowGain <= 0.50 (cut or unity) and HighGain > 0.50 (boost)", () => {
     const chain: BlockSpec[] = [
       makeBlock({ type: "eq", modelId: "HD2_EQParametric", modelName: "Parametric EQ" }),
     ];
-    const intent = makeIntent({ ampName: "US Deluxe Nrm" });
-    const result = resolveParameters(chain, intent);
-    const eq = result[0];
 
-    expect(eq.parameters.LowGain).toBeLessThan(0.50);
-    expect(eq.parameters.HighGain).toBeGreaterThan(0.50);
+    // Clean: LowGain at unity (0.50), HighGain boost > 0.50
+    const cleanIntent = makeIntent({ ampName: "US Deluxe Nrm" });
+    const cleanResult = resolveParameters(chain, cleanIntent);
+    expect(cleanResult[0].parameters.LowGain).toBeLessThanOrEqual(0.50);
+    expect(cleanResult[0].parameters.HighGain).toBeGreaterThan(0.50);
+
+    // Crunch: LowGain < 0.50 (actual mud cut), HighGain boost > 0.50
+    const crunchIntent = makeIntent({ ampName: "Grammatico Nrm" });
+    const crunchResult = resolveParameters(chain, crunchIntent);
+    expect(crunchResult[0].parameters.LowGain).toBeLessThan(0.50);
+    expect(crunchResult[0].parameters.HighGain).toBeGreaterThan(0.50);
+
+    // High-gain: LowGain < 0.50 (aggressive mud cut), HighGain boost > 0.50
+    const hgIntent = makeIntent({ ampName: "Cali Rectifire" });
+    const hgResult = resolveParameters(chain, hgIntent);
+    expect(hgResult[0].parameters.LowGain).toBeLessThan(0.50);
+    expect(hgResult[0].parameters.HighGain).toBeGreaterThan(0.50);
   });
 
   // Test 8: Minotaur uses Gain/Treble/Output parameter names, NOT Drive/Tone/Output
