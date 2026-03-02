@@ -255,7 +255,10 @@ Plans:
   4. The mapping table stores both `helixModel` (internal `HD2_*` ID used by the preset builder) and `helixModelDisplayName` (human-readable name from `models.ts` used by the UI) — no internal IDs leak to the display layer
   5. `mapRigToSubstitutions(rigIntent, device)` returns a `SubstitutionMap` — a unit test confirms that passing `device: "pod_go"` produces Pod Go-suffixed model IDs (`HD2_DistTeemahMono`) while `device: "helix_lt"` produces standard IDs (`HD2_DistTeemah`)
   6. A unit test confirms that a pedal in the table (e.g., "ibanez ts9") returns `confidence: "direct"` and a pedal not in the table (e.g., "mythos mjolnir") does not return `confidence: "direct"`
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 18-01-PLAN.md — rig-mapping.ts: PEDAL_HELIX_MAP (53 entries), lookupPedal() three-tier logic, mapRigToSubstitutions(); rig-mapping.test.ts: vitest unit tests covering SC-01 through SC-06 (MAP-01, MAP-02, MAP-03, MAP-04, MAP-05)
 
 ### Phase 19: Vision Extraction API
 **Goal**: Claude Vision extracts pedal identifications and coarse knob zones from user-uploaded photos via an isolated `/api/vision` route — client-side compression keeps all uploads within Vercel's 4.5MB limit and the existing generation pipeline is completely unaffected
@@ -322,11 +325,11 @@ Phases execute in numeric order: 1 > 2 > 3 > 4 > 5 > 6 > 7 > 8 > 9 > 10 > 11 > 1
 | 15. Pod Go Preset Builder | v1.2 | 1/1 | Complete | 2026-03-02 |
 | 16. Integration, UI, and Testing | v1.2 | 1/1 | Complete | 2026-03-02 |
 | 17. Schemas & Types Foundation | v1.3 | 0/1 | Not started | - |
-| 18. Pedal Mapping Engine | v1.3 | 0/TBD | Not started | - |
+| 18. Pedal Mapping Engine | v1.3 | 0/1 | Not started | - |
 | 19. Vision Extraction API | v1.3 | 0/TBD | Not started | - |
 | 20. Planner Integration & Route Orchestration | v1.3 | 0/TBD | Not started | - |
 | 21. Substitution Card & End-to-End Polish | v1.3 | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-03-01*
-*Last updated: 2026-03-02 — v1.2 phases 12-16 marked complete; v1.3 Rig Emulation phases 17-21 added; Phase 17 plan created*
+*Last updated: 2026-03-02 — v1.2 phases 12-16 marked complete; v1.3 Rig Emulation phases 17-21 added; Phase 17 plan created; Phase 18 plan 18-01 created*
