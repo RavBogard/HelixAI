@@ -97,6 +97,47 @@ Requirements for Polish & Precision milestone. Bug fixes, preset intelligence, c
 
 - [x] **BRAND-01**: "Project of Daniel Bogard" footer with link to danielbogard.com on all pages
 
+## v1.2 Requirements
+
+Requirements for Pod Go Support milestone. Extend HelixAI to generate presets for Line 6 Pod Go — single-DSP device with different file format, block constraints, and model catalog.
+
+### Pod Go File Format
+
+- [ ] **PGP-01**: Generated .pgp file with device ID 2162695 loads in Pod Go Edit without errors
+- [ ] **PGP-02**: Block @type values use Pod Go-specific encoding (delay=5, modulation=0, reverb=5, EQ_STATIC=6 — complete remap from Helix values)
+- [ ] **PGP-03**: I/O uses `input`/`output` keys with `P34_AppDSPFlow*` models — no @path, @stereo, or @topology fields present
+- [ ] **PGP-04**: Cab placed as numbered block in signal chain (not separate `cab0` key like Helix)
+- [ ] **PGP-05**: Single-DSP structure — all blocks on dsp0, `dsp1: {}` always empty
+
+### Pod Go Model Catalog
+
+- [ ] **PGMOD-01**: Effect model IDs use correct Mono/Stereo suffixes (e.g., `HD2_DistScream808Mono` not `HD2_DistScream808`)
+- [ ] **PGMOD-02**: Amp model IDs shared directly with Helix — no suffix transformation needed
+- [ ] **PGMOD-03**: Pod Go-excluded models (Tone Sovereign, Clawthorn Drive, Cosmos Echo, Poly Pitch, Space Echo) never offered by AI planner
+- [ ] **PGMOD-04**: Device-filtered model list passed to AI planner prompt so Pod Go presets only reference Pod Go-available models
+
+### Pod Go Signal Chain
+
+- [ ] **PGCHAIN-01**: Series-only routing with maximum 4 user-assignable effect blocks enforced (10 total: 6 fixed + 4 flexible)
+- [ ] **PGCHAIN-02**: No auto-inserted Parametric EQ or Gain Block for Pod Go — DSP budget reserved for user-facing effects
+- [ ] **PGCHAIN-03**: Chain assembly assigns all blocks to dsp:0, never splits across DSPs
+
+### Pod Go Snapshots
+
+- [ ] **PGSNAP-01**: Exactly 4 snapshots generated (snapshot0-snapshot3) with `@controller: 4` for snapshot recall
+- [ ] **PGSNAP-02**: Volume-balanced snapshot design (Clean, Rhythm, Lead, Ambient) matching Helix quality standard with per-snapshot block states
+
+### Pod Go Preset Quality
+
+- [ ] **PGQUAL-01**: Shared param-engine resolution — Pod Go presets receive same category/genre/topology-aware parameter defaults as Helix
+- [ ] **PGQUAL-02**: Mix-ready tone quality — proper cab filtering, dynamic responsiveness, and professional signal chain on Pod Go presets
+
+### Pod Go Frontend & UX
+
+- [ ] **PGUX-01**: Pod Go appears as device option in the device selector dropdown
+- [ ] **PGUX-02**: Pod Go generation produces downloadable .pgp file with correct extension
+- [ ] **PGUX-03**: Signal chain visualization and tone card display 4 snapshots (not 8) for Pod Go presets
+
 ## v2 Requirements
 
 Deferred to future milestones. Tracked but not in current roadmap.
@@ -113,6 +154,12 @@ Deferred to future milestones. Tracked but not in current roadmap.
 - **SNAP-V2-01**: Snapshots 5-8 with genre-specific variations (heavy rhythm, clean+delay, octave lead, full wet)
 - **SNAP-V2-02**: Stomp mode footswitch layout — logical footswitch assignments for live use
 
+### Extended Pod Go
+
+- **PG-V2-01**: Pod Go Wireless as separate device target (same .pgp format, different display name — needs device ID verification)
+- **PG-V2-02**: Live DSP budget calculation with per-effect DSP cost estimates
+- **PG-V2-03**: Stomp mode footswitch layout optimization for Pod Go (musical logic-based FS assignment)
+
 ### Infrastructure
 
 - **INFRA-V2-02**: Telemetry for AI correction rate — log and alert if >2 corrections per generation
@@ -124,7 +171,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | Feature | Reason |
 |---------|--------|
 | Impulse Response (IR) loading | Breaks "download and play" experience; stock Helix cabs are excellent when properly filtered |
-| HX Stomp / POD Go support | Different hardware constraints, different DSP limits, different .hlx sub-formats |
+| HX Stomp support | Different hardware constraints, different DSP limits — defer to future milestone |
 | User accounts / preset saving | Keep stateless: generate, download, done — focus on quality not infrastructure |
 | MIDI / Command Center configuration | Hardware-specific, use-case-specific, technically complex — focus on tone |
 | Multi-provider comparison UI | Going single provider for quality focus; one excellent preset > three mediocre options |
@@ -190,9 +237,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 **Coverage:**
 - v1 requirements: 36 total (all complete)
 - v1.1 requirements: 9 total (all complete)
-- Mapped to phases: 36 (v1 Phases 1-6) + 9 (v1.1 Phases 7-11)
-- Unmapped: 0
+- v1.2 requirements: 17 total (pending)
+- Mapped to phases: 36 (v1 Phases 1-6) + 9 (v1.1 Phases 7-11) + 17 (v1.2 TBD)
+- Unmapped: 17 (awaiting roadmap)
 
 ---
 *Requirements defined: 2026-03-01*
-*Last updated: 2026-03-02 — v1.1 complete (all 9 requirements shipped)*
+*Last updated: 2026-03-02 — v1.2 requirements defined (17 Pod Go requirements)*
