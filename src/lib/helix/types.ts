@@ -165,6 +165,14 @@ export type TopologyTag =
 
 export type CabSize = "small" | "medium" | "large";
 
+// Device target for .hlx file generation
+export type DeviceTarget = "helix_lt" | "helix_floor";
+
+export const DEVICE_IDS: Record<DeviceTarget, number> = {
+  helix_lt: 2162692,
+  helix_floor: 2162688,
+} as const;
+
 // --- Preset specification types (what the AI generates) ---
 
 export interface PresetSpec {

@@ -1,18 +1,18 @@
 import type { HlxFile, HlxDsp, HlxSnapshot, HlxTone, PresetSpec, BlockSpec, SnapshotSpec } from "./types";
+import { DEVICE_IDS, type DeviceTarget } from "./types";
 import { CONTROLLERS } from "./models";
 
-const HELIX_LT_DEVICE_ID = 2162692;
 const HLX_VERSION = 6;
 const HLX_APP_VERSION = 57671680; // FW 3.70+
 const HLX_BUILD_SHA = "v3.70";
 
-export function buildHlxFile(spec: PresetSpec): HlxFile {
+export function buildHlxFile(spec: PresetSpec, device: DeviceTarget = "helix_lt"): HlxFile {
   const tone = buildTone(spec);
 
   return {
     version: HLX_VERSION,
     data: {
-      device: HELIX_LT_DEVICE_ID,
+      device: DEVICE_IDS[device],
       device_version: HLX_APP_VERSION,
       meta: {
         name: spec.name.substring(0, 32),
