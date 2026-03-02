@@ -79,7 +79,11 @@ Plans:
   2. Selecting Helix Floor in the device selector produces a .hlx file that loads on Helix Floor without errors
   3. A structural error in the preset spec (missing required field, out-of-range parameter) causes the generation route to return a clear error — not a silently auto-corrected file
   4. Snapshot block state keys in the downloaded .hlx are rebuilt programmatically from the final signal chain — not copied from AI output
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 04-01-PLAN.md — Device target support (LT/Floor) in buildHlxFile + strict validatePresetSpec + generate route wiring (HLX-01, HLX-02, HLX-03)
+- [ ] 04-02-PLAN.md — End-to-end orchestration tests: device IDs, strict validation, snapshot key rebuilding (HLX-01, HLX-02, HLX-03, HLX-04)
 
 ### Phase 5: Frontend Polish
 **Goal**: The UI is polished, device-aware, and presents a single world-class preset download experience
@@ -115,10 +119,10 @@ Phases execute in numeric order: 1 > 2 > 3 > 4 > 5 > 6
 | 1. Foundation | 3/3 | Complete | 2026-03-01 |
 | 2. Knowledge Layer | 3/3 | Complete | 2026-03-02 |
 | 3. AI Integration | 2/2 | Complete | 2026-03-02 |
-| 4. Orchestration | 0/TBD | Not started | - |
+| 4. Orchestration | 0/2 | Not started | - |
 | 5. Frontend Polish | 0/TBD | Not started | - |
 | 6. Hardening | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-03-01*
-*Last updated: 2026-03-02 — Phases 1-3 complete (8/8 plans). Phase 4 next.*
+*Last updated: 2026-03-02 — Phase 4 planned (2 plans). Phases 1-3 complete (8/8 plans).*
