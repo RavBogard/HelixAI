@@ -180,6 +180,24 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [premiumKey, setPremiumKey] = useState<string | null>(null);
   const [selectedDevice, setSelectedDevice] = useState<"helix_lt" | "helix_floor" | "pod_go">("helix_lt");
+
+  // Vision state (Phase 19)
+  const [rigImages, setRigImages] = useState<File[]>([]);
+  const [isVisionLoading, setIsVisionLoading] = useState(false);
+  const [rigIntent, setRigIntent] = useState<{
+    pedals: Array<{
+      brand: string;
+      model: string;
+      fullName: string;
+      knobPositions: Record<string, string>;
+      imageIndex: number;
+      confidence: "high" | "medium" | "low";
+    }>;
+    rigDescription?: string;
+    extractionNotes?: string;
+  } | null>(null);
+  const [visionError, setVisionError] = useState<string | null>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -357,6 +375,60 @@ export default function Home() {
     setReadyToGenerate(false);
     setGeneratedPreset(null);
     setError(null);
+    // Phase 19: clear vision state
+    setRigImages([]);
+    setRigIntent(null);
+    setVisionError(null);
+  }
+
+  async function callVision() {
+    if (rigImages.length === 0) return;
+    setIsVisionLoading(true);
+    setVisionError(null);
+    setRigIntent(null);
+
+    try {
+      // Dynamic import — browser-image-compression uses browser APIs (OffscreenCanvas, File, Blob).
+      // Must NOT be a static top-level import: SSR would fail during Next.js build.
+      const imageCompression = (await import("browser-image-compression")).default;
+
+      const compressed = await Promise.all(
+        rigImages.map(async (file) => {
+          const compressedFile = await imageCompression(file, {
+            maxSizeMB: 0.8,          // 800 KB target
+            maxWidthOrHeight: 1568,  // Anthropic optimal: long edge ≤ 1568px
+            useWebWorker: true,      // Non-blocking; falls back to main thread if OffscreenCanvas unavailable
+            initialQuality: 0.8,
+          });
+          // getDataUrlFromFile returns "data:image/jpeg;base64,<data>"
+          // The Anthropic SDK requires raw base64 — strip the prefix.
+          const dataUrl = await imageCompression.getDataUrlFromFile(compressedFile);
+          const base64Data = dataUrl.split(",")[1];
+          const mediaType = compressedFile.type || "image/jpeg";
+          return { data: base64Data, mediaType };
+        })
+      );
+
+      const res = await fetch("/api/vision", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ images: compressed }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || `Vision API error: ${res.status}`);
+      }
+
+      const data = await res.json();
+      setRigIntent(data.rigIntent);
+    } catch (err) {
+      setVisionError(
+        err instanceof Error ? err.message : "Vision extraction failed"
+      );
+    } finally {
+      setIsVisionLoading(false);
+    }
   }
 
   return (
@@ -438,6 +510,141 @@ export default function Home() {
                 </button>
               ))}
             </div>
+
+            {/* --- Rig Photo Upload Panel (Phase 19) --- */}
+            <div className="w-full max-w-xl mt-2 rounded-xl border border-[var(--hlx-border)] bg-[var(--hlx-surface)] p-4 space-y-3">
+              <p className="text-[11px] uppercase tracking-widest text-[var(--hlx-text-muted)] font-semibold">
+                Or analyze your pedal rig
+              </p>
+              <p className="text-[0.8125rem] text-[var(--hlx-text-sub)]">
+                Upload up to 3 pedal photos — we&apos;ll identify your gear automatically.
+              </p>
+
+              {/* File input */}
+              <label className="flex items-center gap-2.5 cursor-pointer">
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  multiple
+                  className="sr-only"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    setRigImages(files.slice(0, 3));
+                    setRigIntent(null);
+                    setVisionError(null);
+                  }}
+                />
+                <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[var(--hlx-border)] bg-[var(--hlx-elevated)] text-[0.8125rem] text-[var(--hlx-text-sub)] hover:border-[var(--hlx-border-warm)] hover:text-[var(--hlx-text)] transition-colors">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  Choose Photos
+                </span>
+                <span className="text-[0.8125rem] text-[var(--hlx-text-muted)]">
+                  {rigImages.length === 0
+                    ? "No files selected"
+                    : `${rigImages.length} file${rigImages.length > 1 ? "s" : ""} selected`}
+                </span>
+              </label>
+
+              {/* Selected file list */}
+              {rigImages.length > 0 && (
+                <ul className="space-y-1">
+                  {rigImages.map((file, i) => (
+                    <li key={i} className="text-[0.8125rem] text-[var(--hlx-text-sub)] flex items-center gap-2">
+                      <span className="hlx-led" />
+                      {file.name}
+                      <span className="text-[var(--hlx-text-muted)] text-[11px]">
+                        ({(file.size / 1024).toFixed(0)} KB)
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {/* Analyze button */}
+              <button
+                onClick={callVision}
+                disabled={rigImages.length === 0 || isVisionLoading}
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border text-[0.8125rem] font-medium transition-all ${
+                  rigImages.length === 0 || isVisionLoading
+                    ? "border-[var(--hlx-border)] text-[var(--hlx-text-muted)] bg-[var(--hlx-surface)] cursor-not-allowed opacity-50"
+                    : "border-[var(--hlx-amber)] text-[var(--hlx-text)] bg-[var(--hlx-elevated)] hover:bg-[var(--hlx-surface)] cursor-pointer shadow-[0_0_0_1px_var(--hlx-amber),0_0_12px_rgba(245,158,11,0.10)]"
+                }`}
+              >
+                {isVisionLoading ? (
+                  <>
+                    <svg className="hlx-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Analyzing Photos&hellip;
+                  </>
+                ) : (
+                  <>
+                    <span className="w-4 h-4 rounded bg-[var(--hlx-void)] flex items-center justify-center text-[9px] font-bold text-[var(--hlx-amber)]">H</span>
+                    Analyze Photos
+                  </>
+                )}
+              </button>
+
+              {/* Vision error */}
+              {visionError && (
+                <div className="text-[0.8125rem] text-red-400 bg-red-950/20 border border-red-900/30 rounded-lg px-3 py-2">
+                  {visionError}
+                </div>
+              )}
+
+              {/* RigIntent result — raw JSON display (Phase 19: display-only; Phase 20 wires into generate) */}
+              {rigIntent && (
+                <div className="space-y-2">
+                  <p className="text-[11px] uppercase tracking-widest text-[var(--hlx-text-muted)] font-semibold">
+                    Extraction Result
+                  </p>
+
+                  {/* Per-pedal confidence badges */}
+                  {rigIntent.pedals.map((pedal, i) => (
+                    <div
+                      key={i}
+                      className="flex items-start gap-2.5 rounded-lg border border-[var(--hlx-border)] bg-[var(--hlx-elevated)] px-3 py-2"
+                    >
+                      <span
+                        className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide flex-shrink-0 mt-0.5 ${
+                          pedal.confidence === "high"
+                            ? "bg-green-950/40 text-green-400 border border-green-900/30"
+                            : pedal.confidence === "medium"
+                            ? "bg-yellow-950/40 text-yellow-400 border border-yellow-900/30"
+                            : "bg-red-950/40 text-red-400 border border-red-900/30"
+                        }`}
+                      >
+                        {pedal.confidence}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-[0.8125rem] text-[var(--hlx-text)] truncate">
+                          {pedal.fullName || "(unidentified pedal)"}
+                        </p>
+                        {pedal.confidence !== "high" && (
+                          <p className="text-[11px] text-yellow-400/80 mt-0.5">
+                            Confirm this identification before generating — type the correct pedal name in the chat.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Raw JSON for debugging (Phase 19 only — replaced by SubstitutionCard in Phase 21) */}
+                  <details className="group">
+                    <summary className="text-[11px] text-[var(--hlx-text-muted)] cursor-pointer hover:text-[var(--hlx-text-sub)] transition-colors">
+                      Raw extraction data
+                    </summary>
+                    <pre className="mt-2 text-[10px] text-[var(--hlx-text-muted)] bg-[var(--hlx-void)] rounded-lg p-3 overflow-x-auto leading-relaxed">
+                      {JSON.stringify(rigIntent, null, 2)}
+                    </pre>
+                  </details>
+                </div>
+              )}
+            </div>
+
           </div>
         ) : (
           /* --- Chat Flow --- */
