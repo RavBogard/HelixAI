@@ -386,4 +386,27 @@ describe("assembleSignalChain", () => {
     // Order: extra drive > boost > amp
     expect(dsp0Names).toEqual(["Teemah!", "Minotaur", "US Deluxe Nrm"]);
   });
+
+  // Test: DSP block limit exceeded produces a clear, descriptive error
+  it("throws a clear error message when DSP0 block limit would be exceeded", () => {
+    // With 8 user effects all routed to DSP0 (wah, compressor, 6 drives)
+    // plus mandatory Minotaur (boost) and amp = 10 non-cab blocks on DSP0
+    // This must exceed the 8-block limit and throw a descriptive error
+    expect(() =>
+      assembleSignalChain(
+        cleanIntent({
+          effects: [
+            { modelName: "UK Wah 846", role: "toggleable" },
+            { modelName: "Deluxe Comp", role: "toggleable" },
+            { modelName: "Teemah!", role: "toggleable" },
+            { modelName: "Heir Apparent", role: "toggleable" },
+            { modelName: "Stupor OD", role: "toggleable" },
+            { modelName: "Deranged Master", role: "toggleable" },
+            { modelName: "Vermin Dist", role: "toggleable" },
+            { modelName: "Arbitrator Fuzz", role: "toggleable" },
+          ],
+        })
+      )
+    ).toThrow(/DSP0 block limit exceeded.*non-cab blocks.*max 8/);
+  });
 });
