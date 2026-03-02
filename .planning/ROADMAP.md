@@ -329,6 +329,17 @@ Phases execute in numeric order: 1 > 2 > 3 > 4 > 5 > 6 > 7 > 8 > 9 > 10 > 11 > 1
 | 19. Vision Extraction API | v1.3 | 0/TBD | Not started | - |
 | 20. Planner Integration & Route Orchestration | v1.3 | 0/TBD | Not started | - |
 | 21. Substitution Card & End-to-End Polish | v1.3 | 0/TBD | Not started | - |
+| 22. UI Overhaul | v1.3 | 0/TBD | Not started | - |
+
+### Phase 22: UI Overhaul
+
+**Goal:** Complete visual redesign of homepage, chat flow, and rig upload panel — eliminating redundant elements, fixing readability, and creating a clean, polished interface with strong visual hierarchy.
+**Requirements**: TBD
+**Depends on:** Phase 21
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 22 to break down)
 
 ---
 *Roadmap created: 2026-03-01*

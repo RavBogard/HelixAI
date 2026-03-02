@@ -96,6 +96,10 @@ Progress: [██████████] 100% (v1.3)
 - [v1.3]: parseRigText not exported from @/lib/helix barrel — server-only utility, accessed via @/lib/rig-mapping
 - [v1.3]: buildToneContext is private (not exported) in generate/route.ts — formats SubstitutionMap as planner-readable bullet list
 
+### Roadmap Evolution
+
+- Phase 22 added: UI Overhaul — complete visual redesign of homepage, chat flow, and rig upload panel
+
 ### Pending Todos
 
 None.

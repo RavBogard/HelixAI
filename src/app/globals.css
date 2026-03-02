@@ -192,7 +192,7 @@ body {
   border-radius: 8px;
   background: var(--hlx-surface);
   border: 1px solid var(--hlx-border);
-  color: var(--hlx-text-muted);
+  color: var(--hlx-text-sub);
   font-size: 0.75rem;
   font-family: var(--font-mono), monospace;
   letter-spacing: 0.01em;
