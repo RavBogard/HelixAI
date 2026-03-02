@@ -945,7 +945,9 @@ export default function Home() {
             ))}
 
             {/* --- Device Selector + Generate --- */}
-            {readyToGenerate && !generatedPreset && (
+            {/* Show after first AI response so users are never stuck waiting for [READY_TO_GENERATE].
+                readyToGenerate (emitted by the AI) highlights the button but is no longer the gate. */}
+            {messages.length >= 2 && !isStreaming && !generatedPreset && (
               <div className="flex flex-col items-center gap-4 py-6">
                 {/* Device selector */}
                 <div className="flex flex-col items-center gap-2.5">
@@ -970,7 +972,11 @@ export default function Home() {
                   </div>
                 </div>
 
-                <button onClick={() => generatePreset()} disabled={isGenerating} className="hlx-generate">
+                <button
+                  onClick={() => generatePreset()}
+                  disabled={isGenerating}
+                  className={readyToGenerate ? "hlx-generate" : "hlx-generate opacity-80"}
+                >
                   {isGenerating ? (
                     <>
                       <svg className="hlx-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
@@ -982,10 +988,15 @@ export default function Home() {
                   ) : (
                     <>
                       <span className="w-5 h-5 rounded-md bg-[var(--hlx-void)] flex items-center justify-center text-[10px] font-bold text-[var(--hlx-amber)]">H</span>
-                      Generate Preset
+                      {readyToGenerate ? "Generate Preset" : "Generate Preset"}
                     </>
                   )}
                 </button>
+                {!readyToGenerate && (
+                  <p className="text-[11px] text-[var(--hlx-text-muted)] text-center">
+                    Ready when you are &mdash; or keep chatting to refine the tone
+                  </p>
+                )}
               </div>
             )}
 
