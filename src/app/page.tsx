@@ -513,6 +513,10 @@ export default function Home() {
       conversationIdRef.current = conv.id;
       setConversationId(conv.id);
       isFirstMessageRef.current = true;
+
+      // Phase 28: notify sidebar so it refreshes the conversation list (SIDE-06)
+      window.dispatchEvent(new Event('helixai:conversation-created'));
+
       return conv.id;
     } catch {
       return null;
