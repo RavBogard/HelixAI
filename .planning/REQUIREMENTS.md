@@ -205,10 +205,10 @@ Requirements for Persistent Chat Platform milestone. Transform HelixAI from a st
 ### Infrastructure
 
 - [x] **INFRA-01**: Supabase project with PostgreSQL database, Auth, and Storage configured — `@supabase/supabase-js` and `@supabase/ssr` installed as the only new dependencies
-- [ ] **INFRA-02**: Row Level Security enabled on all tables at creation time — `conversations` and `messages` tables enforce `user_id = auth.uid()` on all operations; no user can read another user's data
+- [x] **INFRA-02**: Row Level Security enabled on all tables at creation time — `conversations` and `messages` tables enforce `user_id = auth.uid()` on all operations; no user can read another user's data
 - [x] **INFRA-03**: Middleware at project root refreshes session tokens on every non-static request — without this, JWT tokens expire and sessions break mid-use
 - [x] **INFRA-04**: Two Supabase client utilities (browser client + server client) provide isomorphic database access across Client Components, Server Components, and Route Handlers
-- [ ] **INFRA-05**: Keep-alive mechanism prevents Supabase free-tier 7-day inactivity pause — automated ping every 4 days via cron job or GitHub Action
+- [x] **INFRA-05**: Keep-alive mechanism prevents Supabase free-tier 7-day inactivity pause — automated ping every 4 days via cron job or GitHub Action
 - [ ] **INFRA-06**: Environment variables configured in Vercel for both preview and production — Supabase URL, anon key, and Google OAuth callback URLs registered in Google Cloud Console
 
 ### Conversation Persistence
@@ -406,10 +406,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PROGUX-01 | Phase 21 | Complete |
 | PROGUX-02 | Phase 21 | Complete |
 | INFRA-01 | Phase 24 | Complete |
-| INFRA-02 | Phase 24 | Pending |
+| INFRA-02 | Phase 24 | Complete |
 | INFRA-03 | Phase 24 | Complete |
 | INFRA-04 | Phase 24 | Complete |
-| INFRA-05 | Phase 24 | Pending |
+| INFRA-05 | Phase 24 | Complete |
 | INFRA-06 | Phase 24 | Pending |
 | AUTH-01 | Phase 25 | Pending |
 | AUTH-02 | Phase 25 | Pending |

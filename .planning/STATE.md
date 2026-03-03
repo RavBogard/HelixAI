@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Persistent Chat Platform
 status: in_progress
-last_updated: "2026-03-03T19:30:00Z"
+last_updated: "2026-03-03T19:27:00Z"
 progress:
   total_phases: 5
   completed_phases: 0
-  total_plans: 1
-  completed_plans: 1
+  total_plans: 2
+  completed_plans: 2
 ---
 
 # Project State
@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-03-03)
 ## Current Position
 
 Phase: 24 (in progress)
-Plan: 01 (complete)
-Status: Phase 24 Plan 01 complete — Supabase client utilities and middleware installed
-Last activity: 2026-03-03 — 24-01 Supabase Foundation installed (@supabase/ssr client factories + root middleware)
+Plan: 02 (complete)
+Status: Phase 24 Plan 02 complete — Database schema SQL, storage bucket RLS, and Vercel keep-alive cron deployed
+Last activity: 2026-03-03 — 24-02 schema.sql with RLS policies, presets storage bucket, and keep-alive cron route
 
-Progress: [----------] 0/5 phases complete (1 plan done)
+Progress: [----------] 0/5 phases complete (2 plans done)
 
 ## Performance Metrics
 
@@ -76,7 +76,7 @@ Progress: [----------] 0/5 phases complete (1 plan done)
 
 | Phase | Plans | Status |
 |-------|-------|--------|
-| 24. Supabase Foundation | 1+ | Plan 01 done (client utils + middleware) |
+| 24. Supabase Foundation | 2+ | Plan 01 done (client utils + middleware), Plan 02 done (schema SQL + keep-alive) |
 | 25. Auth Flow | TBD | Not started |
 | 26. Conversation CRUD API | TBD | Not started |
 | 27. Persistence Wiring | TBD | Not started |
@@ -117,6 +117,11 @@ Progress: [----------] 0/5 phases complete (1 plan done)
 - [v2.0 24-01]: Middleware double-write pattern (setAll updates both request.cookies and supabaseResponse.cookies) — required for correct JWT propagation
 - [v2.0 24-01]: Middleware uses getUser() not getSession() — contacts auth server to verify and refresh JWT
 - [v2.0 24-01]: Root middleware has no blocking/redirect logic — each API route independently decides auth requirements
+- [v2.0 24-02]: RLS enabled immediately after CREATE TABLE in same script — prevents any window of unprotected PostgREST API access
+- [v2.0 24-02]: messages table has no user_id column — ownership enforced via conversation_id subquery to conversations
+- [v2.0 24-02]: device column uses TEXT without CHECK constraint — flexibility for future device types
+- [v2.0 24-02]: presets storage bucket is private — files accessible only via signed URLs; storage.foldername[1] = user_id
+- [v2.0 24-02]: keep-alive route queries conversations table — HTTP-only pings do not reliably prevent Supabase 7-day pause
 
 ### Roadmap Evolution
 
@@ -134,6 +139,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: 24-01 complete — Supabase client utilities and root middleware installed
+Stopped at: Completed 24-02 — schema.sql + keep-alive cron + vercel.json
 Resume file: None
-Next command: /gsd:execute-phase 24 (next plan)
+Next command: /gsd:execute-phase 24 (next plan, if any) or /gsd:execute-phase 25
