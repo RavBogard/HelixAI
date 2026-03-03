@@ -384,7 +384,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 19. Vision Extraction API | v1.3 | 1/1 | Complete | 2026-03-02 |
 | 20. Planner Integration & Orchestration | v1.3 | 1/1 | Complete | 2026-03-02 |
 | 21. Substitution Card & End-to-End Polish | v1.3 | 1/1 | Complete | 2026-03-02 |
-| 24. Supabase Foundation | v2.0 | 0/TBD | Not started | - |
+| 24. Supabase Foundation | 1/3 | In Progress|  | - |
 | 25. Auth Flow | v2.0 | 0/TBD | Not started | - |
 | 26. Conversation CRUD API | v2.0 | 0/TBD | Not started | - |
 | 27. Persistence Wiring | v2.0 | 0/TBD | Not started | - |

@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Persistent Chat Platform
-status: roadmap_complete
-last_updated: "2026-03-03T00:00:00Z"
+status: in_progress
+last_updated: "2026-03-03T19:30:00Z"
 progress:
   total_phases: 5
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 1
+  completed_plans: 1
 ---
 
 # Project State
@@ -22,12 +22,12 @@ See: .planning/PROJECT.md (updated 2026-03-03)
 
 ## Current Position
 
-Phase: 24 (not started)
-Plan: —
-Status: Roadmap complete — ready for /gsd:plan-phase 24
-Last activity: 2026-03-03 — v2.0 roadmap created (phases 24-28)
+Phase: 24 (in progress)
+Plan: 01 (complete)
+Status: Phase 24 Plan 01 complete — Supabase client utilities and middleware installed
+Last activity: 2026-03-03 — 24-01 Supabase Foundation installed (@supabase/ssr client factories + root middleware)
 
-Progress: [----------] 0/5 phases complete
+Progress: [----------] 0/5 phases complete (1 plan done)
 
 ## Performance Metrics
 
@@ -76,7 +76,7 @@ Progress: [----------] 0/5 phases complete
 
 | Phase | Plans | Status |
 |-------|-------|--------|
-| 24. Supabase Foundation | TBD | Not started |
+| 24. Supabase Foundation | 1+ | Plan 01 done (client utils + middleware) |
 | 25. Auth Flow | TBD | Not started |
 | 26. Conversation CRUD API | TBD | Not started |
 | 27. Persistence Wiring | TBD | Not started |
@@ -113,6 +113,10 @@ Progress: [----------] 0/5 phases complete
 - [v2.0]: Every API route handler independently verifies session — defense-in-depth against CVE-2025-29927 middleware bypass
 - [v2.0]: Chat state serialized to sessionStorage before OAuth redirect, restored after callback — prevents anonymous session loss during identity linking
 - [v2.0]: Phases 22-23 (UI Overhaul, UX Polish) dropped — user completed a UI redo externally
+- [v2.0 24-01]: @supabase/ssr used (not deprecated auth-helpers-nextjs) for browser + server client factories
+- [v2.0 24-01]: Middleware double-write pattern (setAll updates both request.cookies and supabaseResponse.cookies) — required for correct JWT propagation
+- [v2.0 24-01]: Middleware uses getUser() not getSession() — contacts auth server to verify and refresh JWT
+- [v2.0 24-01]: Root middleware has no blocking/redirect logic — each API route independently decides auth requirements
 
 ### Roadmap Evolution
 
@@ -130,6 +134,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: v2.0 roadmap created — 5 phases defined, ready to plan Phase 24
+Stopped at: 24-01 complete — Supabase client utilities and root middleware installed
 Resume file: None
-Next command: /gsd:plan-phase 24
+Next command: /gsd:execute-phase 24 (next plan)
