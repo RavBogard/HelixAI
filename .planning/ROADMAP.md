@@ -341,6 +341,16 @@ Phases execute in numeric order: 1 > 2 > 3 > 4 > 5 > 6 > 7 > 8 > 9 > 10 > 11 > 1
 Plans:
 - [ ] TBD (run /gsd:plan-phase 22 to break down)
 
+### Phase 23: Fix incompatible target device type error (-8309)
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 22
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 23 to break down)
+
 ---
 *Roadmap created: 2026-03-01*
 *Last updated: 2026-03-02 — v1.2 phases 12-16 marked complete; v1.3 Rig Emulation phases 17-21 added; Phase 17 plan created; Phase 18 plan 18-01 created*

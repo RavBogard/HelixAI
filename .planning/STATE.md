@@ -99,6 +99,7 @@ Progress: [██████████] 100% (v1.3)
 ### Roadmap Evolution
 
 - Phase 22 added: UI Overhaul — complete visual redesign of homepage, chat flow, and rig upload panel
+- Phase 23 added: Fix incompatible target device type error (-8309)
 
 ### Pending Todos
 
