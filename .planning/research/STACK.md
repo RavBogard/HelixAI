@@ -1,249 +1,467 @@
 # Stack Research
 
-**Domain:** Vision AI + browser image upload (v1.3 Rig Emulation additions to HelixAI)
-**Researched:** 2026-03-02
-**Confidence:** HIGH — all key claims verified against official Anthropic and Vercel documentation
+**Domain:** Persistent chat platform — Google auth, Postgres database, file storage on Next.js + Vercel
+**Researched:** 2026-03-03
+**Confidence:** HIGH — key claims verified against official Supabase docs, Firebase pricing pages, and multiple independent sources
 
 ---
 
 ## Scope
 
-This file covers ONLY the NEW stack additions for v1.3 Rig Emulation. The existing validated
-stack (Next.js 14, TypeScript, Tailwind CSS, Claude Sonnet 4.6 via `@anthropic-ai/sdk`, Zod,
-Vercel) is NOT re-researched here.
+This file covers ONLY the NEW stack additions for v2.0 Persistent Chat Platform. The existing
+validated stack (Next.js 14+, TypeScript, Tailwind CSS, Claude Sonnet 4.6 via `@anthropic-ai/sdk`,
+Zod, Vercel, `browser-image-compression`) is NOT re-researched here.
 
 New capabilities required:
-1. Browser image upload (one or more pedal photos) to a Next.js/Vercel serverless route
-2. Client-side image compression to stay within Vercel's 4.5MB body limit
-3. Vision AI that extracts pedal model name + knob positions from each photo
+1. Google OAuth authentication with anonymous-first flow
+2. Persistent chat storage — full conversation history per user in cloud database
+3. Last-preset file storage — most recent .hlx/.pgp binary per conversation
+4. Chat sidebar UI — pull-out panel listing past chats, resuming conversations
 
 ---
 
 ## Recommendation Summary
 
-**Vision AI:** Use Claude Sonnet 4.6 vision (base64 image blocks in existing messages[]).
-**Image upload:** Use multipart FormData to the existing `/api/generate` route.
-**Client-side compression:** Use `browser-image-compression` v2.0.2.
-**No new API keys, no new SDK, no new serverless routes required.**
+**Auth + Database + Storage: Use Supabase (Auth + Postgres + Storage)**
 
----
+Supabase wins decisively for this project over Firebase and all other options. The full rationale
+is in the Comparison section below.
 
-## Vision API Decision: Claude Sonnet 4.6 vs Gemini Flash vs Google Cloud Vision API
+**Core new packages:**
+- `@supabase/supabase-js@2.80.0` — main client SDK
+- `@supabase/ssr@0.8.0` — SSR-safe cookie handling for Next.js App Router
+- No auth library separate from Supabase — Supabase Auth handles Google OAuth natively
 
-### The core task
-
-From a photo of a guitar pedal, extract:
-1. Pedal model name (text printed/silkscreened on the enclosure)
-2. Knob positions per knob — an estimate of rotary position (0–100%)
-
-These are two very different sub-tasks with different difficulty profiles.
-
-**Model name reading** is OCR on clear printed text. Straightforward for any modern vision model.
-
-**Knob position reading** is spatial reasoning about the angular position of a rotary dial.
-This is a documented hard problem for all current LLMs — structurally identical to reading
-an analog clock face.
-
-### Critical finding: Claude's documented spatial reasoning limitation
-
-The official Anthropic vision documentation (verified March 2026) explicitly states:
-
-> "Claude's spatial reasoning abilities are limited. It may struggle with tasks requiring
-> precise localization or layouts, like **reading an analog clock face** or describing
-> exact positions of chess pieces."
-
-Source: https://platform.claude.com/docs/en/build-with-claude/vision
-
-Reading a guitar pedal knob is the same task as reading an analog clock face — estimating
-the angular position of a pointer within a circular range. This limitation applies equally
-to Gemini Flash; it is a class-level weakness of current LLMs, not specific to Claude.
-
-**Design consequence:** Do not prompt any LLM for precise knob percentages (e.g., "Drive: 67%").
-Instead, prompt for coarse buckets: low (0–25%), medium-low (25–50%), medium-high (50–75%),
-high (75–100%). LLMs reliably distinguish "fully counterclockwise" from "noon" from "fully
-clockwise." Three-to-five bucket precision is achievable. Sub-10% precision is not reliable
-from any of the three vision options.
-
-### Comparison matrix
-
-| Criterion | Claude Sonnet 4.6 | Gemini 2.0/2.5 Flash | Google Cloud Vision API |
-|-----------|-------------------|----------------------|-------------------------|
-| **Model name OCR accuracy** | HIGH — strong text extraction, admits uncertainty | HIGH — 98.2% on printed text, strong general OCR | HIGH — specialized OCR, deterministic |
-| **Knob position estimation** | LIMITED — same clock-face spatial weakness; reliable for coarse buckets | LIMITED — same weakness; Gemini 3 Flash "Agentic Vision" (code-execution loop) mitigates somewhat but requires Gemini 3 and adds complexity | NOT APPLICABLE — returns bounding boxes and labels; cannot estimate rotary angular position |
-| **Structured JSON output** | Native — existing `zodOutputFormat` pattern already in codebase works unchanged | Strong with explicit schema, but requires new SDK + integration | None — returns raw label/confidence pairs; requires a separate LLM call to produce structured output |
-| **Integration complexity** | ZERO — extend existing `messages[]` with `{ type: "image", source: { type: "base64" } }` blocks | HIGH — new package `@google/generative-ai`, new `GOOGLE_API_KEY` env var, new error handling surface | HIGH — two-step pipeline (Cloud Vision for OCR + LLM for reasoning), two new SDKs, two API keys |
-| **Cost per image (1000x1000px)** | ~$0.004 (1,334 tokens @ $3/MTok on Claude Sonnet 4.6) | ~$0.0001 (1,334 tokens @ $0.10/MTok on Gemini 2.0 Flash) | ~$0.0015 ($1.50/1,000 requests for label detection), plus second LLM call |
-| **Latency** | 300–600ms typical | 200–400ms typical | Sub-second for Vision API, +300–600ms for required second LLM call |
-| **Hallucination behavior** | Lower — admits uncertainty rather than guessing | Flash models trade accuracy for speed; slightly higher hallucination rate | Deterministic, no hallucinations, but requires second LLM step which reintroduces hallucination risk |
-| **Vercel serverless compatible** | YES — existing SDK pattern works | YES — REST API works in serverless | YES — REST API works in serverless |
-| **New dependencies** | None | `@google/generative-ai` + env setup | `@google-cloud/vision` + Google Cloud project |
-
-### Recommendation: Claude Sonnet 4.6
-
-**Use Claude Sonnet 4.6 vision.** The decision is architectural, not accuracy-based.
-
-All three options share the same fundamental spatial reasoning limitation for knob positions.
-For model name extraction (OCR), all three perform equivalently. The accuracy difference
-between Claude and Gemini Flash for this specific task is negligible when both are prompted
-for coarse buckets.
-
-Claude Sonnet 4.6 wins decisively on:
-
-**Zero integration cost.** The Anthropic SDK is already initialized in the codebase. Adding
-image content blocks to `messages[]` is a 10-line change to the planner, not a new integration.
-The existing `zodOutputFormat` pattern works unchanged — pass images in the messages array,
-define a `RigAnalysis` Zod schema, receive structured output.
-
-**Consistent error handling.** The existing error boundary around all Claude API calls covers
-vision calls automatically. No new error surface.
-
-**No new API keys or environment variables.** The existing `ANTHROPIC_API_KEY` is the only
-credential needed.
-
-**Prompt caching synergy.** The system prompt (which includes rig mapping knowledge) can be
-cached at the 1-hour rate. Vision calls that reuse the same system prompt benefit from the
-0.1x cache-read multiplier on those tokens. This partially offsets the cost premium over Gemini.
-
-**Choose Gemini Flash only if:** Cost becomes a dominant concern at scale (>50,000 sessions/month)
-AND you accept adding a second SDK, second API key, and second error handling path. At v1.3
-hobbyist scale, the cost difference is ~$0.003 per session — irrelevant.
-
-**Do not use Google Cloud Vision API** for this task. It cannot estimate rotary positions at all.
-You would need Cloud Vision for text detection and a separate Claude/Gemini call for spatial
-reasoning, giving you two API calls, two error surfaces, two API keys, and higher total latency
-— with no accuracy benefit over using Claude alone.
+**Do NOT add:** NextAuth/Auth.js, Clerk, Firebase, Prisma, any separate ORM.
 
 ---
 
 ## Core Technologies (NEW additions only)
 
-### Vision Integration
+### Authentication, Database, and Storage
 
 | Technology | Version | Purpose | Why Recommended |
 |------------|---------|---------|-----------------|
-| `@anthropic-ai/sdk` | already installed | Add `{ type: "image", source: { type: "base64" } }` blocks to existing `messages[]` | Zero new dependencies; the SDK already supports vision natively |
+| `@supabase/supabase-js` | 2.80.0 | Main client — auth, database queries, storage uploads | Isomorphic SDK; identical API in Client Components, Server Components, Server Actions, and Route Handlers. No dual SDK split like Firebase. |
+| `@supabase/ssr` | 0.8.0 | SSR-safe Supabase client factory for Next.js App Router | Required for correct cookie-based session persistence across server/client boundary in App Router. Replaces the deprecated `@supabase/auth-helpers-nextjs`. |
 
-No new package required. The Anthropic TypeScript SDK already accepts image content blocks in
-the `messages` array. Extend the existing planner to pass compressed pedal photos as base64
-blocks before the text instruction.
-
-```typescript
-// Content block added to the last user message
-{
-  type: "image",
-  source: {
-    type: "base64",
-    media_type: "image/jpeg",   // or image/png, image/webp
-    data: base64String,          // Buffer.from(arrayBuffer).toString("base64")
-  },
-}
-```
-
-Claude's image token formula: `tokens = (width * height) / 750`. A 1000x1000px image uses
-~1,334 tokens, costing ~$0.004 at Claude Sonnet 4.6 rates. After compressing to Claude's
-optimal dimensions (max 1,568px per edge), images sit at ~1,600 tokens maximum.
-
-Source: https://platform.claude.com/docs/en/build-with-claude/vision
-
-### Image Upload (Browser to Serverless Route)
-
-**Use multipart FormData**, not base64 JSON encoding at the HTTP layer.
-
-Base64 encoding adds ~33% payload overhead. A 1MB compressed image becomes 1.33MB in a JSON
-body. With 3 pedal photos, that is 4MB of base64 text in JSON vs 3MB of binary — a meaningful
-difference against Vercel's 4.5MB hard limit.
-
-With multipart FormData, the Next.js App Router handles parsing natively via `req.formData()`.
-No library required.
-
-```typescript
-// app/api/generate/route.ts (extended pattern)
-export async function POST(req: NextRequest) {
-  const formData = await req.formData();
-  const messages = JSON.parse(formData.get('messages') as string);
-  const device = formData.get('device') as string;
-  const imageFiles = formData.getAll('images') as File[];
-
-  const imageBlocks = await Promise.all(
-    imageFiles.map(async (file) => {
-      const buffer = await file.arrayBuffer();
-      const base64 = Buffer.from(buffer).toString('base64');
-      return {
-        type: 'image' as const,
-        source: {
-          type: 'base64' as const,
-          media_type: file.type as 'image/jpeg' | 'image/png' | 'image/webp',
-          data: base64,
-        },
-      };
-    })
-  );
-  // Prepend imageBlocks to the content array of the last user message before the AI call
-}
-```
-
-`req.formData()` is built into Next.js App Router's `NextRequest` — no formidable, multer, or
-other library needed.
-
----
-
-## Supporting Libraries (NEW)
-
-| Library | Version | Purpose | When to Use |
-|---------|---------|---------|-------------|
-| `browser-image-compression` | 2.0.2 | Client-side image compression before upload | Always — enforces payload budget before upload reaches Vercel's 4.5MB limit |
-
-### Why browser-image-compression
-
-- **Web Worker support** (`useWebWorker: true` by default) — compression runs off the main
-  thread; the chat UI remains responsive during processing
-- **`maxSizeMB` option** — hard payload budget per image before FormData is sent
-- **`maxWidthOrHeight: 1568`** — matches Claude's optimal image dimension exactly; images
-  wider than 1568px are auto-resized by Anthropic's API anyway, wasting upload bandwidth
-- **Format support** — JPEG, PNG, WebP, BMP — covers all realistic pedal photo formats
-- **MIT license, 264+ npm dependents** — stable, actively used
-
-**Version note:** v2.0.2 is 3 years old but stable. No upgrade risk. No alternative with
-broader adoption in this category exists. The library does exactly what is needed.
-
-Source: https://www.npmjs.com/package/browser-image-compression
-Source: https://github.com/Donaldcwl/browser-image-compression
-
-### Compression configuration for HelixAI
-
-```typescript
-import imageCompression from 'browser-image-compression';
-
-const options = {
-  maxSizeMB: 0.8,           // Target 800KB per image
-  maxWidthOrHeight: 1568,   // Claude's optimal max dimension
-  useWebWorker: true,       // Non-blocking (default)
-  fileType: 'image/jpeg',   // Force JPEG output for consistent compression
-};
-
-const compressedFile = await imageCompression(rawFile, options);
-// compressedFile is a File object — use directly in FormData.append()
-```
-
-### Payload budget math
-
-| Images | Size each (post-compression) | Total payload | Vercel limit | Headroom |
-|--------|------------------------------|---------------|--------------|----------|
-| 1 | 800KB | ~0.9MB (binary) | 4.5MB | OK |
-| 2 | 800KB each | ~1.7MB | 4.5MB | OK |
-| 3 | 800KB each | ~2.5MB | 4.5MB | OK |
-| 4+ | 800KB each | 3.3MB+ | 4.5MB | Warn user: max 3 photos |
-
-Enforce a maximum of 3 photos per upload in the client UI. Display an explicit warning if
-exceeded — do not silently drop images.
+No other packages are required for auth, database, or storage. Supabase provides all three
+through the same SDK.
 
 ---
 
 ## Installation
 
 ```bash
-# Client-side compression only — no new server-side packages needed
-npm install browser-image-compression
+# Core additions for v2.0
+npm install @supabase/supabase-js @supabase/ssr
+```
+
+### Environment variables to add
+
+```bash
+# .env.local
+NEXT_PUBLIC_SUPABASE_URL=https://[project-ref].supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=[anon-key]
+# No secret key needed client-side — RLS policies enforce access control
+```
+
+---
+
+## Supabase Integration Architecture for Next.js App Router
+
+### Two client types required
+
+```typescript
+// utils/supabase/browser.ts — for Client Components
+import { createBrowserClient } from '@supabase/ssr';
+export function createClient() {
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+}
+
+// utils/supabase/server.ts — for Server Components, Server Actions, Route Handlers
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+export async function createClient() {
+  const cookieStore = await cookies();
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll(); },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          } catch {}  // Ignored in Server Components — middleware handles refresh
+        },
+      },
+    }
+  );
+}
+```
+
+### Middleware (mandatory for session refresh)
+
+```typescript
+// middleware.ts — project root
+import { createServerClient } from '@supabase/ssr';
+import { NextResponse, type NextRequest } from 'next/server';
+
+export async function middleware(request: NextRequest) {
+  let supabaseResponse = NextResponse.next({ request });
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return request.cookies.getAll(); },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          supabaseResponse = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          );
+        },
+      },
+    }
+  );
+
+  // IMPORTANT: call getUser() not getSession() — verifies token with auth server
+  await supabase.auth.getUser();
+  return supabaseResponse;
+}
+
+export const config = {
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
+};
+```
+
+Middleware is not optional. Without it, JWT tokens expire and sessions break on SSR page loads.
+
+### Google OAuth flow
+
+```typescript
+// Server Action — triggers OAuth redirect
+"use server";
+import { createClient } from '@/utils/supabase/server';
+import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
+
+export async function signInWithGoogle() {
+  const supabase = await createClient();
+  const origin = (await headers()).get('origin');
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: `${origin}/auth/callback` },
+  });
+  if (data.url) redirect(data.url);
+}
+
+// app/auth/callback/route.ts — handles OAuth code exchange
+import { createClient } from '@/utils/supabase/server';
+import { NextResponse } from 'next/server';
+export async function GET(request: Request) {
+  const { searchParams, origin } = new URL(request.url);
+  const code = searchParams.get('code');
+  if (code) {
+    const supabase = await createClient();
+    await supabase.auth.exchangeCodeForSession(code);
+  }
+  return NextResponse.redirect(`${origin}/`);
+}
+```
+
+---
+
+## Database Schema (Postgres)
+
+Supabase is Postgres. Use a relational schema with foreign keys and Row Level Security (RLS).
+
+```sql
+-- Conversations table
+CREATE TABLE conversations (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  title       TEXT NOT NULL DEFAULT 'New Chat',
+  device      TEXT NOT NULL,                    -- 'helixLT' | 'helixFloor' | 'podGo'
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Messages table (full conversation history)
+CREATE TABLE messages (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+  role            TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+  content         TEXT NOT NULL,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Presets table (last .hlx/.pgp file per conversation)
+-- Store file reference path in Supabase Storage, not raw bytes in Postgres
+CREATE TABLE presets (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+  storage_path    TEXT NOT NULL,                -- 'presets/{user_id}/{conversation_id}.hlx'
+  filename        TEXT NOT NULL,               -- original download filename
+  device          TEXT NOT NULL,
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(conversation_id)                      -- enforce one preset per conversation
+);
+
+-- Row Level Security policies
+ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE presets ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users own their conversations"
+  ON conversations FOR ALL
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users own their messages"
+  ON messages FOR ALL
+  USING (EXISTS (
+    SELECT 1 FROM conversations c
+    WHERE c.id = messages.conversation_id AND c.user_id = auth.uid()
+  ));
+
+CREATE POLICY "Users own their presets"
+  ON presets FOR ALL
+  USING (EXISTS (
+    SELECT 1 FROM conversations c
+    WHERE c.id = presets.conversation_id AND c.user_id = auth.uid()
+  ));
+```
+
+### Why store `storage_path` in Postgres, not the file bytes
+
+Storing binary .hlx/.pgp files (typically 10–50KB each) as bytea in Postgres is possible but
+anti-pattern. Supabase Storage is an S3-compatible object store integrated with the same auth
+and RLS system. Store the path reference in Postgres, the file in Storage. This keeps the
+database row compact and downloads go directly from the storage CDN.
+
+---
+
+## Storage (File Upload/Download)
+
+```typescript
+// Save preset file to Supabase Storage
+async function savePreset(
+  supabase: SupabaseClient,
+  userId: string,
+  conversationId: string,
+  fileBuffer: ArrayBuffer,
+  filename: string,
+  device: string
+) {
+  const path = `presets/${userId}/${conversationId}/${filename}`;
+
+  // upload() upserts by default — replaces existing file at same path
+  const { error } = await supabase.storage
+    .from('presets')
+    .upload(path, fileBuffer, {
+      upsert: true,
+      contentType: 'application/octet-stream',
+    });
+
+  if (error) throw error;
+
+  // Update or insert the presets table row
+  await supabase.from('presets').upsert({
+    conversation_id: conversationId,
+    storage_path: path,
+    filename,
+    device,
+    updated_at: new Date().toISOString(),
+  });
+}
+
+// Generate a signed URL for download (private bucket, time-limited)
+async function getPresetDownloadUrl(supabase: SupabaseClient, storagePath: string) {
+  const { data, error } = await supabase.storage
+    .from('presets')
+    .createSignedUrl(storagePath, 60 * 60); // 1 hour expiry
+  if (error) throw error;
+  return data.signedUrl;
+}
+```
+
+### Storage bucket RLS
+
+```sql
+-- Storage RLS: users can only access their own preset files
+CREATE POLICY "Users can upload their own presets"
+  ON storage.objects FOR INSERT
+  WITH CHECK (bucket_id = 'presets' AND (storage.foldername(name))[2] = auth.uid()::text);
+
+CREATE POLICY "Users can read their own presets"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'presets' AND (storage.foldername(name))[2] = auth.uid()::text);
+```
+
+---
+
+## Free Tier Assessment
+
+### Supabase free tier (as of 2026-03-03)
+
+| Resource | Free Limit | HelixAI Usage Estimate | Headroom |
+|----------|------------|----------------------|---------|
+| Projects | 2 | 1 | OK |
+| Database storage | 500 MB | <10 MB (text only) | OK |
+| File storage | 1 GB | ~5 KB per preset × N users | OK for thousands of users |
+| Auth MAUs | 50,000 | Early stage: <100 | OK |
+| Storage egress | 2 GB/month | Minimal (small binary files) | OK |
+| DB egress | 2 GB/month | Minimal (text rows) | OK |
+| Inactivity pause | After 7 days | RISK — pauses if app inactive | See warning below |
+
+**Critical free tier caveat:** Supabase pauses free projects after 7 days of inactivity (no
+database activity). For a live app deployed to Vercel, this is not a concern as long as there
+is some user activity each week. However, during development gaps the project may pause. Add a
+simple health-check ping or upgrade to Pro ($25/month) at launch to eliminate this risk.
+
+**Storage egress note:** .hlx and .pgp preset files are typically 10–50KB each. Even with 1,000
+users each downloading their preset monthly, total egress is under 50MB — well within limits.
+
+### Firebase free tier comparison (relevant changes)
+
+Firebase Cloud Storage now requires the **Blaze (pay-as-you-go) plan** as of February 3, 2026.
+A credit card is mandatory even if usage stays within free-tier limits. Firestore remains free
+on Spark plan (50K reads/day, 20K writes/day), but Firebase Cloud Functions require Blaze plan.
+This makes Firebase's "free tier" materially less free than Supabase's for new projects in 2026.
+
+---
+
+## Comparison: Firebase vs Supabase vs Other Options
+
+### Firebase (Auth + Firestore + Cloud Storage)
+
+**Decision: Do not use Firebase for this project.**
+
+| Criterion | Firebase | Impact on HelixAI |
+|-----------|----------|-------------------|
+| Next.js App Router | Split SDK (client vs admin) — different code paths for SSR | Friction. Every server-side data access requires firebase-admin, adding 2.8MB to serverless cold starts. |
+| TypeScript | Manual type casting — no auto-generated types | More boilerplate throughout |
+| Edge runtime | Not supported — Node.js/browser only | Cannot use Vercel Edge Runtime in future |
+| Storage free tier | Requires Blaze (credit card) as of Feb 3, 2026 | Not truly free |
+| Cloud Functions | Require Blaze plan | Not truly free |
+| Database model | NoSQL document store | Poor fit for relational conversation/message/preset structure |
+| Vendor lock-in | No self-hosting, proprietary format | Data migration is a rewrite |
+| bundle size (admin SDK) | firebase-admin adds ~2.8MB minified to serverless bundle | Cold start penalty on every AI API call |
+| Google strategy clarity | Firebase Studio + Genkit pivot signals uncertainty about long-term direction | Strategic risk |
+
+Firebase's split SDK architecture is the decisive disqualifier for a Next.js App Router project.
+You would need firebase-admin in every server component and the client SDK in every client
+component, with no shared utility pattern. The admin SDK adds ~2.8MB to the serverless bundle,
+increasing cold start times on the same routes that make Claude API calls. This is unacceptable.
+
+### Supabase (Auth + Postgres + Storage)
+
+**Decision: Use Supabase.**
+
+| Criterion | Supabase | Impact on HelixAI |
+|-----------|----------|-------------------|
+| Next.js App Router | Isomorphic SDK — same createClient pattern everywhere | Single utility pattern for server and client |
+| TypeScript | Auto-generated types from schema via `supabase gen types` | Full type safety with zero manual casting |
+| Edge runtime | HTTP-based SDK — works in Edge Runtime, Cloudflare, Deno | Future-compatible |
+| Storage free tier | 1 GB storage, no credit card required | Truly free for early stage |
+| Database model | Postgres (relational) | Correct fit: conversations, messages, presets are naturally relational |
+| RLS | Row Level Security enforced at database level | Auth and data access in one place, not two |
+| Google OAuth | Native provider in Supabase Auth — dashboard toggle, no library | Simple setup |
+| bundle size | @supabase/supabase-js is HTTP-based, tree-shakeable | Lean serverless footprint |
+| Open source | Self-hostable — data is standard Postgres | No lock-in; `pg_dump` and migrate anytime |
+| Inactivity pause | Free projects pause after 7 days | Only concern — manageable |
+
+### NextAuth/Auth.js v5 (standalone)
+
+**Decision: Do not use — redundant with Supabase Auth.**
+
+NextAuth v5 is the correct choice when you want auth only and handle database/storage separately.
+For this project, Supabase provides auth, database, and storage through one SDK. Adding NextAuth
+would mean managing two separate auth systems (NextAuth sessions + Supabase JWTs), two separate
+session stores, and two separate Google OAuth configurations. The complexity cost is pure overhead
+with no benefit.
+
+### Clerk (standalone auth)
+
+**Decision: Do not use — wrong tool for this scope.**
+
+Clerk is an auth-only SaaS with excellent pre-built UI components (sign-in modal, user profile
+widget). It charges per MAU after the free tier (10K–50K depending on tier). For HelixAI's
+anonymous-first model where users may never create accounts, Clerk's MAU billing penalizes
+anonymous session counts. More importantly, Clerk does not provide database or file storage —
+you would still need Supabase or another backend for persistence. Two vendors, two SDKs, two
+billing relationships, for functionality Supabase provides in one package.
+
+### Prisma (ORM)
+
+**Decision: Do not add Prisma.**
+
+Prisma is the standard ORM for Next.js + Postgres when you control your own Postgres server.
+With Supabase, you query directly via `@supabase/supabase-js` using the PostgREST auto-generated
+API. Prisma adds a dependency, schema management overhead, and a separate migration system that
+conflicts with Supabase's built-in migration tooling. Use Supabase's typed client directly — it
+generates TypeScript types from your schema via `supabase gen types typescript --local > types/supabase.ts`.
+
+---
+
+## Anonymous-First Auth Model
+
+HelixAI's requirement: anonymous usage fully functional, login unlocks persistence.
+
+**Implementation pattern:**
+
+```typescript
+// Check session in Server Component
+const supabase = await createClient();
+const { data: { user } } = await supabase.auth.getUser();
+
+// user === null → anonymous — render chat without sidebar, no save
+// user !== null → authenticated — render chat + sidebar, enable persistence
+```
+
+When an anonymous user generates a preset, it downloads immediately (current behavior). No
+database write. When a logged-in user generates a preset, save to Supabase as a background
+operation after the download is triggered. Do not block the download on the storage save.
+
+**Session state flow:**
+- Anonymous: no Supabase session, no database writes, full chat/generation functionality
+- Post-Google-OAuth: Supabase session cookie set, sidebar fetches conversation list, saves on generate
+
+---
+
+## Chat Sidebar UI
+
+No additional library is required for the sidebar component itself. Use Tailwind CSS with the
+existing Warm Analog Studio design system. The sidebar is a standard slide-out panel:
+
+```typescript
+// Rough structure — no new UI library needed
+<aside className={`fixed left-0 top-0 h-full w-72 bg-[#1a1a18] border-r border-[#2a2a27]
+  transform transition-transform duration-300
+  ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+  {/* Conversation list from Supabase query */}
+  {conversations.map(conv => (
+    <ConversationItem key={conv.id} conversation={conv} />
+  ))}
+</aside>
+```
+
+Conversations fetched via server component or client-side Supabase query:
+
+```typescript
+const { data: conversations } = await supabase
+  .from('conversations')
+  .select('id, title, device, updated_at')
+  .order('updated_at', { ascending: false })
+  .limit(50);
 ```
 
 ---
@@ -252,11 +470,13 @@ npm install browser-image-compression
 
 | Recommended | Alternative | When to Use Alternative |
 |-------------|-------------|-------------------------|
-| Claude Sonnet 4.6 vision | Gemini 2.0/2.5 Flash | Only if per-image cost matters at >50k sessions/month AND you accept second SDK integration overhead |
-| Claude Sonnet 4.6 vision | Google Cloud Vision API | Never for this specific task — cannot estimate rotary positions without a second LLM call |
-| `browser-image-compression` | `compressor.js` | If canvas lifecycle hooks are needed (watermarks, grayscale); no advantage for compression-only use |
-| `browser-image-compression` | Vanilla canvas API | Zero dependencies acceptable; adds ~30 lines of boilerplate; choose if library weight is a concern |
-| multipart FormData | Base64 JSON | Never — base64 adds 33% overhead on an already constrained 4.5MB limit |
+| Supabase (all-in-one) | Firebase | If building a mobile-first app with offline sync — Firestore's mobile SDKs and offline persistence are best-in-class; not relevant for a web app |
+| Supabase | Clerk + separate DB | If auth complexity dominates (SAML, org management, MFA UX) and you already have a Postgres server |
+| Supabase | NextAuth + PlanetScale | If you want zero vendor dependency and control your own auth logic — more setup time, same end result |
+| Supabase Auth | Auth0 | For enterprise SAML SSO at scale (>10K+ enterprise users) — Auth0 has better enterprise IdP integrations |
+| Direct `supabase-js` queries | Prisma ORM | If you switch away from Supabase to a bare Postgres server — then Prisma is the right ORM |
+| Supabase Storage | Vercel Blob | Vercel Blob has no built-in auth integration — you would manage access control manually. Supabase Storage RLS ties directly to user identity. |
+| Supabase Storage | AWS S3 | At scale (millions of files), S3 has lower egress costs — premature optimization for this stage |
 
 ---
 
@@ -264,75 +484,71 @@ npm install browser-image-compression
 
 | Avoid | Why | Use Instead |
 |-------|-----|-------------|
-| Google Cloud Vision API (standalone) | Returns labels and bounding boxes, not rotary position estimates. A second LLM call is required for knob reasoning — two error surfaces, two keys, higher latency, no accuracy benefit | Claude Sonnet 4.6 vision |
-| Gemini Flash (alongside Claude) | Splitting vision across two providers creates dual SDK overhead, dual API key management, and dual error handling for no measurable accuracy gain on this specific task | Claude Sonnet 4.6 vision |
-| Precise percentage prompts ("what percentage is the drive knob set to?") | All current LLMs have documented spatial reasoning limitations for analog rotary positions — precision requests produce unreliable hallucinated numbers | Prompt for coarse buckets: low / medium-low / medium-high / high |
-| Base64 JSON body for image upload | 33% payload inflation; three 800KB images in base64 = ~3.2MB of JSON text, approaching Vercel's 4.5MB limit uncomfortably | multipart FormData |
-| formidable / multer | Required only for Pages Router. App Router handles multipart natively via `req.formData()` | Built-in `req.formData()` on `NextRequest` |
-| Cloudinary / Vercel Blob / S3 for storage | Adds external storage dependency and async upload flow for a synchronous real-time use case — overkill when client-side compression keeps all images under the limit | Compress client-side, upload direct to serverless route |
-| Uncompressed raw uploads | A typical phone photo of a guitar pedal is 3–8MB. Three uncompressed photos exceed Vercel's 4.5MB limit before any JSON overhead is added | `browser-image-compression` with `maxSizeMB: 0.8` |
-| Anthropic Files API for pedal photos | Files API is designed for reuse of the same asset across multiple requests. Pedal photos are one-shot per session — no reuse benefit; adds an extra API call round-trip | Direct base64 encoding in the messages array |
+| `firebase-admin` SDK | Adds ~2.8MB (minified) to serverless bundle — increases cold start time on same routes making Claude API calls; split client/server SDK pattern creates friction throughout Next.js App Router | `@supabase/supabase-js` (HTTP-based, isomorphic) |
+| `@supabase/auth-helpers-nextjs` | Officially deprecated as of 2024 — no further bug fixes or features | `@supabase/ssr@0.8.0` |
+| Firebase Cloud Storage (free tier) | Requires Blaze plan (credit card mandatory) as of February 3, 2026 — not actually free | Supabase Storage (1 GB free, no credit card) |
+| Storing .hlx/.pgp bytes in Postgres bytea | Works but anti-pattern — inflates row sizes, no CDN delivery, no streaming | Supabase Storage (object store) with `storage_path` reference in Postgres |
+| Prisma ORM | Duplicate schema management system that conflicts with Supabase migrations; `supabase-js` typed client already provides full type safety | `supabase-js` typed client + `supabase gen types` |
+| Clerk | Auth-only — still needs separate database/storage; MAU billing is unfavorable for anonymous-first model | Supabase Auth (included in same SDK) |
+| NextAuth/Auth.js (alongside Supabase) | Two auth systems means two JWT issuers, two session stores, two Google OAuth configurations — pure overhead | Supabase Auth handles Google OAuth natively |
+| Supabase Realtime subscriptions | Not needed for this use case — chat history is loaded on sidebar open, not live-updated across tabs | Standard REST queries via `supabase-js` |
 
 ---
 
 ## Stack Patterns by Variant
 
-**If user uploads one pedal photo:**
-- Compress to <800KB
-- Upload via FormData alongside messages + device
-- Pass as a single image content block before the text instruction in the user message
-- Claude returns: `{ pedalName: string, knobs: { name: string, position: "low"|"medium-low"|"medium-high"|"high" }[] }`
+**If user is anonymous (no Google login):**
+- No Supabase database writes
+- Chat runs entirely client-side state (existing React state)
+- Download preset on generate — current behavior unchanged
+- Sidebar is hidden or shows "Sign in to save chats"
 
-**If user uploads multiple pedal photos (2–3):**
-- Compress each to <800KB (total ~2.4MB binary, safe under 4.5MB)
-- Upload all in one FormData request
-- Label each image in the user message content: "Pedal 1: [image] Pedal 2: [image]"
-- Claude returns `RigAnalysis[]` via `zodOutputFormat`
+**If user is authenticated (Google OAuth complete):**
+- On new chat: create a `conversations` row, store conversation ID in React state
+- On each AI response: append to `messages` table (can batch — write on response complete, not per-token)
+- On preset generate + download: trigger `savePreset()` as non-blocking background call after download
+- On sidebar open: fetch `conversations` ordered by `updated_at`
+- On conversation click: fetch `messages` for that `conversation_id`, restore to chat state
 
-**If user uploads 4+ photos:**
-- Client-side validation rejects with explicit message: "Please upload up to 3 pedal photos at a time"
-- Do not silently drop images
+**If user signs in mid-session (was anonymous, clicks Sign In):**
+- Complete Google OAuth flow
+- Do NOT auto-import the anonymous session's messages — present a clean slate
+- Display sidebar immediately after redirect back
+- The in-flight anonymous session is discarded (no migration complexity)
 
-**If user provides text-only rig description (no photos):**
-- No image blocks in messages — existing flow unchanged
-- Claude parses the text description in the conversational turn as before
-
----
-
-## Vercel Constraint Summary
-
-| Constraint | Value | Mitigation |
-|------------|-------|------------|
-| Serverless body limit | 4.5MB hard (no workaround on hobby tier) | Compress to <800KB/image, max 3 images = ~2.4MB binary + headers |
-| Function timeout (hobby plan) | 10 seconds | Claude vision call with 3 images: ~3–6s total; within limit |
-| Cold start overhead | ~300–500ms | Already accepted in existing architecture |
-| Anthropic API per-image size limit | 5MB per image | After compression to <800KB, no issue |
-| Anthropic image dimension limit | 8000x8000px max (auto-resize above 1568px long edge) | After `maxWidthOrHeight: 1568` compression, no issue |
+**If user has a saved preset to re-download:**
+- Fetch signed URL from Supabase Storage (1 hour expiry)
+- Trigger browser download via the signed URL
+- No server-side proxy needed — user downloads directly from Supabase CDN
 
 ---
 
 ## Version Compatibility
 
-| Package | Compatible With | Notes |
-|---------|-----------------|-------|
-| `browser-image-compression@2.0.2` | Next.js 14, TypeScript 5.x | Client-side only — no SSR import; import in `"use client"` components |
-| `@anthropic-ai/sdk` (existing version) | Next.js 14 App Router serverless | Base64 image content blocks are a standard SDK feature; no version bump required |
+| Package | Version | Compatible With | Notes |
+|---------|---------|-----------------|-------|
+| `@supabase/supabase-js` | 2.80.0 | Next.js 14+, TypeScript 5.x, Node.js 20+ | Node.js 18 support dropped at 2.79.0 — Vercel typically runs Node 20 |
+| `@supabase/ssr` | 0.8.0 | Next.js 14+ App Router | Requires Next.js App Router — not compatible with Pages Router patterns |
+| `@supabase/auth-helpers-nextjs` | DEPRECATED | — | Do not install — use `@supabase/ssr` instead |
 
 ---
 
 ## Sources
 
-- Anthropic Vision Docs (official, verified 2026-03-02) — image token formula, spatial reasoning limitation ("like reading an analog clock face"), 5MB per-image API limit, supported formats, base64 integration pattern: https://platform.claude.com/docs/en/build-with-claude/vision
-- Anthropic Pricing (official, verified 2026-03-02) — Claude Sonnet 4.6 at $3/MTok input, prompt caching multipliers: https://platform.claude.com/docs/en/about-claude/pricing
-- Google Gemini API Pricing (official) — Gemini 2.0 Flash at $0.10/MTok input, Gemini 2.5 Flash at $0.30/MTok input: https://ai.google.dev/gemini-api/docs/pricing
-- Vercel Serverless Body Limit (official KB) — 4.5MB hard limit, no config override in production: https://vercel.com/kb/guide/how-to-bypass-vercel-body-size-limit-serverless-functions
-- Next.js App Router `req.formData()` — built-in multipart support, no library needed: https://strapi.io/blog/epic-next-js-15-tutorial-part-5-file-upload-using-server-actions
-- `browser-image-compression` npm — v2.0.2, Web Worker support, `maxSizeMB`/`maxWidthOrHeight` options: https://www.npmjs.com/package/browser-image-compression
-- `browser-image-compression` GitHub — Donaldcwl/browser-image-compression, MIT license: https://github.com/Donaldcwl/browser-image-compression
-- Gemini Flash spatial reasoning limitations — semantic interpretation misses on ambiguous geometries (MEDIUM confidence, WebSearch, multiple sources): https://www.helicone.ai/blog/gemini-2.0-flash
-- Gemini 2.0 Flash OCR accuracy — 98.2% on printed text, strong general OCR: https://reducto.ai/blog/lvm-ocr-accuracy-mistral-gemini
+- Supabase SSR official docs — two client types, middleware pattern, cookie setup: https://supabase.com/docs/guides/auth/server-side/nextjs
+- Supabase Google OAuth guide — provider setup, Server Action pattern, callback route: https://supabase.com/docs/guides/auth/social-login/auth-google
+- Supabase Storage JS reference — upload, upsert, signed URLs: https://supabase.com/docs/reference/javascript/storage-from-upload
+- Supabase pricing page (verified 2026-03-03) — 500MB DB, 1GB storage, 50K MAUs, 7-day inactivity pause: https://supabase.com/pricing
+- `@supabase/supabase-js` npm — latest version 2.80.0, Node.js 18 dropped at 2.79.0: https://www.npmjs.com/package/@supabase/supabase-js
+- `@supabase/ssr` npm — version 0.8.0, replaces deprecated auth-helpers: https://www.npmjs.com/package/@supabase/ssr
+- Firebase Cloud Storage pricing change — Blaze plan required as of February 3, 2026: https://firebase.google.com/docs/storage/faqs-storage-changes-announced-sept-2024
+- Firebase Firestore free tier quotas — 50K reads/day, 20K writes/day, 1 GB storage: https://firebase.google.com/docs/firestore/quotas
+- Firebase vs Supabase 2026 comparison — PostgreSQL won the BaaS battle, split SDK friction: https://makerkit.dev/blog/saas/supabase-vs-firebase
+- Firebase Admin SDK bundle size — 2.8MB minified, 165 additional packages, serverless cold start impact (MEDIUM confidence, multiple sources): https://lightrun.com/answers/firebase-firebase-admin-node-fr-bundle-size
+- Supabase Next.js tutorial — official quickstart with App Router: https://supabase.com/docs/guides/getting-started/tutorials/with-nextjs
+- `@supabase/auth-helpers-nextjs` deprecation notice — 0.15.0 is final version: https://www.npmjs.com/package/@supabase/auth-helpers-nextjs
 
 ---
 
-*Stack research for: HelixAI v1.3 Rig Emulation — vision API + image upload additions*
-*Researched: 2026-03-02*
+*Stack research for: HelixAI v2.0 Persistent Chat Platform — auth, database, file storage additions*
+*Researched: 2026-03-03*

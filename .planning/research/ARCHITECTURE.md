@@ -1,417 +1,314 @@
 # Architecture Research
 
-**Domain:** AI-powered rig emulation extension to an existing Planner-Executor guitar preset system
-**Researched:** 2026-03-02
-**Confidence:** HIGH (existing codebase fully inspected; Claude API vision + structured output docs verified against official sources)
+**Domain:** Persistent chat, authentication, and file storage — v2.0 additions to existing stateless Next.js App Router guitar preset generator
+**Researched:** 2026-03-03
+**Confidence:** HIGH — all integration patterns verified against official Supabase, Auth.js, and Next.js documentation; existing codebase fully inspected
 
 ---
 
 ## Context: What This Document Covers
 
-This document covers the v1.3 Rig Emulation milestone: how vision-based rig extraction, physical-to-Helix pedal mapping, and substitution display integrate with the existing Planner-Executor architecture. Every decision specifies which files are new, which are modified, and in what order to build.
+This document covers the v2.0 Persistent Chat Platform milestone only. It answers:
+- How auth, database, and file storage integrate with the existing Next.js App Router + Vercel serverless architecture
+- What new routes, components, and providers are needed
+- How data flows change relative to v1.3
+- What build order is required given dependencies
+- How the chat sidebar interacts with the existing single-page chat flow
+
+The existing validated stack (Next.js App Router, TypeScript, Tailwind CSS, Claude Sonnet 4.6, Gemini chat, Vercel) is NOT re-researched here.
 
 ---
 
 ## System Overview
 
-```
-+----------------------------------------------------------------------+
-|                     BROWSER (Next.js page.tsx)                       |
-|                                                                      |
-|  +------------------+  +-------------------+  +-------------------+ |
-|  | Chat Messages    |  | Image Upload UI   |  | Substitution Card | |
-|  | (existing)       |  | (NEW — file input |  | (NEW — TS9 ->     | |
-|  |                  |  |  or drag-drop)    |  |  Teemah! display) | |
-|  +--------+---------+  +---------+---------+  +---------+---------+ |
-|           |                      |                      |           |
-|           +----------------------+----------------------+           |
-|                                  |                                  |
-|      POST /api/generate { messages, device, images[] }              |
-+----------------------------------+----------------------------------+
-                                   |
-+----------------------------------v----------------------------------+
-|                  API ROUTE (route.ts — MODIFIED)                    |
-|                                                                     |
-|  1. Extract images[] from request body                              |
-|  2. Call callRigVisionPlanner(images) -> RigIntent    [NEW]         |
-|  3. Call mapRigToToneIntent(rigIntent, device)        [NEW]         |
-|     -> { substitutions[], toneContext, unmappedPedals[] }           |
-|  4. Call callClaudePlanner(messages, device, toneContext)           |
-|     -> ToneIntent                              [planner.ts MODIFIED]|
-|  5. Knowledge Layer pipeline (existing — unchanged)                 |
-|  6. Return { ...existing, substitutions[] }      [response EXTENDED]|
-+---------------------------------------------------------------------+
-                |                    |                    |
-+---------------v------+  +----------v---------+  +------v-----------+
-| planner.ts (MODIFIED)|  | rig-vision.ts (NEW)|  | rig-mapping.ts   |
-|                      |  |                    |  | (NEW)            |
-| Accepts optional     |  | callRigVision-     |  |                  |
-| toneContext string   |  | Planner() ->       |  | mapRigToTone-    |
-| appended to conv.    |  | RigIntent          |  | Intent() +       |
-| before model sends   |  | (one Claude vision |  | substitution     |
-|                      |  |  call, all images) |  | map building     |
-+----------------------+  +--------------------+  +------------------+
-                                                           |
-+----------------------------------------------------------v----------+
-|                   KNOWLEDGE LAYER (all existing — unchanged)        |
-|                                                                     |
-|  chain-rules.ts -> param-engine.ts -> snapshot-engine.ts           |
-|  preset-builder.ts / podgo-builder.ts                               |
-+---------------------------------------------------------------------+
-```
-
-### Component Responsibilities
-
-| Component | Responsibility | Status |
-|-----------|----------------|--------|
-| `src/app/page.tsx` | Image upload UI, substitution card display, include images[] in generate POST | Modified |
-| `src/app/api/generate/route.ts` | Orchestrate vision extraction, mapping, planner; add substitutions to response | Modified |
-| `src/lib/rig-vision.ts` | Single Claude API call with image content blocks -> RigIntent | NEW |
-| `src/lib/rig-mapping.ts` | Static curated lookup table (physical pedal -> Helix model) + knob% -> param translation | NEW |
-| `src/lib/helix/rig-intent.ts` | Zod schemas: RigIntentSchema, PhysicalPedalSchema, SubstitutionEntrySchema | NEW |
-| `src/lib/planner.ts` | Accept optional toneContext string appended to conversation before Claude call | Modified |
-| `src/lib/helix/index.ts` | Export new rig-intent types | Modified |
-| All other `src/lib/helix/*` | Unchanged — receives ToneIntent exactly as before | Existing |
-
----
-
-## The Central Architecture Decision: Two-Step vs Single-Call Vision
-
-This is the most consequential decision for v1.3. The recommendation is definitive.
-
-### Option A: Two-Step Pre-Processing (Recommended)
+### Current Architecture (v1.3 — Stateless)
 
 ```
-Step 1: callRigVisionPlanner(images[]) -> RigIntent
-        [Dedicated Claude call with image blocks — extracts pedal names and knob positions]
-        [No structured output constraint — focused extraction prompt only]
-
-Step 2: mapRigToToneIntent(rigIntent, device) -> { substitutions[], toneContext }
-        [Deterministic — static PEDAL_HELIX_MAP lookup table, no AI]
-        [Translates knob% to Helix 0-1 param values]
-        [Builds toneContext summary string]
-
-Step 3: callClaudePlanner(messages, device, toneContext?) -> ToneIntent
-        [Existing planner — receives toneContext as appended text hint]
-        [Uses zodOutputFormat(ToneIntentSchema) as today, completely unchanged]
++--------------------------------------------------------------------+
+|                     BROWSER (page.tsx)                             |
+|                                                                    |
+|  +------------------+  +------------------+  +----------------+   |
+|  | Chat Interview   |  | Device Selector  |  | Image Upload   |   |
+|  | (React useState) |  | (React useState) |  | (React useState|   |
+|  +--------+---------+  +--------+---------+  +--------+-------+   |
+|           |                     |                     |           |
++-----------+---------------------+---------------------+-----------+
+            |
+            v POST body: { messages[], device, rigIntent, rigText }
++--------------------------------------------------------------------+
+|                   VERCEL SERVERLESS FUNCTIONS                      |
+|                                                                    |
+|  /api/chat      /api/generate      /api/vision      /api/map      |
+|  (Gemini SSE)   (Claude Planner    (Claude Vision)  (mapping)     |
+|                  + Knowledge Layer)                                |
+|                                                                    |
+|  NO database. NO user identity. NO persistent state.              |
++--------------------------------------------------------------------+
 ```
 
-### Option B: Single Multi-Modal Call
+### Target Architecture (v2.0 — Persistent)
 
 ```
-Step 1: callClaudeMultiModal(messages, images[], device) -> ToneIntent
-        [One API call sees both conversation text and pedal photos]
-        [zodOutputFormat still constrains ToneIntent schema]
-        [Mapping burden falls entirely on Claude's knowledge and the prompt]
-```
-
-### Recommendation: Two-Step (Option A)
-
-**Rationale — five reasons, all strong:**
-
-1. **Matches the existing Planner-Executor philosophy.** The codebase explicitly separates creative AI choices (planner) from deterministic parameter resolution (Knowledge Layer). Vision extraction is a third distinct concern — reading physical hardware — that should not be conflated with creative Helix model selection. Treating it as a separate step preserves the architectural invariant that AI makes creative choices and code handles deterministic translation.
-
-2. **Static mapping table beats prompt-embedded knowledge for reliability.** Claude's gear knowledge is good but not auditable. A static `PEDAL_HELIX_MAP` lookup can be curated, reviewed, and extended without retesting the planner prompt. When a user reports "my Boss SD-1 wasn't mapped correctly," the fix is one line in a data file, not a prompt rewrite. This is explicitly what the PROJECT.md means by "physical pedal -> Helix model mapping must be curated, not guessed."
-
-3. **Zodoutputformat compatibility is preserved without complexity.** The existing planner uses `output_config: { format: zodOutputFormat(ToneIntentSchema) }`. Adding vision images to the existing planner call while keeping structured output works (the Claude API supports combining vision input with structured output in the same call — verified against official docs). However, it creates a large, multi-purpose prompt boundary where failures are harder to isolate. A dedicated vision extraction step can use a simple extraction prompt without structured output, and the planner remains structurally unchanged.
-
-4. **RigIntent and ToneIntent are fundamentally different schemas.** RigIntent contains physical pedal names and knob percentages. ToneIntent contains Helix model names and snapshot structure. Forcing a single call to produce ToneIntent from photos requires the AI to perform the physical-to-Helix mapping inside its reasoning, which is invisible and non-deterministic. The two-step approach makes the mapping explicit and testable.
-
-5. **Failure isolation.** If Claude misreads one pedal photo, the error is contained to Step 1 and can be surfaced as "could not identify Pedal 2." In the single-call approach, a bad image interpretation can corrupt the entire ToneIntent including the amp choice.
-
-**When Option B would be preferable:** If the project had no mapping layer and raw AI gear knowledge was intentionally the mapping mechanism. That is explicitly ruled out by the project constraints.
-
----
-
-## New Types and Schemas
-
-All schemas live in `src/lib/helix/rig-intent.ts` and are exported from `src/lib/helix/index.ts`.
-
-### PhysicalPedalSchema
-
-Represents one physical pedal extracted from a user's photo.
-
-```typescript
-// src/lib/helix/rig-intent.ts
-import { z } from "zod";
-
-export const PhysicalPedalSchema = z.object({
-  brand: z.string(),           // "Boss", "Ibanez", "Electro-Harmonix"
-  model: z.string(),           // "SD-1", "TS9", "Big Muff Pi"
-  fullName: z.string(),        // "Boss SD-1 Super OverDrive" — used as lookup key
-  knobPositions: z.record(
-    z.string(),
-    z.number().min(0).max(100)
-  ),                           // { "Drive": 70, "Tone": 50, "Level": 60 } — percent
-  imageIndex: z.number().int(),// Which image this came from (0-indexed)
-  confidence: z.enum(["high", "medium", "low"]), // Vision extraction confidence
-});
-
-export type PhysicalPedal = z.infer<typeof PhysicalPedalSchema>;
-```
-
-### RigIntentSchema
-
-The full extracted rig from vision analysis — output of `callRigVisionPlanner()`.
-
-```typescript
-export const RigIntentSchema = z.object({
-  pedals: z.array(PhysicalPedalSchema),
-  rigDescription: z.string().optional(),    // Free-text if user also typed a description
-  extractionNotes: z.string().optional(),   // Claude's notes on ambiguities
-});
-
-export type RigIntent = z.infer<typeof RigIntentSchema>;
-```
-
-### SubstitutionEntrySchema
-
-One pedal substitution — what gets shown in the UI substitution card.
-
-```typescript
-export const SubstitutionEntrySchema = z.object({
-  physicalPedal: z.string(),        // "TS9 Tube Screamer"
-  helixModel: z.string(),           // "Teemah!" (exact Helix model name)
-  substitutionReason: z.string(),   // "Closest gain structure and mid-hump EQ character"
-  parameterMapping: z.record(
-    z.string(),                     // Helix param name: "Drive"
-    z.number()                      // Translated value: 0.35
-  ),
-  confidence: z.enum(["direct", "close", "approximate"]),
-  // direct = exact model exists in Helix
-  // close = functionally equivalent, same circuit topology
-  // approximate = closest available, different character
-});
-
-export type SubstitutionEntry = z.infer<typeof SubstitutionEntrySchema>;
-```
-
-### SubstitutionMapSchema
-
-The full mapping result — what `mapRigToToneIntent()` returns.
-
-```typescript
-export const SubstitutionMapSchema = z.object({
-  substitutions: z.array(SubstitutionEntrySchema),
-  unmappedPedals: z.array(z.string()),  // Physical pedals with no Helix equivalent
-  toneContext: z.string(),              // Summary string passed to planner as hint
-});
-
-export type SubstitutionMap = z.infer<typeof SubstitutionMapSchema>;
++--------------------------------------------------------------------+
+|                     BROWSER                                        |
+|                                                                    |
+|  +---------------+  +----------------------------------+           |
+|  | Chat Sidebar  |  | Chat Area (existing page.tsx)   |           |
+|  | (NEW — server |  |                                  |           |
+|  |  component    |  |  +----------------------------+  |           |
+|  |  + client     |  |  | Chat Interview / Generate  |  |           |
+|  |  toggle)      |  |  | (modified — saves to DB)   |  |           |
+|  |               |  |  +----------------------------+  |           |
+|  | [past chats]  |  |                                  |           |
+|  | [new chat +]  |  +----------------------------------+           |
+|  +-------+-------+                    |                            |
+|          |                            |                            |
++----------+----------------------------+----------------------------+
+           |                            |
+           v                            v
++--------------------------------------------------------------------+
+|                   VERCEL SERVERLESS FUNCTIONS                      |
+|                                                                    |
+|  EXISTING (unchanged):    NEW:                                     |
+|  /api/chat (Gemini)       /api/auth/[...nextauth]  (Auth.js v5)   |
+|  /api/generate (Claude)   /api/conversations       (CRUD)          |
+|  /api/vision (Claude)     /api/conversations/[id]  (read/update)   |
+|  /api/map (mapping)       /api/preset-upload       (signed URL)    |
+|                                                                    |
++--------------------------------------------------------------------+
+           |                            |
+           v                            v
++--------------------------------------------------------------------+
+|                      SUPABASE                                      |
+|                                                                    |
+|  Auth (native Supabase Auth with Google OAuth + anonymous sign-in) |
+|                                                                    |
+|  PostgreSQL:                                                       |
+|  +-------------------+  +------------------+  +-----------------+ |
+|  | users             |  | conversations    |  | messages        | |
+|  | (id, email, name, |  | (id, user_id,    |  | (id,            | |
+|  |  avatar_url,      |  |  title, device,  |  |  conversation_  | |
+|  |  created_at,      |  |  created_at,     |  |  id, role,      | |
+|  |  is_anonymous)    |  |  updated_at,     |  |  content,       | |
+|  +-------------------+  |  preset_url)     |  |  created_at)    | |
+|                         +------------------+  +-----------------+ |
+|                                                                    |
+|  Storage:                                                          |
+|  +---------------------------------------------------+            |
+|  | presets bucket (private)                          |            |
+|  | path: {user_id}/{conversation_id}/preset.hlx      |            |
+|  | path: {user_id}/{conversation_id}/preset.pgp      |            |
+|  +---------------------------------------------------+            |
++--------------------------------------------------------------------+
 ```
 
 ---
 
-## Recommended Project Structure
+## Component Responsibilities
+
+| Component | Responsibility | Existing or New |
+|-----------|----------------|-----------------|
+| `src/app/layout.tsx` | Root layout — add Supabase session provider, sidebar shell | MODIFIED |
+| `src/app/page.tsx` | Main chat flow — add conversation ID state, auto-save on generate | MODIFIED |
+| `src/components/sidebar/ChatSidebar.tsx` | Pull-out panel — list past conversations, new chat button | NEW |
+| `src/components/sidebar/ChatHistoryList.tsx` | Server component — fetches conversation list from Supabase | NEW |
+| `src/components/sidebar/SidebarToggle.tsx` | Client component — toggle open/closed state | NEW |
+| `src/components/auth/AuthButton.tsx` | Login / avatar / logout — reflects current session | NEW |
+| `src/lib/supabase/server.ts` | `createServerClient()` — Supabase client for server components, route handlers | NEW |
+| `src/lib/supabase/client.ts` | `createBrowserClient()` — Supabase client for client components | NEW |
+| `src/lib/supabase/middleware.ts` | Session refresh via `updateSession()` | NEW |
+| `middleware.ts` (project root) | Next.js middleware — calls `updateSession`, routes session cookies | NEW |
+| `src/app/auth/callback/route.ts` | PKCE callback for Google OAuth + anonymous link flow | NEW |
+| `/api/conversations` route | Create new conversation, list user conversations | NEW |
+| `/api/conversations/[id]` route | Fetch full message history, update title | NEW |
+| `/api/preset-upload` route | Create Supabase Storage signed upload URL, return to client | NEW |
+| `src/app/api/generate/route.ts` | Existing generation — extended to accept `conversationId?`, save preset | MODIFIED |
+| `src/app/api/chat/route.ts` | Existing Gemini chat — extended to persist messages when `conversationId` provided | MODIFIED |
+
+---
+
+## Recommended Project Structure (additions only)
 
 ```
 src/
-+-- app/
-|   +-- page.tsx                    MODIFIED: image upload UI, substitution card
-|   +-- api/
-|       +-- generate/
-|           +-- route.ts            MODIFIED: vision + mapping + planner orchestration
-+-- lib/
-    +-- planner.ts                  MODIFIED: accept optional toneContext string
-    +-- rig-vision.ts               NEW: callRigVisionPlanner(images[]) -> RigIntent
-    +-- rig-mapping.ts              NEW: PEDAL_HELIX_MAP lookup + mapRigToToneIntent()
-    +-- gemini.ts                   UNCHANGED
-    +-- helix/
-        +-- rig-intent.ts           NEW: all rig-related Zod schemas and types
-        +-- tone-intent.ts          UNCHANGED
-        +-- chain-rules.ts          UNCHANGED
-        +-- param-engine.ts         UNCHANGED
-        +-- snapshot-engine.ts      UNCHANGED
-        +-- preset-builder.ts       UNCHANGED
-        +-- podgo-builder.ts        UNCHANGED
-        +-- models.ts               UNCHANGED
-        +-- types.ts                UNCHANGED
-        +-- index.ts                MODIFIED: export rig-intent types
-        +-- validate.ts             UNCHANGED
-        +-- config.ts               UNCHANGED
-        +-- param-registry.ts       UNCHANGED
+├── app/
+│   ├── api/
+│   │   ├── chat/route.ts              # MODIFIED — persist messages when conversationId provided
+│   │   ├── generate/route.ts          # MODIFIED — persist preset URL when conversationId provided
+│   │   ├── conversations/
+│   │   │   ├── route.ts               # NEW — POST create, GET list
+│   │   │   └── [id]/
+│   │   │       └── route.ts           # NEW — GET history, PATCH title
+│   │   ├── preset-upload/
+│   │   │   └── route.ts               # NEW — signed upload URL for Supabase Storage
+│   │   └── auth/
+│   │       └── callback/
+│   │           └── route.ts           # NEW — OAuth PKCE callback handler
+│   ├── layout.tsx                     # MODIFIED — add sidebar shell, session context
+│   └── page.tsx                       # MODIFIED — conversation ID state, save triggers
+│
+├── components/
+│   ├── sidebar/
+│   │   ├── ChatSidebar.tsx            # NEW — outer sidebar shell (client, handles toggle)
+│   │   ├── ChatHistoryList.tsx        # NEW — server component, fetches from Supabase
+│   │   └── SidebarToggle.tsx          # NEW — hamburger / close button, client only
+│   └── auth/
+│       └── AuthButton.tsx             # NEW — login with Google / avatar / logout
+│
+├── lib/
+│   └── supabase/
+│       ├── server.ts                  # NEW — createServerClient() using @supabase/ssr
+│       ├── client.ts                  # NEW — createBrowserClient() using @supabase/ssr
+│       └── middleware.ts              # NEW — updateSession() helper
+│
+└── middleware.ts                      # NEW — project root, session refresh on every request
 ```
-
-### Structure Rationale
-
-- **`rig-vision.ts` at `src/lib/` level:** Peers with `planner.ts` — both are AI call modules, not domain types. The `lib/` level owns AI calls; `lib/helix/` owns domain types and the Knowledge Layer.
-- **`rig-mapping.ts` at `src/lib/` level:** The mapping layer is a translation concern bridging the physical rig domain and the Helix domain. It logically sits between `rig-vision.ts` (what the user has) and `planner.ts` (what Helix should use).
-- **`rig-intent.ts` inside `src/lib/helix/`:** RigIntent and SubstitutionEntry describe Helix-specific substitution concepts. They belong in the helix domain module alongside ToneIntentSchema and are exported through the existing `src/lib/helix/index.ts` barrel.
 
 ---
 
 ## Architectural Patterns
 
-### Pattern 1: Dedicated Vision Extraction Function
+### Pattern 1: Native Supabase Auth (not Auth.js adapter)
 
-**What:** `callRigVisionPlanner(images: Base64Image[])` is a standalone async function that makes one Claude API call with all images in a single message, using labeled content blocks ("Pedal 1:", "Pedal 2:"), and returns a `RigIntent`.
+**What:** Use Supabase Auth directly via `@supabase/ssr` for all auth operations, including Google OAuth and anonymous sign-in. Do NOT use the `@auth/supabase-adapter` with Auth.js.
 
-**When to use:** Every time the generate endpoint receives images[] in the request body.
+**When to use:** Any time user identity is needed in server components, route handlers, or client components.
 
-**Trade-offs:** One additional API call per generation (adds approximately 1-2 seconds latency). Benefit: the vision prompt is narrow and focused — it only asks "what pedals and knob positions do you see?" rather than also asking "what Helix preset should I build?"
+**Why not Auth.js Supabase adapter:** The `@auth/supabase-adapter` stores sessions in a separate `next_auth` schema and does not interface with Supabase Auth. This means Supabase's native `signInAnonymously()` and `linkIdentity()` for anonymous-to-authenticated upgrade are unavailable — which is the core mechanic of the anonymous-first requirement. Native Supabase Auth is the only supported path for this use case.
 
-**Note on structured output with vision:** The Claude API officially supports combining image content blocks with `output_config.format` (zodOutputFormat) in the same call — this is confirmed in the Anthropic structured outputs documentation. Either approach works for the vision call. Start without zodOutputFormat for simplicity. If extraction reliability is poor in testing, add `output_config` to the vision call with a RigIntentSchema JSON schema.
+**Trade-offs:**
+- No need for Auth.js `next-auth` package — one fewer dependency
+- Supabase Auth handles Google OAuth natively with fewer configuration steps
+- Supabase Auth handles PKCE flow natively for App Router compatibility
+- Locked to Supabase as auth provider (acceptable given Supabase is also the database)
 
-**Implementation shape:**
-
+**Example:**
 ```typescript
-// src/lib/rig-vision.ts
-import Anthropic from "@anthropic-ai/sdk";
-import { RigIntentSchema } from "@/lib/helix/rig-intent";
-import type { RigIntent } from "@/lib/helix/rig-intent";
+// src/lib/supabase/server.ts
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
-export interface Base64Image {
-  data: string;      // raw base64 string (strip "data:image/jpeg;base64," prefix)
-  mediaType: "image/jpeg" | "image/png" | "image/gif" | "image/webp";
-}
-
-export async function callRigVisionPlanner(
-  images: Base64Image[]
-): Promise<RigIntent> {
-  const client = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY! });
-
-  // Official docs: place images before text for best results
-  const contentBlocks: Anthropic.MessageParam["content"] = [
-    ...images.flatMap((img, i) => [
-      { type: "text" as const, text: `Pedal ${i + 1}:` },
-      {
-        type: "image" as const,
-        source: { type: "base64" as const, media_type: img.mediaType, data: img.data },
+export async function createSupabaseServerClient() {
+  const cookieStore = await cookies()
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll() },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            cookieStore.set(name, value, options)
+          )
+        },
       },
-    ]),
-    { type: "text" as const, text: buildRigExtractionPrompt() },
-  ];
-
-  const response = await client.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 2048,
-    messages: [{ role: "user", content: contentBlocks }],
-  });
-
-  const textBlock = response.content.find((b) => b.type === "text");
-  if (!textBlock || textBlock.type !== "text") throw new Error("No vision response");
-  const raw = JSON.parse(extractJsonFromText(textBlock.text));
-  return RigIntentSchema.parse(raw);
-}
-```
-
-### Pattern 2: Static Lookup Table in rig-mapping.ts
-
-**What:** `PEDAL_HELIX_MAP` is a curated constant — a typed `Record` mapping normalized physical pedal names (lowercase) to their best Helix equivalent with substitution metadata and knob translation functions.
-
-**When to use:** Always for physical-to-Helix mapping. Never let AI decide the mapping at generation time.
-
-**Trade-offs:** Requires up-front curation effort (estimated 40-60 entries to cover most common pedals at launch). Benefit: deterministic, auditable, improvable without model changes. This follows the same philosophy as the existing Knowledge Layer.
-
-**Implementation shape:**
-
-```typescript
-// src/lib/rig-mapping.ts
-
-import type { DeviceTarget } from "@/lib/helix";
-import type { RigIntent, SubstitutionEntry } from "@/lib/helix/rig-intent";
-
-export interface PedalMapEntry {
-  helixModel: string;      // Exact name from EFFECT_NAMES or AMP_NAMES
-  helixCategory: "distortion" | "amp" | "modulation" | "delay" | "reverb" | "dynamics";
-  reason: string;          // Human-readable substitution rationale
-  confidence: "direct" | "close" | "approximate";
-  // Optional: knob name -> function converting physical % to Helix 0-1
-  knobTranslation?: Record<string, (knobPercent: number) => number>;
-}
-
-export const PEDAL_HELIX_MAP: Record<string, PedalMapEntry> = {
-  // Tube Screamer variants
-  "ibanez ts9":           { helixModel: "Teemah!", helixCategory: "distortion",
-                            confidence: "close", reason: "..." },
-  "ibanez ts808":         { helixModel: "Teemah!", helixCategory: "distortion",
-                            confidence: "direct", reason: "..." },
-  // Boss overdrives
-  "boss sd-1":            { helixModel: "Minotaur", helixCategory: "distortion",
-                            confidence: "close", reason: "..." },
-  "boss od-1x":           { helixModel: "Minotaur", helixCategory: "distortion",
-                            confidence: "approximate", reason: "..." },
-  // ... 40-60 entries at launch covering most common stomp boxes
-};
-
-export function mapRigToToneIntent(
-  rigIntent: RigIntent,
-  device: DeviceTarget,
-): { substitutions: SubstitutionEntry[]; toneContext: string; unmappedPedals: string[] } {
-  const substitutions: SubstitutionEntry[] = [];
-  const unmappedPedals: string[] = [];
-
-  for (const pedal of rigIntent.pedals) {
-    const lookupKey = pedal.fullName.toLowerCase();
-    const entry = PEDAL_HELIX_MAP[lookupKey];
-
-    if (!entry) {
-      // Fuzzy fallback: try brand + model combination
-      const fallbackKey = `${pedal.brand.toLowerCase()} ${pedal.model.toLowerCase()}`;
-      const fallback = PEDAL_HELIX_MAP[fallbackKey];
-      if (!fallback) {
-        unmappedPedals.push(pedal.fullName);
-        continue;
-      }
     }
-
-    const mapEntry = entry ?? PEDAL_HELIX_MAP[`${pedal.brand.toLowerCase()} ${pedal.model.toLowerCase()}`]!;
-    const parameterMapping = translateKnobs(pedal.knobPositions, mapEntry);
-
-    substitutions.push({
-      physicalPedal: pedal.fullName,
-      helixModel: mapEntry.helixModel,
-      substitutionReason: mapEntry.reason,
-      parameterMapping,
-      confidence: mapEntry.confidence,
-    });
-  }
-
-  const toneContext = buildToneContextString(substitutions, unmappedPedals);
-  return { substitutions, toneContext, unmappedPedals };
+  )
 }
 ```
 
-### Pattern 3: Planner Hint Injection via toneContext
+### Pattern 2: Anonymous-First with Identity Linking
 
-**What:** The existing `callClaudePlanner` receives an optional `toneContext` string that is appended to the conversation text before the API call. This string summarizes the rig mapping result so Claude selects the already-mapped Helix models.
+**What:** On first page load, call `supabase.auth.signInAnonymously()` if no session exists. The user gets a real Supabase user ID immediately, but with `is_anonymous: true` in their JWT. When they click "Login with Google," call `supabase.auth.linkIdentity({ provider: 'google' })` to upgrade that existing session — all data (conversations, presets) migrated automatically because the user ID does not change.
 
-**When to use:** When `rigIntent` is present (images were provided) or when the API route has a mapping result.
+**When to use:** Anonymous-first auth is the core UX requirement: non-logged-in users get full functionality, login unlocks persistence history.
 
-**Trade-offs:** Minimal change to `planner.ts`. The toneContext is appended to the user-facing conversation text block, not embedded in the system prompt. This preserves the existing prompt cache on the system prompt — the cached system prompt is not invalidated by per-request rig context.
+**Critical requirement:** The Supabase project must have "Enable Manual Linking" turned on in the Auth settings dashboard. Without this, `linkIdentity()` fails silently.
 
-**Implementation change to planner.ts:**
+**Trade-offs:**
+- Anonymous sessions persist only in the current browser — clearing cookies loses the history, which is acceptable per the requirements (logging in is what creates durable persistence)
+- Known issue: user metadata (avatar_url, email, full_name) may not populate immediately after linking; it appears on the next sign-in. Plan for a re-fetch on the post-link callback.
+- RLS policies must distinguish between anonymous users (read own data only) and authenticated users (read own data only) using the `is_anonymous` claim
 
+**Example:**
 ```typescript
-// MODIFIED signature — toneContext is optional, backwards-compatible
-export async function callClaudePlanner(
-  messages: Array<{ role: string; content: string }>,
-  device?: DeviceTarget,
-  toneContext?: string,   // NEW — rig mapping summary if images were provided
-): Promise<ToneIntent> {
-  // ... (client setup, modelList, systemPrompt — all unchanged) ...
-
-  let conversationText = messages
-    .map((msg) => `${msg.role}: ${msg.content}`)
-    .join("\n\n");
-
-  // Append rig context after conversation — does not invalidate system prompt cache
-  if (toneContext) {
-    conversationText +=
-      `\n\n[RIG CONTEXT]\n${toneContext}\n` +
-      `Please base your amp and effect model selections primarily on the ` +
-      `mapped Helix equivalents listed above.`;
+// In a client component — initialize session on mount
+useEffect(() => {
+  const initSession = async () => {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      await supabase.auth.signInAnonymously()
+    }
   }
+  initSession()
+}, [])
 
-  // API call — structure unchanged
-  const response = await client.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 4096,
-    system: [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }],
-    messages: [{ role: "user", content: conversationText }],
-    output_config: { format: zodOutputFormat(ToneIntentSchema) },
-  });
-  // ... rest unchanged ...
+// Login with Google — links to existing anonymous session
+const handleLogin = async () => {
+  await supabase.auth.linkIdentity({
+    provider: 'google',
+    options: { redirectTo: `${window.location.origin}/auth/callback` }
+  })
+}
+```
+
+### Pattern 3: Server Component Sidebar with Client Island Toggle
+
+**What:** The sidebar shell and chat history list are server components — they fetch conversation data from Supabase at render time and ship zero client JavaScript for the data layer. The toggle button (open/close) is a small client component island imported inside the server component shell.
+
+**When to use:** Chat history list with server-side data fetching. Layout-level component that persists across navigation.
+
+**Trade-offs:**
+- Server component fetches are faster (no client-side data fetch waterfall) and more secure (no exposure of Supabase client credentials in browser)
+- The sidebar mounts in `layout.tsx` so it persists across child page navigations without re-mounting — the layout non-unmounting behavior handles sidebar state preservation automatically
+- Client toggle state (open/closed) does not survive page reload — acceptable for a sidebar
+
+**Example:**
+```typescript
+// src/components/sidebar/ChatHistoryList.tsx (Server Component)
+import { createSupabaseServerClient } from '@/lib/supabase/server'
+
+export async function ChatHistoryList() {
+  const supabase = await createSupabaseServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return null
+
+  const { data: conversations } = await supabase
+    .from('conversations')
+    .select('id, title, updated_at, device')
+    .eq('user_id', user.id)
+    .order('updated_at', { ascending: false })
+    .limit(50)
+
+  return (
+    <ul>
+      {conversations?.map(c => (
+        <li key={c.id}>{c.title}</li>
+      ))}
+    </ul>
+  )
+}
+```
+
+### Pattern 4: Signed Upload URLs for Preset Files
+
+**What:** When generating a preset, the `/api/generate` route creates a Supabase Storage signed upload URL via `supabase.storage.from('presets').createSignedUploadUrl(path)`, returns it to the client alongside the preset binary. The client uploads the preset file directly to Supabase Storage using `supabase.storage.from('presets').uploadToSignedUrl(path, token, file)`. The `/api/generate` route then stores the public download URL in the `conversations` table.
+
+**Why not upload from the serverless function:** The preset file is generated in memory inside the serverless function. Uploading from the function is possible but requires the service role key in server code. The signed URL pattern keeps the service role key away from clients while still routing the binary directly to Supabase Storage (bypassing serverless size limits). Given preset files are small (.hlx is typically 10–50KB), either approach works — the signed URL pattern is used here for consistency and security clarity.
+
+**Trade-offs:**
+- Two-step: generate URL on server, upload from client — slightly more complex orchestration
+- Signed URLs expire after 2 hours — not a concern for the immediate post-generate upload
+- Preset files are very small (~10–50KB) — no file size concerns
+
+**Example:**
+```typescript
+// In /api/generate/route.ts — after building the preset file
+if (conversationId && userId) {
+  const supabase = await createSupabaseServerClient()
+  const path = `${userId}/${conversationId}/preset${fileExtension}`
+  const { data } = await supabase.storage
+    .from('presets')
+    .createSignedUploadUrl(path)
+
+  // Return signed URL to client alongside preset data
+  return NextResponse.json({
+    preset: hlxFile,
+    presetUploadToken: data?.token,
+    presetUploadPath: path,
+    // ... other existing fields
+  })
 }
 ```
 
@@ -419,208 +316,317 @@ export async function callClaudePlanner(
 
 ## Data Flow
 
-### Full Request Flow with Images
+### Request Flow: New Chat (Anonymous User)
 
 ```
-User attaches pedal photos + clicks "Generate Preset"
+User opens app (no session)
     |
     v
-page.tsx: FileReader.readAsDataURL -> strip data URL prefix -> base64 strings
-          Validate: max 3 images, max 1.5 MB each (before encoding)
-          Compress/resize to <= 1 MP using canvas API if needed
+layout.tsx loads — Supabase middleware refreshes/creates anonymous session
     |
     v
-POST /api/generate
-  body: { messages[], device, images?: [{ data, mediaType }] }
-    |
-    +-- if images[] present:
-    |       |
-    |       v
-    |   callRigVisionPlanner(images) -> RigIntent
-    |       |
-    |       v
-    |   mapRigToToneIntent(rigIntent, device)
-    |       -> { substitutions[], toneContext, unmappedPedals[] }
-    |
-    +-- callClaudePlanner(messages, device, toneContext?) -> ToneIntent
-    |
-    +-- assembleSignalChain(toneIntent, device) -> BlockSpec[]   [existing]
-    +-- resolveParameters(chain, toneIntent) -> BlockSpec[]      [existing]
-    +-- buildSnapshots(chain, toneIntent.snapshots) -> Snapshot[] [existing]
-    +-- validatePresetSpec(presetSpec, device)                    [existing]
-    +-- buildHlxFile / buildPgpFile                               [existing]
+page.tsx mounts — anonymous user ID available from session
     |
     v
-Response: {
-  preset,                    // existing
-  summary,                   // existing
-  spec,                      // existing
-  toneIntent,                // existing
-  device,                    // existing
-  fileExtension,             // existing
-  substitutions?: SubstitutionEntry[],   // NEW — only if images provided
-  unmappedPedals?: string[],             // NEW
-}
+User chats with Gemini (/api/chat) — messages stored in React useState only
     |
     v
-page.tsx: render SubstitutionCard if substitutions[] present
+User clicks "Generate" — POST /api/generate { messages, device }
+    |
+    v
+/api/generate builds preset (existing pipeline, unchanged)
+    |
+    v (NO conversationId provided — anonymous flow)
+Returns preset data to client (no DB write, no Storage upload)
+    |
+    v
+Client downloads preset file (existing behavior, unchanged)
 ```
 
-### Text-Only Rig Description Flow
-
-When the user types "TS9 -> Blues Breaker -> Fender Twin Reverb" without images:
+### Request Flow: Save Conversation (Authenticated User)
 
 ```
-POST /api/generate
-  body: { messages[], device }  (no images field)
-    |
-    +-- No vision step (images absent)
-    +-- callClaudePlanner(messages, device)  <- unchanged behavior
-    |   The planner reads the text description from messages[] and uses
-    |   its training knowledge to select appropriate Helix models.
+User clicks "Login with Google"
     |
     v
-Response: { preset, summary, spec, toneIntent, device, fileExtension }
-  (no substitutions field — UI shows nothing extra)
+supabase.auth.linkIdentity({ provider: 'google' }) — redirects to Google
+    |
+    v
+/auth/callback route handles PKCE exchange, merges identity to anonymous user
+    |
+    v
+router.refresh() — sidebar re-renders with user's Google name/avatar
+    |
+    v
+User chats with Gemini (/api/chat) — POST includes conversationId
+    |
+    v (first message in this session)
+/api/chat creates conversation row if conversationId is new, saves message
+    |
+    v
+User clicks "Generate" — POST /api/generate { messages, device, conversationId }
+    |
+    v
+/api/generate runs existing pipeline (unchanged)
+    |
+    v
+/api/generate creates signed upload URL, saves preset_url to conversations row
+    |
+    v
+Returns preset + presetUploadToken + presetUploadPath to client
+    |
+    v
+Client uploads preset binary to Supabase Storage via signed URL
+    |
+    v
+Client downloads same preset file (existing behavior)
+    |
+    v
+Sidebar updates (next navigation or router.refresh() call) — new conversation appears
 ```
 
-Text-only rig descriptions require zero new backend logic. The existing planner handles them without modification because the conversation history already contains the gear description.
-
-### Client-Side Image Handling
+### Request Flow: Resume Conversation
 
 ```
-User selects files via file input or drag-drop
+User clicks a past conversation in sidebar
     |
     v
-Validate in browser:
-  - Accept: image/jpeg, image/png, image/gif, image/webp (Claude API limits)
-  - Max 3 images per request (stays under Vercel 4.5 MB body limit)
-  - Max 1.5 MB per image before base64 encoding (~2 MB encoded)
+Client fetches GET /api/conversations/{id} — returns messages[], preset_url, device
     |
     v
-Compress/resize if needed:
-  - Target: <= 1 megapixel (1000x1000 px equivalent)
-  - Target: <= 1568 px on longest edge (Claude docs optimal dimension)
-  - Use canvas API: drawImage -> toBlob with JPEG quality 0.85
+page.tsx repopulates messages state from response
     |
     v
-FileReader.readAsDataURL -> "data:image/jpeg;base64,<data>"
-Strip prefix -> raw base64 string
+User continues chatting (sends more messages, generates new preset)
     |
     v
-Include in POST body: images: [{ data: "<base64>", mediaType: "image/jpeg" }]
+/api/chat appends new messages to existing conversation
+    |
+    v
+/api/generate overwrites preset_url in conversations row with new file
+```
+
+### State Management
+
+```
+Supabase Auth (source of truth for user identity)
+    |
+    v (session cookie on every request)
+Server Components (read session via createServerClient)
+    |
+    v (props to client components)
+Client Components (supabase.auth.onAuthStateChange for reactive updates)
+
+Conversation List (server-fetched in ChatHistoryList)
+    |
+    v (re-fetched on router.refresh() or navigation)
+Sidebar updates — layout non-unmounting preserves scroll position
+
+Active Chat State (React useState in page.tsx — unchanged from v1.3)
+    conversationId: string | null
+    messages: Message[]
+    device: DeviceTarget
+    rigIntent: RigIntent | null
+```
+
+---
+
+## Database Schema
+
+### conversations
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | `uuid` DEFAULT `gen_random_uuid()` | Primary key |
+| `user_id` | `uuid` NOT NULL | References `auth.users(id)` |
+| `title` | `text` | Auto-generated from first user message (truncated to 60 chars) |
+| `device` | `text` | `'helix_lt' | 'helix_floor' | 'pod_go'` — device used in last generation |
+| `preset_url` | `text` | Supabase Storage URL of most recent preset file, nullable |
+| `created_at` | `timestamptz` DEFAULT `now()` | |
+| `updated_at` | `timestamptz` DEFAULT `now()` | Updated on each message insert |
+
+### messages
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | `uuid` DEFAULT `gen_random_uuid()` | Primary key |
+| `conversation_id` | `uuid` NOT NULL | References `conversations(id)` |
+| `role` | `text` NOT NULL | `'user' | 'assistant'` |
+| `content` | `text` NOT NULL | Full message text |
+| `created_at` | `timestamptz` DEFAULT `now()` | |
+
+### Row Level Security Policies
+
+All tables require RLS enabled. Core policies:
+
+```sql
+-- conversations: users see only their own rows
+CREATE POLICY "users_own_conversations" ON conversations
+  FOR ALL USING (auth.uid() = user_id);
+
+-- messages: users see messages in their own conversations
+CREATE POLICY "users_own_messages" ON messages
+  FOR ALL USING (
+    conversation_id IN (
+      SELECT id FROM conversations WHERE user_id = auth.uid()
+    )
+  );
+
+-- Storage: users read/write only their own prefix
+CREATE POLICY "users_own_presets" ON storage.objects
+  FOR ALL USING (
+    bucket_id = 'presets' AND
+    (storage.foldername(name))[1] = auth.uid()::text
+  );
 ```
 
 ---
 
 ## Integration Points
 
-### New vs Modified vs Existing Files — Explicit
+### New vs. Modified
 
-**New files (create from scratch):**
+| File | Status | Change |
+|------|--------|--------|
+| `src/app/layout.tsx` | MODIFIED | Add sidebar shell div, Supabase session context, `<ChatSidebar>` |
+| `src/app/page.tsx` | MODIFIED | Add `conversationId` state, pass to API calls, handle `presetUploadToken` response |
+| `src/app/api/chat/route.ts` | MODIFIED | Accept optional `conversationId`, persist messages to Supabase when present |
+| `src/app/api/generate/route.ts` | MODIFIED | Accept optional `conversationId`, create signed upload URL, save `preset_url` |
+| `src/lib/helix/*` | UNCHANGED | All Knowledge Layer files untouched |
+| `src/lib/planner.ts` | UNCHANGED | Claude planner untouched |
+| `src/lib/gemini.ts` | UNCHANGED | Gemini chat untouched |
+| `src/lib/rig-*.ts` | UNCHANGED | Rig mapping and vision untouched |
 
-| File | Exports | Purpose |
-|------|---------|---------|
-| `src/lib/helix/rig-intent.ts` | `PhysicalPedalSchema`, `RigIntentSchema`, `SubstitutionEntrySchema`, `SubstitutionMapSchema` and inferred types | All Zod schemas for the rig domain |
-| `src/lib/rig-vision.ts` | `callRigVisionPlanner(images[])`, `Base64Image` | Claude vision API call |
-| `src/lib/rig-mapping.ts` | `PEDAL_HELIX_MAP`, `mapRigToToneIntent()` | Static pedal lookup + translation |
+### External Services
 
-**Modified files (specific changes only):**
+| Service | Integration Pattern | Notes |
+|---------|---------------------|-------|
+| Supabase Auth | Native `@supabase/ssr` — cookie-based, SSR-compatible | Google OAuth via Supabase dashboard config (no Auth.js needed) |
+| Supabase PostgreSQL | `supabase-js` client in route handlers, server components | RLS enforces per-user isolation at DB level |
+| Supabase Storage | Signed upload URL — server creates URL, client uploads binary | Private bucket, RLS on `storage.objects` |
+| Google OAuth 2.0 | Configured in Supabase dashboard (not Google Cloud Console directly) | Supabase handles callback URL, token exchange |
 
-| File | Change | Lines affected |
-|------|--------|----------------|
-| `src/app/page.tsx` | Add file input or drag-drop; add SubstitutionCard component; send images[] in generate POST | New state: `images`, `substitutions`; new UI sections |
-| `src/app/api/generate/route.ts` | Parse images from body; call vision + mapping if present; add substitutions to response | ~20 new lines in try block |
-| `src/lib/planner.ts` | Add `toneContext?: string` as third parameter to `callClaudePlanner`; append to conversationText if present | ~8 lines |
-| `src/lib/helix/index.ts` | Add exports for rig-intent types | ~4 lines |
+### Internal Boundaries
 
-**Unchanged files (zero modification):**
-
-```
-src/lib/helix/tone-intent.ts     ToneIntentSchema is device-agnostic; rig data never enters it
-src/lib/helix/chain-rules.ts     Receives ToneIntent as before; no rig awareness needed
-src/lib/helix/param-engine.ts    Receives ToneIntent as before
-src/lib/helix/snapshot-engine.ts Receives ToneIntent as before
-src/lib/helix/preset-builder.ts  Receives PresetSpec as before
-src/lib/helix/podgo-builder.ts   Receives PresetSpec as before
-src/lib/helix/models.ts          Model catalog unchanged
-src/lib/helix/types.ts           Core types unchanged
-src/lib/helix/validate.ts        Validation unchanged
-src/lib/helix/config.ts          Unchanged
-src/lib/helix/param-registry.ts  Unchanged
-src/lib/gemini.ts                Unchanged
-```
+| Boundary | Communication | Notes |
+|----------|---------------|-------|
+| `page.tsx` ↔ `/api/chat` | HTTP POST — existing + optional `conversationId` field | Backward compatible: no `conversationId` = existing stateless behavior |
+| `page.tsx` ↔ `/api/generate` | HTTP POST — existing + optional `conversationId`; response + optional `presetUploadToken` | Backward compatible: anonymous users get same response as before |
+| `ChatHistoryList` ↔ Supabase | Direct server component query via `createServerClient()` | No API route needed; server component reads DB directly |
+| `layout.tsx` ↔ Supabase | Session check in `layout.tsx` to conditionally render sidebar | Uses `createServerClient()` in async server component |
+| `middleware.ts` ↔ Supabase | `updateSession()` on every request to refresh session cookie | Required — without this, session expires unexpectedly |
 
 ---
 
-## Suggested Build Order for Phases
+## Build Order
 
-Dependencies determine order. Each phase must be completable and testable independently before the next begins.
+Dependencies determine build order strictly. Each phase must be independently testable before the next begins.
 
-### Phase 1: New Schemas and Types
+### Phase 1: Supabase Project Setup + Auth Infrastructure
 
-**Files:** `src/lib/helix/rig-intent.ts`, update `src/lib/helix/index.ts`
+**What:** Create Supabase project, configure database schema, install packages, create server/client utilities, set up middleware.
 
-**Why first:** Every other new module imports from here. RigIntentSchema, PhysicalPedalSchema, SubstitutionEntrySchema, and SubstitutionMapSchema must exist before any function can reference them. Zero external dependencies — compiles and validates with just Zod.
+**Why first:** Every other phase depends on being able to create a Supabase client. The schema must exist before any data can be written. The middleware must be in place before any session-dependent component works.
 
-**Done when:** All types compile, Zod schemas parse correctly against example data, exports visible from `@/lib/helix`.
+**Delivers:**
+- Supabase project created, PostgreSQL tables `conversations` and `messages` created with RLS
+- Storage bucket `presets` created with RLS policy
+- `npm install @supabase/supabase-js @supabase/ssr` installed
+- `src/lib/supabase/server.ts`, `src/lib/supabase/client.ts`, `src/lib/supabase/middleware.ts`
+- `middleware.ts` at project root calling `updateSession`
+- `.env.local` with `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+- Supabase Google OAuth provider configured in dashboard
 
-**Estimated scope:** ~60 lines.
+**Does NOT touch:** Any existing routes, page.tsx, layout.tsx, or any existing lib code.
 
-### Phase 2: Pedal Mapping Table
+**Test gate:** `createSupabaseServerClient()` runs without error in a test route handler. An anonymous user can be created via `supabase.auth.signInAnonymously()` in a client component.
 
-**Files:** `src/lib/rig-mapping.ts`
+---
 
-**Why second:** Pure data plus deterministic transformation logic. No dependency on the Claude API. Can be built and tested without any AI calls. The quality of this table determines substitution quality — it deserves its own phase to be built carefully.
+### Phase 2: Anonymous Sign-In + Google OAuth Link Flow
 
-**Target at launch:** 40-60 entries covering:
-- All major Boss overdrives, distortions, modulations (SD-1, DS-1, BD-2, OD-3, CE-5, CH-1, BF-3)
-- All Ibanez Tube Screamer variants (TS5, TS7, TS9, TS808, TS10)
-- ProCo Rat family
-- Electro-Harmonix Big Muff variants (NYC, Green Russian, Triangle)
-- Fulltone OCD, Full-Drive 2
-- MXR Phase 90, Dyna Comp, Carbon Copy
-- Common amp names in text descriptions (Fender Twin -> Archon 50 Clean, Marshall JCM800 -> Brit 2204, Mesa Boogie -> Cali IV Rhythm 2)
+**What:** Implement the anonymous-first auth UX. On mount, sign in anonymously if no session. Add Login/Logout button component. Implement Google OAuth link flow with PKCE callback route.
 
-**Depends on:** Phase 1 types (SubstitutionEntry, SubstitutionMap).
+**Why before persistence:** The auth user ID is the foreign key for all conversations and messages. The user ID must exist before any data can be written to the database.
 
-**Done when:** `mapRigToToneIntent()` correctly maps known pedals, handles unknown pedals via `unmappedPedals[]`, and returns a valid toneContext string.
+**Delivers:**
+- `src/app/auth/callback/route.ts` — PKCE code exchange, redirect back to app
+- `src/components/auth/AuthButton.tsx` — "Login with Google" when anonymous, avatar + logout when authenticated
+- `page.tsx` MODIFIED — `useEffect` to call `signInAnonymously()` on mount if no session
+- `layout.tsx` MODIFIED — render `<AuthButton>` in header area
+- "Enable Manual Linking" confirmed enabled in Supabase dashboard
 
-### Phase 3: Vision Extraction
+**Does NOT touch:** Conversation list, message persistence, file storage.
 
-**Files:** `src/lib/rig-vision.ts`
+**Test gate:** Open app as new user — anonymous session created (confirm in Supabase dashboard Auth > Users). Click Login with Google — Google OAuth flow completes, user record in Supabase shows `email` populated and `is_anonymous: false`. Check that user ID is unchanged between anonymous and authenticated state (same UUID in Supabase dashboard before and after linking).
 
-**Why third:** References Phase 1 types. Tested against Phase 2 mapping to verify end-to-end flow. The vision prompt can be tuned independently of any planner changes.
+---
 
-**Depends on:** Phase 1 types. Claude API key in env.
+### Phase 3: Conversation CRUD Routes
 
-**Done when:** `callRigVisionPlanner([pedal_photo])` returns a `RigIntent` with correct brand, model, and approximate knob positions for a known test pedal photo.
+**What:** Build API routes that create, list, and fetch conversations and messages. These are the persistence layer that the frontend will call.
 
-**Testing approach:** Use a high-quality JPEG photo of a Boss SD-1 or Ibanez TS9 as the baseline test case. Both are well-documented pedals Claude will recognize reliably.
+**Why before sidebar:** The sidebar needs real data to display. Build the data layer before the display layer.
 
-### Phase 4: API Route and Planner Integration
+**Delivers:**
+- `POST /api/conversations` — create new conversation row, return `conversationId`
+- `GET /api/conversations` — list all conversations for current user (ordered by `updated_at` desc)
+- `GET /api/conversations/[id]` — fetch conversation + all messages, return for resume flow
+- `PATCH /api/conversations/[id]` — update title (auto-titled from first message)
 
-**Files:** `src/app/api/generate/route.ts`, `src/lib/planner.ts`
+**Note:** All routes must use `createSupabaseServerClient()` and verify `user.id` matches the resource's `user_id` — do not rely solely on RLS (defense in depth).
 
-**Why fourth:** Wires the full pipeline together. The route now calls vision -> mapping -> planner in sequence when images are present. The planner receives toneContext. Both new code paths are tested end-to-end.
+**Does NOT touch:** page.tsx chat flow, sidebar UI, file storage.
 
-**Depends on:** Phases 1, 2, 3 complete. All new imports resolvable.
+**Test gate:** Use a REST client (curl or Postman) to POST a new conversation and GET the list. Verify RLS blocks access from a different user ID.
 
-**Done when:** A POST to `/api/generate` with a pedal photo produces a preset that reflects the mapped pedal selections in ToneIntent (planner selected "Teemah!" when user uploaded a TS9 photo), and the response JSON includes `substitutions[]`.
+---
 
-### Phase 5: Browser Image Upload UI and Substitution Card
+### Phase 4: Chat and Generate Route Persistence
 
-**Files:** `src/app/page.tsx`
+**What:** Modify `/api/chat` and `/api/generate` to optionally persist messages and preset URLs when a `conversationId` is provided. Anonymous users (no `conversationId`) continue to work exactly as before.
 
-**Why fifth:** UI is the last layer. The backend API contract (what fields go in the request, what comes back in the response) must be stable before building UI against it.
+**Why after routes:** The conversation must exist in the database before messages can be inserted into it. Phase 3's routes handle conversation creation; these routes handle message and preset insertion.
 
-**UI changes:**
-- File input or drag-drop area in the chat input section (below the textarea)
-- Image thumbnail previews with remove button
-- Client-side size validation and compression
-- `SubstitutionCard` component rendering `substitutions[]` in the preset result
+**Delivers:**
+- `src/app/api/chat/route.ts` MODIFIED — if `conversationId` in body, insert each message to `messages` table; update `conversations.updated_at`
+- `src/app/api/generate/route.ts` MODIFIED — if `conversationId` in body, create signed upload URL via Supabase Storage, store `preset_url` in `conversations` row, return `presetUploadToken` + `presetUploadPath` to client
 
-**Done when:** User attaches 1-3 pedal photos, generates a preset, and sees the substitution card showing "TS9 Tube Screamer -> Teemah! — closest gain structure and mid-hump EQ" in the results view.
+**Backward compatibility:** Both routes must remain fully functional when no `conversationId` is provided. Existing anonymous generate flow must not change.
+
+**Test gate:**
+- POST `/api/chat` WITHOUT `conversationId` — identical response to v1.3 (no regression)
+- POST `/api/chat` WITH `conversationId` — message appears in Supabase messages table
+- POST `/api/generate` WITH `conversationId` — `preset_url` written to conversations table, `presetUploadToken` returned in response
+- Verify Anthropic API response still shows `cache_read_input_tokens > 0` (prompt caching not broken by persistence logic)
+
+---
+
+### Phase 5: Chat Sidebar UI
+
+**What:** Add the pull-out sidebar panel with conversation history list. Wire the sidebar to the Phase 3 API routes. Add "new chat" button. Implement conversation resume by loading messages from `/api/conversations/[id]`.
+
+**Why last:** Requires stable API routes (Phase 3) and stable conversation creation flow (Phase 4). UI is the outermost layer.
+
+**Delivers:**
+- `src/components/sidebar/ChatSidebar.tsx` — outer shell, handles open/close toggle state (client component)
+- `src/components/sidebar/ChatHistoryList.tsx` — server component that fetches and renders conversation list
+- `src/components/sidebar/SidebarToggle.tsx` — hamburger button, client component
+- `src/app/layout.tsx` MODIFIED — sidebar mounted in layout (persists across navigation), flex layout with sidebar + main content
+- `src/app/page.tsx` MODIFIED — `conversationId` state, auto-creates conversation on first message send, handles resume flow from sidebar click (load messages from API)
+- "New chat" button creates new conversation, resets `messages` state, clears `conversationId`
+
+**Sidebar interaction with existing page flow:**
+- The sidebar lives in `layout.tsx`, not in `page.tsx`. This is critical — `page.tsx` remains the single-page chat interface it has always been.
+- When user clicks a past conversation: page.tsx receives the `conversationId` (via URL param or event), fetches messages from `/api/conversations/[id]`, populates `messages` state.
+- When user starts a new chat: `conversationId` set to `null`, `messages` reset to `[]`. Sidebar reflects this once a new conversation is created on first message send.
+- The sidebar toggle uses CSS transform (`translateX`) not conditional rendering — keeps the server-fetched list mounted and avoids re-fetch on every open.
+
+**Test gate:**
+- Open sidebar — past conversations appear
+- Click a conversation — chat area repopulates with saved messages
+- Generate a preset from resumed conversation — new preset overwrites old `preset_url` in Supabase
+- Click "New Chat" — sidebar closes (or stays open), chat area clears, new conversationId assigned on first message send
 
 ---
 
@@ -628,90 +634,88 @@ Dependencies determine order. Each phase must be completable and testable indepe
 
 | Scale | Architecture Adjustments |
 |-------|--------------------------|
-| 0-1k users | Two sequential Claude calls per generation (vision + planner). Estimated ~$0.008-0.020 per generation with images (vision adds ~1600 tokens per image). Acceptable on free tier. |
-| 1k-100k users | Vision call latency dominates if images are large. Enforce aggressive client-side compression (target 500-800px max). Consider `cache_control: ephemeral` on the vision system prompt if using one. |
-| 100k+ users | PEDAL_HELIX_MAP maintenance becomes a concern — consider migrating to a JSON data file or database. Consider parallelizing vision + an optimistic planner call (cancel if vision fails). |
+| 0–1k users | Current plan works. Supabase free tier (50k MAU). No optimizations needed. |
+| 1k–10k users | Add Supabase connection pooling (PgBouncer, already included in Supabase). Cache conversation list with `revalidate` in server components. Consider rate-limiting auth routes. |
+| 10k+ users | Supabase Pro tier for higher connection limits and larger storage. Add pagination to conversation list (currently capped at 50). Consider caching conversation lists in Redis (Upstash) to reduce DB load on sidebar renders. |
 
-### Scaling Priorities
+**First bottleneck:** Supabase free tier pauses projects after 1 week of inactivity. This is a hobbyist-tier concern; upgrade to Pro ($25/month) removes it. Not an architecture problem.
 
-1. **First bottleneck:** Vercel 4.5 MB body limit with multiple large images. Prevention: enforce ≤ 1.5 MB per image and ≤ 3 images client-side before encoding. Target ≤ 1 MB total base64 payload in normal use.
-
-2. **Second bottleneck:** Two sequential API calls increasing latency to 6-10 seconds for image-based generation (vs. 3-5 seconds for text-only). If this is unacceptable, consider streaming a "Analyzing your rig..." progress indicator while the vision call runs.
+**Second bottleneck:** The conversation list is re-fetched on every navigation that causes a layout re-render. Add `revalidate: 60` to the server component fetch to cache for 60 seconds. For most users, slightly stale sidebar data is acceptable.
 
 ---
 
 ## Anti-Patterns
 
-### Anti-Pattern 1: Let AI Handle the Physical-to-Helix Mapping in the Planner Prompt
+### Anti-Pattern 1: Using Auth.js `@auth/supabase-adapter` with Supabase
 
-**What people do:** Add the pedal photos directly to the existing `callClaudePlanner` call and instruct Claude to "pick the closest Helix equivalent" in the same prompt that generates ToneIntent.
+**What people do:** Install both `next-auth` and `@supabase/supabase-js`, use the community Supabase adapter to store Auth.js sessions in Supabase tables.
 
-**Why it's wrong:** The mapping result is not auditable. When Claude maps a Big Muff to a high-gain amp model instead of a fuzz distortion block, you cannot fix it without changing the planner prompt and retesting all existing tone generation. The mapping and creative-selection concerns are entangled.
+**Why it's wrong:** The adapter stores sessions in a separate `next_auth` schema that does not interface with Supabase Auth. This means `signInAnonymously()` and `linkIdentity()` — the core mechanics of the anonymous-first auth requirement — are unavailable. You end up with two separate auth systems. The adapter is not maintained by Supabase.
 
-**Do this instead:** Two-step. Extract with `callRigVisionPlanner`, map deterministically with `PEDAL_HELIX_MAP`, pass result as toneContext hint to planner.
-
-### Anti-Pattern 2: Extend ToneIntentSchema with Rig Fields
-
-**What people do:** Add `rigPedals?: PhysicalPedal[]` or `substitutions?: SubstitutionEntry[]` directly to ToneIntentSchema.
-
-**Why it's wrong:** ToneIntent is the AI output contract. It describes which Helix models to use, not what physical gear was mapped. Mixing the two schemas creates a contract that is part-AI-output, part-pre-processed infrastructure data. The Knowledge Layer would receive fields it never uses and the schema becomes harder to reason about.
-
-**Do this instead:** Keep ToneIntent exactly as-is. Substitutions travel alongside ToneIntent in the API response as a parallel field (`substitutions?: SubstitutionEntry[]`), not inside it.
-
-### Anti-Pattern 3: Accept Image Uploads as multipart/form-data in the API Route
-
-**What people do:** Use multipart/form-data file upload in the Next.js App Router API route, decode the uploaded file server-side, then pass to Claude.
-
-**Why it's wrong:** Vercel serverless functions have a 4.5 MB request body limit and the Next.js App Router does not have a built-in multipart streaming parser. Large image uploads will trigger 413 errors before reaching the handler.
-
-**Do this instead:** Encode images in the browser before sending. Use `FileReader.readAsDataURL`, strip the data URL prefix, send the raw base64 string in the existing JSON body alongside messages. Enforce size limits client-side so the request body stays under 3 MB total.
-
-### Anti-Pattern 4: One Claude API Call Per Pedal Photo
-
-**What people do:** Iterate over `images[]` and call `callRigVisionPlanner` once per image.
-
-**Why it's wrong:** The Claude API supports up to 100 images in a single messages call. Calling once per photo multiplies API call count, latency, and cost proportionally with the number of photos. With 3 photos, this triples the cost and adds 3-6 seconds of additional latency.
-
-**Do this instead:** Pass all images in a single call with labeled content blocks ("Pedal 1:", "Pedal 2:") and ask Claude to return a `pedals[]` array with one entry per image. The official Claude vision documentation demonstrates multi-image comparison in a single call.
-
-### Anti-Pattern 5: Store Base64 Images in React State Across Re-renders
-
-**What people do:** Store the full base64 strings in React state so they persist through the chat conversation.
-
-**Why it's wrong:** A 1.5 MB image becomes a 2 MB base64 string. Three images = 6 MB in component state, causing slow re-renders. The images are only needed at the moment "Generate Preset" is clicked.
-
-**Do this instead:** Store `File` objects in React state (or a ref). Convert to base64 only in the `generatePreset()` function immediately before the API call. Release after the call completes.
+**Do this instead:** Use native Supabase Auth with `@supabase/ssr`. One package, one auth system, all Supabase features available.
 
 ---
 
-## Integration Points
+### Anti-Pattern 2: Skipping `middleware.ts` Session Refresh
 
-### External Services
+**What people do:** Install Supabase, create server/client utilities, build components — but skip the middleware step because "it's optional."
 
-| Service | Integration Pattern | Notes |
-|---------|---------------------|-------|
-| Anthropic Messages API (vision) | `client.messages.create` with image content blocks in user message | Same SDK instance, same `CLAUDE_API_KEY`. Image content blocks are standard API — no beta header needed. |
-| Anthropic Messages API (planner) | Existing — completely unchanged | Prompt caching on system prompt unaffected by toneContext appended to user message |
+**Why it's wrong:** Without `middleware.ts` calling `updateSession()` on every request, session cookies expire and are not refreshed. Users randomly get logged out mid-session. The auth state becomes inconsistent between server and client.
 
-### Internal Boundaries
+**Do this instead:** Add `middleware.ts` at the project root that calls `updateSession()` on every request. This is non-negotiable for cookie-based sessions in Next.js App Router.
 
-| Boundary | Communication | Notes |
-|----------|---------------|-------|
-| `route.ts` -> `rig-vision.ts` | Direct function call, `Base64Image[]` in, `RigIntent` out | No shared state; pure async function |
-| `rig-vision.ts` -> `rig-mapping.ts` | Direct function call, `RigIntent` in, `{ substitutions[], toneContext }` out | Deterministic; fully testable in isolation with no API dependency |
-| `rig-mapping.ts` -> `planner.ts` | `toneContext: string` passed as third argument | Minimal coupling; planner treats it as additional conversation context |
-| `route.ts` -> `page.tsx` | JSON response field `substitutions?: SubstitutionEntry[]` | Optional — only present when images were provided; UI checks for existence before rendering |
+---
+
+### Anti-Pattern 3: Storing `conversationId` in the URL Path Instead of State
+
+**What people do:** Change the app from `app/page.tsx` to `app/chat/[conversationId]/page.tsx` to mirror patterns like ChatGPT.
+
+**Why it's wrong for this app:** The existing architecture has a single `page.tsx` with a complex state machine (chat flow → generation → download). Migrating to dynamic routes requires refactoring `page.tsx` into a layout + page hierarchy, re-architecting how state is passed, and changing how the sidebar navigates. This is a major rewrite, not an addition.
+
+**Do this instead:** Keep the single `page.tsx`. Store `conversationId` in React state. Load a conversation when the user clicks it in the sidebar — either via URL search params (`?conversation=abc123`) that `page.tsx` reads on mount, or via a context/event that the sidebar emits. URL search params are simpler and preserve the single-page architecture.
+
+---
+
+### Anti-Pattern 4: Writing Messages to DB Inside the Streaming SSE Loop
+
+**What people do:** Inside the streaming response loop in `/api/chat/route.ts`, write each chunk to the database as it arrives.
+
+**Why it's wrong:** Serverless functions on Vercel should not hold DB connections open for the duration of a stream. Writing per-chunk creates many tiny writes and holds the connection. The stream can be interrupted, leaving a partial message in the database.
+
+**Do this instead:** Accumulate the full streamed response, then write the complete message to the database after the stream closes. The client already handles partial rendering via SSE — the DB write is a completion action, not a streaming action. In `/api/chat/route.ts`, buffer the text and insert one complete row after `controller.close()`.
+
+---
+
+### Anti-Pattern 5: Fetching Conversation List in `page.tsx`
+
+**What people do:** Move the conversation list fetch into `page.tsx` as a `useEffect` that calls `/api/conversations`.
+
+**Why it's wrong:** `page.tsx` re-renders on every navigation. The conversation list would re-fetch on every page visit, even when the user is just continuing an existing chat. The sidebar would flicker on every route change.
+
+**Do this instead:** Fetch the conversation list in `ChatHistoryList.tsx` as a server component mounted in `layout.tsx`. Layouts persist across child navigations — the list is fetched once per layout mount, not per page render. Use `router.refresh()` only when the list actually changes (new conversation created, conversation renamed).
 
 ---
 
 ## Sources
 
-- [Anthropic Vision Documentation](https://platform.claude.com/docs/en/build-with-claude/vision) — Image content block format, size limits (5 MB per image, 100 images per request, 32 MB total request), base64 encoding, multi-image best practices, image-before-text placement recommendation. HIGH confidence.
-- [Anthropic Structured Outputs Documentation](https://platform.claude.com/docs/en/build-with-claude/structured-outputs) — `output_config.format` (zodOutputFormat equivalent) is generally available on Claude Sonnet 4.6; compatible with vision image input in the same call. HIGH confidence.
-- [Vercel Functions Limitations](https://vercel.com/docs/functions/limitations) — 4.5 MB request body limit confirmed; not configurable; workarounds are streaming or client-side uploads. HIGH confidence.
-- Existing codebase inspection — `planner.ts`, `route.ts`, `tone-intent.ts`, `chain-rules.ts`, `param-engine.ts`, `snapshot-engine.ts`, `types.ts`, `index.ts`, `page.tsx` read in full. All integration points verified against actual code.
+- Supabase Anonymous Sign-Ins (official): https://supabase.com/docs/guides/auth/auth-anonymous
+- Supabase Identity Linking (official): https://supabase.com/docs/guides/auth/auth-identity-linking
+- Supabase `linkIdentity()` JS reference (official): https://supabase.com/docs/reference/javascript/auth-linkidentity
+- Supabase Auth with Next.js App Router (official): https://supabase.com/docs/guides/auth/auth-helpers/nextjs
+- Setting Up Server-Side Auth for Next.js (official): https://supabase.com/docs/guides/auth/server-side/nextjs
+- Supabase Storage signed upload URLs (official): https://supabase.com/docs/reference/javascript/storage-from-createsigneduploadurl
+- Supabase Storage `uploadToSignedUrl` (official): https://supabase.com/docs/reference/javascript/storage-from-uploadtosignedurl
+- Vercel + Supabase Next.js App Router Starter Template: https://vercel.com/templates/next.js/supabase
+- Auth.js Supabase adapter limitations (official authjs.dev): https://authjs.dev/getting-started/adapters/supabase
+- Auth.js v5 migration guide (official): https://authjs.dev/getting-started/migrating-to-v5
+- Next.js App Router authentication guide (official): https://nextjs.org/docs/app/guides/authentication
+- Next.js layouts and partial rendering (official): https://nextjs.org/docs/app
+- Supabase + Next.js quickstart (official): https://supabase.com/docs/guides/getting-started/quickstarts/nextjs
+- Signed URL uploads with Next.js + Supabase (community, Feb 2025): https://medium.com/@olliedoesdev/signed-url-file-uploads-with-nextjs-and-supabase-74ba91b65fe0
+- WorkOS Next.js auth guide 2026 (MEDIUM confidence): https://workos.com/blog/nextjs-app-router-authentication-guide-2026
+- Next.js 15 App Router sidebar layout pattern (community, multiple sources, MEDIUM confidence): https://medium.com/@vigneshuthra/how-i-structure-real-world-next-js-apps-using-the-app-router-2025-edition-58a5c8f447fb
 
 ---
 
-*Architecture research for: HelixAI v1.3 Rig Emulation — vision input extension to the Planner-Executor architecture*
-*Researched: 2026-03-02*
+*Architecture research for: HelixAI v2.0 Persistent Chat Platform — auth, database, file storage integration*
+*Researched: 2026-03-03*

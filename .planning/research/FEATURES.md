@@ -1,312 +1,148 @@
 # Feature Research
 
-**Domain:** AI-powered Pod Go preset generation — v1.2 Pod Go Device Support
-**Researched:** 2026-03-02
-**Confidence:** HIGH (18 real .pgp preset files inspected directly; compared against 12 real .hlx Helix files; Line 6 community forums and official product pages verified; all file format findings are empirical from actual device files)
+**Domain:** Persistent chat platform — auth, chat history, file storage, chat sidebar UI
+**Researched:** 2026-03-03
+**Confidence:** HIGH (based on direct analysis of ChatGPT, Claude.ai, Gemini UX patterns; Supabase and Firebase official docs; LibreChat and assistant-ui open-source implementations; multiple corroborating sources per finding)
 
 ---
 
 ## Context: What Already Exists vs. What This Milestone Adds
 
-The existing HelixAI codebase generates `.hlx` preset files for Helix LT and Helix Floor. The generation pipeline is:
+HelixAI v1.3 is a **stateless** app. Every page load is a fresh session — no user identity, no saved chats, no memory of previous conversations. The existing flow is:
 
 ```
-Chat interview → ToneIntent (AI) → chain-rules.ts → param-engine.ts → snapshot-engine.ts → preset-builder.ts → .hlx file
+Page load (anonymous) → chat interview → preset generated → download .hlx/.pgp → session ends
 ```
 
-This milestone adds Pod Go as a third device target. The AI interview and ToneIntent remain unchanged. The Knowledge Layer needs Pod Go-aware variants that emit `.pgp` files instead of `.hlx` files.
-
----
-
-## Pod Go Hardware Capabilities: What It Can and Cannot Do
-
-This section is the foundation for all feature decisions. Sourced from direct inspection of 18 real `.pgp` files and Line 6 community documentation.
-
-### Block Architecture
-
-**Total blocks: exactly 10 (block0 through block9).** Every Pod Go preset has exactly 10 blocks — confirmed across all 18 inspected presets.
-
-**Fixed blocks (always present, always at specific types, user can move order):**
-| Role | Typical position | @type |
-|------|-----------------|-------|
-| Volume/Wah expression (one of each) | block0–block1 | 0 |
-| FX Loop send/return | varies | 5 |
-| Amp | varies | 1 |
-| Cab or IR | immediately after amp | 0 (CabMicIr) or 2 (simple cab) |
-| EQ | varies | 0 or 6 |
-
-**Flexible blocks (4 slots for any effects):** Users fill these with distortion, delay, reverb, modulation, compression, pitch, wah, gate, etc. from the Pod Go model library.
-
-**Result:** In practice, a Pod Go preset has: 1 wah + 1 volume + 1 amp + 1 cab/IR + 1 EQ + 1 FX loop = 6 fixed-role blocks + 4 user-chosen effects = 10 total blocks.
-
-**DSP constraint:** Not all 4 flexible slots can be filled with heavy effects simultaneously. Ganymede/Searchlight reverbs (~33% DSP each) or Benzin amp (~33%) leave little room. DSP is consumed at runtime — Pod Go Edit shows a DSP usage bar. The app cannot predict this statically without a DSP cost table.
-
-### Routing
-
-**Series only. No parallel paths.** Pod Go has a single signal path. There is no `@topology` field in the `.pgp` global section (Helix has `@topology0` / `@topology1`). `dsp1` is always `{}` (empty).
-
-**Mono/stereo signal collapse behavior:** Distortion, Dynamics, and Pitch/Synth blocks are all mono. Placing a distortion block after a stereo delay/reverb collapses the signal to mono at that point.
-
-**Pod Go vs Helix routing summary:**
-| Capability | Pod Go | Helix LT/Floor |
-|-----------|--------|----------------|
-| Signal paths | 1 (series) | Up to 4 (series + parallel) |
-| DSP chips | 1 | 2 (dual DSP) |
-| Parallel routing | No | Yes (split + join) |
-| Max blocks | 10 | 32+ (up to 8 per DSP × 2 DSPs + paths) |
-
-### Snapshots
-
-**Pod Go: exactly 4 snapshots (snapshot0–snapshot3).** Helix has 8 (snapshot0–snapshot7).
-
-Snapshot structure is **identical to Helix** at the JSON schema level:
-- `@name`, `@valid`, `@ledcolor`, `@tempo`, `@pedalstate` — same fields
-- `blocks.dsp0.blockN: true/false` — same format (block on/off)
-- `controllers.dsp0.blockN.paramName.@value` — same format (parameter values per snapshot)
-
-**What snapshots control:**
-- Block bypass state (on/off) for all 10 blocks
-- Parameter values for any controller-assigned parameters (up to 64 per preset)
-- Tempo (if set to "Per Snapshot" in global settings)
-
-**What snapshots cannot control:**
-- Amp model (cannot switch between different amp models across snapshots)
-- Cab model (cannot switch cabs, though can switch IRs)
-- Block count/positions (chain is fixed per preset)
-
-### Footswitch / Stomp Mode
-
-**6 built-in footswitches (FS1–FS6), expandable to 8 with external TRS switches (FS7–FS8).**
-
-In Stomp mode: up to 6 built-in stomps assignable to blocks. Each block's footswitch is tracked in the `footswitch` section of the `.pgp` file:
-
-```json
-"footswitch": {
-  "dsp0": {
-    "block3": {
-      "@fs_index": 5,
-      "@fs_primary": true,
-      "@fs_enabled": true,
-      "@fs_ledcolor": 525824,
-      "@fs_momentary": false,
-      "@fs_label": "Compulsive Drive"
-    }
-  }
-}
-```
-
-**Key difference from Helix:** Pod Go footswitch metadata lives in the `footswitch` section AND in the `controller` section (as `@fs_*` fields on controller assignments). Helix footswitch section is often empty — footswitch assignments are done differently in Helix via the controller section with `@fs_enabled`. Pod Go unifies footswitch metadata into both sections.
-
-**`@fs_index` values 0–5** correspond to physical footswitch positions A, B, C, D, Up, Down. `@fs_index: 9` = not assigned to a switch.
-
-### Model Library
-
-**86 amp models, 206+ effect models** (as of firmware 2.50, January 2025). Roughly a subset of the Helix library, but not a strict subset — a few models are Pod Go-only.
-
-**Critical insight from file inspection: Pod Go effect model IDs append `Mono` or `Stereo` suffix; Helix model IDs do not.**
-
-| Category | Pod Go model ID | Helix model ID |
-|---------|----------------|----------------|
-| Distortion | `HD2_DistScream808Mono` | `HD2_DistScream808` |
-| Distortion | `HD2_DistKinkyBoostMono` | `HD2_DistKinkyBoost` |
-| Wah | `HD2_WahFasselStereo` | `HD2_WahFassel` |
-| Delay | `HD2_DelayTransistorTapeStereo` | `HD2_DelayTransistorTape` |
-| Reverb | `HD2_ReverbHallStereo` | `HD2_ReverbHall` |
-| Comp | `HD2_CompressorDeluxeCompMono` | `HD2_CompressorDeluxeComp` |
-| Modulation | `HD2_ChorusStereo` | `HD2_Chorus` |
-| Tremolo | `HD2_TremoloTremoloStereo` | `HD2_TremoloTremolo` |
-
-**Amp model IDs are IDENTICAL between Pod Go and Helix.** All 13 amp models confirmed in real Pod Go presets (`HD2_AmpUSDeluxeNrm`, `HD2_AmpPlacaterDirty`, etc.) are already in `models.ts` and use the same ID strings.
-
-**Cab model IDs: mostly shared, partially different.** `HD2_CabMicIr_*` models share naming. Simple `HD2_Cab*` models are largely shared. However Pod Go has a different set of available cabs vs. Helix (different speaker cab models were ported).
-
-**Models exclusive to Pod Go (not in Helix, from firmware 2.50):**
-- `Line 6 Clarity`, `Line 6 Aristocrat`, `Line 6 Carillon`, `Line 6 Voltage`, `Line 6 Kinetic`, `Line 6 Oblivion` — six Catalyst Series Original Amp Designs
-- These use `HD2_AmpLine6*` prefix (e.g., `HD2_AmpLine6Clarity`)
-
-**Models in Helix NOT in Pod Go (DSP-heavy, omitted from Pod Go):**
-- `Tone Sovereign`, `Clawthorn Drive`, `Cosmos Echo` — confirmed omissions per Line 6 FAQ
-- Poly Pitch, Space Echo — too DSP-intensive for single-chip Pod Go
-- Advanced reverbs (Ganymede, Searchlight) — present but limited availability due to DSP cost
-
-### File Format
-
-**Pod Go uses `.pgp` files (plain JSON).** Inspecting real files confirms:
-
-```
-schema: "L6Preset"    ← SAME as Helix .hlx
-version: 6            ← SAME as Helix .hlx
-device: 2162695       ← DIFFERENT (Helix LT=2162692, Helix Floor=2162688)
-```
-
-**`device_version` field:** Present in Pod Go `.pgp` files (e.g., `33619968` for firmware 2.00). NOT present in Helix `.hlx` files. This field must be included in generated Pod Go files.
-
-**Meta section differences:**
-- Pod Go meta includes: `tnid`, `song`, `author`, `band` (extra community fields)
-- Helix meta does NOT include these
-- `application` field = `"POD Go Edit"` for Pod Go (vs `"HX Edit"` for Helix)
-
----
-
-## Helix vs Pod Go: Full Feature Comparison Table
-
-| Feature | Helix LT/Floor | Pod Go | HelixAI Impact |
-|---------|----------------|--------|----------------|
-| File format | `.hlx` (JSON) | `.pgp` (JSON) | New file extension + device ID |
-| Schema | `L6Preset` v6 | `L6Preset` v6 | Same schema wrapper |
-| Device ID | 2162692 / 2162688 | 2162695 | Add to `DEVICE_IDS` in types.ts |
-| `device_version` field | Absent | Present | Add to pod-go builder |
-| DSP chips | 2 (dsp0 + dsp1) | 1 (dsp0 only, dsp1={}) | Remove dsp1 logic for Pod Go |
-| Block slots | 32+ across 2 DSPs | 10 (block0–block9) | Simpler chain assembly |
-| Signal routing | Series + Parallel | Series only | No split/join needed |
-| Snapshots | 8 | 4 | Fewer snapshots to generate |
-| Amp model IDs | `HD2_Amp*` (no suffix) | `HD2_Amp*` (no suffix) | ALL SAME — reuse existing |
-| Effect model IDs | `HD2_DistX` (no suffix) | `HD2_DistXMono` (Mono/Stereo suffix) | Need Pod Go model catalog |
-| Cab model IDs | `HD2_Cab*` / `HD2_CabMicIr_*` | Slightly different set | Pod Go cab catalog needed |
-| @topology | `@topology0`/`@topology1` in global | ABSENT | Don't emit for Pod Go |
-| @cursor_dsp/path/position | Present in global | ABSENT | Don't emit for Pod Go |
-| @model in global | Absent | `"@global_params"` | Emit for Pod Go |
-| inputA / outputA keys | `inputA`, `outputA` | `input`, `output` | Different DSP I/O key names |
-| Input @model | `HD2_AppDSPFlow1Input` | `P34_AppDSPFlowInput` | Different input model string |
-| Output @model | `HD2_AppDSPFlowOutput` | `P34_AppDSPFlowOutput` | Different output model string |
-| @path on blocks | Present (0 or 1) | ABSENT | Don't emit `@path` for Pod Go |
-| @stereo on blocks | Present | ABSENT | Don't emit `@stereo` for Pod Go |
-| Delay @type | 7 | 5 | Different @type encoding |
-| Reverb @type | 7 | 5 | Different @type encoding |
-| FX Loop @type | 9 | 5 | Different @type encoding |
-| Modulation @type | 4 | 0 | Different @type encoding |
-| EQ_STATIC @type | 0 | 6 | Different @type encoding |
-| Simple cab @type | 4 (CAB_IN_SLOT) | 2 | Different @type encoding |
-| CabMicIr @type | 4 (CAB_IN_SLOT) | 0 | Different @type encoding |
-| cab0 key | Present (separate cab entry) | ABSENT (cab is a block) | No cab0 for Pod Go |
-| Snapshot controller # | 19 | 4 | Different snapshot controller ID |
-| Controller @fs_* fields | ABSENT | Present (rich footswitch metadata) | New footswitch section pattern |
-| Snapshot count | 8 | 4 | Generate only 4 snapshots |
-| Max amp models | ~120+ | 86 | Smaller model catalog |
+v2.0 adds a persistence layer **on top of** the existing flow. The anonymous generate-and-download experience must remain fully intact. Login unlocks history only — it does not gate the core product.
 
 ---
 
 ## Feature Landscape
 
-### Table Stakes (Users Expect These — Missing = Product Feels Broken)
+### Table Stakes (Users Expect These)
 
-| Feature | Why Expected | Complexity | Depends On |
-|---------|--------------|------------|------------|
-| **Download `.pgp` file** | The only deliverable. A Pod Go user selected Pod Go — they expect a file that loads in Pod Go Edit without error. | MEDIUM | New `preset-builder-podgo.ts` or device-aware path in existing builder. Must emit correct device ID, `device_version`, Pod Go JSON structure. |
-| **Correct device ID (2162695)** | Pod Go Edit rejects files with wrong device number with "incompatible device" error. This is the #1 import blocker. | LOW | Add `pod_go: 2162695` to `DEVICE_IDS` in `types.ts`. One-line addition. |
-| **Series-only signal chain (no dsp1, no split/join)** | Pod Go has one DSP chip. Emitting `dsp1` blocks or split/join will produce an invalid file or hardware misbehavior. | LOW | Ensure chain builder assigns all blocks to dsp0 only. `dsp1: {}` always. |
-| **10-block chain (block0–block9)** | Pod Go has exactly 10 block slots. The physical device displays 10 positions. Fewer blocks = empty slots (valid). More = overflow (invalid). | MEDIUM | Pod Go chain-rules must assemble exactly up to 10 blocks. Current Helix builder uses up to 16 slots across 2 DSPs. |
-| **4 snapshots only (snapshot0–snapshot3)** | Pod Go has exactly 4 snapshot slots. Helix generates 8. Emitting snapshot4–snapshot7 would produce an invalid file. | LOW | Pod Go snapshot engine generates 4 snapshots. The existing 4-snapshot role pattern (clean, crunch, lead, ambient) maps 1:1. No new logic needed. |
-| **Pod Go effect model IDs with Mono/Stereo suffix** | Pod Go uses `HD2_DistScream808Mono` not `HD2_DistScream808`. Loading a Helix model ID into Pod Go produces "unrecognized model" warnings or silence. | HIGH | New Pod Go model catalog with correct suffixed model IDs. Cannot reuse Helix model IDs for effects. Amp IDs are fine (shared). |
-| **Correct @type values for all block types** | Pod Go @type encoding is completely different from Helix. Delay=5 (not 7), Reverb=5 (not 7), Modulation=0 (not 4), EQ_STATIC=6 (not 0). Wrong @type = block not recognized. | HIGH | New `BLOCK_TYPES_PODGO` constant map (or device-aware block type resolution in models). Cannot reuse Helix BLOCK_TYPES constants for Pod Go. |
-| **`input`/`output` keys (not `inputA`/`outputA`)** | Pod Go DSP I/O uses `input` and `output` key names. `inputA`/`outputA` = Helix format. Wrong key names = file parse error in Pod Go Edit. | LOW | Builder uses `input`/`output` when generating Pod Go files. |
-| **Correct input/output @model strings** | Pod Go input is `P34_AppDSPFlowInput`, Helix is `HD2_AppDSPFlow1Input`. Output: `P34_AppDSPFlowOutput` vs `HD2_AppDSPFlowOutput`. | LOW | Config constant per device. Verified from 18 real Pod Go files. |
-| **No `@path` field on blocks** | Helix blocks have `@path: 0` or `@path: 1` (routing path). Pod Go has single-path, no `@path` field. Emitting `@path` may cause Pod Go Edit to misinterpret block routing. | LOW | Omit `@path` when building Pod Go blocks. |
-| **Snapshot controller number 4 (not 19)** | Helix uses `@controller: 19` for snapshot assignments. Pod Go uses `@controller: 4`. Wrong controller number = parameter values not recalling per snapshot. | MEDIUM | Pod Go controller section uses `@controller: 4`. Emit `@fs_*` metadata per controller assignment for the footswitch section. |
-| **Footswitch section with `@fs_*` metadata** | Pod Go footswitch section has rich metadata (`@fs_index`, `@fs_label`, `@fs_enabled`, `@fs_ledcolor`, `@fs_momentary`, `@fs_primary`) per block. Helix footswitch section is often empty. Pod Go Edit reads this section to display footswitch assignments. Without it, no footswitch assignments are displayed in the editor. | MEDIUM | New `buildFootswitchSection()` for Pod Go using real `.pgp` format as reference. |
-| **`device_version` field present** | Pod Go `.pgp` files always have `data.device_version`. Helix `.hlx` files do not. Pod Go Edit likely validates this field. Current firmware 2.50 = `device_version` values in range seen from real files. | LOW | Add `device_version` to the Pod Go `HlxFile` equivalent. Use a sensible firmware version constant (e.g., `33619968` = v2.00). |
-| **`@global_params` @model in global section** | Pod Go global section has `"@model": "@global_params"`. Helix global does not have this `@model` field. Whether required is unclear, but all 18 real files include it. | LOW | Emit `"@model": "@global_params"` in Pod Go global section. |
-| **No @topology fields in global** | Helix global has `@topology0`/`@topology1`. Pod Go global does not. Emitting these fields may be ignored or cause parsing issues. | LOW | Don't emit `@topology*` fields for Pod Go. |
+Features that users of any chat persistence platform expect. Missing these = product feels broken or incomplete. These are established norms set by ChatGPT, Claude.ai, and Gemini.
+
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| **Conversation list sidebar** | Every major chat AI (ChatGPT, Claude, Gemini) shows a left sidebar with past conversations. Users arriving from those products will immediately look for it. | MEDIUM | Pull-out or persistent left panel. Shows conversation title + timestamp. Must collapse on mobile. |
+| **Auto-generated conversation title** | ChatGPT, Claude, and Gemini all auto-title conversations from the first message. Users expect this — manually naming every chat is a friction point. | LOW | Generate title from first user message or first AI response. A short summary (5-8 words) is sufficient. No second AI call needed — derive from the first message text client-side. |
+| **New chat button** | Users expect a clear "New Chat" affordance in the sidebar or header. Without it, there's no way to start fresh without knowing to reload the page. | LOW | Button in sidebar header or top of nav. Clears current session, optionally saves current chat if authenticated. |
+| **Conversation resumption** | Returning to a past chat and continuing the interview is the core user value of persistence. Without it, history is read-only — useful but limited. | HIGH | Must reload the full message history into the chat state, restore the device selection, and allow continued conversation with context intact. The API must re-establish conversation context for the AI. |
+| **Delete conversation** | All major chat platforms offer delete. Users expect to manage their history. Missing it feels like the app is keeping data without giving control. | LOW | Confirm dialog + optimistic removal from sidebar. Soft-delete with a brief undo window is best practice, but immediate delete is acceptable for v2.0. |
+| **Google sign-in** | Google auth is the path of least resistance for a tool aimed at guitarists who likely have Google accounts. Password-based auth adds signup friction with no benefit for this use case. | LOW | NextAuth.js or Supabase Auth both support Google OAuth natively. Auth should be a single "Sign in with Google" button. |
+| **Anonymous-first flow** | The existing anonymous generate-and-download experience must be preserved. Requiring login before the app does anything is a conversion killer. Users who just want a preset should never be forced to log in. | LOW (UX logic) / MEDIUM (data model) | Anonymous users get full functionality. Login prompt appears contextually — e.g., after first preset download, with copy like "Save this chat to your account." Must not break on logout or session expiry. |
+| **Session persistence across refreshes** | Once logged in, users expect to still be logged in after closing and reopening the browser. Cookie-based or token-based session that doesn't expire frequently. | LOW | Standard OAuth token refresh. Supabase and NextAuth both handle this. Not a custom implementation concern. |
+| **Last-preset re-download** | If a user returns to a past chat, they expect to be able to re-download the preset they generated. Without this, history is purely conversational — the actual product deliverable is lost. | MEDIUM | Store the most recent .hlx/.pgp file per conversation in cloud storage (Supabase Storage or Vercel Blob). A "Download Preset" button in the resumed chat view re-fetches from storage. |
 
 ---
 
-### Differentiators (Competitive Advantage — Beyond Basic Compatibility)
+### Differentiators (Competitive Advantage)
+
+Features that go beyond what's expected. These are where HelixAI can do better than a generic chat UI by leveraging its guitar/preset domain.
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| **Pod Go-specific model catalog with complete model list** | A correct model catalog with all 86 amps, 206+ effects at their proper Pod Go model IDs means better amp/effect matching in the AI generation. Without it, the app is limited to the ~13 amps confirmed from real files. | HIGH | Requires building a `models-podgo.ts` catalog with Mono/Stereo suffixed effect IDs. Source: Line 6's official models page and firmware 2.50 release notes list all 86 amps. Cross-reference with Helix models.ts for defaultParams. |
-| **4-snapshot generation tuned for Pod Go's 4-snapshot limit** | Helix generates 8 snapshots; Pod Go only uses 4. The existing snapshot logic already generates clean/crunch/lead/ambient as the first 4 — this is a perfect fit with no changes needed to the snapshot engine. The differentiator is explicitly documenting and testing this mapping. | LOW | The snapshot engine already generates exactly 4 active snapshots (0–3) and leaves 4–7 empty. Pod Go simply omits the empty ones. No new logic. |
-| **Cab-as-block placement (not cab0 key)** | Pod Go places the cab as a regular block (not as a separate `cab0` key like Helix). The cab block is positioned after the amp in the chain with its own position number. This is architecturally different from how the current preset builder works. | MEDIUM | Pod Go builder emits cab as `block5` or `block6` (after amp), not as `cab0`. The `@type` for CabMicIr is 0 (not 4). The block has the same fields as Helix cab (`LowCut`, `HighCut`, `@mic`, `Level`, etc.) — just stored differently. |
-| **DSP usage awareness for Pod Go** | Pod Go has ~half the DSP of Helix. A chain-rules module that limits complex effects (no double reverb + reverb, no Ganymede-class reverbs by default) produces files that are guaranteed to load without DSP overflow. | MEDIUM | Pod Go chain-rules should prefer "light" effect models (simple delay, room reverb, basic chorus) over DSP-heavy variants. The DSP budget is not computable without an official DSP cost table, but heuristic rules avoid known heavy combos. |
-| **Tone description card shows Pod Go context** | When showing the preset summary card, noting "Pod Go preset" in the UI gives users confirmation they downloaded the right format. A single field change on the existing `ToneDescriptionCard` component. | LOW | Add `device` label to `ToneDescriptionCard`. No backend changes. |
+| **Device context preserved in chat history** | When a user resumes a conversation, the device selector (Helix LT / Helix Floor / Pod Go) should restore to what it was during that chat. Generic chat platforms don't have device context — HelixAI does. | LOW | Store `deviceTarget` as metadata per conversation. Restore it when resuming. Prevents the jarring experience of returning to a "Helix LT" chat and accidentally downloading a Pod Go preset. |
+| **Preset metadata in sidebar** | Show the device type and maybe the tone style alongside the conversation title in the sidebar (e.g., "Edge Delay Tone · Helix LT"). Generic chat sidebars show only titles. This makes a guitar preset tool's history immediately more useful. | LOW | Store `deviceTarget` and first-message-derived title. Optionally extract genre/style from ToneIntent for richer labels. |
+| **Contextual sign-in prompt after preset download** | Rather than front-loading login, prompt after the user's first successful preset download: "Save this chat to your account so you can come back and refine it." This is the highest-value moment to request auth. | LOW | Trigger after `downloadFile()` fires. Show a non-blocking banner or tooltip. Users have already received value — they're most receptive to an account pitch here. |
+| **Continuation prompts in resumed chats** | When a user returns to a saved chat, show a suggested action: "Refine this tone," "Try a different amp," "Generate for Pod Go instead." Helps users know what to do with the resumed context. Gemini does this with Gems. | MEDIUM | Rendered as pre-filled suggestion chips below the chat input on resume. No AI call needed — static suggestions based on chat state. |
+| **Conversation search** | ChatGPT Plus has it; free tiers don't surface it prominently. For a user who has 20+ saved chats ("Stevie Ray Vaughan tone," "post-rock reverb," "clean Nashville"), search is genuinely useful. | MEDIUM | Full-text search on conversation titles and first messages. Supabase provides Postgres full-text search natively. Not essential for MVP but high value at 10+ chats. |
 
 ---
 
-### Anti-Features (Do NOT Build These)
+### Anti-Features (Commonly Requested, Often Problematic)
 
 | Feature | Why Requested | Why Problematic | Alternative |
 |---------|---------------|-----------------|-------------|
-| **Parallel signal paths on Pod Go** | Helix supports parallel routing and users may request it | Pod Go hardware has no parallel routing. `dsp1` is always empty. Emitting split/join blocks produces invalid files. The AI prompt must not generate split topology for Pod Go. | Series-only chain. If user describes a wet/dry blend tone, map it to a single-path chain with appropriate delay/reverb mix levels. |
-| **8-snapshot generation for Pod Go** | Helix generates 8 snapshots, some users may expect parity | Pod Go has exactly 4 snapshot slots. Emitting `snapshot4`–`snapshot7` produces a file that either fails to load or causes editor confusion. | Generate exactly 4 snapshots. The existing clean/crunch/lead/ambient pattern is the perfect 4-snapshot split. |
-| **Helix model IDs in Pod Go files** | Reusing `models.ts` directly would be faster to implement | `HD2_DistScream808` loads as "unrecognized model" on Pod Go. Every effect model needs the Mono/Stereo suffix. Loading wrong model IDs produces silent failure (effect silently replaced or skipped by Pod Go Edit). | New Pod Go model catalog with correct suffixed IDs. Amp IDs are the exception — they ARE shared. |
-| **Live DSP budget calculation** | Users want to know if their preset will fit in Pod Go's DSP | No official DSP cost table from Line 6. Any calculation would be guesswork. A wrong "fits!" indication misleads users; a wrong "too heavy!" blocks valid chains. | Heuristic chain-rules that avoid known DSP-heavy combinations (no Ganymede + Searchlight together, no heavy dual reverb). The Pod Go Edit software shows the real DSP bar when the file loads. |
-| **Full Helix feature parity on Pod Go** | Users see Helix features and ask why Pod Go doesn't have them | Pod Go is intentionally limited. Dual-amp, dual-cab, MIDI Command Center, VDI — none exist on Pod Go. Attempting to generate these creates files that malfunction on the device. | Scope Pod Go generation to what Pod Go actually does: one amp, one cab, 4 flexible effects, 4 snapshots, series chain. Generate excellent single-path presets within these constraints. |
+| **Real-time sync / live updates across tabs** | Power users may have the app open in multiple tabs | Adds Supabase Realtime subscription complexity for minimal benefit. HelixAI is a single-user, sequential interaction tool — not a collaborative platform. The complexity is not justified at this scale. | Simple refresh-on-focus or reload conversation list on tab visibility change. No WebSocket subscription needed. |
+| **Conversation folders / project grouping** | Claude has "Projects," ChatGPT has project-level memory | Significant UX and data model complexity. Users of a specialized guitar preset tool are unlikely to have enough chats to need folder organization before simpler search is sufficient. Premature organizational features add clutter. | Auto-chronological grouping (Today, This Week, Earlier) in the sidebar is sufficient. Add search before folders. |
+| **Version history / all preset versions per chat** | Users want to download the preset from "three turns ago" | Storage cost grows unbounded. The most recent preset is what matters — users iterate toward it. Storing every intermediate generation creates storage bills and a confusing download UX ("which version is the good one?"). | Store only the most recent .hlx/.pgp per conversation. This is explicitly scoped in PROJECT.md. |
+| **Email/password auth** | Some users may prefer not to use Google | Adds password reset flows, email verification, security surface area. For a v2.0 launch with a single dev, Google OAuth is the right call — one auth provider, battle-tested flow, zero password management. | Google OAuth only. Add additional providers only if there's explicit user demand and bandwidth to implement. |
+| **Cross-conversation memory ("remember I play a Les Paul")** | ChatGPT has cross-conversation memory; users expect parity | Memory that persists across all chats is a different product — it changes the AI interaction model, adds a separate management UI, and creates privacy expectations. HelixAI's value is in per-conversation expertise, not a persistent user profile. | Per-conversation context is sufficient. If a user wants the AI to remember their guitar, they mention it in the chat. |
+| **Chat sharing / permalink** | Users want to share a preset conversation link | Shared conversations require public access controls, potentially exposing the AI prompt engineering, and creating moderation concerns. The preset file download is the shareable artifact. | Share the .hlx/.pgp file directly. No conversation sharing in v2.0. |
+| **Offline mode / local-first storage** | Users in low-connectivity environments | Service worker + IndexedDB complexity for a server-dependent AI app. The AI calls require internet anyway — offline mode is false comfort. LibreChat's own issue tracker documents how sidebar sync breaks offline. | Clear "you're offline" state. Don't fake offline capability. |
+| **Bulk delete / conversation export** | Power users want to clean up or backup history | Data export is a GDPR concern, not a feature. Bulk delete is a UX edge case. Both are v3+ concerns if user demand materializes. | Single-conversation delete with confirm is sufficient at v2.0 scale. |
 
 ---
 
 ## Feature Dependencies
 
 ```
-Device Selector adds "Pod Go"
-    └──requires──> DEVICE_IDS["pod_go"] = 2162695 in types.ts
-                   └──requires──> PodGoDeviceTarget type added to DeviceTarget union
+Google Auth
+    └──required by──> Conversation Persistence
+                          └──required by──> Conversation List Sidebar
+                                                └──required by──> New Chat Button (sidebar)
+                                                └──required by──> Delete Conversation (sidebar)
+                                                └──required by──> Resume Conversation
 
-Pod Go .pgp File Generation
-    ├──requires──> Pod Go model catalog (podgo-models.ts or models.ts extension)
-    │              └──requires──> Effect model IDs with Mono/Stereo suffixes
-    │              └──note──> Amp IDs already in models.ts (shared with Helix)
-    ├──requires──> Pod Go-specific BLOCK_TYPES constants (different @type values)
-    ├──requires──> Pod Go chain-rules variant (single DSP, 10 blocks, series only)
-    ├──requires──> Pod Go preset-builder (device ID, no topology, input/output keys, cab as block)
-    └──requires──> Pod Go snapshot engine (4 snapshots only, @controller=4 for snapshot)
+Resume Conversation
+    ├──requires──> Conversation history stored in database (messages + device target)
+    └──requires──> Chat state restoration logic (load messages into existing UI)
 
-Pod Go chain-rules
-    ├──requires──> Pod Go model catalog (to pick models with correct IDs)
-    ├──requires──> NO split/join logic (series only)
-    └──enhances──> DSP-awareness heuristics (avoid heavy effect combos)
+Last-Preset Re-download
+    ├──requires──> Cloud file storage (Supabase Storage or Vercel Blob)
+    ├──requires──> Preset stored on generation (not just at download time)
+    └──requires──> Signed URL or storage URL returned on conversation resume
 
-Pod Go snapshot engine (4 snapshots)
-    └──requires──> Existing snapshot engine logic (block on/off, param overrides)
-    └──simplification──> Drops snapshot4-7 generation — cleaner, not more complex
+Anonymous-First Flow
+    ├──compatible with──> Full existing generate-and-download experience
+    └──transition to──> Authenticated flow when user signs in
+       └──requires──> Anonymous session data optionally migrated on first login
 
-Pod Go footswitch section builder
-    ├──requires──> Block assignments from chain-rules (which block → which @fs_index)
-    └──requires──> @fs_* metadata (label from model name, ledcolor from block type, index from position)
+Auto-Generated Title
+    ├──requires──> First user message (already available in message array)
+    └──enhances──> Conversation List Sidebar (display quality)
 
-UI device selector adds "Pod Go"
-    └──requires──> Pod Go builder in the generate API route
-    └──enhances──> ToneDescriptionCard (adds "Pod Go" label)
+Device Context in Chat History
+    ├──requires──> `deviceTarget` stored per conversation (database field)
+    └──enhances──> Resume Conversation (restores correct device selector state)
+
+Contextual Sign-In Prompt
+    ├──requires──> Post-download event hook in existing download flow
+    └──enhances──> Auth conversion rate (not required for auth to work)
 ```
 
 ### Dependency Notes
 
-- **Effect model ID mapping is the highest-risk dependency.** Every effect model in the Pod Go builder must use the suffixed form (`HD2_DistScream808Mono`). This requires a complete Pod Go effect model catalog. Amp models are already correct (shared IDs). This is the one area that cannot be shortcutted.
-
-- **`@type` encoding is a complete remap, not an extension.** The existing `BLOCK_TYPES` constants in `models.ts` are wrong for Pod Go (delay=7 in Helix, delay=5 in Pod Go). This requires either a `BLOCK_TYPES_PODGO` constant set, or a device-aware `getBlockType(device, blockCategory)` function.
-
-- **Cab placement architecture differs.** Helix uses a `cab0` key separate from the block chain. Pod Go places the cab as a numbered block in the chain (block6 or block7, after the amp). The preset builder's `buildHlxFile()` currently generates `cab0`. A Pod Go builder needs to omit `cab0` and instead include the cab as a block at the correct position.
-
-- **Snapshots are a simplification, not a complexity.** Going from 8 to 4 snapshots removes work. The existing snapshot-engine generates 4 active snapshots (0–3) and 4 placeholder snapshots (4–7). Pod Go builder just omits the placeholders.
+- **Auth is the root dependency.** Without Google sign-in, nothing else in this milestone is buildable. Auth must land first, in isolation, before any persistence features are attempted.
+- **Conversation persistence requires auth but is independent of file storage.** Message history (text) and file storage (binary .hlx/.pgp) are separate concerns. Message history should be implemented before file storage — text is simpler, lower cost, and validates the database schema.
+- **Resume conversation is the highest-complexity feature.** It requires loading messages into existing chat state, restoring device context, re-establishing AI conversation context (the AI must know what was said before), and potentially re-rendering substitution cards and signal chain visualization. Plan dedicated implementation time.
+- **Sidebar can render before resume is complete.** The conversation list (read-only titles + dates) is useful even if clicking a conversation doesn't resume it yet. Consider phasing: list first, resume second.
+- **Anonymous flow must not regress.** Every change to the auth layer must be tested against the anonymous path. The existing generate-and-download experience is the product's core — persistence is additive, not a replacement.
 
 ---
 
 ## MVP Definition
 
-### Launch With (Pod Go v1.0)
+This milestone's MVP is the minimum set of features that transforms HelixAI from stateless to persistent while keeping the anonymous flow intact.
 
-The minimum viable Pod Go support that a Pod Go owner can actually use:
+### Launch With (v2.0)
 
-- [ ] **Device selector: add "Pod Go" option** — User can choose Pod Go at the start of the interview. Downstream everything uses the Pod Go path.
-- [ ] **Pod Go effect model catalog** — Pod Go-specific model IDs for the 18 presences confirmed in real files + expanded to cover common effect types (dist, delay, reverb, modulation, dynamics, EQ, wah, volume). The Mono/Stereo suffixed IDs are non-negotiable.
-- [ ] **Pod Go BLOCK_TYPES constants** — Correct @type values for Pod Go (delay=5, reverb=5, modulation=0, EQ_STATIC=6, simple cab=2, CabMicIr=0).
-- [ ] **Pod Go chain-rules** — Single DSP (block0–block9), series only, no split/join, cab as block (not cab0). The structural rules are simpler than Helix — this is a smaller module.
-- [ ] **Pod Go preset builder** — Emits valid `.pgp` JSON with correct device=2162695, `device_version`, `input`/`output` keys (not `inputA`/`outputA`), `P34_AppDSPFlow*` input/output models, no `@path` or `@stereo` on blocks, `@model: "@global_params"` in global, no `@topology*`.
-- [ ] **Pod Go snapshot engine** — Generates exactly 4 snapshots using existing clean/crunch/lead/ambient logic. Uses `@controller: 4` (not 19) for snapshot assignments.
-- [ ] **Pod Go footswitch section** — Emits `footswitch.dsp0.blockN` with `@fs_index` (0–5 for the 4 flexible effects + FX loop + EQ), `@fs_label`, `@fs_enabled: true`, `@fs_ledcolor`, `@fs_momentary: false`, `@fs_primary: true`.
-- [ ] **`.pgp` download** — API returns `.pgp` file with correct MIME type (`application/json` or `application/octet-stream` with `.pgp` extension). Currently the download triggers `.hlx`.
+- [ ] **Google sign-in** — Single "Sign in with Google" button. Session persists across refreshes. Required before all other persistence features.
+- [ ] **Anonymous flow unchanged** — Existing generate-and-download works without login. No auth gate on any existing functionality.
+- [ ] **Conversation list sidebar** — Pull-out panel showing saved chats (title + timestamp + device). Visible only when authenticated. Collapsible.
+- [ ] **New chat button** — In sidebar header. Creates a fresh session, saves current in-progress chat if authenticated.
+- [ ] **Auto-generated conversation title** — Derived from first user message. No extra AI call.
+- [ ] **Conversation persistence (messages)** — Full message history saved per conversation in database. Authenticated users' chats are saved automatically.
+- [ ] **Device target stored per conversation** — `deviceTarget` (helixLT / helixFloor / podGo) saved as conversation metadata.
+- [ ] **Resume conversation** — Click a sidebar item to reload its messages and device context into the chat UI.
+- [ ] **Last-preset re-download** — Most recent .hlx/.pgp stored in cloud storage. "Download Preset" button in resumed chat re-fetches the file.
+- [ ] **Delete conversation** — Confirm dialog, remove from sidebar, delete messages and stored preset from storage.
+- [ ] **Contextual sign-in prompt** — Non-blocking prompt after first preset download for anonymous users: "Sign in to save this chat."
 
-### Add After Validation (v1.x)
+### Add After Validation (v2.x)
 
-Features that improve quality but are not required for an MVP Pod Go preset:
+- [ ] **Conversation search** — Add once users have enough history that scrolling the sidebar becomes unwieldy (10+ chats).
+- [ ] **Continuation suggestions on resume** — Suggestion chips ("Refine this tone," "Try a different amp") shown when loading a past conversation.
+- [ ] **Preset metadata in sidebar** — Show device type alongside conversation title once device storage is confirmed working.
 
-- [ ] **Complete Pod Go amp catalog (86 models)** — The MVP can launch with the 13 amps confirmed from real files + any additional ones from the Helix models.ts that share IDs. The full 86-model catalog (including the Catalyst Series amp designs) adds richness.
-- [ ] **DSP-aware effect selection** — Heuristic rules in Pod Go chain-rules that avoid heavy DSP combinations (no Ganymede reverb with double-time delay). Valid for v1.x once the basic MVP is validated.
-- [ ] **Pod Go-specific tone description card** — Show "Pod Go preset" badge, remove references to Helix-specific features (parallel paths, 8 snapshots) from the UI.
+### Future Consideration (v3+)
 
-### Future Consideration (v2+)
-
-- [ ] **Pod Go Wireless support** — Pod Go Wireless uses the same device ID and .pgp format as Pod Go. Would require only a display name change, not a format change. Defer until confirmed.
-- [ ] **Pod Go stomp mode layout optimization** — Assigning blocks to specific `@fs_index` positions based on musical logic (e.g., drive on FS3, delay toggle on FS4). Current MVP just assigns sequentially.
+- [ ] **Conversation export** — Export full message history as JSON or PDF. GDPR-relevant but not urgent.
+- [ ] **Additional auth providers** — GitHub, Apple, email/password — only if Google OAuth proves to be a meaningful barrier.
+- [ ] **Conversation search with full text** — Postgres full-text search on message content, not just titles.
 
 ---
 
@@ -314,136 +150,95 @@ Features that improve quality but are not required for an MVP Pod Go preset:
 
 | Feature | User Value | Implementation Cost | Priority |
 |---------|------------|---------------------|----------|
-| Device selector + Pod Go device ID | HIGH (prerequisite) | LOW | P1 |
-| Pod Go effect model catalog | HIGH (correctness) | MEDIUM | P1 |
-| Pod Go BLOCK_TYPES constants | HIGH (correctness) | LOW | P1 |
-| Pod Go chain-rules (series, 10 blocks, cab as block) | HIGH (prerequisite) | MEDIUM | P1 |
-| Pod Go preset builder (.pgp format) | HIGH (prerequisite) | MEDIUM | P1 |
-| Pod Go snapshot engine (4 snapshots, @controller=4) | HIGH (correctness) | LOW | P1 |
-| Pod Go footswitch section | MEDIUM (usability) | MEDIUM | P1 |
-| `.pgp` download endpoint | HIGH (prerequisite) | LOW | P1 |
-| Complete 86-amp catalog | MEDIUM (quality) | MEDIUM | P2 |
-| DSP-aware effect selection | MEDIUM (quality) | MEDIUM | P2 |
-| Pod Go device label in tone card | LOW (polish) | LOW | P2 |
+| Google sign-in | HIGH (gateway feature) | LOW | P1 |
+| Anonymous flow preserved | HIGH (must not regress) | LOW (guard, not build) | P1 |
+| Conversation persistence (messages) | HIGH (core value) | MEDIUM | P1 |
+| Conversation list sidebar | HIGH (discoverability) | MEDIUM | P1 |
+| New chat button | HIGH (navigation) | LOW | P1 |
+| Auto-generated title | MEDIUM (polish) | LOW | P1 |
+| Resume conversation | HIGH (core value) | HIGH | P1 |
+| Device target stored per conversation | HIGH (correctness) | LOW | P1 |
+| Last-preset re-download | HIGH (core value) | MEDIUM | P1 |
+| Delete conversation | MEDIUM (expected by users) | LOW | P1 |
+| Contextual sign-in prompt | MEDIUM (conversion) | LOW | P1 |
+| Continuation suggestions on resume | MEDIUM (UX) | MEDIUM | P2 |
+| Preset metadata in sidebar | LOW (polish) | LOW | P2 |
+| Conversation search | MEDIUM (utility at scale) | MEDIUM | P2 |
 
 **Priority key:**
-- P1: Must ship for any Pod Go preset to be loadable on hardware
-- P2: Improves quality/completeness after basic functionality works
-- P3: Defer (not needed for initial Pod Go support)
+- P1: Must have for v2.0 launch — without these, the milestone is incomplete
+- P2: Should have — add after P1 features are working and tested
+- P3: Nice to have — defer to v2.x or v3+
 
 ---
 
-## Pod Go vs Helix: Code Reuse Assessment
+## Competitor Feature Analysis
 
-The following existing modules translate **directly** to Pod Go with no or minimal changes:
+How ChatGPT, Claude.ai, and Gemini handle the patterns relevant to this milestone:
 
-| Module | Reuse Level | What Changes |
-|--------|-------------|-------------|
-| `tone-intent.ts` (ToneIntent schema) | 100% reuse | Nothing — ToneIntent is device-agnostic |
-| `planner.ts` (AI generation) | 100% reuse | Nothing — AI generates ToneIntent, not device files |
-| `param-engine.ts` (parameter resolution) | ~90% reuse | May need to add amp model lookup for Pod Go-exclusive amps |
-| `snapshot-engine.ts` (snapshot logic) | ~80% reuse | Pass `maxSnapshots: 4` (not 8). Change snapshot controller from 19 to 4 |
-| `chain-rules.ts` (chain assembly) | ~40% reuse | New Pod Go variant: single DSP, 10 blocks, no split/join, different model catalog |
-| `preset-builder.ts` (file generation) | ~30% reuse | New Pod Go builder: different device ID, different I/O keys, cab as block, no cab0, no @path/@stereo |
-| `validate.ts` (file validation) | ~50% reuse | New validation rules for Pod Go format constraints |
-| `models.ts` (model catalog) | ~70% reuse | Amp IDs reused entirely; effect IDs need new suffixed catalog |
-
-The modules that need the most new work are: Pod Go model catalog, Pod Go preset builder, and Pod Go chain-rules. The AI layer (planner) and tone modeling layer (param-engine, snapshot-engine) are largely reusable because they operate on `ToneIntent` and `PresetSpec`, not on device-specific file formats.
+| Feature | ChatGPT | Claude.ai | Gemini | HelixAI v2.0 Approach |
+|---------|---------|-----------|--------|----------------------|
+| Sidebar layout | Persistent left panel, collapsible | Persistent left panel, collapsible | Collapsible left panel | Pull-out sidebar panel; collapse on mobile |
+| Conversation list grouping | Chronological (Today / Yesterday / Previous 7 Days / etc.) | Chronological with Projects grouping | Chronological | Chronological grouping only — Today / This Week / Earlier |
+| Auto-naming | AI-generated title from first exchange | AI-generated title | AI-generated title | Derived from first user message text (no second AI call) |
+| Manual rename | Yes (inline edit on hover) | Yes | Yes | Defer to v2.x — auto-title is sufficient for v2.0 |
+| Delete | Immediate with 30-day recovery window | Immediate | Immediate | Immediate with confirm dialog; no recovery window in v2.0 |
+| Archive | Yes (distinct from delete) | No | No | Not in v2.0 — delete is sufficient |
+| Anonymous access | No (login required) | No (login required) | No (login required) | YES — full functionality without login |
+| Auth providers | Google, Microsoft, Apple, email | Google, Apple, email | Google only (tied to Google account) | Google only for v2.0 |
+| File storage | Files in Projects, 30-day retention | Files per conversation, limited retention | Files in conversations | One .hlx/.pgp stored per conversation in Supabase Storage |
+| Resume conversation | Yes — full message history restored | Yes — full message history restored | Yes | Yes — restore messages + device context |
+| Cross-conversation memory | Yes (opt-in) | Yes (via Projects) | Yes | No — per-conversation context only |
+| Search | Yes (ChatGPT Plus) | No | Limited | v2.x — after user feedback |
+| Mobile sidebar | Collapsible overlay | Collapsible overlay | Collapsible overlay | Collapsible overlay |
+| Offline state | Error banner, retry | Error banner, retry | Error banner | Error banner; no offline capability |
 
 ---
 
-## Technical Reference: Pod Go File Format Spec
+## Critical UX Findings from Research
 
-Sourced from direct inspection of 18 real `.pgp` files (firmware v1.00 through v2.00, downloaded from Line 6 CustomTone). All values are HIGH confidence — observed in actual device files.
+### 1. Anonymous-first is the right call
 
-### Top-Level Structure
-```json
-{
-  "version": 6,
-  "schema": "L6Preset",
-  "meta": { "pbn": 0, "premium": 0, "original": 0 },
-  "data": {
-    "device": 2162695,
-    "device_version": 33619968,
-    "meta": {
-      "appversion": 33554432,
-      "name": "Preset Name",
-      "application": "POD Go Edit",
-      "build_sha": "v2.00-5-g665e64e",
-      "modifieddate": 1734146822
-    },
-    "tone": { ... }
-  }
-}
-```
+All three major chat platforms (ChatGPT, Claude, Gemini) require login before any usage. HelixAI's anonymous-first approach is a genuine differentiator — users can generate and download a preset before ever creating an account. This is the correct strategy for a specialized tool where the value is proven first, account is created second. Research confirms: "The app should provide basic functionality to let the user explore and use features that do not require any additional data or access."
 
-### Tone Structure
-```
-tone:
-  dsp0:         ← all 10 blocks, input, output
-  dsp1: {}      ← always empty
-  snapshot0..3  ← exactly 4 snapshots
-  controller    ← parameter controller assignments
-  footswitch    ← footswitch assignments per block
-  global        ← tempo, cursor, @model: "@global_params"
-```
+### 2. Conversation deletion is the most common platform failure point
 
-### Block @type Values (Pod Go vs Helix)
-| Block Category | Pod Go @type | Helix @type |
-|----------------|-------------|------------|
-| Distortion, Dynamics, Wah, Vol, Pitch | 0 | 0 |
-| `HD2_CabMicIr_*` (mic'd IR cab) | 0 | 4 |
-| Modulation (chorus, flanger, phaser, tremolo, rotary) | 0 | 4 |
-| Amp (without cab0) | 1 | 1 |
-| `HD2_Cab*` (simple cab) | 2 | 4 |
-| Delay, Reverb, FX Loop | 5 | 7, 9 |
-| `HD2_EQ_STATIC_*` | 6 | 0 |
-| `HD2_ImpulseResponse1024Mono` (user IR) | 2 | 5 |
-| Looper | 4 | 6 |
+Multiple platforms (Claude.ai, Gemini, GitHub Copilot, Cursor) have documented conversation history loss bugs. The #1 user complaint across all platforms is: "My conversations disappeared and I didn't do it." The implication for HelixAI: never silently delete conversations. Deletion must be explicit (confirm dialog), and sidebar state must accurately reflect database state. Don't implement cold storage tiering — at HelixAI's scale, all conversations should be immediately accessible.
 
-### Input/Output Models
-| Field | Pod Go | Helix |
-|-------|--------|-------|
-| dsp0 input key | `input` | `inputA` |
-| dsp0 output key | `output` | `outputA` |
-| input `@model` | `P34_AppDSPFlowInput` | `HD2_AppDSPFlow1Input` |
-| output `@model` | `P34_AppDSPFlowOutput` | `HD2_AppDSPFlowOutput` |
+### 3. Optimistic updates are expected for sidebar interactions
 
-### Global Section
-```json
-"global": {
-  "@model": "@global_params",
-  "@current_snapshot": 0,
-  "@cursor_group": "block5",
-  "@pedalstate": 2,
-  "@tempo": 120
-}
-```
-Note: No `@topology0`/`@topology1`. No `@cursor_dsp`/`@cursor_path`/`@cursor_position`.
+Users expect the sidebar to update instantly when they delete, rename, or create a conversation. Waiting for a server round-trip before updating the UI (e.g., removing a deleted conversation from the list) feels broken. Use optimistic updates with rollback on error. TanStack Query or React's `useOptimistic` hook are the implementation patterns used by real chat apps.
 
-### Snapshot Controller Number
-- Pod Go: `@controller: 4` (snapshot recall)
-- Helix: `@controller: 19` (snapshot recall)
-- EXP Pedal 1: `@controller: 1` (same on both)
-- EXP Pedal 2: `@controller: 2` (same on both)
+### 4. Resume conversation is architecturally harder than it looks
+
+The chat input, message history, device selector state, substitution card state, and signal chain visualization all need to be restored from stored data. The AI conversation context also needs to be reconstructed — the AI doesn't remember previous conversations, so resuming requires either sending the full message history as context or accepting that the AI response quality degrades on resume. Sending full history is the correct approach.
+
+### 5. Store only the last preset per conversation
+
+ChatGPT's approach of storing file attachments for 30 days and providing recovery windows is appropriate for a general-purpose platform. For HelixAI, the simpler model — one .hlx/.pgp per conversation, always the most recent — matches user mental models ("what's the preset for this chat?"). The research validates PROJECT.md's decision: balance between utility and storage cost.
 
 ---
 
 ## Sources
 
-- **Direct inspection of 18 real Pod Go `.pgp` preset files** (firmware v1.00–v2.00, downloaded from Line 6 CustomTone) — HIGH confidence. All file format findings verified empirically. Files located at `C:/Users/dsbog/Downloads/*.pgp`.
-- **Direct inspection of 12 real Helix `.hlx` preset files** (firmware v3.70) — HIGH confidence. Comparison baseline for structural differences. Files located at `C:/Users/dsbog/Downloads/*.hlx`.
-- **Direct inspection of `src/lib/helix/models.ts`** — HIGH confidence. Confirmed all 13 Pod Go amp model IDs already exist in models.ts with matching ID strings.
-- [Line 6 POD Go FAQ](https://line6.com/support/topic/53806-pod-go-faq/) — HIGH confidence (official Line 6 support). Confirms block structure, fixed vs. flexible blocks, 3 omitted models (Tone Sovereign, Clawthorn Drive, Cosmos Echo).
-- [POD Go Block Restrictions — Line 6 Community](https://line6.com/support/topic/62007-pod-go-block-restrictions/) — MEDIUM confidence (community forum). Confirms 4 flexible blocks, DSP constraints, practical workarounds.
-- [POD Go 2.50 — Line 6 Community](https://line6.com/support/page/kb/pod/pod-go/pod-go-250-r1085/) — HIGH confidence (official Line 6 KB). Confirms firmware 2.50 adds 11 guitar amps, 2 bass amps, 11 guitar cabs, 2 bass cabs, 2 effects (Jan 2025).
-- [Line 6 POD Go Models Page](https://line6.com/podgo-models/) — HIGH confidence (official Line 6 product page). Lists 86 amp models by name; no internal HD2_ IDs shown.
-- [File Formats, Custom Tools and API — Line 6 Community](https://line6.com/support/topic/63502-fileformats-custom-tools-and-api/) — MEDIUM confidence (community reverse engineering). Confirms `.pgp` is plain JSON. Community notes `dsp0`-only structure.
-- [AI Generation of Presets — Line 6 Community](https://line6.com/support/topic/70120-ai-generation-of-presets/) — MEDIUM confidence (community). Confirms file format is text-based JSON; AI-generated files fail due to structural inaccuracies (not model inaccuracies).
-- [Pod Go vs Helix LT — Line 6 Community](https://line6.com/support/topic/56025-pod-go-vs-helix-lt/) — MEDIUM confidence (community). Confirms series-only routing, single DSP, 4 snapshots vs 8.
-- [POD Go 2.50 Firmware Update Overview](https://www.noiseharmony.com/post/line-6-pod-go-2-50-firmware-update-what-s-new) — MEDIUM confidence (editorial). Lists Catalyst Series amp designs added in 2.50 (Line 6 Clarity, Aristocrat, Carillon, Voltage, Kinetic, Oblivion).
+- [Comparing Conversational AI Tool User Interfaces 2025 — IntuitionLabs](https://intuitionlabs.ai/articles/conversational-ai-ui-comparison-2025) — MEDIUM confidence (editorial analysis of ChatGPT, Claude, Gemini sidebar UX patterns)
+- [Claude.ai Conversation History Loss Issue — GitHub](https://github.com/anthropics/claude-code/issues/14225) — HIGH confidence (official issue tracker, firsthand UX failure documentation)
+- [ChatGPT Chat and File Retention Policies — OpenAI Help Center](https://help.openai.com/en/articles/8983778-chat-and-file-retention-policies-in-chatgpt) — HIGH confidence (official OpenAI documentation)
+- [Google OAuth Best Practices — Google Developers](https://developers.google.com/identity/protocols/oauth2/resources/best-practices) — HIGH confidence (official Google documentation on incremental authorization, anonymous-first patterns)
+- [Login & Signup UX 2025 Guide — Authgear](https://www.authgear.com/post/login-signup-ux-guide) — MEDIUM confidence (industry guide, multiple corroborating sources)
+- [Supabase Anonymous Sign-Ins — Supabase Docs](https://supabase.com/docs/guides/auth/auth-anonymous) — HIGH confidence (official Supabase documentation)
+- [Use Supabase Auth with Next.js — Supabase Docs](https://supabase.com/docs/guides/auth/quickstarts/nextjs) — HIGH confidence (official Supabase documentation)
+- [Supabase Storage — Supabase Docs](https://supabase.com/docs/guides/storage) — HIGH confidence (official Supabase documentation)
+- [Firebase vs Supabase 2025 — DEV Community](https://dev.to/dev_tips/firebase-vs-supabase-in-2025-which-one-actually-scales-with-you-2374) — MEDIUM confidence (community analysis, multiple sources agree on Firebase anonymous auth maturity)
+- [Supabase vs Firebase Auth for Next.js — GetSabo](https://getsabo.com/blog/supabase-vs-firebase-auth) — MEDIUM confidence (comparison article, corroborated by official docs)
+- [Optimistic Updates for Conversation Deletion — OpenHands PR #6745](https://github.com/All-Hands-AI/OpenHands/pull/6745) — HIGH confidence (production implementation, real open-source chat app)
+- [Optimistic Updates and Error Handling — Scira](https://zread.ai/zaidmukaddam/scira/22-optimistic-updates-and-error-handling) — MEDIUM confidence (open-source AI chat app implementation reference)
+- [Chat Persistence — Chainlit Docs](https://docs.chainlit.io/data-persistence/history) — HIGH confidence (official Chainlit documentation confirming auth + persistence co-dependency)
+- [Supabase + Next.js AI Chatbot — supabase-community GitHub](https://github.com/supabase-community/vercel-ai-chatbot) — HIGH confidence (official community reference implementation)
+- [Gemini Conversation Deletion Bug — Google Support Forum](https://support.google.com/gemini/thread/410679684/) — HIGH confidence (official Google support forum, documents deletion sync failures)
+- [ChatGPT Memory Controls — OpenAI](https://openai.com/index/memory-and-new-controls-for-chatgpt/) — HIGH confidence (official OpenAI blog, memory architecture details)
 
 ---
 
-*Feature research for: HelixAI Pod Go Support Milestone*
-*Researched: 2026-03-02*
+*Feature research for: HelixAI v2.0 Persistent Chat Platform Milestone*
+*Researched: 2026-03-03*
