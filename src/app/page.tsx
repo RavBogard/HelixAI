@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
 import ReactMarkdown from "react-markdown";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 interface Message {
   role: "user" | "assistant";
@@ -305,6 +306,8 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [premiumKey, setPremiumKey] = useState<string | null>(null);
   const [selectedDevice, setSelectedDevice] = useState<"helix_lt" | "helix_floor" | "pod_go">("helix_lt");
+  // Auth state (Phase 25)
+  const [user, setUser] = useState<{ id: string; is_anonymous?: boolean; email?: string; user_metadata?: Record<string, string> } | null>(null);
 
   // Vision state (Phase 19)
   const [rigImages, setRigImages] = useState<File[]>([]);
@@ -348,6 +351,59 @@ export default function Home() {
     }
   }, []);
 
+  // Phase 25: Combined anonymous session init + sessionStorage state restoration.
+  // Single useEffect to prevent race conditions between session init and state restoration.
+  useEffect(() => {
+    const supabase = createSupabaseBrowserClient()
+    let unsubscribe: (() => void) | undefined
+
+    const init = async () => {
+      // 1. Get or create session
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        await supabase.auth.signInAnonymously()
+      }
+      // Set initial user state
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
+      setUser(currentUser)
+
+      // 2. Restore pre-OAuth chat state if redirected back from Google
+      const preserved = sessionStorage.getItem('helixai_pre_oauth_state')
+      if (preserved) {
+        try {
+          const parsed = JSON.parse(preserved)
+          // Discard if older than 10 minutes
+          if (parsed.timestamp && Date.now() - parsed.timestamp < 10 * 60 * 1000) {
+            if (parsed.messages?.length > 0) setMessages(parsed.messages)
+            if (parsed.device) setSelectedDevice(parsed.device)
+          }
+        } catch { /* corrupt state — ignore */ }
+        sessionStorage.removeItem('helixai_pre_oauth_state')
+      }
+
+      // 3. Subscribe to auth state changes
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        (_event, session) => {
+          setUser(session?.user ?? null)
+        }
+      )
+      unsubscribe = () => subscription.unsubscribe()
+    }
+
+    init()
+    return () => unsubscribe?.()
+  }, [])
+
+  // Phase 25: Handle auth_error URL param from failed OAuth callback.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('auth_error') === 'true') {
+      setError('Sign in failed — please try again')
+      // Clean up URL without reload
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [])
+
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
@@ -374,6 +430,16 @@ export default function Home() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDevice]);
+
+  // Phase 25: Serialize chat state to sessionStorage before OAuth redirect.
+  // Called by AuthButton (Plan 02) before triggering OAuth redirect.
+  const serializeChatState = useCallback(() => {
+    sessionStorage.setItem('helixai_pre_oauth_state', JSON.stringify({
+      messages,
+      device: selectedDevice,
+      timestamp: Date.now(),
+    }))
+  }, [messages, selectedDevice])
 
   async function sendMessage(e?: React.FormEvent) {
     e?.preventDefault();
