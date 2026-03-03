@@ -187,6 +187,7 @@ Progress: [----------] 3/5 phases complete (10 plans done in v2.0)
 
 - Phases 22-23 (UI Overhaul, UX Polish) dropped — user did a UI redo, skipping these
 - v2.0 Persistent Chat Platform milestone started; roadmap phases 24-28 created 2026-03-03
+- Phase 29 (Dual-Amp Preset Generation Fix) added — user reports presets requesting two different amps generate with only one; bug fix phase appended to v2.0
 
 ### Pending Todos
 
