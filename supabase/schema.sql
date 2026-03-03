@@ -1,11 +1,12 @@
 -- HelixAI v2.0 Database Schema
--- Run this in Supabase SQL Editor: Dashboard -> SQL Editor -> New query -> Paste -> Run
--- IMPORTANT: Do NOT modify table definitions after creation without updating RLS policies
+-- PART 1: Run this in Supabase SQL Editor (Dashboard -> SQL Editor -> New query -> Paste -> Run)
+-- PART 2: Storage bucket + policies must be created via Dashboard UI (see instructions below)
 
 -- ============================================================
+-- PART 1: Tables (run in SQL Editor)
+-- ============================================================
+
 -- conversations table
--- ============================================================
-
 CREATE TABLE conversations (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -24,10 +25,7 @@ CREATE POLICY "users_own_conversations"
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
--- ============================================================
 -- messages table
--- ============================================================
-
 CREATE TABLE messages (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
@@ -58,54 +56,37 @@ CREATE POLICY "users_own_messages"
   );
 
 -- ============================================================
--- Storage bucket: presets (private)
+-- PART 2: Storage (do NOT run in SQL Editor — use Dashboard UI)
 -- ============================================================
-
--- Private bucket — files accessible only via signed URLs
--- NOTE: If this INSERT fails with a permissions error, create the bucket manually:
---   Supabase Dashboard -> Storage -> New Bucket -> Name: "presets" -> Public: OFF -> Create
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('presets', 'presets', false)
-ON CONFLICT (id) DO NOTHING;
-
--- RLS is already enabled on storage.objects by Supabase — do NOT alter it
-
--- Path convention: {user_id}/{conversation_id}/latest.hlx (or .pgp)
--- storage.foldername is 1-indexed: [1] = user_id, [2] = conversation_id
--- All policies scoped to bucket_id = 'presets' and TO authenticated role
-
--- Users can upload their own preset files
-CREATE POLICY "users_upload_own_presets"
-  ON storage.objects FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    bucket_id = 'presets'
-    AND (storage.foldername(name))[1] = auth.uid()::text
-  );
-
--- Users can read their own preset files
-CREATE POLICY "users_read_own_presets"
-  ON storage.objects FOR SELECT
-  TO authenticated
-  USING (
-    bucket_id = 'presets'
-    AND (storage.foldername(name))[1] = auth.uid()::text
-  );
-
--- Users can update (upsert) their own preset files
-CREATE POLICY "users_update_own_presets"
-  ON storage.objects FOR UPDATE
-  TO authenticated
-  USING (
-    bucket_id = 'presets'
-    AND (storage.foldername(name))[1] = auth.uid()::text
-  );
-
--- Users can delete their own preset files
-CREATE POLICY "users_delete_own_presets"
-  ON storage.objects FOR DELETE
-  TO authenticated
-  USING (
-    bucket_id = 'presets'
-    AND (storage.foldername(name))[1] = auth.uid()::text
-  );
+-- Supabase owns storage.objects so SQL Editor cannot CREATE POLICY on it.
+--
+-- Step 1: Create bucket
+--   Dashboard -> Storage -> New Bucket
+--   Name: "presets" | Public: OFF | Click Create
+--
+-- Step 2: Create 4 storage policies
+--   Dashboard -> Storage -> Policies (on the "presets" bucket) -> New Policy -> "Full customization"
+--
+--   Policy 1 — INSERT (upload):
+--     Name: users_upload_own_presets
+--     Allowed operation: INSERT
+--     Target roles: authenticated
+--     WITH CHECK: bucket_id = 'presets' AND (storage.foldername(name))[1] = auth.uid()::text
+--
+--   Policy 2 — SELECT (read):
+--     Name: users_read_own_presets
+--     Allowed operation: SELECT
+--     Target roles: authenticated
+--     USING: bucket_id = 'presets' AND (storage.foldername(name))[1] = auth.uid()::text
+--
+--   Policy 3 — UPDATE (upsert):
+--     Name: users_update_own_presets
+--     Allowed operation: UPDATE
+--     Target roles: authenticated
+--     USING: bucket_id = 'presets' AND (storage.foldername(name))[1] = auth.uid()::text
+--
+--   Policy 4 — DELETE:
+--     Name: users_delete_own_presets
+--     Allowed operation: DELETE
+--     Target roles: authenticated
+--     USING: bucket_id = 'presets' AND (storage.foldername(name))[1] = auth.uid()::text
