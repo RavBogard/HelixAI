@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Persistent Chat Platform
-status: unknown
-last_updated: "2026-03-03T23:14:01.461Z"
+status: in_progress
+last_updated: "2026-03-03T23:30:00.000Z"
 progress:
   total_phases: 20
-  completed_phases: 15
+  completed_phases: 16
   total_plans: 33
-  completed_plans: 31
+  completed_plans: 32
 ---
 
 ---
@@ -87,12 +87,12 @@ See: .planning/PROJECT.md (updated 2026-03-03)
 
 ## Current Position
 
-Phase: 28 (In Progress — 2 of 3 plans done)
-Plan: 02 (2 tasks complete — URL param watcher, New Chat event listener, isResumingConversation state, conversation-created dispatch)
-Status: Phase 28 Chat Sidebar UI — Plan 02 complete (conversation navigation wired); Plan 03 (UX polish) next
-Last activity: 2026-03-03 — 28-02 executed; page.tsx conversation navigation wiring done
+Phase: 28 (Complete — all 3 plans done)
+Plan: 03 (complete — UX polish: sign-in banner, loading state, continuation chips)
+Status: Phase 28 Chat Sidebar UI + UX Polish complete; Phase 29 (Dual-Amp Fix) next
+Last activity: 2026-03-03 — 28-03 executed; UXP-01/02/03 implemented in page.tsx
 
-Progress: [----------] 3/5 phases complete (12 plans done in v2.0)
+Progress: [----------] 4/5 phases complete (13 plans done in v2.0)
 
 ## Performance Metrics
 
@@ -145,11 +145,12 @@ Progress: [----------] 3/5 phases complete (12 plans done in v2.0)
 | 25. Auth Flow | 2 plans | Complete — AuthButton + Google OAuth linkIdentity() + human verification passed |
 | 26. Conversation CRUD API | 2 plans | Complete — POST create, GET list, GET read-with-messages, PATCH title, POST message, DELETE conversation |
 | 27. Persistence Wiring | 2 plans | Complete — /api/chat + /api/generate server persistence + page.tsx client lifecycle wiring |
-| 28. Chat Sidebar UI + UX Polish | 3 plans | In Progress — Plan 01 complete (sidebar shell + layout wired) |
+| 28. Chat Sidebar UI + UX Polish | 3 plans | Complete — sidebar shell, conversation navigation, UX polish (sign-in banner, loading state, continuation chips) |
 | Phase 27 P01 | 112s | 2 tasks | 2 files |
 | Phase 27-persistence-wiring P02 | 145 | 2 tasks | 1 files |
 | Phase 28 P01 | 2 | 2 tasks | 3 files |
 | Phase 28 P02 | 4 | 2 tasks | 1 files |
+| Phase 28-chat-sidebar-ui-ux-polish P03 | continuation | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -215,6 +216,10 @@ Progress: [----------] 3/5 phases complete (12 plans done in v2.0)
 - [Phase 28]: useSearchParams used to read conversation URL param in page.tsx — URL param watcher triggers loadConversation, router.replace cleans URL after load
 - [Phase 28]: helixai:conversation-created dispatch in ensureConversation() success path — closes sidebar refresh loop with ChatSidebar listener from Plan 01
 - [Phase 28]: isResumingConversation cleared on sendMessage/generatePreset — once user acts in resumed conversation, continuation chips (Plan 03) disappear
+- [Phase 28-03]: showSignInBanner triggered when conversationId is null post-download — null conversationId is the anonymous user signal from Phase 27-02 contract
+- [Phase 28-03]: isLoadingConversation cleared in finally block — ensures spinner always clears even if early-return branch fires
+- [Phase 28-03]: Continuation chips rendered outside the form div at same nesting level — appears above input bar without being inside form element
+- [Phase 28-03]: Generate-for-other-device chip avoids pod_go as alternate — always maps to helix_lt or helix_floor
 
 ### Roadmap Evolution
 
@@ -233,6 +238,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Phase 28 Plan 02 complete — page.tsx conversation navigation wiring done; Plan 03 (UX polish) is next
+Stopped at: Phase 28 Plan 03 complete — UX polish (sign-in banner, loading state, continuation chips) done; Phase 28 fully complete
 Resume file: None
-Next command: /gsd:execute-phase 28 (plan 03 — UX Polish)
+Next command: /gsd:execute-phase 29 (Dual-Amp Preset Generation Fix)

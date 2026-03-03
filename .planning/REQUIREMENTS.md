@@ -237,9 +237,9 @@ Requirements for Persistent Chat Platform milestone. Transform HelixAI from a st
 
 ### UX Polish
 
-- [ ] **UXP-01**: Contextual sign-in prompt appears as a non-blocking banner after an anonymous user's first successful preset download — "Sign in to save this chat and come back to refine it later"
-- [ ] **UXP-02**: Loading states during conversation resume show distinct phases — "Loading conversation..." with smooth transition to populated chat
-- [ ] **UXP-03**: Continuation suggestion chips shown when resuming a past conversation — "Refine this tone", "Try a different amp", "Generate for [other device]" — static suggestions based on chat state, no AI call
+- [x] **UXP-01**: Contextual sign-in prompt appears as a non-blocking banner after an anonymous user's first successful preset download — "Sign in to save this chat and come back to refine it later"
+- [x] **UXP-02**: Loading states during conversation resume show distinct phases — "Loading conversation..." with smooth transition to populated chat
+- [x] **UXP-03**: Continuation suggestion chips shown when resuming a past conversation — "Refine this tone", "Try a different amp", "Generate for [other device]" — static suggestions based on chat state, no AI call
 - [x] **UXP-04**: Existing text-only generation flow (no auth, no persistence) produces identical output and performance to v1.3 — no new API calls, no changed loading states, no response shape changes for anonymous users
 
 ## Future Requirements
@@ -432,9 +432,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SIDE-04 | Phase 28 | Complete |
 | SIDE-05 | Phase 28 | Complete |
 | SIDE-06 | Phase 28 | Complete |
-| UXP-01 | Phase 28 | Pending |
-| UXP-02 | Phase 28 | Pending |
-| UXP-03 | Phase 28 | Pending |
+| UXP-01 | Phase 28 | Complete |
+| UXP-02 | Phase 28 | Complete |
+| UXP-03 | Phase 28 | Complete |
 
 **Coverage:**
 - v1 requirements: 36 total (all complete)

@@ -289,7 +289,7 @@ Plans:
 - [x] **Phase 25: Auth Flow** - Anonymous sign-in + Google OAuth + identity linking (completed 2026-03-03)
 - [x] **Phase 26: Conversation CRUD API** - Full data API for creating, reading, listing, and title update (1 plan, complete 2026-03-03)
 - [x] **Phase 27: Persistence Wiring** - Modify chat/generate routes to persist messages and preset files (completed 2026-03-03)
-- [ ] **Phase 28: Chat Sidebar UI + UX Polish** - Sidebar panel, resume flow, new chat, sign-in prompt
+- [x] **Phase 28: Chat Sidebar UI + UX Polish** - Sidebar panel, resume flow, new chat, sign-in prompt (completed 2026-03-03)
 
 ## Phase Details
 
@@ -354,7 +354,7 @@ Plans:
   5. The sidebar is absent for anonymous users — they see the standard full-width chat interface with no sidebar toggle, no sidebar shell, and no visual remnants of the sidebar layout
   6. After an anonymous user successfully downloads their first preset, a non-blocking banner appears: "Sign in to save this chat and come back to refine it later" — it is dismissible and does not interrupt the download or any subsequent action
   7. When resuming a past conversation, three static suggestion chips are visible — "Refine this tone", "Try a different amp", "Generate for [other device]" — clicking one populates the chat input with a starter message
-**Plans**: TBD
+**Plans**: 3/3 complete
 
 ## Progress
 
@@ -388,7 +388,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 25. Auth Flow | 2/2 | Complete    | 2026-03-03 | - |
 | 26. Conversation CRUD API | 2/2 | Complete    | 2026-03-03 | 2026-03-03 |
 | 27. Persistence Wiring | 2/2 | Complete    | 2026-03-03 | - |
-| 28. Chat Sidebar UI + UX Polish | 2/3 | In Progress|  | - |
+| 28. Chat Sidebar UI + UX Polish | 3/3 | Complete    | 2026-03-03 | 2026-03-03 |
 
 ### Phase 29: Dual-Amp Preset Generation Fix
 
