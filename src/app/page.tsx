@@ -341,6 +341,11 @@ export default function Home() {
   // Phase 23: rig file input ref — camera button in prompt bar
   const rigFileInputRef = useRef<HTMLInputElement>(null);
 
+  // Phase 27: Conversation persistence state
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const conversationIdRef = useRef<string | null>(null);
+  const isFirstMessageRef = useRef(true);
+
   // Check for premium key in URL on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -449,6 +454,38 @@ export default function Home() {
     return () => window.removeEventListener('helixai:before-signin', handler)
   }, [serializeChatState])
 
+  // Phase 27: Create conversation on first authenticated message
+  const ensureConversation = useCallback(async (): Promise<string | null> => {
+    // Already have a conversation — return immediately
+    if (conversationIdRef.current) return conversationIdRef.current;
+
+    // Check auth state — anonymous users don't get conversations
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser || currentUser.is_anonymous) return null;
+    } catch {
+      return null;
+    }
+
+    // Create conversation via Phase 26 endpoint
+    try {
+      const res = await fetch("/api/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ device: selectedDevice }),
+      });
+      if (!res.ok) return null;
+      const conv = await res.json();
+      conversationIdRef.current = conv.id;
+      setConversationId(conv.id);
+      isFirstMessageRef.current = true;
+      return conv.id;
+    } catch {
+      return null;
+    }
+  }, [selectedDevice]);
+
   async function sendMessage(e?: React.FormEvent) {
     e?.preventDefault();
     if (!input.trim() || isStreaming) return;
@@ -460,6 +497,9 @@ export default function Home() {
     setIsStreaming(true);
     setError(null);
 
+    // Phase 27: ensure conversation exists for authenticated users
+    const convId = await ensureConversation();
+
     // Add empty assistant message for streaming
     const assistantMessage: Message = { role: "assistant", content: "" };
     setMessages([...newMessages, assistantMessage]);
@@ -468,7 +508,11 @@ export default function Home() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: newMessages, premiumKey }),
+        body: JSON.stringify({
+          messages: newMessages,
+          premiumKey,
+          ...(convId ? { conversationId: convId } : {}),
+        }),
       });
 
       if (!res.ok) {
@@ -530,6 +574,17 @@ export default function Home() {
           return updated;
         });
       }
+
+      // Phase 27: auto-title conversation after first message
+      if (convId && isFirstMessageRef.current) {
+        isFirstMessageRef.current = false;
+        const title = userMessage.content.split(" ").slice(0, 7).join(" ");
+        fetch(`/api/conversations/${convId}/title`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title }),
+        }).catch(() => {}); // Fire-and-forget — title is cosmetic
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Something went wrong";
       setError(message);
@@ -546,6 +601,9 @@ export default function Home() {
     setIsGenerating(true);
     setError(null);
 
+    // Phase 27: ensure conversation for direct-generate paths (e.g., handleRigGenerate)
+    const convId = conversationIdRef.current ?? await ensureConversation();
+
     try {
       setSubstitutionMap(null);
       const res = await fetch("/api/generate", {
@@ -557,6 +615,7 @@ export default function Home() {
           device: overrideDevice ?? selectedDevice,
           // Phase 20: pass rigIntent if vision extraction was performed
           ...(rigIntent ? { rigIntent } : {}),
+          ...(convId ? { conversationId: convId } : {}),
         }),
       });
 
@@ -635,6 +694,10 @@ export default function Home() {
     setSubstitutionMap(null);
     // Phase 21: clear mapping loading state
     setIsMappingLoading(false);
+    // Phase 27: clear conversation state
+    setConversationId(null);
+    conversationIdRef.current = null;
+    isFirstMessageRef.current = true;
   }
 
   // Phase 21: standalone mapping helper — called after callVision() and on device change.
