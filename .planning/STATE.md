@@ -100,10 +100,11 @@ Progress: [██████████] 100% (v1.3)
 
 - Phase 22 added: UI Overhaul — complete visual redesign of homepage, chat flow, and rig upload panel
 - Phase 23 added: Fix incompatible target device type error (-8309)
+- Phase 23 added: UX polish — post-chat device picker modal, font legibility, rig upload integrated into prompt bar
 
 ### Pending Todos
 
-None.
+1. **Investigate Helix Floor device compatibility bug** (ui) — Users report "incompatible device type" when selecting Floor; LT works fine
 
 ### Blockers/Concerns
 
