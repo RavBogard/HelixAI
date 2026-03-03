@@ -387,7 +387,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 24. Supabase Foundation | v2.0 | Complete    | 2026-03-03 | 2026-03-03 |
 | 25. Auth Flow | 2/2 | Complete    | 2026-03-03 | - |
 | 26. Conversation CRUD API | 2/2 | Complete    | 2026-03-03 | 2026-03-03 |
-| 27. Persistence Wiring | 2/2 | Complete   | 2026-03-03 | - |
+| 27. Persistence Wiring | 2/2 | Complete    | 2026-03-03 | - |
 | 28. Chat Sidebar UI + UX Polish | v2.0 | 0/TBD | Not started | - |
 
 ---
