@@ -345,6 +345,8 @@ export default function Home() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const conversationIdRef = useRef<string | null>(null);
   const isFirstMessageRef = useRef(true);
+  // Phase 27: stored preset path from resumed conversation (STORE-02)
+  const [storedPresetPath, setStoredPresetPath] = useState<string | null>(null);
 
   // Check for premium key in URL on mount
   useEffect(() => {
@@ -672,6 +674,84 @@ export default function Home() {
     URL.revokeObjectURL(url);
   }
 
+  // Phase 27: re-download stored preset from Supabase Storage (STORE-02)
+  async function downloadStoredPreset() {
+    if (!storedPresetPath) return;
+
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase.storage
+        .from("presets")
+        .createSignedUrl(storedPresetPath, 3600); // 1-hour signed URL
+
+      if (error || !data?.signedUrl) {
+        setError("Could not retrieve stored preset");
+        return;
+      }
+
+      // Determine filename from stored path
+      const ext = storedPresetPath.endsWith(".pgp") ? ".pgp" : ".hlx";
+      const deviceSuffix =
+        selectedDevice === "helix_lt" ? "_LT"
+        : selectedDevice === "helix_floor" ? "_Floor"
+        : selectedDevice === "pod_go" ? "_PodGo"
+        : "";
+      const filename = `HelixAI_Preset${deviceSuffix}${ext}`;
+
+      const a = document.createElement("a");
+      a.href = data.signedUrl;
+      a.download = filename;
+      a.click();
+    } catch {
+      setError("Failed to download stored preset");
+    }
+  }
+
+  // Phase 27: load a resumed conversation from API
+  async function loadConversation(convId: string) {
+    try {
+      const res = await fetch(`/api/conversations/${convId}`);
+      if (!res.ok) {
+        setError("Failed to load conversation");
+        return;
+      }
+      const data = await res.json();
+
+      // Restore conversation state
+      conversationIdRef.current = convId;
+      setConversationId(convId);
+      isFirstMessageRef.current = false; // Not the first message — title already exists
+
+      // Restore messages
+      if (data.messages && Array.isArray(data.messages)) {
+        setMessages(data.messages.map((m: { role: string; content: string }) => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        })));
+      }
+
+      // Restore device
+      if (data.device) {
+        setSelectedDevice(data.device as "helix_lt" | "helix_floor" | "pod_go");
+      }
+
+      // Check for stored preset
+      if (data.preset_url) {
+        setStoredPresetPath(data.preset_url);
+      } else {
+        setStoredPresetPath(null);
+      }
+
+      // Check if ready to generate from conversation history
+      const lastMsg = data.messages?.[data.messages.length - 1];
+      if (lastMsg?.content?.includes("[READY_TO_GENERATE]") || lastMsg?.role === "assistant") {
+        setReadyToGenerate(true);
+      }
+    } catch {
+      setError("Failed to load conversation");
+    }
+  }
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -698,6 +778,8 @@ export default function Home() {
     setConversationId(null);
     conversationIdRef.current = null;
     isFirstMessageRef.current = true;
+    // Phase 27: clear stored preset path
+    setStoredPresetPath(null);
   }
 
   // Phase 21: standalone mapping helper — called after callVision() and on device change.
@@ -1126,6 +1208,22 @@ export default function Home() {
                 )}
               </div>
             ))}
+
+            {/* --- Phase 27: Download Stored Preset (resumed conversation) --- */}
+            {/* Shown when resuming a conversation that had a preset generated previously */}
+            {storedPresetPath && !generatedPreset && (
+              <div className="flex flex-col items-center gap-3 py-4 max-w-sm mx-auto w-full">
+                <button
+                  onClick={downloadStoredPreset}
+                  className="w-full px-4 py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Download Stored Preset
+                </button>
+              </div>
+            )}
 
             {/* --- Device Picker + Generate (Phase 23) --- */}
             {/* Shown after interview completes. User picks their device → generate fires. */}
