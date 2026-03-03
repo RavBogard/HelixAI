@@ -25,10 +25,11 @@ decisions:
   - "linkIdentity() used for anonymous users (not signInWithOAuth) to preserve UUID"
   - "Sign-out always calls signInAnonymously() after signOut() — app always has a user ID"
   - "Avatar falls back to email initial in a styled circle when avatar_url is null"
+requirements-completed: [AUTH-01, AUTH-04, AUTH-05]
 metrics:
-  duration: "1m 31s"
-  completed: "2026-03-03T22:32:10Z"
-  tasks_completed: 2
+  duration: "~30min"
+  completed: "2026-03-03"
+  tasks_completed: 3
   tasks_total: 3
   files_modified: 3
 ---
@@ -43,7 +44,7 @@ metrics:
 |---|------|--------|--------|
 | 1 | Create AuthButton component | beea819 | Done |
 | 2 | Integrate into layout.tsx + wire page.tsx event | d35d073 | Done |
-| 3 | Human verification checkpoint | — | Awaiting user |
+| 3 | Human verification checkpoint | — | APPROVED |
 
 ## What Was Built
 

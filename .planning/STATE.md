@@ -48,10 +48,10 @@ See: .planning/PROJECT.md (updated 2026-03-03)
 
 ## Current Position
 
-Phase: 25 (awaiting checkpoint — 2/2 plans built, checkpoint human-verify pending)
-Plan: 02 (tasks 1-2 complete, checkpoint task 3 awaiting human verification)
-Status: Phase 25 auth flow built — AuthButton component, Google OAuth via linkIdentity(), layout integration, event-based state serialization
-Last activity: 2026-03-03 — 25-02 AuthButton component + layout header + page.tsx event wiring
+Phase: 25 (COMPLETE — both plans done, human verification approved)
+Plan: 02 (all 3 tasks complete — human verification approved 2026-03-03)
+Status: Phase 25 auth flow complete — AuthButton built, Google OAuth linkIdentity() wired, human verification passed
+Last activity: 2026-03-03 — 25-02 human verification approved; ready for Phase 26
 
 Progress: [----------] 0/5 phases complete (5 plans done)
 
@@ -103,7 +103,7 @@ Progress: [----------] 0/5 phases complete (5 plans done)
 | Phase | Plans | Status |
 |-------|-------|--------|
 | 24. Supabase Foundation | 3 | Complete — client utils + middleware, schema SQL + keep-alive, env vars verified + build clean |
-| 25. Auth Flow | 2 plans | Awaiting checkpoint — 25-01 + 25-02 built; human verification step pending |
+| 25. Auth Flow | 2 plans | Complete — AuthButton + Google OAuth linkIdentity() + human verification passed |
 | 26. Conversation CRUD API | TBD | Not started |
 | 27. Persistence Wiring | TBD | Not started |
 | 28. Chat Sidebar UI + UX Polish | TBD | Not started |
@@ -171,6 +171,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Checkpoint 25-02 — AuthButton built, awaiting human verification of full auth flow in browser
+Stopped at: Phase 25 complete — human verification approved; Phase 26 (Conversation CRUD API) is next
 Resume file: None
-Next command: After approving checkpoint, run /gsd:execute-phase 26 (Conversation CRUD API)
+Next command: /gsd:execute-phase 26 (Conversation CRUD API)
