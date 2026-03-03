@@ -196,11 +196,11 @@ Requirements for Persistent Chat Platform milestone. Transform HelixAI from a st
 
 ### Authentication
 
-- [ ] **AUTH-01**: User can sign in with Google via a "Sign in with Google" button — single OAuth provider, no email/password
+- [x] **AUTH-01**: User can sign in with Google via a "Sign in with Google" button — single OAuth provider, no email/password
 - [x] **AUTH-02**: User session persists across browser refreshes and tab closes — cookie-based token refresh handles expiry transparently
 - [x] **AUTH-03**: Anonymous users can generate and download presets without logging in — the existing anonymous flow is fully functional with zero auth gates
 - [x] **AUTH-04**: Anonymous-to-authenticated transition preserves in-progress chat state — OAuth redirect does not destroy the current conversation; state is serialized to sessionStorage before redirect and restored after callback
-- [ ] **AUTH-05**: User can sign out — session is cleared, UI returns to anonymous state, sidebar is hidden
+- [x] **AUTH-05**: User can sign out — session is cleared, UI returns to anonymous state, sidebar is hidden
 
 ### Infrastructure
 
@@ -411,11 +411,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-04 | Phase 24 | Complete |
 | INFRA-05 | Phase 24 | Complete |
 | INFRA-06 | Phase 24 | Complete |
-| AUTH-01 | Phase 25 | Pending |
+| AUTH-01 | Phase 25 | Complete |
 | AUTH-02 | Phase 25 | Complete |
 | AUTH-03 | Phase 25 | Complete |
 | AUTH-04 | Phase 25 | Complete |
-| AUTH-05 | Phase 25 | Pending |
+| AUTH-05 | Phase 25 | Complete |
 | CONV-01 | Phase 26 | Pending |
 | CONV-02 | Phase 26 | Pending |
 | CONV-03 | Phase 26 | Pending |

@@ -3,6 +3,19 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Persistent Chat Platform
 status: unknown
+last_updated: "2026-03-03T22:32:54.085Z"
+progress:
+  total_phases: 19
+  completed_phases: 13
+  total_plans: 33
+  completed_plans: 25
+---
+
+---
+gsd_state_version: 1.0
+milestone: v2.0
+milestone_name: Persistent Chat Platform
+status: unknown
 last_updated: "2026-03-03T22:28:57.283Z"
 progress:
   total_phases: 19
@@ -35,12 +48,12 @@ See: .planning/PROJECT.md (updated 2026-03-03)
 
 ## Current Position
 
-Phase: 25 (in progress — 1/2 plans done)
-Plan: 01 (complete)
-Status: Phase 25 in progress — PKCE callback route created, anonymous session init added, sessionStorage preservation implemented
-Last activity: 2026-03-03 — 25-01 callback route, anonymous session init, sessionStorage state preservation
+Phase: 25 (awaiting checkpoint — 2/2 plans built, checkpoint human-verify pending)
+Plan: 02 (tasks 1-2 complete, checkpoint task 3 awaiting human verification)
+Status: Phase 25 auth flow built — AuthButton component, Google OAuth via linkIdentity(), layout integration, event-based state serialization
+Last activity: 2026-03-03 — 25-02 AuthButton component + layout header + page.tsx event wiring
 
-Progress: [----------] 0/5 phases complete (4 plans done)
+Progress: [----------] 0/5 phases complete (5 plans done)
 
 ## Performance Metrics
 
@@ -90,7 +103,7 @@ Progress: [----------] 0/5 phases complete (4 plans done)
 | Phase | Plans | Status |
 |-------|-------|--------|
 | 24. Supabase Foundation | 3 | Complete — client utils + middleware, schema SQL + keep-alive, env vars verified + build clean |
-| 25. Auth Flow | 2 plans | In Progress — 25-01 done: PKCE callback route + anonymous session init + sessionStorage preservation |
+| 25. Auth Flow | 2 plans | Awaiting checkpoint — 25-01 + 25-02 built; human verification step pending |
 | 26. Conversation CRUD API | TBD | Not started |
 | 27. Persistence Wiring | TBD | Not started |
 | 28. Chat Sidebar UI + UX Polish | TBD | Not started |
@@ -140,6 +153,7 @@ Progress: [----------] 0/5 phases complete (4 plans done)
 - [Phase 25-auth-flow]: x-forwarded-host checked for production URL construction — handles Vercel load balancer correctly
 - [Phase 25-auth-flow]: Single useEffect for session init + state restoration — prevents race condition between getUser() and setMessages()
 - [Phase 25-auth-flow]: serializeChatState() defined in page.tsx with useCallback — wired by Plan 02 AuthButton
+- [Phase 25]: Event dispatch pattern ('helixai:before-signin') used instead of prop/context for AuthButton-to-page.tsx decoupling
 
 ### Roadmap Evolution
 
@@ -157,6 +171,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Completed 25-01 — PKCE callback route + anonymous session init + sessionStorage preservation
+Stopped at: Checkpoint 25-02 — AuthButton built, awaiting human verification of full auth flow in browser
 Resume file: None
-Next command: /gsd:execute-phase 25 (plan 02 next)
+Next command: After approving checkpoint, run /gsd:execute-phase 26 (Conversation CRUD API)
