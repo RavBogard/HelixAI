@@ -17,7 +17,7 @@ import type { ToneIntent, DeviceTarget } from "@/lib/helix";
  */
 export function buildPlannerPrompt(modelList: string, device?: DeviceTarget): string {
   const podGo = device ? isPodGo(device) : false;
-  const deviceName = podGo ? "Pod Go" : "Helix LT";
+  const deviceName = podGo ? "Pod Go" : device === "helix_floor" ? "Helix Floor" : "Helix LT";
   const maxEffects = podGo ? 4 : 6;
   const effectNote = podGo
     ? "- Keep effects to 2-4 maximum — Pod Go has a 4 user-effect limit and limited DSP"

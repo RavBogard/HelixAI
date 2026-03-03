@@ -170,7 +170,7 @@ export type DeviceTarget = "helix_lt" | "helix_floor" | "pod_go";
 
 export const DEVICE_IDS: Record<DeviceTarget, number> = {
   helix_lt: 2162692,
-  helix_floor: 2162691, // confirmed from real Helix Floor .hlx export — fixes -8309
+  helix_floor: 2162692, // Floor and LT share the same preset format and device ID
   pod_go: 2162695,
 } as const;
 

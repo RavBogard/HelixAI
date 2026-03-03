@@ -30,11 +30,11 @@
 **Phases:** 7-11 (7 plans total)
 **Completed:** 2026-03-02
 
-## v1.2 — Pod Go Support (In Progress)
+## v1.2 — Pod Go Support (Complete)
 
 **Goal:** Extend HelixAI to generate presets for Line 6 Pod Go — a single-DSP device with different block limits, file format, and model catalog. Pod Go presets must match the same professional tone quality standard as Helix presets.
 
-**Target:**
+**Shipped:**
 - Pod Go file format (.pgp) with correct device ID, block types, and I/O structure
 - Pod Go model catalog with Mono/Stereo suffixed effect IDs and device-filtered model list
 - Device-aware chain rules (single DSP, 4-effect limit, no auto-inserted EQ/Gain blocks)
@@ -42,7 +42,22 @@
 - Pod Go in device selector UI with .pgp download and 4-snapshot display
 
 **Phases:** 12-16
-**Started:** 2026-03-02
+**Completed:** 2026-03-02
+
+## v1.3 — Rig Emulation (Complete)
+
+**Goal:** Extend the tone interview to accept physical rig descriptions — text, pedal photos, or both — and generate a Helix/Pod Go preset that emulates the user's actual gear with transparent substitution mapping.
+
+**Shipped:**
+- Zod schemas for rig intent, physical pedal, substitution entry/map
+- Pedal mapping engine with 53-entry curated table and 3-tier match logic
+- Vision extraction API via Claude Sonnet 4.6 with client-side image compression
+- Planner integration with toneContext injection and text rig parsing
+- Substitution card UI with progressive loading states
+- Works for Helix LT, Helix Floor, and Pod Go
+
+**Phases:** 17-21 (5 plans total)
+**Completed:** 2026-03-02
 
 ---
-*Last updated: 2026-03-02*
+*Last updated: 2026-03-03*

@@ -39,49 +39,56 @@ Generated presets must sound professional enough to compete with custom presets 
 - ✓ Pod Go-specific signal chain rules (single DSP, 4-effect limit) — v1.2
 - ✓ Pod Go model catalog with Mono/Stereo suffix convention — v1.2
 - ✓ Device-filtered planner prompt (Pod Go only sees Pod Go models) — v1.2
+- ✓ Rig emulation: text description + pedal photo upload in tone interview — v1.3
+- ✓ Claude Vision pedal extraction with confidence tiers — v1.3
+- ✓ Pedal mapping engine (53-entry curated table, 3-tier match logic) — v1.3
+- ✓ Substitution card UI with transparent mapping rationale — v1.3
+- ✓ Knob zone translation (physical knobs → Helix parameter values) — v1.3
+- ✓ Rig emulation for Helix LT, Helix Floor, and Pod Go — v1.3
 
 ### Active
 
-- [ ] Flexible rig input: text description, image upload, or both — in the existing tone interview chat
-- [ ] Claude Vision analysis of pedal photos: extract model name and knob positions
-- [ ] Rig-to-Helix/Pod Go model mapping with closest-match substitution logic
-- [ ] Substitution summary card: each physical pedal → Helix block with reasoning
-- [ ] Physical knob position → Helix parameter value translation
-- [ ] Rig emulation mode works for Helix LT, Helix Floor, and Pod Go
+- [ ] Google authentication with anonymous-first flow (login unlocks persistence)
+- [ ] Chat persistence — full conversation history stored per user in cloud database
+- [ ] Last-preset storage — most recent .hlx/.pgp saved per conversation
+- [ ] Chat sidebar UI — pull-out panel listing past chats, like ChatGPT/Claude
+- [ ] Resume conversations — re-open a chat, continue refining, regenerate with tweaks
+- [ ] Anonymous usage remains fully functional without login
 
 ### Out of Scope
 
 - HX Stomp support — different hardware constraints, defer to future
-- User accounts / preset saving — keep it simple, generate and download
 - MIDI configuration — focus on tone, not hardware routing
 - IR (impulse response) loading — stick with stock cabs
 - Multi-provider comparison UI — going single provider for quality focus
 - Full pedalboard OCR (auto-detect all pedals from a single board photo) — too unreliable at launch, per-pedal photos are the baseline
 
-## Current Milestone: v1.3 Rig Emulation
+## Current Milestone: v2.0 Persistent Chat Platform
 
-**Goal:** Extend the tone interview to accept physical rig descriptions — text, pedal photos, or both — and generate a Helix/Pod Go preset that emulates the user's actual gear, with transparent substitution mapping.
+**Goal:** Transform HelixAI from a stateless generate-and-download tool into a persistent platform where users log in with Google, maintain a sidebar of past conversations, pick up where they left off, and re-download their most recent preset per chat. Anonymous usage remains fully functional; login unlocks history.
 
 **Target features:**
-- Image upload in the chat UI (one or more pedal photos with visible knob positions)
-- Claude Vision extracts pedal model name + knob positions from each photo
-- Rig description parser handles text input (e.g., "TS9 → Blues Breaker → Fender Twin Reverb")
-- Rig-to-Helix mapping layer: physical pedal names → closest Helix/Pod Go models
-- Knob position translator: physical knob percentages → Helix parameter values
-- Substitution card in the results UI: "TS9 Tube Screamer → Teemah! — closest gain structure and mid-hump EQ"
-- Works for Helix LT, Helix Floor, and Pod Go (same device selector)
+- Google authentication (anonymous-first, login unlocks persistence)
+- Chat persistence (full conversation history stored per user in cloud database)
+- Last-preset storage (most recent .hlx/.pgp file saved per conversation)
+- Chat sidebar UI (pull-out panel, list of past chats, like ChatGPT/Claude)
+- Resume conversations (continue refining, regenerate with tweaks)
+- New chat creation from sidebar
+- Anonymous flow unchanged — generate and download without an account
 
 ## Context
 
-v1.0 rebuilt the entire preset engine from scratch: type contracts, Knowledge Layer (chain rules, param engine, snapshot engine), AI integration with Claude Sonnet 4.6 structured output, end-to-end orchestration, frontend polish, and hardening. The system generates .hlx files that load on Helix LT/Floor with category-specific amp parameters, cab filtering, always-on utility blocks, and 4 volume-balanced snapshots.
+v1.0 rebuilt the entire preset engine from scratch: type contracts, Knowledge Layer (chain rules, param engine, snapshot engine), AI integration with Claude Sonnet 4.6 structured output, end-to-end orchestration, frontend polish, and hardening.
 
-v1.1 fixed hardware-facing bugs (stomp footswitches, pedalstate bitmask), added prompt caching, genre-aware effect defaults, smarter snapshot toggling via intentRole, and signal chain visualization.
+v1.1 fixed hardware-facing bugs, added prompt caching, genre-aware effect defaults, smarter snapshot toggling, and signal chain visualization.
 
-v1.2 added full Pod Go support: new device type, Mono/Stereo suffixed model catalog, device-aware chain rules and validator, podgo-builder.ts for .pgp generation, and Pod Go in the device selector.
+v1.2 added full Pod Go support: .pgp format, Mono/Stereo model catalog, device-aware chain rules, and Pod Go in the device selector.
+
+v1.3 added rig emulation: Claude Vision pedal extraction, 53-entry curated mapping table, text rig parsing, substitution card UI, and progressive loading states. Works for all three devices.
 
 Key architecture: Planner-Executor pattern where Claude selects creative model choices (~15 fields in ToneIntent) and the deterministic Knowledge Layer generates all parameter values. This separation ensures tone quality is encoded in code, not dependent on AI accuracy.
 
-For rig emulation, the Planner layer will be extended to accept vision input (base64 encoded images) alongside the conversation, and a new RigIntent schema will carry the extracted/mapped rig data into ToneIntent.
+The app is currently stateless — every page load starts fresh, no user identity, no saved chats. v2.0 adds a persistence layer (auth, database, file storage) and a chat management UI while preserving the existing anonymous generate-and-download flow for non-authenticated users.
 
 ## Constraints
 
@@ -102,8 +109,12 @@ For rig emulation, the Planner layer will be extended to accept vision input (ba
 | Keep Warm Analog Studio frontend | Design is strong, just needs polish — no reason to throw it away | ✓ Good |
 | Planner-Executor architecture | AI selects models (~15 fields), Knowledge Layer generates all params deterministically | ✓ Good |
 | Pod Go as v1.2 (not v2.0) | Building on existing architecture, not replacing — new device is additive | ✓ Good |
-| Rig emulation as part of the tone interview | No new mode — the chat detects rig descriptions and switches into emulation mode naturally | — Pending |
-| Per-pedal photos over full pedalboard OCR | Per-pedal is reliable; whole-board OCR too error-prone for v1.3 | — Pending |
+| Rig emulation as part of the tone interview | No new mode — the chat detects rig descriptions and switches into emulation mode naturally | ✓ Good |
+| Per-pedal photos over full pedalboard OCR | Per-pedal is reliable; whole-board OCR too error-prone for v1.3 | ✓ Good |
+| Reverse "no user accounts" for v2.0 | Product matured enough that persistence adds clear user value — users want to iterate on presets | — Pending |
+| Anonymous-first auth model | Non-logged-in users get full functionality; login unlocks persistence only | — Pending |
+| Save last preset per chat (not all versions) | Balance between utility and storage cost — one .hlx/.pgp per conversation | — Pending |
+| Auth/database/storage provider TBD | Firebase, Supabase, or best fit — research phase will determine | — Pending |
 
 ---
-*Last updated: 2026-03-02 after v1.3 milestone start*
+*Last updated: 2026-03-03 after v2.0 milestone start*
