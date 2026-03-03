@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Persistent Chat Platform
 status: unknown
-last_updated: "2026-03-03T19:59:33.539Z"
+last_updated: "2026-03-03T22:28:57.283Z"
 progress:
   total_phases: 19
   completed_phases: 12
   total_plans: 33
-  completed_plans: 23
+  completed_plans: 24
 ---
 
 ---
@@ -35,12 +35,12 @@ See: .planning/PROJECT.md (updated 2026-03-03)
 
 ## Current Position
 
-Phase: 24 (complete — all 3 plans done)
-Plan: 03 (complete)
-Status: Phase 24 complete — Supabase foundation fully verified: env vars documented, schema + RLS active, Vercel vars set, build passes clean
-Last activity: 2026-03-03 — 24-03 env var template, test-session verification, build confirmed, test route cleaned up
+Phase: 25 (in progress — 1/2 plans done)
+Plan: 01 (complete)
+Status: Phase 25 in progress — PKCE callback route created, anonymous session init added, sessionStorage preservation implemented
+Last activity: 2026-03-03 — 25-01 callback route, anonymous session init, sessionStorage state preservation
 
-Progress: [----------] 0/5 phases complete (3 plans done)
+Progress: [----------] 0/5 phases complete (4 plans done)
 
 ## Performance Metrics
 
@@ -90,7 +90,7 @@ Progress: [----------] 0/5 phases complete (3 plans done)
 | Phase | Plans | Status |
 |-------|-------|--------|
 | 24. Supabase Foundation | 3 | Complete — client utils + middleware, schema SQL + keep-alive, env vars verified + build clean |
-| 25. Auth Flow | TBD | Not started |
+| 25. Auth Flow | 2 plans | In Progress — 25-01 done: PKCE callback route + anonymous session init + sessionStorage preservation |
 | 26. Conversation CRUD API | TBD | Not started |
 | 27. Persistence Wiring | TBD | Not started |
 | 28. Chat Sidebar UI + UX Polish | TBD | Not started |
@@ -137,6 +137,9 @@ Progress: [----------] 0/5 phases complete (3 plans done)
 - [v2.0 24-02]: keep-alive route queries conversations table — HTTP-only pings do not reliably prevent Supabase 7-day pause
 - [v2.0 24-03]: Vercel-only deployment — no local .env.local; verification uses npm run build not local dev server
 - [v2.0 24-03]: Temporary test-session route deleted after verification — not deployed to production long-term
+- [Phase 25-auth-flow]: x-forwarded-host checked for production URL construction — handles Vercel load balancer correctly
+- [Phase 25-auth-flow]: Single useEffect for session init + state restoration — prevents race condition between getUser() and setMessages()
+- [Phase 25-auth-flow]: serializeChatState() defined in page.tsx with useCallback — wired by Plan 02 AuthButton
 
 ### Roadmap Evolution
 
@@ -154,6 +157,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Completed 24-03 — Phase 24 Supabase Foundation fully complete
+Stopped at: Completed 25-01 — PKCE callback route + anonymous session init + sessionStorage preservation
 Resume file: None
-Next command: /gsd:execute-phase 25
+Next command: /gsd:execute-phase 25 (plan 02 next)
