@@ -3,6 +3,19 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Persistent Chat Platform
 status: unknown
+last_updated: "2026-03-03T23:14:01.461Z"
+progress:
+  total_phases: 20
+  completed_phases: 15
+  total_plans: 33
+  completed_plans: 31
+---
+
+---
+gsd_state_version: 1.0
+milestone: v2.0
+milestone_name: Persistent Chat Platform
+status: unknown
 last_updated: "2026-03-03T23:09:54.186Z"
 progress:
   total_phases: 20
@@ -74,12 +87,12 @@ See: .planning/PROJECT.md (updated 2026-03-03)
 
 ## Current Position
 
-Phase: 28 (In Progress — 1 of 3 plans done)
-Plan: 01 (2 tasks complete — ChatSidebar.tsx, ConversationList.tsx, layout.tsx async auth check)
-Status: Phase 28 Chat Sidebar UI — Plan 01 complete (sidebar shell + layout wired); Plan 02 (conversation navigation) next
-Last activity: 2026-03-03 — 28-01 executed; ChatSidebar + layout.tsx wired
+Phase: 28 (In Progress — 2 of 3 plans done)
+Plan: 02 (2 tasks complete — URL param watcher, New Chat event listener, isResumingConversation state, conversation-created dispatch)
+Status: Phase 28 Chat Sidebar UI — Plan 02 complete (conversation navigation wired); Plan 03 (UX polish) next
+Last activity: 2026-03-03 — 28-02 executed; page.tsx conversation navigation wiring done
 
-Progress: [----------] 3/5 phases complete (11 plans done in v2.0)
+Progress: [----------] 3/5 phases complete (12 plans done in v2.0)
 
 ## Performance Metrics
 
@@ -136,6 +149,7 @@ Progress: [----------] 3/5 phases complete (11 plans done in v2.0)
 | Phase 27 P01 | 112s | 2 tasks | 2 files |
 | Phase 27-persistence-wiring P02 | 145 | 2 tasks | 1 files |
 | Phase 28 P01 | 2 | 2 tasks | 3 files |
+| Phase 28 P02 | 4 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -198,6 +212,9 @@ Progress: [----------] 3/5 phases complete (11 plans done in v2.0)
 - [Phase 27-02]: ensureConversation() returns null for anonymous users (is_anonymous: true) — preserves UXP-04, anonymous flow sends no conversationId
 - [Phase 28-01]: ChatSidebar mounted in layout.tsx — persists without remount across navigations; CSS translateX toggle keeps conversation list in memory when sidebar closes
 - [Phase 28-01]: Server-side isAuthenticated check in async layout.tsx — anonymous users see no sidebar, no client-side auth check needed
+- [Phase 28]: useSearchParams used to read conversation URL param in page.tsx — URL param watcher triggers loadConversation, router.replace cleans URL after load
+- [Phase 28]: helixai:conversation-created dispatch in ensureConversation() success path — closes sidebar refresh loop with ChatSidebar listener from Plan 01
+- [Phase 28]: isResumingConversation cleared on sendMessage/generatePreset — once user acts in resumed conversation, continuation chips (Plan 03) disappear
 
 ### Roadmap Evolution
 
@@ -216,6 +233,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Phase 27 Plan 02 complete — page.tsx client persistence wiring done; Phase 28 (Chat Sidebar UI) is next
+Stopped at: Phase 28 Plan 02 complete — page.tsx conversation navigation wiring done; Plan 03 (UX polish) is next
 Resume file: None
-Next command: /gsd:execute-phase 28 (Chat Sidebar UI + UX Polish)
+Next command: /gsd:execute-phase 28 (plan 03 — UX Polish)

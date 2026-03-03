@@ -230,8 +230,8 @@ Requirements for Persistent Chat Platform milestone. Transform HelixAI from a st
 
 - [x] **SIDE-01**: Pull-out sidebar panel on the left side showing past conversations — collapsible on mobile, mounted in layout.tsx so it persists without re-mounting
 - [x] **SIDE-02**: Sidebar shows conversation title, device type, and relative timestamp for each chat — sorted by most recent activity
-- [ ] **SIDE-03**: "New Chat" button in sidebar header clears the current session and starts a fresh conversation
-- [ ] **SIDE-04**: Clicking a conversation in the sidebar resumes it — full message history loaded into the chat UI, device selector restored, "Download Preset" button available if a preset was previously generated
+- [x] **SIDE-03**: "New Chat" button in sidebar header clears the current session and starts a fresh conversation
+- [x] **SIDE-04**: Clicking a conversation in the sidebar resumes it — full message history loaded into the chat UI, device selector restored, "Download Preset" button available if a preset was previously generated
 - [x] **SIDE-05**: Sidebar is visible only when the user is authenticated — anonymous users see the standard full-width chat interface with no sidebar
 - [x] **SIDE-06**: Sidebar interactions (create, delete) use optimistic UI updates — sidebar responds instantly, rolls back on server error
 
@@ -428,8 +428,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UXP-04 | Phase 27 | Complete |
 | SIDE-01 | Phase 28 | Complete |
 | SIDE-02 | Phase 28 | Complete |
-| SIDE-03 | Phase 28 | Pending |
-| SIDE-04 | Phase 28 | Pending |
+| SIDE-03 | Phase 28 | Complete |
+| SIDE-04 | Phase 28 | Complete |
 | SIDE-05 | Phase 28 | Complete |
 | SIDE-06 | Phase 28 | Complete |
 | UXP-01 | Phase 28 | Pending |
