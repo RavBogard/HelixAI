@@ -62,11 +62,13 @@ CREATE POLICY "users_own_messages"
 -- ============================================================
 
 -- Private bucket — files accessible only via signed URLs
+-- NOTE: If this INSERT fails with a permissions error, create the bucket manually:
+--   Supabase Dashboard -> Storage -> New Bucket -> Name: "presets" -> Public: OFF -> Create
 INSERT INTO storage.buckets (id, name, public)
-VALUES ('presets', 'presets', false);
+VALUES ('presets', 'presets', false)
+ON CONFLICT (id) DO NOTHING;
 
--- Enable RLS on storage.objects (may already be enabled; idempotent)
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+-- RLS is already enabled on storage.objects by Supabase — do NOT alter it
 
 -- Path convention: {user_id}/{conversation_id}/latest.hlx (or .pgp)
 -- storage.foldername is 1-indexed: [1] = user_id, [2] = conversation_id
