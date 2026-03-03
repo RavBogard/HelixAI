@@ -350,9 +350,9 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 23-01-PLAN.md — Investigate and obtain correct Helix Floor device ID from a real .hlx export (checkpoint: user supplies the integer)
-- [ ] 23-02-PLAN.md — Update DEVICE_IDS.helix_floor in types.ts, HLX_APP_VERSION/HLX_BUILD_SHA in config.ts, and literal assertion in orchestration.test.ts
+- [x] 23-01-PLAN.md — Investigate and obtain correct Helix Floor device ID (COMPLETE — device ID 2162691 obtained and documented)
+- [x] 23-02-PLAN.md — Update DEVICE_IDS.helix_floor in types.ts, HLX_APP_VERSION/HLX_BUILD_SHA in config.ts, and literal assertion in orchestration.test.ts (COMPLETE — all constants updated, 108 tests pass)
 
 ---
 *Roadmap created: 2026-03-01*
-*Last updated: 2026-03-02 — Phase 23 plans 23-01 and 23-02 created; fix -8309 Helix Floor device ID bug*
+*Last updated: 2026-03-02 — Phase 23 COMPLETE: Helix Floor device ID corrected from 2162688 to 2162691, firmware baseline updated to v3.80, all tests passing*
