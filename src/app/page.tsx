@@ -350,7 +350,11 @@ export default function Home() {
   const [storedPresetPath, setStoredPresetPath] = useState<string | null>(null);
 
   // Phase 28: resume UX state
-  const [isResumingConversation, setIsResumingConversation] = useState(false);
+  const [isResumingConversation, setIsResumingConversation] = useState(false)
+  // Phase 28: UXP-01 — sign-in banner state
+  const [showSignInBanner, setShowSignInBanner] = useState(false)
+  // Phase 28: UXP-02 — loading state during conversation resume
+  const [isLoadingConversation, setIsLoadingConversation] = useState(false);
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -709,6 +713,12 @@ export default function Home() {
     a.download = `${baseName.replace(/[^a-zA-Z0-9_()-]/g, "_")}${deviceSuffix}${ext}`;
     a.click();
     URL.revokeObjectURL(url);
+
+    // Phase 28: UXP-01 — prompt anonymous users to sign in after first download
+    // conversationId is null for anonymous users (ensureConversation returns null for them)
+    if (!conversationId) {
+      setShowSignInBanner(true)
+    }
   }
 
   // Phase 27: re-download stored preset from Supabase Storage (STORE-02)
@@ -746,6 +756,10 @@ export default function Home() {
 
   // Phase 27: load a resumed conversation from API
   async function loadConversation(convId: string) {
+    // Phase 28: UXP-02 — show loading state during resume
+    setIsLoadingConversation(true)
+    setMessages([]) // Clear immediately so stale messages don't flash
+
     try {
       const res = await fetch(`/api/conversations/${convId}`);
       if (!res.ok) {
@@ -791,6 +805,9 @@ export default function Home() {
       router.replace("/", { scroll: false });
     } catch {
       setError("Failed to load conversation");
+    } finally {
+      // Phase 28: UXP-02 — always clear loading state
+      setIsLoadingConversation(false)
     }
   }
 
@@ -824,6 +841,8 @@ export default function Home() {
     setStoredPresetPath(null);
     // Phase 28: clear resume state
     setIsResumingConversation(false);
+    // Phase 28: clear sign-in banner on new chat
+    setShowSignInBanner(false);
   }
 
   // Phase 21: standalone mapping helper — called after callVision() and on device change.
