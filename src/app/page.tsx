@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
 import ReactMarkdown from "react-markdown";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 interface Message {
@@ -348,6 +349,13 @@ export default function Home() {
   // Phase 27: stored preset path from resumed conversation (STORE-02)
   const [storedPresetPath, setStoredPresetPath] = useState<string | null>(null);
 
+  // Phase 28: resume UX state
+  const [isResumingConversation, setIsResumingConversation] = useState(false);
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const conversationParam = searchParams.get("conversation");
+
   // Check for premium key in URL on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -456,6 +464,29 @@ export default function Home() {
     return () => window.removeEventListener('helixai:before-signin', handler)
   }, [serializeChatState])
 
+  // Phase 28: SIDE-04 — resume conversation from URL param
+  // When sidebar navigates to /?conversation=<id>, load that conversation
+  useEffect(() => {
+    if (conversationParam && conversationParam !== conversationId) {
+      loadConversation(conversationParam)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationParam])
+  // Note: intentional — we only want to trigger on conversationParam change,
+  // not on conversationId changes (would cause re-load loop).
+  // loadConversation is stable (async function declared in component, no deps that change).
+
+  // Phase 28: SIDE-03 — New Chat button in sidebar calls startOver() via event
+  useEffect(() => {
+    const handler = () => {
+      startOver()
+      // conversationId and storedPresetPath are cleared by startOver()
+    }
+    window.addEventListener('helixai:new-chat', handler)
+    return () => window.removeEventListener('helixai:new-chat', handler)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // startOver is defined once, no deps
+
   // Phase 27: Create conversation on first authenticated message
   const ensureConversation = useCallback(async (): Promise<string | null> => {
     // Already have a conversation — return immediately
@@ -489,6 +520,7 @@ export default function Home() {
   }, [selectedDevice]);
 
   async function sendMessage(e?: React.FormEvent) {
+    setIsResumingConversation(false); // User is now active in this conversation
     e?.preventDefault();
     if (!input.trim() || isStreaming) return;
 
@@ -600,6 +632,7 @@ export default function Home() {
   // overrideMessages: used by handleRigGenerate() when calling from the welcome screen,
   // where React state hasn't flushed yet. Falls back to messages state for the chat flow.
   async function generatePreset(overrideMessages?: Message[], overrideDevice?: "helix_lt" | "helix_floor" | "pod_go") {
+    setIsResumingConversation(false); // User is regenerating
     setIsGenerating(true);
     setError(null);
 
@@ -747,6 +780,11 @@ export default function Home() {
       if (lastMsg?.content?.includes("[READY_TO_GENERATE]") || lastMsg?.role === "assistant") {
         setReadyToGenerate(true);
       }
+
+      // Phase 28: mark as resumed for UXP-03 continuation chips
+      setIsResumingConversation(true);
+      // Clean URL param — hard refresh will show clean state
+      router.replace("/", { scroll: false });
     } catch {
       setError("Failed to load conversation");
     }
@@ -780,6 +818,8 @@ export default function Home() {
     isFirstMessageRef.current = true;
     // Phase 27: clear stored preset path
     setStoredPresetPath(null);
+    // Phase 28: clear resume state
+    setIsResumingConversation(false);
   }
 
   // Phase 21: standalone mapping helper — called after callVision() and on device change.
