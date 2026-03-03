@@ -994,7 +994,16 @@ export default function Home() {
 
       {/* --- Messages --- */}
       <div className="flex-1 overflow-y-auto px-6 py-6">
-        {messages.length === 0 ? (
+        {isLoadingConversation ? (
+          /* Phase 28: UXP-02 — conversation resume loading state */
+          <div className="flex flex-col items-center justify-center flex-1 gap-3 py-16">
+            <svg className="hlx-spin h-5 w-5 text-[var(--hlx-amber)]" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            <p className="text-[0.8125rem] text-[var(--hlx-text-muted)]">Loading conversation&hellip;</p>
+          </div>
+        ) : messages.length === 0 ? (
           /* --- Welcome Screen --- */
           <div className="flex flex-col items-center justify-center h-full text-center gap-9 hlx-stagger">
             {/* Hero: Large centered logo + wordmark */}
@@ -1405,6 +1414,32 @@ export default function Home() {
               );
             })()}
 
+            {/* Phase 28: UXP-01 — Sign-in prompt for anonymous users after preset download */}
+            {showSignInBanner && (
+              <div className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg border border-[var(--hlx-border-warm)] bg-[var(--hlx-elevated)] text-[0.8125rem] mx-auto max-w-2xl">
+                <span className="text-[var(--hlx-text-sub)]">
+                  Sign in to save this chat and come back to refine it later
+                </span>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => window.dispatchEvent(new Event('helixai:before-signin'))}
+                    className="text-[var(--hlx-amber)] hover:text-[var(--hlx-text)] font-medium transition-colors text-[0.8125rem]"
+                  >
+                    Sign in
+                  </button>
+                  <button
+                    onClick={() => setShowSignInBanner(false)}
+                    className="text-[var(--hlx-text-muted)] hover:text-[var(--hlx-text-sub)] transition-colors"
+                    aria-label="Dismiss"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div ref={messagesEndRef} />
           </div>
         )}
@@ -1414,6 +1449,48 @@ export default function Home() {
       {error && (
         <div className="mx-6 mb-2 hlx-error">
           {error}
+        </div>
+      )}
+
+      {/* Phase 28: UXP-03 — Continuation suggestion chips after conversation resume */}
+      {isResumingConversation && !isStreaming && !isGenerating && messages.length > 0 && (
+        <div className="flex gap-2 flex-wrap px-6 pb-2">
+          <button
+            onClick={() => {
+              setInput("Refine this tone")
+              inputRef.current?.focus()
+              setIsResumingConversation(false)
+            }}
+            className="px-3 py-1.5 rounded-full border border-[var(--hlx-border)] bg-[var(--hlx-surface)] text-[11px] text-[var(--hlx-text-sub)] hover:border-[var(--hlx-border-warm)] hover:bg-[var(--hlx-elevated)] transition-all"
+            style={{ fontFamily: "var(--font-mono), monospace" }}
+          >
+            Refine this tone
+          </button>
+          <button
+            onClick={() => {
+              setInput("Try a different amp, keeping the same style")
+              inputRef.current?.focus()
+              setIsResumingConversation(false)
+            }}
+            className="px-3 py-1.5 rounded-full border border-[var(--hlx-border)] bg-[var(--hlx-surface)] text-[11px] text-[var(--hlx-text-sub)] hover:border-[var(--hlx-border-warm)] hover:bg-[var(--hlx-elevated)] transition-all"
+            style={{ fontFamily: "var(--font-mono), monospace" }}
+          >
+            Try a different amp
+          </button>
+          <button
+            onClick={() => {
+              const otherDevice = selectedDevice === "helix_lt" ? "helix_floor"
+                : selectedDevice === "helix_floor" ? "helix_lt"
+                : "helix_lt"
+              setSelectedDevice(otherDevice)
+              generatePreset(undefined, otherDevice)
+              setIsResumingConversation(false)
+            }}
+            className="px-3 py-1.5 rounded-full border border-[var(--hlx-border)] bg-[var(--hlx-surface)] text-[11px] text-[var(--hlx-text-sub)] hover:border-[var(--hlx-border-warm)] hover:bg-[var(--hlx-elevated)] transition-all"
+            style={{ fontFamily: "var(--font-mono), monospace" }}
+          >
+            Generate for {selectedDevice === "pod_go" ? "Helix LT" : selectedDevice === "helix_lt" ? "Helix Floor" : "Helix LT"}
+          </button>
         </div>
       )}
 
