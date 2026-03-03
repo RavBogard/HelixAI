@@ -223,7 +223,7 @@ Requirements for Persistent Chat Platform milestone. Transform HelixAI from a st
 ### File Storage
 
 - [x] **STORE-01**: Most recent generated preset (.hlx or .pgp) stored in Supabase Storage per conversation — deterministic key with upsert overwrites on regeneration (one file per chat, not version history)
-- [ ] **STORE-02**: User can re-download the stored preset from a resumed conversation without regenerating — "Download Preset" button fetches from storage
+- [x] **STORE-02**: User can re-download the stored preset from a resumed conversation without regenerating — "Download Preset" button fetches from storage
 - [x] **STORE-03**: Preset storage is a background operation — download completes immediately from the builder output; storage upload happens asynchronously and never blocks the user
 
 ### Chat Sidebar UI
@@ -423,7 +423,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CONV-05 | Phase 26 | Complete |
 | CONV-06 | Phase 26 | Complete |
 | STORE-01 | Phase 27 | Complete |
-| STORE-02 | Phase 27 | Pending |
+| STORE-02 | Phase 27 | Complete |
 | STORE-03 | Phase 27 | Complete |
 | UXP-04 | Phase 27 | Complete |
 | SIDE-01 | Phase 28 | Pending |

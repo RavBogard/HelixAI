@@ -3,6 +3,19 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Persistent Chat Platform
 status: unknown
+last_updated: "2026-03-03T22:59:38.905Z"
+progress:
+  total_phases: 19
+  completed_phases: 15
+  total_plans: 33
+  completed_plans: 29
+---
+
+---
+gsd_state_version: 1.0
+milestone: v2.0
+milestone_name: Persistent Chat Platform
+status: unknown
 last_updated: "2026-03-03T22:54:31.115Z"
 progress:
   total_phases: 19
@@ -35,12 +48,12 @@ See: .planning/PROJECT.md (updated 2026-03-03)
 
 ## Current Position
 
-Phase: 27 (IN PROGRESS — 27-01 done, 27-02 next)
-Plan: 01 (2 tasks complete — TypeScript clean, both routes verified)
-Status: Phase 27 Persistence Wiring in progress — /api/chat and /api/generate wired for conditional message and preset persistence; Plan 02 (page.tsx client integration) next
-Last activity: 2026-03-03 — 27-01 executed; ready for 27-02
+Phase: 27 (COMPLETE — both plans done)
+Plan: 02 (2 tasks complete — TypeScript clean, build clean)
+Status: Phase 27 Persistence Wiring complete — page.tsx wired with conversationId lifecycle, ensureConversation(), auto-title, downloadStoredPreset(), loadConversation(); Phase 28 (Chat Sidebar UI) next
+Last activity: 2026-03-03 — 27-02 executed; Phase 27 fully complete
 
-Progress: [----------] 2/5 phases complete (8 plans done in v2.0)
+Progress: [----------] 3/5 phases complete (10 plans done in v2.0)
 
 ## Performance Metrics
 
@@ -92,9 +105,10 @@ Progress: [----------] 2/5 phases complete (8 plans done in v2.0)
 | 24. Supabase Foundation | 3 | Complete — client utils + middleware, schema SQL + keep-alive, env vars verified + build clean |
 | 25. Auth Flow | 2 plans | Complete — AuthButton + Google OAuth linkIdentity() + human verification passed |
 | 26. Conversation CRUD API | 2 plans | Complete — POST create, GET list, GET read-with-messages, PATCH title, POST message, DELETE conversation |
-| 27. Persistence Wiring | 2 plans | In progress — 27-01 done: /api/chat + /api/generate persistence wiring complete |
+| 27. Persistence Wiring | 2 plans | Complete — /api/chat + /api/generate server persistence + page.tsx client lifecycle wiring |
 | 28. Chat Sidebar UI + UX Polish | TBD | Not started |
 | Phase 27 P01 | 112s | 2 tasks | 2 files |
+| Phase 27-persistence-wiring P02 | 145 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -153,6 +167,8 @@ Progress: [----------] 2/5 phases complete (8 plans done in v2.0)
 - [Phase 27]: Assistant message saved fire-and-forget after controller.close() — no latency added to SSE UX
 - [Phase 27]: preset_url stores Supabase Storage object path not full HTTPS URL — matches Phase 26 DELETE remove() contract (enforced in 27-01)
 - [Phase 27]: Preset upload fire-and-forget via .then().catch() before return NextResponse.json() — STORE-03 compliant non-blocking response
+- [Phase 27-02]: conversationIdRef (useRef) used alongside conversationId (useState) — ref provides synchronous access in sendMessage/generatePreset closures, state provides React re-render trigger
+- [Phase 27-02]: ensureConversation() returns null for anonymous users (is_anonymous: true) — preserves UXP-04, anonymous flow sends no conversationId
 
 ### Roadmap Evolution
 
@@ -170,6 +186,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Phase 27 Plan 01 complete — /api/chat and /api/generate persistence wiring executed; 27-02 (page.tsx client integration) is next
+Stopped at: Phase 27 Plan 02 complete — page.tsx client persistence wiring done; Phase 28 (Chat Sidebar UI) is next
 Resume file: None
-Next command: /gsd:execute-phase 27 (Persistence Wiring — Plan 02)
+Next command: /gsd:execute-phase 28 (Chat Sidebar UI + UX Polish)
