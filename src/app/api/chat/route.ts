@@ -1,9 +1,60 @@
 import { NextRequest } from "next/server";
 import { createGeminiClient, getSystemPrompt, getModelId, isPremiumKey } from "@/lib/gemini";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function POST(req: NextRequest) {
-  const { messages, premiumKey } = await req.json();
+  const { messages, premiumKey, conversationId } = await req.json();
   const premium = isPremiumKey(premiumKey);
+
+  // --- Persistence: save user message BEFORE streaming ---
+  let userId: string | null = null;
+  let supabase: Awaited<ReturnType<typeof createSupabaseServerClient>> | null = null;
+
+  if (conversationId) {
+    supabase = await createSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      userId = user.id;
+      const lastMsg = messages[messages.length - 1];
+      if (lastMsg?.role === "user") {
+        // Verify conversation ownership — defense-in-depth (STATE.md locked decision)
+        const { data: conv } = await supabase
+          .from("conversations")
+          .select("id")
+          .eq("id", conversationId)
+          .eq("user_id", userId)
+          .single();
+
+        if (conv) {
+          // Server-side sequence number assignment (STATE.md locked decision)
+          const { data: maxSeq } = await supabase
+            .from("messages")
+            .select("sequence_number")
+            .eq("conversation_id", conversationId)
+            .order("sequence_number", { ascending: false })
+            .limit(1)
+            .single();
+
+          const nextSeq = (maxSeq?.sequence_number ?? 0) + 1;
+
+          await supabase.from("messages").insert({
+            conversation_id: conversationId,
+            role: "user",
+            content: lastMsg.content,
+            sequence_number: nextSeq,
+          });
+
+          // Update conversations.updated_at for correct list ordering
+          await supabase
+            .from("conversations")
+            .update({ updated_at: new Date().toISOString() })
+            .eq("id", conversationId)
+            .eq("user_id", userId);
+        }
+      }
+    }
+  }
+  // --- End persistence pre-stream ---
 
   const ai = createGeminiClient();
   const modelId = getModelId(premium);
@@ -34,15 +85,42 @@ export async function POST(req: NextRequest) {
   const encoder = new TextEncoder();
   const readable = new ReadableStream({
     async start(controller) {
+      let fullContent = "";
       try {
         for await (const chunk of stream) {
           const text = chunk.text;
           if (text) {
+            fullContent += text;
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text })}\n\n`));
           }
         }
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         controller.close();
+
+        // --- Persistence: save assistant message AFTER stream closes ---
+        if (conversationId && userId && supabase && fullContent) {
+          const { data: maxSeq } = await supabase
+            .from("messages")
+            .select("sequence_number")
+            .eq("conversation_id", conversationId)
+            .order("sequence_number", { ascending: false })
+            .limit(1)
+            .single();
+
+          supabase
+            .from("messages")
+            .insert({
+              conversation_id: conversationId,
+              role: "assistant",
+              content: fullContent,
+              sequence_number: (maxSeq?.sequence_number ?? 0) + 1,
+            })
+            .then(({ error }) => {
+              if (error) console.error("Failed to save assistant message:", error.message);
+            });
+        }
+        // --- End persistence post-stream ---
+
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unknown error";
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: message })}\n\n`));
