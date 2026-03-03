@@ -209,7 +209,7 @@ Requirements for Persistent Chat Platform milestone. Transform HelixAI from a st
 - [x] **INFRA-03**: Middleware at project root refreshes session tokens on every non-static request — without this, JWT tokens expire and sessions break mid-use
 - [x] **INFRA-04**: Two Supabase client utilities (browser client + server client) provide isomorphic database access across Client Components, Server Components, and Route Handlers
 - [x] **INFRA-05**: Keep-alive mechanism prevents Supabase free-tier 7-day inactivity pause — automated ping every 4 days via cron job or GitHub Action
-- [ ] **INFRA-06**: Environment variables configured in Vercel for both preview and production — Supabase URL, anon key, and Google OAuth callback URLs registered in Google Cloud Console
+- [x] **INFRA-06**: Environment variables configured in Vercel for both preview and production — Supabase URL, anon key, and Google OAuth callback URLs registered in Google Cloud Console
 
 ### Conversation Persistence
 
@@ -410,7 +410,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-03 | Phase 24 | Complete |
 | INFRA-04 | Phase 24 | Complete |
 | INFRA-05 | Phase 24 | Complete |
-| INFRA-06 | Phase 24 | Pending |
+| INFRA-06 | Phase 24 | Complete |
 | AUTH-01 | Phase 25 | Pending |
 | AUTH-02 | Phase 25 | Pending |
 | AUTH-03 | Phase 25 | Pending |

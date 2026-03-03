@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Persistent Chat Platform
 status: in_progress
-last_updated: "2026-03-03T19:27:00Z"
+last_updated: "2026-03-03T20:10:00Z"
 progress:
   total_phases: 5
   completed_phases: 0
-  total_plans: 2
-  completed_plans: 2
+  total_plans: 3
+  completed_plans: 3
 ---
 
 # Project State
@@ -22,12 +22,12 @@ See: .planning/PROJECT.md (updated 2026-03-03)
 
 ## Current Position
 
-Phase: 24 (in progress)
-Plan: 02 (complete)
-Status: Phase 24 Plan 02 complete — Database schema SQL, storage bucket RLS, and Vercel keep-alive cron deployed
-Last activity: 2026-03-03 — 24-02 schema.sql with RLS policies, presets storage bucket, and keep-alive cron route
+Phase: 24 (complete — all 3 plans done)
+Plan: 03 (complete)
+Status: Phase 24 complete — Supabase foundation fully verified: env vars documented, schema + RLS active, Vercel vars set, build passes clean
+Last activity: 2026-03-03 — 24-03 env var template, test-session verification, build confirmed, test route cleaned up
 
-Progress: [----------] 0/5 phases complete (2 plans done)
+Progress: [----------] 0/5 phases complete (3 plans done)
 
 ## Performance Metrics
 
@@ -76,7 +76,7 @@ Progress: [----------] 0/5 phases complete (2 plans done)
 
 | Phase | Plans | Status |
 |-------|-------|--------|
-| 24. Supabase Foundation | 2+ | Plan 01 done (client utils + middleware), Plan 02 done (schema SQL + keep-alive) |
+| 24. Supabase Foundation | 3 | Complete — client utils + middleware, schema SQL + keep-alive, env vars verified + build clean |
 | 25. Auth Flow | TBD | Not started |
 | 26. Conversation CRUD API | TBD | Not started |
 | 27. Persistence Wiring | TBD | Not started |
@@ -122,6 +122,8 @@ Progress: [----------] 0/5 phases complete (2 plans done)
 - [v2.0 24-02]: device column uses TEXT without CHECK constraint — flexibility for future device types
 - [v2.0 24-02]: presets storage bucket is private — files accessible only via signed URLs; storage.foldername[1] = user_id
 - [v2.0 24-02]: keep-alive route queries conversations table — HTTP-only pings do not reliably prevent Supabase 7-day pause
+- [v2.0 24-03]: Vercel-only deployment — no local .env.local; verification uses npm run build not local dev server
+- [v2.0 24-03]: Temporary test-session route deleted after verification — not deployed to production long-term
 
 ### Roadmap Evolution
 
@@ -139,6 +141,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Completed 24-02 — schema.sql + keep-alive cron + vercel.json
+Stopped at: Completed 24-03 — Phase 24 Supabase Foundation fully complete
 Resume file: None
-Next command: /gsd:execute-phase 24 (next plan, if any) or /gsd:execute-phase 25
+Next command: /gsd:execute-phase 25

@@ -285,7 +285,7 @@ Plans:
 
 **Milestone Goal:** Transform HelixAI from a stateless generate-and-download tool into a persistent platform where users log in with Google, maintain a sidebar of past conversations, pick up where they left off, and re-download their most recent preset per chat. Anonymous usage remains fully functional; login unlocks history.
 
-- [ ] **Phase 24: Supabase Foundation** - Database schema, RLS, client utilities, middleware, keep-alive
+- [x] **Phase 24: Supabase Foundation** - Database schema, RLS, client utilities, middleware, keep-alive (3 plans, complete 2026-03-03)
 - [ ] **Phase 25: Auth Flow** - Anonymous sign-in + Google OAuth + identity linking
 - [ ] **Phase 26: Conversation CRUD API** - Full data API for creating, reading, listing, and deleting conversations
 - [ ] **Phase 27: Persistence Wiring** - Modify chat/generate routes to persist messages and preset files
@@ -303,7 +303,7 @@ Plans:
   3. Middleware at project root calls `updateSession()` on every non-static request — a session cookie set in one request is still valid two requests later without any manual token refresh
   4. The Supabase Storage `presets` bucket exists with RLS on `storage.objects` — a direct upload attempt without a valid session token is rejected
   5. A keep-alive mechanism is deployed and verified — the Supabase project does not pause after 7 days of zero application activity
-**Plans**: TBD
+**Plans**: 3
 
 ### Phase 25: Auth Flow
 **Goal**: Every visitor gets an anonymous user ID on first load, and authenticated users can sign in with Google without losing their current session state — the anonymous generate-and-download flow is fully preserved with zero new auth gates
@@ -384,7 +384,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 19. Vision Extraction API | v1.3 | 1/1 | Complete | 2026-03-02 |
 | 20. Planner Integration & Orchestration | v1.3 | 1/1 | Complete | 2026-03-02 |
 | 21. Substitution Card & End-to-End Polish | v1.3 | 1/1 | Complete | 2026-03-02 |
-| 24. Supabase Foundation | 2/3 | In Progress|  | - |
+| 24. Supabase Foundation | v2.0 | 3/3 | Complete | 2026-03-03 |
 | 25. Auth Flow | v2.0 | 0/TBD | Not started | - |
 | 26. Conversation CRUD API | v2.0 | 0/TBD | Not started | - |
 | 27. Persistence Wiring | v2.0 | 0/TBD | Not started | - |
@@ -392,4 +392,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 ---
 *Roadmap created: 2026-03-01*
-*Last updated: 2026-03-03 — v2.0 Persistent Chat Platform phases 24-28 added; phases 22-23 dropped (user skipped); v1.3 phases 17-21 marked complete*
+*Last updated: 2026-03-03 — Phase 24 Supabase Foundation complete (3/3 plans); env vars documented, schema + RLS active, build verified clean*
