@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Persistent Chat Platform
 status: in_progress
-last_updated: "2026-03-03T22:42:00Z"
+last_updated: "2026-03-03T22:47:00Z"
 progress:
   total_phases: 19
-  completed_phases: 13
+  completed_phases: 14
   total_plans: 33
-  completed_plans: 26
+  completed_plans: 27
 ---
 
 # Project State
@@ -22,12 +22,12 @@ See: .planning/PROJECT.md (updated 2026-03-03)
 
 ## Current Position
 
-Phase: 26 (COMPLETE — 26-01 done)
-Plan: 01 (2 tasks complete — TypeScript clean, all routes verified)
-Status: Phase 26 Conversation CRUD API complete — 4 HTTP operations across 3 route files, all security patterns verified
-Last activity: 2026-03-03 — 26-01 executed; ready for Phase 27
+Phase: 26 (COMPLETE — 26-01 and 26-02 done)
+Plan: 02 (2 tasks complete — TypeScript clean, all routes verified)
+Status: Phase 26 Conversation CRUD API complete — 6 HTTP operations across 4 route files (POST create, GET list, GET read-with-messages, PATCH title, POST message, DELETE conversation)
+Last activity: 2026-03-03 — 26-02 executed; ready for Phase 27
 
-Progress: [----------] 1/5 phases complete (6 plans done in v2.0)
+Progress: [----------] 2/5 phases complete (7 plans done in v2.0)
 
 ## Performance Metrics
 
@@ -78,7 +78,7 @@ Progress: [----------] 1/5 phases complete (6 plans done in v2.0)
 |-------|-------|--------|
 | 24. Supabase Foundation | 3 | Complete — client utils + middleware, schema SQL + keep-alive, env vars verified + build clean |
 | 25. Auth Flow | 2 plans | Complete — AuthButton + Google OAuth linkIdentity() + human verification passed |
-| 26. Conversation CRUD API | 1 plan | Complete — POST create, GET list, GET read-with-messages, PATCH title across 3 route files |
+| 26. Conversation CRUD API | 2 plans | Complete — POST create, GET list, GET read-with-messages, PATCH title, POST message, DELETE conversation |
 | 27. Persistence Wiring | TBD | Not started |
 | 28. Chat Sidebar UI + UX Polish | TBD | Not started |
 
@@ -133,6 +133,8 @@ Progress: [----------] 1/5 phases complete (6 plans done in v2.0)
 - [v2.0 26-01]: GET list limited to 50 rows — prevents unbounded queries on large conversation sets
 - [v2.0 26-01]: Title truncated server-side to 60 chars — client cannot bypass length constraint
 - [v2.0 26-01]: Next.js 15+ Promise<{ id: string }> params pattern — avoids runtime "params is a promise" error
+- [Phase 26-02]: preset_url stores storage object path (not full HTTPS URL) — DELETE handler uses supabase.storage.remove() with path; Phase 27 must write path not URL
+- [Phase 26-02]: Storage delete failure is non-fatal — conversation row delete proceeds regardless of storage errors
 
 ### Roadmap Evolution
 
@@ -150,6 +152,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Phase 26 complete — 26-01 (Conversation CRUD API) executed; Phase 27 (Persistence Wiring) is next
+Stopped at: Phase 26 complete — 26-02 (Message Save + Conversation Delete) executed; Phase 27 (Persistence Wiring) is next
 Resume file: None
 Next command: /gsd:execute-phase 27 (Persistence Wiring)
