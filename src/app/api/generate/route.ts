@@ -14,10 +14,11 @@ import {
 import type { PresetSpec, DeviceTarget, SubstitutionMap } from "@/lib/helix";
 import type { RigIntent } from "@/lib/helix";
 import { mapRigToSubstitutions, parseRigText } from "@/lib/rig-mapping";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, device, rigIntent, rigText } = await req.json();
+    const { messages, device, rigIntent, rigText, conversationId } = await req.json();
 
     // Resolve device target — now supports pod_go (PGUX-01)
     let deviceTarget: DeviceTarget;
@@ -94,6 +95,36 @@ export async function POST(req: NextRequest) {
       const pgpFile = buildPgpFile(presetSpec);
       const summary = summarizePodGoPreset(presetSpec);
 
+      // --- Persistence: fire-and-forget upload + preset_url update (STORE-01, STORE-03) ---
+      if (conversationId) {
+        const supabase = await createSupabaseServerClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const storagePath = `${user.id}/${conversationId}/latest.pgp`;
+          const fileBuffer = Buffer.from(JSON.stringify(pgpFile));
+
+          // Non-blocking — do NOT await before return
+          supabase.storage
+            .from("presets")
+            .upload(storagePath, fileBuffer, {
+              contentType: "application/json",
+              upsert: true,
+            })
+            .then(({ error: uploadError }) => {
+              if (!uploadError) {
+                return supabase
+                  .from("conversations")
+                  .update({ preset_url: storagePath, updated_at: new Date().toISOString() })
+                  .eq("id", conversationId)
+                  .eq("user_id", user.id);
+              }
+              console.error("Preset storage upload failed (non-fatal):", uploadError.message);
+            })
+            .catch((err) => console.error("Preset persistence error (non-fatal):", err));
+        }
+      }
+      // --- End persistence ---
+
       return NextResponse.json({
         preset: pgpFile,
         summary,
@@ -107,6 +138,36 @@ export async function POST(req: NextRequest) {
       // Helix: build .hlx file
       const hlxFile = buildHlxFile(presetSpec, deviceTarget);
       const summary = summarizePreset(presetSpec);
+
+      // --- Persistence: fire-and-forget upload + preset_url update (STORE-01, STORE-03) ---
+      if (conversationId) {
+        const supabase = await createSupabaseServerClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const storagePath = `${user.id}/${conversationId}/latest.hlx`;
+          const fileBuffer = Buffer.from(JSON.stringify(hlxFile));
+
+          // Non-blocking — do NOT await before return
+          supabase.storage
+            .from("presets")
+            .upload(storagePath, fileBuffer, {
+              contentType: "application/json",
+              upsert: true,
+            })
+            .then(({ error: uploadError }) => {
+              if (!uploadError) {
+                return supabase
+                  .from("conversations")
+                  .update({ preset_url: storagePath, updated_at: new Date().toISOString() })
+                  .eq("id", conversationId)
+                  .eq("user_id", user.id);
+              }
+              console.error("Preset storage upload failed (non-fatal):", uploadError.message);
+            })
+            .catch((err) => console.error("Preset persistence error (non-fatal):", err));
+        }
+      }
+      // --- End persistence ---
 
       return NextResponse.json({
         preset: hlxFile,
