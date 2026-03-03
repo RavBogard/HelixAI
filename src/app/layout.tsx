@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { AuthButton } from "@/components/auth/AuthButton";
 
 // Display + body font — geometric, technical, studio-console feel
 const spaceGrotesk = Space_Grotesk({
@@ -36,6 +37,10 @@ export default function RootLayout({
         <div className="hlx-grain" aria-hidden="true" />
         {/* Ambient studio glow */}
         <div className="hlx-ambient" aria-hidden="true" />
+        {/* Auth header — fixed top-right, floats above main content */}
+        <header className="fixed top-0 right-0 z-50 p-3">
+          <AuthButton />
+        </header>
         {children}
       </body>
     </html>

@@ -441,6 +441,14 @@ export default function Home() {
     }))
   }, [messages, selectedDevice])
 
+  // Phase 25: Listen for AuthButton's pre-sign-in event (event-based decoupling
+  // avoids React Context — AuthButton lives in layout.tsx, serializeChatState lives here).
+  useEffect(() => {
+    const handler = () => serializeChatState()
+    window.addEventListener('helixai:before-signin', handler)
+    return () => window.removeEventListener('helixai:before-signin', handler)
+  }, [serializeChatState])
+
   async function sendMessage(e?: React.FormEvent) {
     e?.preventDefault();
     if (!input.trim() || isStreaming) return;
