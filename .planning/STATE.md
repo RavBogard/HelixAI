@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Persistent Chat Platform
 status: unknown
-last_updated: "2026-03-03T22:50:50.013Z"
+last_updated: "2026-03-03T22:54:31.115Z"
 progress:
   total_phases: 19
   completed_phases: 14
   total_plans: 33
-  completed_plans: 27
+  completed_plans: 28
 ---
 
 ---
@@ -35,12 +35,12 @@ See: .planning/PROJECT.md (updated 2026-03-03)
 
 ## Current Position
 
-Phase: 26 (COMPLETE — 26-01 and 26-02 done)
-Plan: 02 (2 tasks complete — TypeScript clean, all routes verified)
-Status: Phase 26 Conversation CRUD API complete — 6 HTTP operations across 4 route files (POST create, GET list, GET read-with-messages, PATCH title, POST message, DELETE conversation)
-Last activity: 2026-03-03 — 26-02 executed; ready for Phase 27
+Phase: 27 (IN PROGRESS — 27-01 done, 27-02 next)
+Plan: 01 (2 tasks complete — TypeScript clean, both routes verified)
+Status: Phase 27 Persistence Wiring in progress — /api/chat and /api/generate wired for conditional message and preset persistence; Plan 02 (page.tsx client integration) next
+Last activity: 2026-03-03 — 27-01 executed; ready for 27-02
 
-Progress: [----------] 2/5 phases complete (7 plans done in v2.0)
+Progress: [----------] 2/5 phases complete (8 plans done in v2.0)
 
 ## Performance Metrics
 
@@ -92,8 +92,9 @@ Progress: [----------] 2/5 phases complete (7 plans done in v2.0)
 | 24. Supabase Foundation | 3 | Complete — client utils + middleware, schema SQL + keep-alive, env vars verified + build clean |
 | 25. Auth Flow | 2 plans | Complete — AuthButton + Google OAuth linkIdentity() + human verification passed |
 | 26. Conversation CRUD API | 2 plans | Complete — POST create, GET list, GET read-with-messages, PATCH title, POST message, DELETE conversation |
-| 27. Persistence Wiring | TBD | Not started |
+| 27. Persistence Wiring | 2 plans | In progress — 27-01 done: /api/chat + /api/generate persistence wiring complete |
 | 28. Chat Sidebar UI + UX Polish | TBD | Not started |
+| Phase 27 P01 | 112s | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -148,6 +149,10 @@ Progress: [----------] 2/5 phases complete (7 plans done in v2.0)
 - [v2.0 26-01]: Next.js 15+ Promise<{ id: string }> params pattern — avoids runtime "params is a promise" error
 - [Phase 26-02]: preset_url stores storage object path (not full HTTPS URL) — DELETE handler uses supabase.storage.remove() with path; Phase 27 must write path not URL
 - [Phase 26-02]: Storage delete failure is non-fatal — conversation row delete proceeds regardless of storage errors
+- [Phase 27]: User message saved before Gemini stream starts (not after) — persists even if stream is interrupted
+- [Phase 27]: Assistant message saved fire-and-forget after controller.close() — no latency added to SSE UX
+- [Phase 27]: preset_url stores Supabase Storage object path not full HTTPS URL — matches Phase 26 DELETE remove() contract (enforced in 27-01)
+- [Phase 27]: Preset upload fire-and-forget via .then().catch() before return NextResponse.json() — STORE-03 compliant non-blocking response
 
 ### Roadmap Evolution
 
@@ -165,6 +170,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Phase 26 complete — 26-02 (Message Save + Conversation Delete) executed; Phase 27 (Persistence Wiring) is next
+Stopped at: Phase 27 Plan 01 complete — /api/chat and /api/generate persistence wiring executed; 27-02 (page.tsx client integration) is next
 Resume file: None
-Next command: /gsd:execute-phase 27 (Persistence Wiring)
+Next command: /gsd:execute-phase 27 (Persistence Wiring — Plan 02)

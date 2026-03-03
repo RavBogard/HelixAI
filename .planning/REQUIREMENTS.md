@@ -222,9 +222,9 @@ Requirements for Persistent Chat Platform milestone. Transform HelixAI from a st
 
 ### File Storage
 
-- [ ] **STORE-01**: Most recent generated preset (.hlx or .pgp) stored in Supabase Storage per conversation — deterministic key with upsert overwrites on regeneration (one file per chat, not version history)
+- [x] **STORE-01**: Most recent generated preset (.hlx or .pgp) stored in Supabase Storage per conversation — deterministic key with upsert overwrites on regeneration (one file per chat, not version history)
 - [ ] **STORE-02**: User can re-download the stored preset from a resumed conversation without regenerating — "Download Preset" button fetches from storage
-- [ ] **STORE-03**: Preset storage is a background operation — download completes immediately from the builder output; storage upload happens asynchronously and never blocks the user
+- [x] **STORE-03**: Preset storage is a background operation — download completes immediately from the builder output; storage upload happens asynchronously and never blocks the user
 
 ### Chat Sidebar UI
 
@@ -240,7 +240,7 @@ Requirements for Persistent Chat Platform milestone. Transform HelixAI from a st
 - [ ] **UXP-01**: Contextual sign-in prompt appears as a non-blocking banner after an anonymous user's first successful preset download — "Sign in to save this chat and come back to refine it later"
 - [ ] **UXP-02**: Loading states during conversation resume show distinct phases — "Loading conversation..." with smooth transition to populated chat
 - [ ] **UXP-03**: Continuation suggestion chips shown when resuming a past conversation — "Refine this tone", "Try a different amp", "Generate for [other device]" — static suggestions based on chat state, no AI call
-- [ ] **UXP-04**: Existing text-only generation flow (no auth, no persistence) produces identical output and performance to v1.3 — no new API calls, no changed loading states, no response shape changes for anonymous users
+- [x] **UXP-04**: Existing text-only generation flow (no auth, no persistence) produces identical output and performance to v1.3 — no new API calls, no changed loading states, no response shape changes for anonymous users
 
 ## Future Requirements
 
@@ -422,10 +422,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CONV-04 | Phase 26 | Complete |
 | CONV-05 | Phase 26 | Complete |
 | CONV-06 | Phase 26 | Complete |
-| STORE-01 | Phase 27 | Pending |
+| STORE-01 | Phase 27 | Complete |
 | STORE-02 | Phase 27 | Pending |
-| STORE-03 | Phase 27 | Pending |
-| UXP-04 | Phase 27 | Pending |
+| STORE-03 | Phase 27 | Complete |
+| UXP-04 | Phase 27 | Complete |
 | SIDE-01 | Phase 28 | Pending |
 | SIDE-02 | Phase 28 | Pending |
 | SIDE-03 | Phase 28 | Pending |
