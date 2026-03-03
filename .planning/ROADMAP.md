@@ -330,6 +330,7 @@ Phases execute in numeric order: 1 > 2 > 3 > 4 > 5 > 6 > 7 > 8 > 9 > 10 > 11 > 1
 | 20. Planner Integration & Route Orchestration | v1.3 | 0/TBD | Not started | - |
 | 21. Substitution Card & End-to-End Polish | v1.3 | 0/TBD | Not started | - |
 | 22. UI Overhaul | v1.3 | 0/TBD | Not started | - |
+| 23. Fix -8309 Incompatible Target Device | hotfix | 0/2 | Not started | - |
 
 ### Phase 22: UI Overhaul
 
@@ -343,14 +344,15 @@ Plans:
 
 ### Phase 23: Fix incompatible target device type error (-8309)
 
-**Goal:** [To be planned]
+**Goal:** Correct the unverified DEVICE_IDS.helix_floor constant that causes -8309 on Helix Floor hardware, update the firmware version stamp to v3.80, and update the corresponding test assertion — eliminating import failures for users who select Helix Floor.
 **Requirements**: TBD
 **Depends on:** Phase 22
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 23 to break down)
+- [ ] 23-01-PLAN.md — Investigate and obtain correct Helix Floor device ID from a real .hlx export (checkpoint: user supplies the integer)
+- [ ] 23-02-PLAN.md — Update DEVICE_IDS.helix_floor in types.ts, HLX_APP_VERSION/HLX_BUILD_SHA in config.ts, and literal assertion in orchestration.test.ts
 
 ---
 *Roadmap created: 2026-03-01*
-*Last updated: 2026-03-02 — v1.2 phases 12-16 marked complete; v1.3 Rig Emulation phases 17-21 added; Phase 17 plan created; Phase 18 plan 18-01 created*
+*Last updated: 2026-03-02 — Phase 23 plans 23-01 and 23-02 created; fix -8309 Helix Floor device ID bug*
