@@ -190,7 +190,59 @@ Requirements for Rig Emulation milestone. Extend the tone interview to accept ph
 - [ ] **PROGUX-01**: Loading shows distinct labeled phases during rig emulation flow — "Analyzing pedal photo…" → "Mapping to Helix models…" → "Building preset…" — no blank spinner during the 15-20 second combined operation
 - [ ] **PROGUX-02**: Rig emulation works with all three devices using the existing device selector — Helix LT, Helix Floor, and Pod Go all produce correct device-specific presets from the same rig input
 
-## v2 Requirements
+## v2.0 Requirements
+
+Requirements for Persistent Chat Platform milestone. Transform HelixAI from a stateless generate-and-download tool into a persistent platform with Google auth, conversation history, preset file storage, and chat sidebar UI.
+
+### Authentication
+
+- [ ] **AUTH-01**: User can sign in with Google via a "Sign in with Google" button — single OAuth provider, no email/password
+- [ ] **AUTH-02**: User session persists across browser refreshes and tab closes — cookie-based token refresh handles expiry transparently
+- [ ] **AUTH-03**: Anonymous users can generate and download presets without logging in — the existing anonymous flow is fully functional with zero auth gates
+- [ ] **AUTH-04**: Anonymous-to-authenticated transition preserves in-progress chat state — OAuth redirect does not destroy the current conversation; state is serialized to sessionStorage before redirect and restored after callback
+- [ ] **AUTH-05**: User can sign out — session is cleared, UI returns to anonymous state, sidebar is hidden
+
+### Infrastructure
+
+- [ ] **INFRA-01**: Supabase project with PostgreSQL database, Auth, and Storage configured — `@supabase/supabase-js` and `@supabase/ssr` installed as the only new dependencies
+- [ ] **INFRA-02**: Row Level Security enabled on all tables at creation time — `conversations` and `messages` tables enforce `user_id = auth.uid()` on all operations; no user can read another user's data
+- [ ] **INFRA-03**: Middleware at project root refreshes session tokens on every non-static request — without this, JWT tokens expire and sessions break mid-use
+- [ ] **INFRA-04**: Two Supabase client utilities (browser client + server client) provide isomorphic database access across Client Components, Server Components, and Route Handlers
+- [ ] **INFRA-05**: Keep-alive mechanism prevents Supabase free-tier 7-day inactivity pause — automated ping every 4 days via cron job or GitHub Action
+- [ ] **INFRA-06**: Environment variables configured in Vercel for both preview and production — Supabase URL, anon key, and Google OAuth callback URLs registered in Google Cloud Console
+
+### Conversation Persistence
+
+- [ ] **CONV-01**: User can create a new conversation — a conversation record is created in the database with a unique ID, user ID, device target, and auto-generated title
+- [ ] **CONV-02**: Auto-generated conversation title derived from the first user message — no second AI call; client-side text extraction (5-8 words)
+- [ ] **CONV-03**: Full message history (user + assistant messages) saved per conversation with server-assigned sequence numbers for correct ordering
+- [ ] **CONV-04**: Device target (Helix LT / Helix Floor / Pod Go) stored as conversation metadata — restored when resuming
+- [ ] **CONV-05**: User can list all their conversations ordered by most recent activity — API route returns conversation ID, title, device, timestamp
+- [ ] **CONV-06**: User can delete a conversation — confirm dialog, messages and stored preset file removed, conversation removed from sidebar
+
+### File Storage
+
+- [ ] **STORE-01**: Most recent generated preset (.hlx or .pgp) stored in Supabase Storage per conversation — deterministic key with upsert overwrites on regeneration (one file per chat, not version history)
+- [ ] **STORE-02**: User can re-download the stored preset from a resumed conversation without regenerating — "Download Preset" button fetches from storage
+- [ ] **STORE-03**: Preset storage is a background operation — download completes immediately from the builder output; storage upload happens asynchronously and never blocks the user
+
+### Chat Sidebar UI
+
+- [ ] **SIDE-01**: Pull-out sidebar panel on the left side showing past conversations — collapsible on mobile, mounted in layout.tsx so it persists without re-mounting
+- [ ] **SIDE-02**: Sidebar shows conversation title, device type, and relative timestamp for each chat — sorted by most recent activity
+- [ ] **SIDE-03**: "New Chat" button in sidebar header clears the current session and starts a fresh conversation
+- [ ] **SIDE-04**: Clicking a conversation in the sidebar resumes it — full message history loaded into the chat UI, device selector restored, "Download Preset" button available if a preset was previously generated
+- [ ] **SIDE-05**: Sidebar is visible only when the user is authenticated — anonymous users see the standard full-width chat interface with no sidebar
+- [ ] **SIDE-06**: Sidebar interactions (create, delete) use optimistic UI updates — sidebar responds instantly, rolls back on server error
+
+### UX Polish
+
+- [ ] **UXP-01**: Contextual sign-in prompt appears as a non-blocking banner after an anonymous user's first successful preset download — "Sign in to save this chat and come back to refine it later"
+- [ ] **UXP-02**: Loading states during conversation resume show distinct phases — "Loading conversation..." with smooth transition to populated chat
+- [ ] **UXP-03**: Continuation suggestion chips shown when resuming a past conversation — "Refine this tone", "Try a different amp", "Generate for [other device]" — static suggestions based on chat state, no AI call
+- [ ] **UXP-04**: Existing text-only generation flow (no auth, no persistence) produces identical output and performance to v1.3 — no new API calls, no changed loading states, no response shape changes for anonymous users
+
+## Future Requirements
 
 Deferred to future milestones. Tracked but not in current roadmap.
 
@@ -218,6 +270,13 @@ Deferred to future milestones. Tracked but not in current roadmap.
 - **RIG-V2-02**: Rig emulation memory — save a rig description and regenerate for different devices without re-uploading
 - **RIG-V2-03**: Expanded mapping table beyond 40 entries — community-sourced additions, boutique manufacturer coverage
 
+### Extended Chat Platform
+
+- **CHAT-V2-01**: Conversation search — full-text search on titles and first messages once users have 10+ chats
+- **CHAT-V2-02**: Additional auth providers (GitHub, Apple) — only if Google OAuth proves to be a meaningful barrier
+- **CHAT-V2-03**: Conversation export as JSON — GDPR-relevant at scale
+- **CHAT-V2-04**: Preset metadata in sidebar — show device type icon alongside conversation title
+
 ### Infrastructure
 
 - **INFRA-V2-02**: Telemetry for AI correction rate — log and alert if >2 corrections per generation
@@ -239,6 +298,13 @@ Explicitly excluded. Documented to prevent scope creep.
 | Global EQ as tone fix | Apply all tone shaping in the preset itself via cab block and post-cab EQ |
 | Full pedalboard OCR (single photo) | Too error-prone at launch — per-pedal photos are the reliable baseline (v1.3 scope) |
 | Gemini/Google Vision for pedal extraction | Zero accuracy advantage over Claude for rotary knob reading; adds SDK complexity and API key management |
+| Real-time cross-tab sync | WebSocket complexity not justified for a single-user sequential tool — simple refresh-on-focus is sufficient |
+| Conversation folders/projects | Premature before search is needed — auto-chronological grouping is sufficient |
+| All preset versions per chat | Storage costs grow unboundedly — store only the most recent preset per conversation |
+| Email/password auth | Adds password reset flows and security surface with no v2.0 benefit — Google OAuth only |
+| Chat sharing/permalinks | Exposes prompt engineering — the preset file is the shareable artifact |
+| Cross-conversation memory | Changes the AI interaction model entirely — per-conversation context is sufficient |
+| Offline mode | Service worker + IndexedDB complexity for a server-dependent AI app — the AI calls require internet anyway |
 
 ## Traceability
 
@@ -312,42 +378,43 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PGUX-01 | Phase 16 | Complete |
 | PGUX-02 | Phase 16 | Complete |
 | PGUX-03 | Phase 16 | Complete |
-| RIG-01 | Phase 19 | Pending |
-| RIG-02 | Phase 19 | Pending |
-| RIG-03 | Phase 19 | Pending |
-| RIG-04 | Phase 20 | Pending |
-| RIG-05 | Phase 20 | Pending |
-| RIG-06 | Phase 17 | Pending |
-| VIS-01 | Phase 19 | Pending |
-| VIS-02 | Phase 19 | Pending |
-| VIS-03 | Phase 19 | Pending |
-| VIS-04 | Phase 19 | Pending |
-| MAP-01 | Phase 18 | Pending |
-| MAP-02 | Phase 18 | Pending |
-| MAP-03 | Phase 18 | Pending |
-| MAP-04 | Phase 18 | Pending |
-| MAP-05 | Phase 18 | Pending |
-| PLAN-01 | Phase 20 | Pending |
-| PLAN-02 | Phase 20 | Pending |
-| PLAN-03 | Phase 20 | Pending |
-| API-01 | Phase 19 | Pending |
-| API-02 | Phase 20 | Pending |
-| API-03 | Phase 20 | Pending |
-| SUBST-01 | Phase 21 | Pending |
-| SUBST-02 | Phase 21 | Pending |
-| SUBST-03 | Phase 21 | Pending |
-| SUBST-04 | Phase 21 | Pending |
-| PROGUX-01 | Phase 21 | Pending |
-| PROGUX-02 | Phase 21 | Pending |
+| RIG-01 | Phase 19 | Complete |
+| RIG-02 | Phase 19 | Complete |
+| RIG-03 | Phase 19 | Complete |
+| RIG-04 | Phase 20 | Complete |
+| RIG-05 | Phase 20 | Complete |
+| RIG-06 | Phase 17 | Complete |
+| VIS-01 | Phase 19 | Complete |
+| VIS-02 | Phase 19 | Complete |
+| VIS-03 | Phase 19 | Complete |
+| VIS-04 | Phase 19 | Complete |
+| MAP-01 | Phase 18 | Complete |
+| MAP-02 | Phase 18 | Complete |
+| MAP-03 | Phase 18 | Complete |
+| MAP-04 | Phase 18 | Complete |
+| MAP-05 | Phase 18 | Complete |
+| PLAN-01 | Phase 20 | Complete |
+| PLAN-02 | Phase 20 | Complete |
+| PLAN-03 | Phase 20 | Complete |
+| API-01 | Phase 19 | Complete |
+| API-02 | Phase 20 | Complete |
+| API-03 | Phase 20 | Complete |
+| SUBST-01 | Phase 21 | Complete |
+| SUBST-02 | Phase 21 | Complete |
+| SUBST-03 | Phase 21 | Complete |
+| SUBST-04 | Phase 21 | Complete |
+| PROGUX-01 | Phase 21 | Complete |
+| PROGUX-02 | Phase 21 | Complete |
 
 **Coverage:**
 - v1 requirements: 36 total (all complete)
 - v1.1 requirements: 9 total (all complete)
 - v1.2 requirements: 19 total (all complete)
 - v1.3 requirements: 26 total (mapped to phases 17-21)
+- v2.0 requirements: 24 total (unmapped — awaiting roadmap)
 - Mapped to phases: 36 (v1) + 9 (v1.1) + 19 (v1.2) + 26 (v1.3)
-- Unmapped: 0 ✓
+- Unmapped: 24 (v2.0) ⚠️
 
 ---
 *Requirements defined: 2026-03-01*
-*Last updated: 2026-03-02 — v1.3 Rig Emulation requirements added (26 requirements, phases 17-21); v1.2 requirements marked complete*
+*Last updated: 2026-03-03 — v2.0 Persistent Chat Platform requirements added (24 requirements); v1.3 requirements marked complete in traceability*
