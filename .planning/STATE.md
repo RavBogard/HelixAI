@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Persistent Chat Platform
-status: defining_requirements
+status: roadmap_complete
 last_updated: "2026-03-03T00:00:00Z"
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -18,14 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** v2.0 — Persistent Chat Platform (defining requirements)
+**Current focus:** v2.0 — Persistent Chat Platform (Phase 24 next)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 24 (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-03-03 — Milestone v2.0 started
+Status: Roadmap complete — ready for /gsd:plan-phase 24
+Last activity: 2026-03-03 — v2.0 roadmap created (phases 24-28)
+
+Progress: [----------] 0/5 phases complete
 
 ## Performance Metrics
 
@@ -70,6 +72,16 @@ Last activity: 2026-03-03 — Milestone v2.0 started
 | 20. Planner Integration & Orchestration | 1 | Complete |
 | 21. Substitution Card & End-to-End Polish | 1 | Complete |
 
+**By Phase (v2.0):**
+
+| Phase | Plans | Status |
+|-------|-------|--------|
+| 24. Supabase Foundation | TBD | Not started |
+| 25. Auth Flow | TBD | Not started |
+| 26. Conversation CRUD API | TBD | Not started |
+| 27. Persistence Wiring | TBD | Not started |
+| 28. Chat Sidebar UI + UX Polish | TBD | Not started |
+
 ## Accumulated Context
 
 ### Decisions
@@ -90,14 +102,22 @@ Last activity: 2026-03-03 — Milestone v2.0 started
 - [v1.3]: Vision route uses manual JSON extraction (extractJson) not output_config
 - [v1.3]: browser-image-compression dynamically imported inside callVision()
 - [v1.3]: toneContext appended to user message only (not system prompt) — preserves prompt caching
-- [v2.0]: Reversing "no user accounts" — product matured enough that persistence adds clear user value
-- [v2.0]: Anonymous-first auth model — non-logged-in users get full functionality; login unlocks persistence only
-- [v2.0]: Save last preset per chat (not all versions) — balance utility vs storage cost
+- [v2.0]: Supabase chosen as auth/database/storage provider — single isomorphic SDK, anonymous sign-in with identity linking, no credit card required for free tier
+- [v2.0]: @supabase/ssr (not deprecated auth-helpers-nextjs) for cookie-based session handling in App Router
+- [v2.0]: Anonymous-first auth model — signInAnonymously() on mount; linkIdentity() upgrades same UUID when user signs in with Google (user ID does not change, pre-login data migrates automatically)
+- [v2.0]: Keep page.tsx as single-page interface (not dynamic routes) — conversationId lives in React state; URL search params for deep-linking
+- [v2.0]: Sidebar mounted in layout.tsx not page.tsx — persists across navigations, avoids re-fetch on every render
+- [v2.0]: Deterministic storage key presets/{user_id}/{conversation_id}/latest.hlx with upsert:true — one file per chat, overwrites on regeneration
+- [v2.0]: sequence_number column assigned server-side for message ordering — never client-generated timestamps
+- [v2.0]: RLS enabled at table creation time (not retrofitted) — CVE-2025-48757 prevention
+- [v2.0]: Every API route handler independently verifies session — defense-in-depth against CVE-2025-29927 middleware bypass
+- [v2.0]: Chat state serialized to sessionStorage before OAuth redirect, restored after callback — prevents anonymous session loss during identity linking
+- [v2.0]: Phases 22-23 (UI Overhaul, UX Polish) dropped — user completed a UI redo externally
 
 ### Roadmap Evolution
 
 - Phases 22-23 (UI Overhaul, UX Polish) dropped — user did a UI redo, skipping these
-- v2.0 Persistent Chat Platform milestone started
+- v2.0 Persistent Chat Platform milestone started; roadmap phases 24-28 created 2026-03-03
 
 ### Pending Todos
 
@@ -110,5 +130,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Defining v2.0 milestone requirements
+Stopped at: v2.0 roadmap created — 5 phases defined, ready to plan Phase 24
 Resume file: None
+Next command: /gsd:plan-phase 24

@@ -5,7 +5,8 @@
 - [x] **v1.0 Full Rebuild** - Phases 1-6 (shipped 2026-03-02)
 - [x] **v1.1 Polish & Precision** - Phases 7-11 (shipped 2026-03-02)
 - [x] **v1.2 Pod Go Support** - Phases 12-16 (shipped 2026-03-02)
-- [ ] **v1.3 Rig Emulation** - Phases 17-21 (in progress)
+- [x] **v1.3 Rig Emulation** - Phases 17-21 (shipped 2026-03-02)
+- [ ] **v2.0 Persistent Chat Platform** - Phases 24-28 (in progress)
 
 ## Phases
 
@@ -216,17 +217,8 @@ Plans:
 
 </details>
 
-### v1.3 Rig Emulation (In Progress)
-
-**Milestone Goal:** Extend the tone interview to accept physical rig descriptions — text, pedal photos, or both — and generate a Helix/Pod Go preset that emulates the user's actual gear, with transparent substitution mapping shown before download.
-
-- [ ] **Phase 17: Schemas & Types Foundation** - Zod schemas for all v1.3 data contracts
-- [ ] **Phase 18: Pedal Mapping Engine** - PEDAL_HELIX_MAP curated table + three-tier match logic
-- [ ] **Phase 19: Vision Extraction API** - /api/vision route + client-side image upload + compression
-- [ ] **Phase 20: Planner Integration & Route Orchestration** - toneContext injection + text rig parsing + pipeline wiring
-- [ ] **Phase 21: Substitution Card & End-to-End Polish** - substitution UI + progressive loading + full device verification
-
-## Phase Details
+<details>
+<summary>v1.3 Rig Emulation (Phases 17-21) — SHIPPED 2026-03-02</summary>
 
 ### Phase 17: Schemas & Types Foundation
 **Goal**: All new type contracts for v1.3 are defined and exported — downstream phases build on verified, compiled schemas with no guesswork on data shapes
@@ -242,69 +234,132 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 17-01-PLAN.md — rig-intent.ts: PhysicalPedalSchema, RigIntentSchema, SubstitutionEntrySchema, SubstitutionMapSchema + barrel exports in index.ts (RIG-06)
+- [x] 17-01-PLAN.md — rig-intent.ts: PhysicalPedalSchema, RigIntentSchema, SubstitutionEntrySchema, SubstitutionMapSchema + barrel exports in index.ts (RIG-06)
 
 ### Phase 18: Pedal Mapping Engine
 **Goal**: The deterministic rig mapping layer converts physical pedal names to Helix equivalents with three match tiers and coarse knob zone translation — no AI guessing in the mapping logic
 **Depends on**: Phase 17
 **Requirements**: MAP-01, MAP-02, MAP-03, MAP-04, MAP-05
 **Success Criteria** (what must be TRUE):
-  1. `PEDAL_HELIX_MAP` in `src/lib/rig-mapping.ts` contains at least 40 entries covering the most common pedal categories — overdrives (TS9, TS808, BD-2, SD-1, Klon Centaur, ProCo Rat), distortions (DS-1, Big Muff Pi, MXR Distortion+), delays (DD-3, DM-2, Deluxe Memory Man), reverbs (Hall of Fame, Big Sky), modulation (Phase 90, Small Clone, CE-2), compression (Dyna Comp, Ross Compressor), and boost (EP Booster, Soul Food)
-  2. `lookupPedal(pedalName: string, device: DeviceTarget)` returns a `SubstitutionEntry` with the correct `confidence` tier: `"direct"` for exact table match, `"close"` for category best-match, `"approximate"` for speculative match — no silent confident-wrong mapping for boutique pedals not in the table
-  3. For an unknown boutique pedal not in the table, `lookupPedal()` returns `confidence: "approximate"` with a category-based best guess — it never returns `confidence: "direct"` for a pedal that required fuzzy/category fallback
-  4. The mapping table stores both `helixModel` (internal `HD2_*` ID used by the preset builder) and `helixModelDisplayName` (human-readable name from `models.ts` used by the UI) — no internal IDs leak to the display layer
-  5. `mapRigToSubstitutions(rigIntent, device)` returns a `SubstitutionMap` — a unit test confirms that passing `device: "pod_go"` produces Pod Go-suffixed model IDs (`HD2_DistTeemahMono`) while `device: "helix_lt"` produces standard IDs (`HD2_DistTeemah`)
-  6. A unit test confirms that a pedal in the table (e.g., "ibanez ts9") returns `confidence: "direct"` and a pedal not in the table (e.g., "mythos mjolnir") does not return `confidence: "direct"`
+  1. `PEDAL_HELIX_MAP` in `src/lib/rig-mapping.ts` contains at least 40 entries covering the most common pedal categories
+  2. `lookupPedal(pedalName: string, device: DeviceTarget)` returns a `SubstitutionEntry` with the correct `confidence` tier
+  3. For an unknown boutique pedal not in the table, `lookupPedal()` returns `confidence: "approximate"` — never `confidence: "direct"` for a pedal that required fuzzy/category fallback
+  4. The mapping table stores both `helixModel` (internal ID) and `helixModelDisplayName` (human-readable name) — no internal IDs leak to the display layer
+  5. `mapRigToSubstitutions(rigIntent, device)` returns a `SubstitutionMap` with device-appropriate model IDs
+  6. Unit tests confirm exact-table-match pedals return `"direct"` and unknown pedals do not
 **Plans**: 1 plan
 
 Plans:
-- [ ] 18-01-PLAN.md — rig-mapping.ts: PEDAL_HELIX_MAP (53 entries), lookupPedal() three-tier logic, mapRigToSubstitutions(); rig-mapping.test.ts: vitest unit tests covering SC-01 through SC-06 (MAP-01, MAP-02, MAP-03, MAP-04, MAP-05)
+- [x] 18-01-PLAN.md — rig-mapping.ts: PEDAL_HELIX_MAP (53 entries), lookupPedal() three-tier logic, mapRigToSubstitutions(); rig-mapping.test.ts (MAP-01, MAP-02, MAP-03, MAP-04, MAP-05)
 
 ### Phase 19: Vision Extraction API
 **Goal**: Claude Vision extracts pedal identifications and coarse knob zones from user-uploaded photos via an isolated `/api/vision` route — client-side compression keeps all uploads within Vercel's 4.5MB limit and the existing generation pipeline is completely unaffected
 **Depends on**: Phase 17
-**Requirements**: RIG-01, RIG-02, RIG-03, VIS-01, VIS-02, VIS-03, VIS-04, API-01, API-02
-**Success Criteria** (what must be TRUE):
-  1. The `/api/vision` route exists at `src/app/api/vision/route.ts` with `export const maxDuration = 60` — it accepts `multipart/FormData` with image files, calls Claude Sonnet 4.6 with vision, and returns a `RigIntent` JSON response
-  2. The `/api/generate` route is byte-for-byte identical to its v1.2 state — no new parameters, no changed request shape, no new logic paths; a text-only generation request produces exactly the same response as before v1.3
-  3. The image upload UI in `page.tsx` enforces: max 3 files, accepted types `image/jpeg image/png image/webp`, client-side compression via `browser-image-compression` targeting 800KB/1568px — uploading a 6MB smartphone photo results in a compressed file under 1MB reaching the server
-  4. A network inspection of a 3-photo upload shows total POST body size under 4.5MB — the Vercel hard limit is never hit
-  5. Uploading a blurry or poorly-lit photo returns `PhysicalPedal.confidence: "low"` or `"medium"` — the UI prompts the user to confirm or type the pedal name rather than silently proceeding with the extraction result
-  6. The vision extraction prompt explicitly instructs Claude to return `modelName: null` when the pedal is not legibly identifiable — a test with a photo of a non-pedal object (e.g., a book cover) returns `modelName: null` rather than a fabricated pedal name
-  7. Knob position output uses clock-position descriptions or coarse zone labels — no raw 0-100 percentage values appear in the `PhysicalPedal.knobPositions` schema output
-**Plans**: TBD
+**Requirements**: RIG-01, RIG-02, RIG-03, VIS-01, VIS-02, VIS-03, VIS-04, API-01
+**Plans**: 1 plan
+
+Plans:
+- [x] 19-01-PLAN.md — /api/vision route: image upload, Claude Vision extraction, RigIntent response; client-side compression; upload UI in page.tsx (RIG-01, RIG-02, RIG-03, VIS-01, VIS-02, VIS-03, VIS-04, API-01)
 
 ### Phase 20: Planner Integration & Route Orchestration
 **Goal**: The Planner accepts rig context through the user messages array without breaking prompt caching, the generate route orchestrates vision → mapping → planner cleanly, and text rig descriptions work end-to-end without any image upload
 **Depends on**: Phase 18, Phase 19
 **Requirements**: RIG-04, RIG-05, PLAN-01, PLAN-02, PLAN-03, API-02, API-03
-**Success Criteria** (what must be TRUE):
-  1. `callClaudePlanner(messages, device, toneContext?)` compiles — the third parameter is optional; existing call sites without `toneContext` remain unchanged
-  2. When `toneContext` is provided, it is appended to the conversation text (user message content) — NOT added to the system prompt; `buildPlannerPrompt()` function signature is unchanged
-  3. After a rig emulation generation, the Anthropic API response shows `cache_read_input_tokens > 0` — prompt caching is confirmed intact; the system prompt did not change
-  4. The generate route (`/api/generate`) orchestrates: parse body → if `rigIntent` present, call `mapRigToSubstitutions()` → build `toneContext` string → call `callClaudePlanner(messages, device, toneContext)` → Knowledge Layer → file build. Zero new routes involved; only the generate route gains this optional path
-  5. A text-only rig description ("TS9 into a Fender Twin Reverb") typed in the chat without any image upload: the Gemini interview detects it as a rig description, the generate call receives it as conversation context, `mapRigToSubstitutions()` runs against the text, and the resulting preset uses Helix equivalents with a substitution map returned to the UI
-  6. A vision failure (e.g., `/api/vision` returns an error) does not prevent the user from generating a preset — the UI offers the text description fallback path immediately without requiring a page refresh
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [x] 20-01-PLAN.md — callClaudePlanner() optional toneContext param; /api/generate rig orchestration path; text rig parsing; vision failure fallback (RIG-04, RIG-05, PLAN-01, PLAN-02, PLAN-03, API-02, API-03)
 
 ### Phase 21: Substitution Card & End-to-End Polish
 **Goal**: The substitution mapping is visible and readable before preset generation, progressive loading states guide users through the multi-step flow, all three devices work end-to-end with rig emulation, and no regressions exist in the existing non-rig generation path
 **Depends on**: Phase 20
 **Requirements**: SUBST-01, SUBST-02, SUBST-03, SUBST-04, PROGUX-01, PROGUX-02
+**Plans**: 1 plan
+
+Plans:
+- [x] 21-01-PLAN.md — SubstitutionCard component; progressive loading states; Pod Go device verification; regression test text-only flow (SUBST-01, SUBST-02, SUBST-03, SUBST-04, PROGUX-01, PROGUX-02)
+
+</details>
+
+### v2.0 Persistent Chat Platform (In Progress)
+
+**Milestone Goal:** Transform HelixAI from a stateless generate-and-download tool into a persistent platform where users log in with Google, maintain a sidebar of past conversations, pick up where they left off, and re-download their most recent preset per chat. Anonymous usage remains fully functional; login unlocks history.
+
+- [ ] **Phase 24: Supabase Foundation** - Database schema, RLS, client utilities, middleware, keep-alive
+- [ ] **Phase 25: Auth Flow** - Anonymous sign-in + Google OAuth + identity linking
+- [ ] **Phase 26: Conversation CRUD API** - Full data API for creating, reading, listing, and deleting conversations
+- [ ] **Phase 27: Persistence Wiring** - Modify chat/generate routes to persist messages and preset files
+- [ ] **Phase 28: Chat Sidebar UI + UX Polish** - Sidebar panel, resume flow, new chat, sign-in prompt
+
+## Phase Details
+
+### Phase 24: Supabase Foundation
+**Goal**: The persistence infrastructure exists and is secured — database schema with RLS, storage bucket, isomorphic client utilities, session-refreshing middleware, and keep-alive — so every subsequent phase builds on a verified, safe foundation
+**Depends on**: Phase 21
+**Requirements**: INFRA-01, INFRA-02, INFRA-03, INFRA-04, INFRA-05, INFRA-06
 **Success Criteria** (what must be TRUE):
-  1. The substitution card renders in the chat flow immediately after vision extraction and mapping complete — before the user clicks Generate — showing each `[Original Pedal Name] → [Helix Display Name]` entry with a one-sentence plain-English rationale in guitarist vocabulary (e.g., "mid-hump EQ character and asymmetric clipping structure", "tape-style echo warmth")
-  2. No `HD2_*` strings appear anywhere in the rendered substitution card or any other user-facing UI element — inspecting the DOM confirms only human-readable display names are rendered
-  3. Exact-match entries (confidence: "direct") display with full card emphasis; approximate-match entries (confidence: "close" or "approximate") display with a "Best available match" label and visually reduced emphasis — the visual differentiation is apparent without reading the label
-  4. An unknown boutique pedal not in `PEDAL_HELIX_MAP` shows a card entry offering "We don't have [Pedal Name] in our database. You can describe its sound instead, or we'll treat it as a [category] pedal." — the user has a clear text escape hatch and is never stuck
-  5. Loading states show distinct labeled stages: "Analyzing pedal photo…" → "Mapping to Helix models…" → "Building preset…" — no blank spinner for the full 15-20 second rig emulation flow; each stage is visible for at least 1 second before the next begins
-  6. Selecting Pod Go as the device and uploading a pedal photo produces a valid `.pgp` file — the substitution card shows Pod Go-compatible model names (not Helix-only models) and the downloaded preset loads in Pod Go Edit
-  7. Generating a text-only Helix LT preset (no rig input, no images) produces identical output to v1.2 — no new loading states, no new API calls, no changed response shape visible in the network tab
+  1. `createSupabaseServerClient()` and `createSupabaseBrowserClient()` run without error in a Next.js App Router context — a server component and a client component can each call Supabase without configuration friction
+  2. A direct REST call to `/rest/v1/conversations` with the public anon key returns an empty array — not a 403, and not rows belonging to other users — confirming RLS is active and filtering correctly
+  3. Middleware at project root calls `updateSession()` on every non-static request — a session cookie set in one request is still valid two requests later without any manual token refresh
+  4. The Supabase Storage `presets` bucket exists with RLS on `storage.objects` — a direct upload attempt without a valid session token is rejected
+  5. A keep-alive mechanism is deployed and verified — the Supabase project does not pause after 7 days of zero application activity
+**Plans**: TBD
+
+### Phase 25: Auth Flow
+**Goal**: Every visitor gets an anonymous user ID on first load, and authenticated users can sign in with Google without losing their current session state — the anonymous generate-and-download flow is fully preserved with zero new auth gates
+**Depends on**: Phase 24
+**Requirements**: AUTH-01, AUTH-02, AUTH-03, AUTH-04, AUTH-05
+**Success Criteria** (what must be TRUE):
+  1. A first-time visitor has an anonymous session visible in the Supabase Auth dashboard — `is_anonymous: true`, with a real UUID that is the root foreign key for any data they create
+  2. Clicking "Sign in with Google" completes OAuth and returns the user to the app with the same UUID as before — `is_anonymous` is now false, and no data from the pre-login session is lost
+  3. Hard-refreshing the page after signing in shows the logged-in UI state immediately with no visible flash of the logged-out state
+  4. An anonymous user who starts a chat and clicks "Sign in with Google" mid-session returns after the OAuth redirect with their in-progress chat state intact — the conversation they were in is still present
+  5. Clicking "Sign out" clears the session, the UI returns to anonymous state, and the sidebar (when it exists) is hidden — no logged-in UI elements remain visible
+  6. An anonymous user can generate and download a preset with zero new UI elements, loading states, or performance overhead compared to v1.3
+**Plans**: TBD
+
+### Phase 26: Conversation CRUD API
+**Goal**: A stable, independently-testable data API exists for conversations and messages — all four CRUD operations work correctly against the database, RLS is verified by cross-user isolation tests, and sequence numbers enforce correct message ordering
+**Depends on**: Phase 24
+**Requirements**: CONV-01, CONV-02, CONV-03, CONV-04, CONV-05, CONV-06
+**Success Criteria** (what must be TRUE):
+  1. `POST /api/conversations` creates a conversation row with `id`, `user_id`, `device`, and `title` — the returned `conversationId` can be used immediately in subsequent requests
+  2. `GET /api/conversations` returns conversations for the authenticated user only, ordered by `updated_at` desc — a request authenticated as a different user returns zero rows for the first user's conversations, confirming RLS isolation
+  3. `GET /api/conversations/[id]` returns the full conversation with messages ordered by `sequence_number` ascending — two messages inserted out of wall-clock order appear in insertion-sequence order, not timestamp order
+  4. `PATCH /api/conversations/[id]/title` updates the conversation title — a 5-8 word title derived client-side from the first user message is stored and returned correctly
+  5. `DELETE /api/conversations/[id]` removes the conversation and all its messages — the conversation no longer appears in the list and the storage preset file is removed
+  6. All four route handlers independently verify the session — a request with a crafted middleware-bypass header is rejected at the route handler level, not just at middleware
+**Plans**: TBD
+
+### Phase 27: Persistence Wiring
+**Goal**: Authenticated conversations persist their full message history and most recent preset file — the existing anonymous generate-and-download flow is byte-for-byte identical to v1.3 when no conversationId is provided
+**Depends on**: Phase 25, Phase 26
+**Requirements**: STORE-01, STORE-02, STORE-03, UXP-04
+**Success Criteria** (what must be TRUE):
+  1. Sending a message in an authenticated conversation with a `conversationId` — the user message appears in the Supabase `messages` table with the correct `sequence_number` before the AI response completes, and the assistant message appears with the next `sequence_number` after the stream finishes
+  2. Generating a preset in an authenticated conversation — exactly one file exists in Supabase Storage at the deterministic key `presets/{user_id}/{conversation_id}/latest.hlx` (or `.pgp`); regenerating overwrites the file, not creates a new one
+  3. A "Download Preset" action in a resumed conversation fetches the stored file from Supabase Storage without regenerating — the download completes without triggering any AI call
+  4. Posting to `/api/chat` and `/api/generate` WITHOUT a `conversationId` produces responses identical in shape, timing (within 5%), and content to v1.3 — no new database calls, no new loading states, no changed response fields for anonymous users
+**Plans**: TBD
+
+### Phase 28: Chat Sidebar UI + UX Polish
+**Goal**: Authenticated users see a pull-out sidebar showing their past conversations and can resume, delete, or start new chats — the full persistence layer is surfaced in a polished UI, and contextual sign-in prompts encourage anonymous users to log in after their first preset
+**Depends on**: Phase 27
+**Requirements**: SIDE-01, SIDE-02, SIDE-03, SIDE-04, SIDE-05, SIDE-06, UXP-01, UXP-02, UXP-03
+**Success Criteria** (what must be TRUE):
+  1. An authenticated user opens the sidebar and sees their past conversations with title, device type, and relative timestamp — sorted by most recent activity; clicking any entry loads the full message history into the chat area with the device selector restored
+  2. Clicking "New Chat" clears the current session, resets the device selector to default, and assigns a new `conversationId` on the first message send — no stale state from the previous conversation is visible
+  3. Deleting a conversation from the sidebar removes it from the list immediately (optimistic update) and the deletion is confirmed in the database within 2 seconds — if the delete fails, the conversation reappears in the sidebar
+  4. Resuming a past conversation that had a preset generated shows a "Download Preset" button — clicking it downloads the stored file without regenerating; the loading state shows "Loading conversation..." before the messages appear
+  5. The sidebar is absent for anonymous users — they see the standard full-width chat interface with no sidebar toggle, no sidebar shell, and no visual remnants of the sidebar layout
+  6. After an anonymous user successfully downloads their first preset, a non-blocking banner appears: "Sign in to save this chat and come back to refine it later" — it is dismissible and does not interrupt the download or any subsequent action
+  7. When resuming a past conversation, three static suggestion chips are visible — "Refine this tone", "Try a different amp", "Generate for [other device]" — clicking one populates the chat input with a starter message
 **Plans**: TBD
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 > 2 > 3 > 4 > 5 > 6 > 7 > 8 > 9 > 10 > 11 > 12 > 13 > 14 > 15 > 16 > 17 > 18 > 19 > 20 > 21
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → 13 → 14 → 15 → 16 → 17 → 18 → 19 → 20 → 21 → 24 → 25 → 26 → 27 → 28
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -324,33 +379,17 @@ Phases execute in numeric order: 1 > 2 > 3 > 4 > 5 > 6 > 7 > 8 > 9 > 10 > 11 > 1
 | 14. Chain Rules, Validation, and Planner | v1.2 | 1/1 | Complete | 2026-03-02 |
 | 15. Pod Go Preset Builder | v1.2 | 1/1 | Complete | 2026-03-02 |
 | 16. Integration, UI, and Testing | v1.2 | 1/1 | Complete | 2026-03-02 |
-| 17. Schemas & Types Foundation | v1.3 | 0/1 | Not started | - |
-| 18. Pedal Mapping Engine | v1.3 | 0/1 | Not started | - |
-| 19. Vision Extraction API | v1.3 | 0/TBD | Not started | - |
-| 20. Planner Integration & Route Orchestration | v1.3 | 0/TBD | Not started | - |
-| 21. Substitution Card & End-to-End Polish | v1.3 | 0/TBD | Not started | - |
-| 22. UI Overhaul | v1.3 | 0/TBD | Not started | - |
-
-### Phase 22: UI Overhaul
-
-**Goal:** Complete visual redesign of homepage, chat flow, and rig upload panel — eliminating redundant elements, fixing readability, and creating a clean, polished interface with strong visual hierarchy.
-**Requirements**: TBD
-**Depends on:** Phase 21
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd:plan-phase 22 to break down)
-
-### Phase 23: Phase 23 UX polish — post-chat device picker modal, font legibility, rig upload integrated into prompt bar
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 22
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd:plan-phase 23 to break down)
+| 17. Schemas & Types Foundation | v1.3 | 1/1 | Complete | 2026-03-02 |
+| 18. Pedal Mapping Engine | v1.3 | 1/1 | Complete | 2026-03-02 |
+| 19. Vision Extraction API | v1.3 | 1/1 | Complete | 2026-03-02 |
+| 20. Planner Integration & Orchestration | v1.3 | 1/1 | Complete | 2026-03-02 |
+| 21. Substitution Card & End-to-End Polish | v1.3 | 1/1 | Complete | 2026-03-02 |
+| 24. Supabase Foundation | v2.0 | 0/TBD | Not started | - |
+| 25. Auth Flow | v2.0 | 0/TBD | Not started | - |
+| 26. Conversation CRUD API | v2.0 | 0/TBD | Not started | - |
+| 27. Persistence Wiring | v2.0 | 0/TBD | Not started | - |
+| 28. Chat Sidebar UI + UX Polish | v2.0 | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-03-01*
-*Last updated: 2026-03-02 — v1.2 phases 12-16 marked complete; v1.3 Rig Emulation phases 17-21 added; Phase 17 plan created; Phase 18 plan 18-01 created*
+*Last updated: 2026-03-03 — v2.0 Persistent Chat Platform phases 24-28 added; phases 22-23 dropped (user skipped); v1.3 phases 17-21 marked complete*

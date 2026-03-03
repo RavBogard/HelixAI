@@ -405,16 +405,45 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SUBST-04 | Phase 21 | Complete |
 | PROGUX-01 | Phase 21 | Complete |
 | PROGUX-02 | Phase 21 | Complete |
+| INFRA-01 | Phase 24 | Pending |
+| INFRA-02 | Phase 24 | Pending |
+| INFRA-03 | Phase 24 | Pending |
+| INFRA-04 | Phase 24 | Pending |
+| INFRA-05 | Phase 24 | Pending |
+| INFRA-06 | Phase 24 | Pending |
+| AUTH-01 | Phase 25 | Pending |
+| AUTH-02 | Phase 25 | Pending |
+| AUTH-03 | Phase 25 | Pending |
+| AUTH-04 | Phase 25 | Pending |
+| AUTH-05 | Phase 25 | Pending |
+| CONV-01 | Phase 26 | Pending |
+| CONV-02 | Phase 26 | Pending |
+| CONV-03 | Phase 26 | Pending |
+| CONV-04 | Phase 26 | Pending |
+| CONV-05 | Phase 26 | Pending |
+| CONV-06 | Phase 26 | Pending |
+| STORE-01 | Phase 27 | Pending |
+| STORE-02 | Phase 27 | Pending |
+| STORE-03 | Phase 27 | Pending |
+| UXP-04 | Phase 27 | Pending |
+| SIDE-01 | Phase 28 | Pending |
+| SIDE-02 | Phase 28 | Pending |
+| SIDE-03 | Phase 28 | Pending |
+| SIDE-04 | Phase 28 | Pending |
+| SIDE-05 | Phase 28 | Pending |
+| SIDE-06 | Phase 28 | Pending |
+| UXP-01 | Phase 28 | Pending |
+| UXP-02 | Phase 28 | Pending |
+| UXP-03 | Phase 28 | Pending |
 
 **Coverage:**
 - v1 requirements: 36 total (all complete)
 - v1.1 requirements: 9 total (all complete)
 - v1.2 requirements: 19 total (all complete)
-- v1.3 requirements: 26 total (mapped to phases 17-21)
-- v2.0 requirements: 24 total (unmapped — awaiting roadmap)
-- Mapped to phases: 36 (v1) + 9 (v1.1) + 19 (v1.2) + 26 (v1.3)
-- Unmapped: 24 (v2.0) ⚠️
+- v1.3 requirements: 26 total (all complete, phases 17-21)
+- v2.0 requirements: 24 total (all mapped, phases 24-28)
+- Total mapped: 114/114
 
 ---
 *Requirements defined: 2026-03-01*
-*Last updated: 2026-03-03 — v2.0 Persistent Chat Platform requirements added (24 requirements); v1.3 requirements marked complete in traceability*
+*Last updated: 2026-03-03 — v2.0 Persistent Chat Platform requirements mapped to phases 24-28; 100% coverage achieved*
