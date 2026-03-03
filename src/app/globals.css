@@ -1,15 +1,14 @@
 @import "tailwindcss";
 
 /* ═══════════════════════════════════════════════════
-   HELIX AI — Precision Instrument Theme
+   HELIX AI — Studio Console Theme
 
-   Aesthetic: Boutique effects pedal meets high-end
-   recording console. The precision of a Strymon,
-   the warmth of a vintage tube amp, the typography
-   of an analog rack unit faceplate.
+   Aesthetic: Recording studio control surface meets
+   boutique effects pedal. Geometric precision,
+   warm amber signal LEDs, technical clarity.
 
-   Fonts:   Barlow Condensed (display) + Barlow (body)
-            + JetBrains Mono (technical labels)
+   Fonts:   Space Grotesk (display + body)
+            + JetBrains Mono (pills, input, footer)
    ═══════════════════════════════════════════════════ */
 
 :root {
@@ -47,7 +46,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-body);
+  --font-sans: var(--font-primary);
   --font-mono: var(--font-mono);
 }
 
@@ -56,7 +55,7 @@
 body {
   background: var(--hlx-deep);
   color: var(--hlx-text);
-  font-family: var(--font-body), system-ui, sans-serif;
+  font-family: var(--font-primary), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -111,50 +110,6 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--hlx-raised); border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--hlx-text-muted); }
-
-/* ─── Waveform H Logo Mark ─── */
-
-/*
- * The header wordmark — no box, just the SVG mark directly.
- * The `.hlx-tube` class is kept for any legacy use but no longer
- * renders the orange rounded-rect box.
- */
-.hlx-tube {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.hlx-tube-sm {
-  width: 34px;
-  height: 28px;
-}
-
-/* Hero mark — circle with subtle amber glow, houses the waveform H */
-.hlx-hero-mark {
-  position: relative;
-  width: 88px;
-  height: 88px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 50% 60%, rgba(240, 144, 10, 0.07) 0%, transparent 70%);
-  border: 1px solid rgba(240, 144, 10, 0.14);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow:
-    0 0 40px rgba(240, 144, 10, 0.10),
-    0 0 80px rgba(240, 144, 10, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
-}
-
-/* Pulsing ring animation on the hero mark */
-@keyframes heroRingPulse {
-  0%, 100% { box-shadow: 0 0 40px rgba(240, 144, 10, 0.10), 0 0 80px rgba(240, 144, 10, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.04); }
-  50%       { box-shadow: 0 0 55px rgba(240, 144, 10, 0.18), 0 0 110px rgba(240, 144, 10, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.04); }
-}
-
-.hlx-hero-mark {
-  animation: heroRingPulse 4s ease-in-out infinite;
-}
 
 /* ─── LED Status Dots ─── */
 
@@ -249,7 +204,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  font-family: var(--font-body), sans-serif;
+  font-family: var(--font-primary), sans-serif;
 }
 
 .hlx-generate:hover {
@@ -310,7 +265,7 @@ body {
 
 .message-content h2,
 .message-content h3 {
-  font-family: var(--font-display), sans-serif;
+  font-family: var(--font-primary), sans-serif;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -401,7 +356,7 @@ body {
   font-size: 0.9375rem;
   line-height: 1.5;
   color: var(--hlx-text);
-  font-family: var(--font-body), sans-serif;
+  font-family: var(--font-mono), monospace;
   transition: all 0.22s ease;
 }
 
@@ -470,7 +425,7 @@ body {
   align-items: center;
   gap: 7px;
   transition: all 0.18s ease;
-  font-family: var(--font-body), sans-serif;
+  font-family: var(--font-primary), sans-serif;
   box-shadow: 0 0 14px rgba(240, 144, 10, 0.14);
 }
 
@@ -529,5 +484,5 @@ body {
 
 /* Used for headers, preset card titles, etc. */
 .hlx-font-display {
-  font-family: var(--font-display), system-ui, sans-serif;
+  font-family: var(--font-primary), system-ui, sans-serif;
 }

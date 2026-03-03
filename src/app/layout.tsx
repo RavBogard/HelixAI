@@ -1,21 +1,12 @@
 import type { Metadata } from "next";
-import { Barlow_Condensed, Barlow, JetBrains_Mono } from "next/font/google";
+import { Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-// Display / headline font — condensed industrial, great for big headers
-const barlowCondensed = Barlow_Condensed({
-  variable: "--font-display",
+// Display + body font — geometric, technical, studio-console feel
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-primary",
   subsets: ["latin"],
-  weight: ["500", "600", "700", "800"],
-  style: ["normal"],
-  display: "swap",
-});
-
-// Body font — same family for cohesion, comfortable at small sizes
-const barlow = Barlow({
-  variable: "--font-body",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
+  weight: ["300", "400", "500", "600", "700"],
   display: "swap",
 });
 
@@ -39,7 +30,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${barlowCondensed.variable} ${barlow.variable} ${jetbrainsMono.variable} antialiased`}
+        className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} antialiased`}
       >
         {/* Film grain overlay */}
         <div className="hlx-grain" aria-hidden="true" />

@@ -1,37 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import Image from "next/image";
 import ReactMarkdown from "react-markdown";
-
-// ---------------------------------------------------------------------------
-// WaveformH — brand mark SVG
-// Two vertical signal bars connected by a sine-wave crossbar = H shape.
-// Reads as the letter H while communicating "audio signal path" simultaneously.
-// ---------------------------------------------------------------------------
-function WaveformH({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 28 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      {/* Left vertical bar */}
-      <path d="M3 1 L3 23" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" />
-      {/* Right vertical bar */}
-      <path d="M25 1 L25 23" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" />
-      {/* Sine wave crossbar */}
-      <path
-        d="M3 12 C6.5 3 10.5 3 14 12 C17.5 21 21.5 21 25 12"
-        stroke="currentColor"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        fill="none"
-      />
-    </svg>
-  );
-}
 
 interface Message {
   role: "user" | "assistant";
@@ -680,26 +651,51 @@ export default function Home() {
 
   return (
     <div className="relative z-10 flex flex-col h-screen max-w-5xl mx-auto">
+      {/* Hidden file input — always in DOM so rigFileInputRef is never null */}
+      <input
+        ref={rigFileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        multiple
+        className="sr-only"
+        onChange={(e) => {
+          const files = Array.from(e.target.files || []);
+          setRigImages(files.slice(0, 3));
+          setRigIntent(null);
+          setVisionError(null);
+          if (rigFileInputRef.current) rigFileInputRef.current.value = "";
+        }}
+      />
       {/* --- Header --- */}
       <header className="flex items-center justify-between px-6 py-3.5">
-        {/* Left: brand */}
+        {/* Left: compact logo + wordmark — only visible in chat mode */}
         <div className="flex items-center gap-2.5">
-          <WaveformH className="w-7 h-[23px] text-[var(--hlx-amber)]" />
-          <div className="flex items-center gap-2">
-            <h1 className="hlx-font-display text-lg font-bold tracking-wider uppercase text-[var(--hlx-text)]"
-                style={{ letterSpacing: "0.06em" }}>
-              HelixAI
-            </h1>
-            {premiumKey && (
-              <span className="hlx-pro">
-                <span className="hlx-led hlx-led-warm" style={{ width: 4, height: 4 }} />
-                Pro
+          {messages.length > 0 && (
+            <>
+              <Image
+                src="/logo.jpg"
+                alt="HelixAI"
+                width={26}
+                height={26}
+                className="rounded-md opacity-90"
+              />
+              <span
+                className="text-[0.85rem] font-medium text-[var(--hlx-text-sub)]"
+                style={{ letterSpacing: "0.18em" }}
+              >
+                helix ai
               </span>
-            )}
-          </div>
+            </>
+          )}
+          {premiumKey && (
+            <span className="hlx-pro">
+              <span className="hlx-led hlx-led-warm" style={{ width: 4, height: 4 }} />
+              Pro
+            </span>
+          )}
         </div>
 
-        {/* Right: actions */}
+        {/* Right: New Session */}
         <div className="flex">
           {messages.length > 0 && (
             <button
@@ -718,35 +714,132 @@ export default function Home() {
       <div className="flex-1 overflow-y-auto px-6 py-6">
         {messages.length === 0 ? (
           /* --- Welcome Screen --- */
-          <div className="flex flex-col items-center justify-center h-full text-center gap-8 hlx-stagger">
-            {/* Glowing hero mark — circle housing the Waveform-H glyph */}
-            <div className="hlx-hero-mark flex items-center justify-center">
-              <WaveformH className="w-10 h-[34px] text-[var(--hlx-amber)]" />
+          <div className="flex flex-col items-center justify-center h-full text-center gap-9 hlx-stagger">
+            {/* Hero: Large centered logo + wordmark */}
+            <div className="space-y-6">
+              {/* Big logo with amber glow */}
+              <div className="flex justify-center">
+                <div className="relative">
+                  {/* Ambient radial glow behind logo */}
+                  <div
+                    className="absolute rounded-3xl"
+                    style={{
+                      inset: "-48px",
+                      background:
+                        "radial-gradient(ellipse at 50% 60%, rgba(240,144,10,0.25) 0%, transparent 68%)",
+                    }}
+                  />
+                  <Image
+                    src="/logo.jpg"
+                    alt="HelixAI"
+                    width={320}
+                    height={320}
+                    className="relative rounded-3xl"
+                    style={{
+                      boxShadow:
+                        "0 0 0 1px rgba(240,144,10,0.35), 0 0 100px rgba(240,144,10,0.32), 0 24px 80px rgba(0,0,0,0.7)",
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Wordmark + subtitle */}
+              <div className="space-y-3">
+                <h1
+                  className="hlx-font-display hlx-hero-text font-black leading-none"
+                  style={{
+                    fontSize: "clamp(2.75rem, 7vw, 4.25rem)",
+                    letterSpacing: "0.14em",
+                  }}
+                >
+                  helix ai
+                </h1>
+                <p
+                  className="text-[var(--hlx-text-sub)] max-w-sm leading-relaxed mx-auto"
+                  style={{ fontSize: "0.9375rem" }}
+                >
+                  Describe an artist, a song, a genre, or just a vibe &mdash;
+                  I&apos;ll build you a studio-quality Helix preset.
+                </p>
+              </div>
             </div>
 
-            <div className="space-y-3">
-              <h2
-                className="hlx-font-display hlx-hero-text font-black leading-none"
-                style={{ fontSize: "clamp(1.875rem, 5.5vw, 3rem)", letterSpacing: "0.01em" }}
+            {/* Inline input form — centered, matches card grid width */}
+            <form onSubmit={sendMessage} className="flex gap-2 items-end w-full max-w-2xl">
+              {/* Camera button */}
+              <button
+                type="button"
+                title="Analyze my pedal rig"
+                onClick={() => rigFileInputRef.current?.click()}
+                className={`relative flex-shrink-0 w-[44px] h-[44px] rounded-[11px] border flex items-center justify-center transition-all ${
+                  rigIntent
+                    ? "border-[var(--hlx-amber)] bg-[rgba(240,144,10,0.08)] text-[var(--hlx-amber)]"
+                    : rigImages.length > 0
+                    ? "border-[var(--hlx-border-warm)] bg-[var(--hlx-elevated)] text-[var(--hlx-text-sub)]"
+                    : "border-[var(--hlx-border)] bg-[var(--hlx-surface)] text-[var(--hlx-text-muted)] hover:text-[var(--hlx-text-sub)] hover:border-[var(--hlx-border-warm)]"
+                }`}
               >
-                What tone are you after?
-              </h2>
-              <p
-                className="text-[var(--hlx-text-sub)] max-w-md leading-relaxed mx-auto"
-                style={{ fontSize: "0.9375rem" }}
-              >
-                Describe an artist, a song, a genre, or just a vibe &mdash;
-                I&apos;ll build you a studio-quality Helix preset.
-              </p>
-            </div>
+                {isVisionLoading ? (
+                  <svg className="hlx-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                ) : (
+                  <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                )}
+                {rigImages.length > 0 && !isVisionLoading && !rigIntent && (
+                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-[var(--hlx-amber)] rounded-full text-[9px] text-[var(--hlx-void)] flex items-center justify-center font-bold leading-none">
+                    {rigImages.length}
+                  </span>
+                )}
+              </button>
 
-            <div className="flex flex-wrap gap-2.5 justify-center max-w-xl">
+              <div className="flex-1">
+                <textarea
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Describe the tone you're after..."
+                  rows={1}
+                  className="hlx-input"
+                  disabled={isStreaming}
+                />
+              </div>
+
+              {rigImages.length > 0 && !rigIntent && !isVisionLoading && (
+                <button
+                  type="button"
+                  onClick={callVision}
+                  className="flex-shrink-0 h-[44px] px-3 rounded-[11px] border border-[var(--hlx-amber)] bg-[rgba(240,144,10,0.06)] text-[var(--hlx-amber)] text-[0.8125rem] font-semibold transition-all hover:bg-[rgba(240,144,10,0.12)] whitespace-nowrap"
+                >
+                  Analyze
+                </button>
+              )}
+
+              <button
+                type="submit"
+                disabled={!input.trim() || isStreaming}
+                className="hlx-send"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19V5m0 0l-7 7m7-7l7 7" />
+                </svg>
+              </button>
+            </form>
+
+            {/* Suggestion cards — 2×3 grid */}
+            <div className="grid grid-cols-3 gap-2.5 w-full max-w-2xl">
               {[
-                "Mark Knopfler\u2019s Sultans of Swing Alchemy tone",
+                "Mark Knopfler\u2019s Sultans of Swing tone",
                 "SRV Texas blues crunch",
                 "Modern worship ambient clean",
                 "80s new wave jangly clean",
                 "Metallica Black Album rhythm",
+                "Edge of U2 dotted-eighth delays",
               ].map((suggestion) => (
                 <button
                   key={suggestion}
@@ -754,12 +847,10 @@ export default function Home() {
                     setInput(suggestion);
                     inputRef.current?.focus();
                   }}
-                  className="hlx-pedal"
+                  className="text-left p-4 rounded-xl border border-[var(--hlx-border)] bg-[var(--hlx-surface)] text-[0.8rem] leading-snug text-[var(--hlx-text-sub)] hover:border-[rgba(240,144,10,0.22)] hover:bg-[var(--hlx-elevated)] hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(0,0,0,0.35)] transition-all duration-200"
+                  style={{ fontFamily: "var(--font-mono), monospace" }}
                 >
-                  <span className="flex items-center gap-2.5">
-                    <span className="hlx-led" />
-                    {suggestion}
-                  </span>
+                  {suggestion}
                 </button>
               ))}
             </div>
@@ -1028,24 +1119,9 @@ export default function Home() {
         </div>
       )}
 
-      {/* --- Input Area --- */}
+      {/* --- Input Area (chat mode only) --- */}
+      {messages.length > 0 && (
       <div className="px-6 pb-6 pt-2">
-        {/* Hidden file input — triggered by camera button */}
-        <input
-          ref={rigFileInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          multiple
-          className="sr-only"
-          onChange={(e) => {
-            const files = Array.from(e.target.files || []);
-            setRigImages(files.slice(0, 3));
-            setRigIntent(null);
-            setVisionError(null);
-            // Reset file input so the same files can be re-selected if needed
-            if (rigFileInputRef.current) rigFileInputRef.current.value = "";
-          }}
-        />
         <form onSubmit={sendMessage} className="flex gap-2 items-end">
           {/* Camera button — opens file picker for rig photo upload */}
           <button
@@ -1113,7 +1189,7 @@ export default function Home() {
             </svg>
           </button>
         </form>
-        <p className="text-[11px] text-[var(--hlx-text-muted)] mt-3 text-center tracking-wide">
+        <p className="text-[11px] text-[var(--hlx-text-muted)] mt-3 text-center tracking-wide" style={{ fontFamily: "var(--font-mono), monospace" }}>
           A project of{" "}
           <a
             href="https://danielbogard.com"
@@ -1126,6 +1202,7 @@ export default function Home() {
           {" "}&middot; Powered by Gemini &middot; Claude &middot; Line 6 Helix
         </p>
       </div>
+      )}
     </div>
   );
 }
