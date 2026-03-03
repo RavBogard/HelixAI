@@ -213,11 +213,11 @@ Requirements for Persistent Chat Platform milestone. Transform HelixAI from a st
 
 ### Conversation Persistence
 
-- [ ] **CONV-01**: User can create a new conversation — a conversation record is created in the database with a unique ID, user ID, device target, and auto-generated title
-- [ ] **CONV-02**: Auto-generated conversation title derived from the first user message — no second AI call; client-side text extraction (5-8 words)
+- [x] **CONV-01**: User can create a new conversation — a conversation record is created in the database with a unique ID, user ID, device target, and auto-generated title
+- [x] **CONV-02**: Auto-generated conversation title derived from the first user message — no second AI call; client-side text extraction (5-8 words)
 - [ ] **CONV-03**: Full message history (user + assistant messages) saved per conversation with server-assigned sequence numbers for correct ordering
-- [ ] **CONV-04**: Device target (Helix LT / Helix Floor / Pod Go) stored as conversation metadata — restored when resuming
-- [ ] **CONV-05**: User can list all their conversations ordered by most recent activity — API route returns conversation ID, title, device, timestamp
+- [x] **CONV-04**: Device target (Helix LT / Helix Floor / Pod Go) stored as conversation metadata — restored when resuming
+- [x] **CONV-05**: User can list all their conversations ordered by most recent activity — API route returns conversation ID, title, device, timestamp
 - [ ] **CONV-06**: User can delete a conversation — confirm dialog, messages and stored preset file removed, conversation removed from sidebar
 
 ### File Storage
@@ -416,11 +416,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AUTH-03 | Phase 25 | Complete |
 | AUTH-04 | Phase 25 | Complete |
 | AUTH-05 | Phase 25 | Complete |
-| CONV-01 | Phase 26 | Pending |
-| CONV-02 | Phase 26 | Pending |
+| CONV-01 | Phase 26 | Complete |
+| CONV-02 | Phase 26 | Complete |
 | CONV-03 | Phase 26 | Pending |
-| CONV-04 | Phase 26 | Pending |
-| CONV-05 | Phase 26 | Pending |
+| CONV-04 | Phase 26 | Complete |
+| CONV-05 | Phase 26 | Complete |
 | CONV-06 | Phase 26 | Pending |
 | STORE-01 | Phase 27 | Pending |
 | STORE-02 | Phase 27 | Pending |

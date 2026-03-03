@@ -2,52 +2,13 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Persistent Chat Platform
-status: unknown
-last_updated: "2026-03-03T22:39:17.641Z"
-progress:
-  total_phases: 19
-  completed_phases: 13
-  total_plans: 33
-  completed_plans: 25
----
-
----
-gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: Persistent Chat Platform
-status: unknown
-last_updated: "2026-03-03T22:32:54.085Z"
-progress:
-  total_phases: 19
-  completed_phases: 13
-  total_plans: 33
-  completed_plans: 25
----
-
----
-gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: Persistent Chat Platform
-status: unknown
-last_updated: "2026-03-03T22:28:57.283Z"
-progress:
-  total_phases: 19
-  completed_phases: 12
-  total_plans: 33
-  completed_plans: 24
----
-
----
-gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: Persistent Chat Platform
 status: in_progress
-last_updated: "2026-03-03T20:10:00Z"
+last_updated: "2026-03-03T22:42:00Z"
 progress:
-  total_phases: 5
-  completed_phases: 0
-  total_plans: 3
-  completed_plans: 3
+  total_phases: 19
+  completed_phases: 13
+  total_plans: 33
+  completed_plans: 26
 ---
 
 # Project State
@@ -57,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** v2.0 — Persistent Chat Platform (Phase 24 next)
+**Current focus:** v2.0 — Persistent Chat Platform (Phase 26 complete, Phase 27 next)
 
 ## Current Position
 
-Phase: 25 (COMPLETE — both plans done, human verification approved)
-Plan: 02 (all 3 tasks complete — human verification approved 2026-03-03)
-Status: Phase 25 auth flow complete — AuthButton built, Google OAuth linkIdentity() wired, human verification passed
-Last activity: 2026-03-03 — 25-02 human verification approved; ready for Phase 26
+Phase: 26 (COMPLETE — 26-01 done)
+Plan: 01 (2 tasks complete — TypeScript clean, all routes verified)
+Status: Phase 26 Conversation CRUD API complete — 4 HTTP operations across 3 route files, all security patterns verified
+Last activity: 2026-03-03 — 26-01 executed; ready for Phase 27
 
-Progress: [----------] 0/5 phases complete (5 plans done)
+Progress: [----------] 1/5 phases complete (6 plans done in v2.0)
 
 ## Performance Metrics
 
@@ -117,7 +78,7 @@ Progress: [----------] 0/5 phases complete (5 plans done)
 |-------|-------|--------|
 | 24. Supabase Foundation | 3 | Complete — client utils + middleware, schema SQL + keep-alive, env vars verified + build clean |
 | 25. Auth Flow | 2 plans | Complete — AuthButton + Google OAuth linkIdentity() + human verification passed |
-| 26. Conversation CRUD API | TBD | Not started |
+| 26. Conversation CRUD API | 1 plan | Complete — POST create, GET list, GET read-with-messages, PATCH title across 3 route files |
 | 27. Persistence Wiring | TBD | Not started |
 | 28. Chat Sidebar UI + UX Polish | TBD | Not started |
 
@@ -167,6 +128,11 @@ Progress: [----------] 0/5 phases complete (5 plans done)
 - [Phase 25-auth-flow]: Single useEffect for session init + state restoration — prevents race condition between getUser() and setMessages()
 - [Phase 25-auth-flow]: serializeChatState() defined in page.tsx with useCallback — wired by Plan 02 AuthButton
 - [Phase 25]: Event dispatch pattern ('helixai:before-signin') used instead of prop/context for AuthButton-to-page.tsx decoupling
+- [v2.0 26-01]: Ownership failures return 404 not 403 — no existence leakage for resources the user does not own
+- [v2.0 26-01]: POST /api/conversations returns 201 Created (not 200) — correct HTTP semantics for resource creation
+- [v2.0 26-01]: GET list limited to 50 rows — prevents unbounded queries on large conversation sets
+- [v2.0 26-01]: Title truncated server-side to 60 chars — client cannot bypass length constraint
+- [v2.0 26-01]: Next.js 15+ Promise<{ id: string }> params pattern — avoids runtime "params is a promise" error
 
 ### Roadmap Evolution
 
@@ -184,6 +150,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Phase 25 complete — human verification approved; Phase 26 (Conversation CRUD API) is next
+Stopped at: Phase 26 complete — 26-01 (Conversation CRUD API) executed; Phase 27 (Persistence Wiring) is next
 Resume file: None
-Next command: /gsd:execute-phase 26 (Conversation CRUD API)
+Next command: /gsd:execute-phase 27 (Persistence Wiring)

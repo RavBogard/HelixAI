@@ -287,7 +287,7 @@ Plans:
 
 - [x] **Phase 24: Supabase Foundation** - Database schema, RLS, client utilities, middleware, keep-alive (3 plans, complete 2026-03-03)
 - [x] **Phase 25: Auth Flow** - Anonymous sign-in + Google OAuth + identity linking (completed 2026-03-03)
-- [ ] **Phase 26: Conversation CRUD API** - Full data API for creating, reading, listing, and deleting conversations
+- [x] **Phase 26: Conversation CRUD API** - Full data API for creating, reading, listing, and title update (1 plan, complete 2026-03-03)
 - [ ] **Phase 27: Persistence Wiring** - Modify chat/generate routes to persist messages and preset files
 - [ ] **Phase 28: Chat Sidebar UI + UX Polish** - Sidebar panel, resume flow, new chat, sign-in prompt
 
@@ -386,10 +386,10 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 21. Substitution Card & End-to-End Polish | v1.3 | 1/1 | Complete | 2026-03-02 |
 | 24. Supabase Foundation | v2.0 | Complete    | 2026-03-03 | 2026-03-03 |
 | 25. Auth Flow | 2/2 | Complete    | 2026-03-03 | - |
-| 26. Conversation CRUD API | v2.0 | 0/TBD | Not started | - |
+| 26. Conversation CRUD API | v2.0 | 1/1 | Complete | 2026-03-03 |
 | 27. Persistence Wiring | v2.0 | 0/TBD | Not started | - |
 | 28. Chat Sidebar UI + UX Polish | v2.0 | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-03-01*
-*Last updated: 2026-03-03 — Phase 24 Supabase Foundation complete (3/3 plans); env vars documented, schema + RLS active, build verified clean*
+*Last updated: 2026-03-03 — Phase 26 Conversation CRUD API complete (1/1 plan); POST create, GET list, GET read-with-messages, PATCH title routes built with per-route auth verification*
