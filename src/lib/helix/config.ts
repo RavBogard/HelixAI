@@ -6,10 +6,10 @@
 export const FIRMWARE_CONFIG = {
   /** Schema version number in .hlx JSON */
   HLX_VERSION: 6,
-  /** Application version integer — encodes firmware version (e.g., 57671680 = FW 3.70) */
-  HLX_APP_VERSION: 57671680,
-  /** Build SHA string shown in .hlx meta (e.g., "v3.70") */
-  HLX_BUILD_SHA: "v3.70",
+  /** Application version integer — encodes firmware version (e.g., 58720256 = FW 3.80) */
+  HLX_APP_VERSION: 58720256,
+  /** Build SHA string shown in .hlx meta (e.g., "v3.80") */
+  HLX_BUILD_SHA: "v3.80",
 } as const;
 
 /**
