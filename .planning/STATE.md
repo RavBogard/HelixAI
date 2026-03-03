@@ -3,6 +3,19 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Persistent Chat Platform
 status: unknown
+last_updated: "2026-03-03T23:09:54.186Z"
+progress:
+  total_phases: 20
+  completed_phases: 15
+  total_plans: 33
+  completed_plans: 30
+---
+
+---
+gsd_state_version: 1.0
+milestone: v2.0
+milestone_name: Persistent Chat Platform
+status: unknown
 last_updated: "2026-03-03T23:03:27.764Z"
 progress:
   total_phases: 19
@@ -61,12 +74,12 @@ See: .planning/PROJECT.md (updated 2026-03-03)
 
 ## Current Position
 
-Phase: 27 (COMPLETE — both plans done)
-Plan: 02 (2 tasks complete — TypeScript clean, build clean)
-Status: Phase 27 Persistence Wiring complete — page.tsx wired with conversationId lifecycle, ensureConversation(), auto-title, downloadStoredPreset(), loadConversation(); Phase 28 (Chat Sidebar UI) next
-Last activity: 2026-03-03 — 27-02 executed; Phase 27 fully complete
+Phase: 28 (In Progress — 1 of 3 plans done)
+Plan: 01 (2 tasks complete — ChatSidebar.tsx, ConversationList.tsx, layout.tsx async auth check)
+Status: Phase 28 Chat Sidebar UI — Plan 01 complete (sidebar shell + layout wired); Plan 02 (conversation navigation) next
+Last activity: 2026-03-03 — 28-01 executed; ChatSidebar + layout.tsx wired
 
-Progress: [----------] 3/5 phases complete (10 plans done in v2.0)
+Progress: [----------] 3/5 phases complete (11 plans done in v2.0)
 
 ## Performance Metrics
 
@@ -119,9 +132,10 @@ Progress: [----------] 3/5 phases complete (10 plans done in v2.0)
 | 25. Auth Flow | 2 plans | Complete — AuthButton + Google OAuth linkIdentity() + human verification passed |
 | 26. Conversation CRUD API | 2 plans | Complete — POST create, GET list, GET read-with-messages, PATCH title, POST message, DELETE conversation |
 | 27. Persistence Wiring | 2 plans | Complete — /api/chat + /api/generate server persistence + page.tsx client lifecycle wiring |
-| 28. Chat Sidebar UI + UX Polish | TBD | Not started |
+| 28. Chat Sidebar UI + UX Polish | 3 plans | In Progress — Plan 01 complete (sidebar shell + layout wired) |
 | Phase 27 P01 | 112s | 2 tasks | 2 files |
 | Phase 27-persistence-wiring P02 | 145 | 2 tasks | 1 files |
+| Phase 28 P01 | 2 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -182,6 +196,8 @@ Progress: [----------] 3/5 phases complete (10 plans done in v2.0)
 - [Phase 27]: Preset upload fire-and-forget via .then().catch() before return NextResponse.json() — STORE-03 compliant non-blocking response
 - [Phase 27-02]: conversationIdRef (useRef) used alongside conversationId (useState) — ref provides synchronous access in sendMessage/generatePreset closures, state provides React re-render trigger
 - [Phase 27-02]: ensureConversation() returns null for anonymous users (is_anonymous: true) — preserves UXP-04, anonymous flow sends no conversationId
+- [Phase 28-01]: ChatSidebar mounted in layout.tsx — persists without remount across navigations; CSS translateX toggle keeps conversation list in memory when sidebar closes
+- [Phase 28-01]: Server-side isAuthenticated check in async layout.tsx — anonymous users see no sidebar, no client-side auth check needed
 
 ### Roadmap Evolution
 
