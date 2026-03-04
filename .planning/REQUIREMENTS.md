@@ -242,6 +242,13 @@ Requirements for Persistent Chat Platform milestone. Transform HelixAI from a st
 - [x] **UXP-03**: Continuation suggestion chips shown when resuming a past conversation — "Refine this tone", "Try a different amp", "Generate for [other device]" — static suggestions based on chat state, no AI call
 - [x] **UXP-04**: Existing text-only generation flow (no auth, no persistence) produces identical output and performance to v1.3 — no new API calls, no changed loading states, no response shape changes for anonymous users
 
+### Chat Auto-Save
+
+- [x] **SAVE-01**: Sidebar refresh fires after auto-title PATCH resolves — sidebar shows real conversation title, not "New Chat"
+- [x] **SAVE-02**: Generate-only flow (no chat messages before preset generation) persists user message and AI summary to the conversation
+- [x] **SAVE-03**: Anonymous users are completely excluded from conversation creation and persistence — `ensureConversation()` returns null for anonymous
+- [x] **SAVE-04**: Returning authenticated users see all previous conversations in the sidebar on page load — no manual save action required
+
 ### Dual-Amp Preset Support
 
 - **DUAL-01**: ToneIntentSchema adds optional `secondAmpName` and `secondCabName` fields with Zod validation — single-amp presets are unaffected
