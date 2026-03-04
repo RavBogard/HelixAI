@@ -518,8 +518,8 @@ function HomeContent() {
       setConversationId(conv.id);
       isFirstMessageRef.current = true;
 
-      // Phase 28: notify sidebar so it refreshes the conversation list (SIDE-06)
-      window.dispatchEvent(new Event('helixai:conversation-created'));
+      // Phase 30: sidebar notification DEFERRED to after auto-title completes
+      // (was Phase 28 SIDE-06 — moved to sendMessage() and generatePreset() success paths)
 
       return conv.id;
     } catch {
@@ -617,7 +617,7 @@ function HomeContent() {
         });
       }
 
-      // Phase 27: auto-title conversation after first message
+      // Phase 30: auto-title conversation after first AI response, then notify sidebar
       if (convId && isFirstMessageRef.current) {
         isFirstMessageRef.current = false;
         const title = userMessage.content.split(" ").slice(0, 7).join(" ");
@@ -625,7 +625,17 @@ function HomeContent() {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ title }),
-        }).catch(() => {}); // Fire-and-forget — title is cosmetic
+        })
+          .then((res) => {
+            if (res.ok) {
+              // Phase 30: notify sidebar AFTER title is set — shows real title, not "New Chat"
+              window.dispatchEvent(new Event('helixai:conversation-created'));
+            }
+          })
+          .catch(() => {
+            // Title failed but conversation exists — still notify sidebar so it appears
+            window.dispatchEvent(new Event('helixai:conversation-created'));
+          });
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Something went wrong";
