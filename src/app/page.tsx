@@ -683,6 +683,52 @@ function HomeContent() {
       if (data.substitutionMap) {
         setSubstitutionMap(data.substitutionMap);
       }
+
+      // Phase 30: persist messages for generate-only flow (SAVE-02)
+      // /api/generate does not save messages — only /api/chat does.
+      // Save user message + generate summary as assistant message so the
+      // conversation has content when the user returns.
+      if (convId) {
+        const msgsToSave = overrideMessages ?? messages;
+        const lastUserMsg = msgsToSave[msgsToSave.length - 1];
+
+        // Save user message — fire-and-forget
+        if (lastUserMsg?.role === "user") {
+          fetch(`/api/conversations/${convId}/messages`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ role: "user", content: lastUserMsg.content }),
+          }).catch(() => {}); // Non-fatal
+        }
+
+        // Save assistant summary as message — fire-and-forget
+        if (data.summary) {
+          fetch(`/api/conversations/${convId}/messages`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ role: "assistant", content: data.summary }),
+          }).catch(() => {}); // Non-fatal
+        }
+
+        // Phase 30: auto-title and notify sidebar for generate-only conversations
+        if (isFirstMessageRef.current) {
+          isFirstMessageRef.current = false;
+          const title = lastUserMsg?.content?.split(" ").slice(0, 7).join(" ") || "Tone Generation";
+          fetch(`/api/conversations/${convId}/title`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title }),
+          })
+            .then((res) => {
+              if (res.ok) {
+                window.dispatchEvent(new Event('helixai:conversation-created'));
+              }
+            })
+            .catch(() => {
+              window.dispatchEvent(new Event('helixai:conversation-created'));
+            });
+        }
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Generation failed";
       setError(message);
