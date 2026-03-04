@@ -205,6 +205,7 @@ function buildBlockSpec(
   pending: PendingBlock,
   dsp: 0 | 1,
   position: number,
+  pathOverride?: number,
 ): BlockSpec {
   const isDelayOrReverb =
     pending.blockType === "delay" || pending.blockType === "reverb";
@@ -215,7 +216,7 @@ function buildBlockSpec(
     modelName: pending.model.name,
     dsp,
     position,
-    path: 0,
+    path: pathOverride ?? 0,
     enabled: true,
     stereo: false,
     ...(isDelayOrReverb ? { trails: true } : {}),
@@ -258,6 +259,26 @@ export function assembleSignalChain(intent: ToneIntent, device?: DeviceTarget): 
     );
   }
 
+  // 2b. Detect dual-amp intent (DUAL-03)
+  const isDualAmp = !!(intent.secondAmpName && intent.secondCabName && !podGo);
+
+  let secondAmpModel: HelixModel | undefined;
+  let secondCabModel: HelixModel | undefined;
+  if (isDualAmp) {
+    secondAmpModel = AMP_MODELS[intent.secondAmpName!];
+    if (!secondAmpModel) {
+      throw new Error(
+        `Unknown second amp model: "${intent.secondAmpName}". Model name must exactly match a key in AMP_MODELS.`
+      );
+    }
+    secondCabModel = CAB_MODELS[intent.secondCabName!];
+    if (!secondCabModel) {
+      throw new Error(
+        `Unknown second cab model: "${intent.secondCabName}". Model name must exactly match a key in CAB_MODELS.`
+      );
+    }
+  }
+
   // 3. Determine amp category
   const ampCategory = ampModel.ampCategory ?? "clean";
 
@@ -281,6 +302,12 @@ export function assembleSignalChain(intent: ToneIntent, device?: DeviceTarget): 
   // Pod Go: enforce maximum 4 user-assignable effect blocks (PGCHAIN-01)
   if (podGo && userEffects.length > POD_GO_MAX_USER_EFFECTS) {
     userEffects.length = POD_GO_MAX_USER_EFFECTS;
+  }
+
+  // Dual-amp: enforce tighter pre-amp effect limit (DUAL-03)
+  // split+amp1+cab1+amp2+cab2+join = 6 slots, leaves 4 for boost+gate+2 effects
+  if (isDualAmp && userEffects.length > 2) {
+    userEffects.length = 2;
   }
 
   // 5. Mandatory block insertion (CHAIN-06)
@@ -363,7 +390,7 @@ export function assembleSignalChain(intent: ToneIntent, device?: DeviceTarget): 
     }
   }
 
-  // Add amp block
+  // Add amp block (primary, path 0)
   allBlocks.push({
     model: ampModel,
     blockType: "amp",
@@ -371,13 +398,34 @@ export function assembleSignalChain(intent: ToneIntent, device?: DeviceTarget): 
     dsp: 0,
   });
 
-  // Add cab block
+  // Add cab block (primary, path 0)
   allBlocks.push({
     model: cabModel,
     blockType: "cab",
     slot: "cab",
     dsp: 0,
   });
+
+  // Dual-amp: add second amp+cab on path 1 (Path B) (DUAL-03)
+  // Track these specific PendingBlock instances for path assignment (handles same-model-twice case)
+  let secondAmpPending: PendingBlock | undefined;
+  let secondCabPending: PendingBlock | undefined;
+  if (isDualAmp && secondAmpModel && secondCabModel) {
+    secondAmpPending = {
+      model: secondAmpModel,
+      blockType: "amp",
+      slot: "amp" as ChainSlot,
+      dsp: 0,
+    };
+    secondCabPending = {
+      model: secondCabModel,
+      blockType: "cab",
+      slot: "cab" as ChainSlot,
+      dsp: 0,
+    };
+    allBlocks.push(secondAmpPending);
+    allBlocks.push(secondCabPending);
+  }
 
   // 7. Sort all blocks by signal chain order
   allBlocks.sort((a, b) => SLOT_ORDER[a.slot] - SLOT_ORDER[b.slot]);
@@ -425,15 +473,22 @@ export function assembleSignalChain(intent: ToneIntent, device?: DeviceTarget): 
   const result: BlockSpec[] = [];
 
   for (const pending of allBlocks) {
+    // Determine if this block belongs to the secondary amp path (DUAL-03)
+    // Uses object identity (===) so same-model-twice works correctly
+    const isSecondaryPath = isDualAmp && (
+      pending === secondAmpPending || pending === secondCabPending
+    );
+    const pathValue = isSecondaryPath ? 1 : 0;
+
     if (pending.blockType === "cab") {
       // Cab block gets a special position (not counted in sequential numbering)
       // Use -1 as a sentinel; preset-builder handles cab separately via cab0 key
-      result.push(buildBlockSpec(pending, pending.dsp, -1));
+      result.push(buildBlockSpec(pending, pending.dsp, -1, pathValue));
     } else if (pending.dsp === 0) {
-      result.push(buildBlockSpec(pending, 0, dsp0Pos));
+      result.push(buildBlockSpec(pending, 0, dsp0Pos, pathValue));
       dsp0Pos++;
     } else {
-      result.push(buildBlockSpec(pending, 1, dsp1Pos));
+      result.push(buildBlockSpec(pending, 1, dsp1Pos, pathValue));
       dsp1Pos++;
     }
   }
