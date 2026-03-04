@@ -282,109 +282,27 @@ Plans:
 
 </details>
 
-### v2.0 Persistent Chat Platform (In Progress)
+<details>
+<summary>✅ v2.0 Persistent Chat Platform (Phases 24-30) — SHIPPED 2026-03-04</summary>
 
-**Milestone Goal:** Transform HelixAI from a stateless generate-and-download tool into a persistent platform where users log in with Google, maintain a sidebar of past conversations, pick up where they left off, and re-download their most recent preset per chat. Anonymous usage remains fully functional; login unlocks history.
+- [x] Phase 24: Supabase Foundation — DB schema, RLS, client utilities, middleware, keep-alive (3 plans, complete 2026-03-03)
+- [x] Phase 25: Auth Flow — Anonymous sign-in + Google OAuth + identity linking (2 plans, complete 2026-03-03)
+- [x] Phase 26: Conversation CRUD API — Full data API for conversations + messages (2 plans, complete 2026-03-03)
+- [x] Phase 27: Persistence Wiring — chat/generate routes persist messages and preset files (2 plans, complete 2026-03-03)
+- [x] Phase 28: Chat Sidebar UI + UX Polish — Sidebar panel, resume flow, new chat, sign-in prompt (3 plans, complete 2026-03-03)
+- [x] Phase 29: Dual-Amp Preset Generation Fix — AB topology, split/join blocks, independent params (3 plans, complete 2026-03-04)
+- [x] Phase 30: Chat Auto-Save on First AI Response — auto-save on first AI response, deferred sidebar refresh (1 plan, complete 2026-03-04)
 
-- [x] **Phase 24: Supabase Foundation** - Database schema, RLS, client utilities, middleware, keep-alive (3 plans, complete 2026-03-03)
-- [x] **Phase 25: Auth Flow** - Anonymous sign-in + Google OAuth + identity linking (completed 2026-03-03)
-- [x] **Phase 26: Conversation CRUD API** - Full data API for creating, reading, listing, and title update (1 plan, complete 2026-03-03)
-- [x] **Phase 27: Persistence Wiring** - Modify chat/generate routes to persist messages and preset files (completed 2026-03-03)
-- [x] **Phase 28: Chat Sidebar UI + UX Polish** - Sidebar panel, resume flow, new chat, sign-in prompt (completed 2026-03-03)
+Full archive: `.planning/milestones/v2.0-ROADMAP.md`
+
+</details>
 
 ## Phase Details
 
-### Phase 24: Supabase Foundation
-**Goal**: The persistence infrastructure exists and is secured — database schema with RLS, storage bucket, isomorphic client utilities, session-refreshing middleware, and keep-alive — so every subsequent phase builds on a verified, safe foundation
-**Depends on**: Phase 21
-**Requirements**: INFRA-01, INFRA-02, INFRA-03, INFRA-04, INFRA-05, INFRA-06
-**Success Criteria** (what must be TRUE):
-  1. `createSupabaseServerClient()` and `createSupabaseBrowserClient()` run without error in a Next.js App Router context — a server component and a client component can each call Supabase without configuration friction
-  2. A direct REST call to `/rest/v1/conversations` with the public anon key returns an empty array — not a 403, and not rows belonging to other users — confirming RLS is active and filtering correctly
-  3. Middleware at project root calls `updateSession()` on every non-static request — a session cookie set in one request is still valid two requests later without any manual token refresh
-  4. The Supabase Storage `presets` bucket exists with RLS on `storage.objects` — a direct upload attempt without a valid session token is rejected
-  5. A keep-alive mechanism is deployed and verified — the Supabase project does not pause after 7 days of zero application activity
-**Plans**: 3
-
-### Phase 25: Auth Flow
-**Goal**: Every visitor gets an anonymous user ID on first load, and authenticated users can sign in with Google without losing their current session state — the anonymous generate-and-download flow is fully preserved with zero new auth gates
-**Depends on**: Phase 24
-**Requirements**: AUTH-01, AUTH-02, AUTH-03, AUTH-04, AUTH-05
-**Success Criteria** (what must be TRUE):
-  1. A first-time visitor has an anonymous session visible in the Supabase Auth dashboard — `is_anonymous: true`, with a real UUID that is the root foreign key for any data they create
-  2. Clicking "Sign in with Google" completes OAuth and returns the user to the app with the same UUID as before — `is_anonymous` is now false, and no data from the pre-login session is lost
-  3. Hard-refreshing the page after signing in shows the logged-in UI state immediately with no visible flash of the logged-out state
-  4. An anonymous user who starts a chat and clicks "Sign in with Google" mid-session returns after the OAuth redirect with their in-progress chat state intact — the conversation they were in is still present
-  5. Clicking "Sign out" clears the session, the UI returns to anonymous state, and the sidebar (when it exists) is hidden — no logged-in UI elements remain visible
-  6. An anonymous user can generate and download a preset with zero new UI elements, loading states, or performance overhead compared to v1.3
-**Plans**: TBD
-
-### Phase 26: Conversation CRUD API
-**Goal**: A stable, independently-testable data API exists for conversations and messages — all four CRUD operations work correctly against the database, RLS is verified by cross-user isolation tests, and sequence numbers enforce correct message ordering
-**Depends on**: Phase 24
-**Requirements**: CONV-01, CONV-02, CONV-03, CONV-04, CONV-05, CONV-06
-**Success Criteria** (what must be TRUE):
-  1. `POST /api/conversations` creates a conversation row with `id`, `user_id`, `device`, and `title` — the returned `conversationId` can be used immediately in subsequent requests
-  2. `GET /api/conversations` returns conversations for the authenticated user only, ordered by `updated_at` desc — a request authenticated as a different user returns zero rows for the first user's conversations, confirming RLS isolation
-  3. `GET /api/conversations/[id]` returns the full conversation with messages ordered by `sequence_number` ascending — two messages inserted out of wall-clock order appear in insertion-sequence order, not timestamp order
-  4. `PATCH /api/conversations/[id]/title` updates the conversation title — a 5-8 word title derived client-side from the first user message is stored and returned correctly
-  5. `DELETE /api/conversations/[id]` removes the conversation and all its messages — the conversation no longer appears in the list and the storage preset file is removed
-  6. All four route handlers independently verify the session — a request with a crafted middleware-bypass header is rejected at the route handler level, not just at middleware
-**Plans**: TBD
-
-### Phase 27: Persistence Wiring
-**Goal**: Authenticated conversations persist their full message history and most recent preset file — the existing anonymous generate-and-download flow is byte-for-byte identical to v1.3 when no conversationId is provided
-**Depends on**: Phase 25, Phase 26
-**Requirements**: STORE-01, STORE-02, STORE-03, UXP-04
-**Success Criteria** (what must be TRUE):
-  1. Sending a message in an authenticated conversation with a `conversationId` — the user message appears in the Supabase `messages` table with the correct `sequence_number` before the AI response completes, and the assistant message appears with the next `sequence_number` after the stream finishes
-  2. Generating a preset in an authenticated conversation — exactly one file exists in Supabase Storage at the deterministic key `presets/{user_id}/{conversation_id}/latest.hlx` (or `.pgp`); regenerating overwrites the file, not creates a new one
-  3. A "Download Preset" action in a resumed conversation fetches the stored file from Supabase Storage without regenerating — the download completes without triggering any AI call
-  4. Posting to `/api/chat` and `/api/generate` WITHOUT a `conversationId` produces responses identical in shape, timing (within 5%), and content to v1.3 — no new database calls, no new loading states, no changed response fields for anonymous users
-**Plans**: TBD
-
-### Phase 28: Chat Sidebar UI + UX Polish
-**Goal**: Authenticated users see a pull-out sidebar showing their past conversations and can resume, delete, or start new chats — the full persistence layer is surfaced in a polished UI, and contextual sign-in prompts encourage anonymous users to log in after their first preset
-**Depends on**: Phase 27
-**Requirements**: SIDE-01, SIDE-02, SIDE-03, SIDE-04, SIDE-05, SIDE-06, UXP-01, UXP-02, UXP-03
-**Success Criteria** (what must be TRUE):
-  1. An authenticated user opens the sidebar and sees their past conversations with title, device type, and relative timestamp — sorted by most recent activity; clicking any entry loads the full message history into the chat area with the device selector restored
-  2. Clicking "New Chat" clears the current session, resets the device selector to default, and assigns a new `conversationId` on the first message send — no stale state from the previous conversation is visible
-  3. Deleting a conversation from the sidebar removes it from the list immediately (optimistic update) and the deletion is confirmed in the database within 2 seconds — if the delete fails, the conversation reappears in the sidebar
-  4. Resuming a past conversation that had a preset generated shows a "Download Preset" button — clicking it downloads the stored file without regenerating; the loading state shows "Loading conversation..." before the messages appear
-  5. The sidebar is absent for anonymous users — they see the standard full-width chat interface with no sidebar toggle, no sidebar shell, and no visual remnants of the sidebar layout
-  6. After an anonymous user successfully downloads their first preset, a non-blocking banner appears: "Sign in to save this chat and come back to refine it later" — it is dismissible and does not interrupt the download or any subsequent action
-  7. When resuming a past conversation, three static suggestion chips are visible — "Refine this tone", "Try a different amp", "Generate for [other device]" — clicking one populates the chat input with a starter message
-**Plans**: 3/3 complete
-
-### Phase 29: Dual-Amp Preset Generation Fix
-
-**Goal:** Users who request presets with two different amps receive a valid dual-amp preset with split/join AB topology, per-snapshot amp switching, and independent parameter resolution — single-amp presets are completely unaffected; Pod Go gracefully falls back to single-amp.
-**Requirements**: DUAL-01, DUAL-02, DUAL-03, DUAL-04, DUAL-05, DUAL-06, DUAL-07, DUAL-08, DUAL-09
-**Depends on:** Phase 28
-**Plans:** 3/3 plans complete
-
-Plans:
-- [x] 29-01: Schema Extension + AI Prompt Updates (DUAL-01, DUAL-02, DUAL-07, DUAL-08)
-- [x] 29-02: Knowledge Layer — Chain + Params + Snapshots (DUAL-03, DUAL-04, DUAL-05)
-- [x] 29-03: Preset Builder Topology + Validation (DUAL-06, DUAL-09)
-
-### Phase 30: Chat Auto-Save on First AI Response
-
-**Goal:** Authenticated users' conversations are automatically created and persisted after the first AI response — no user action required. Opening a new session shows all previous chats in the sidebar, just like any standard AI chat interface. Conversations should NOT be created for anonymous users (they can't retrieve them anyway).
-**Requirements**: SAVE-01, SAVE-02, SAVE-03, SAVE-04
-**Depends on:** Phase 28
-**Plans:** 1/1 plans complete
-
-Plans:
-- [x] 30-01-PLAN.md — Sidebar refresh after auto-title + generate-flow message persistence (SAVE-01, SAVE-02, SAVE-03, SAVE-04)
-
----
-
-## v3.0 Helix Stadium Support (Phases 31-38)
+> v2.0 phase details (Phases 24-30) archived to `.planning/milestones/v2.0-ROADMAP.md`
 
 <details>
-<summary>v3.0 Helix Stadium Support (Phases 31-38) — IN PROGRESS</summary>
+<summary>✅ v3.0 Helix Stadium Support (Phases 31-38) — SHIPPED 2026-03-04</summary>
 
 ### Phase 31: Device ID Research + Helix Floor Regression Fix
 **Goal**: Ground all Stadium implementation in verified hardware data, and fix the live Helix Floor device ID regression before adding a third device
@@ -523,16 +441,16 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 28. Chat Sidebar UI + UX Polish | v2.0 | 3/3 | Complete | 2026-03-03 |
 | 29. Dual-Amp Preset Generation Fix | v2.0 | 3/3 | Complete | 2026-03-04 |
 | 30. Chat Auto-Save on First AI Response | v2.0 | 1/1 | Complete | 2026-03-04 |
-| 31. Device ID Research + Floor Fix | v3.0 | 0/2 | Not started | — |
-| 32. Type System Foundation | v3.0 | TBD | Not started | — |
-| 33. Stadium Model Catalog | v3.0 | TBD | Not started | — |
-| 34. Stadium Chain Rules + Validation | v3.0 | TBD | Not started | — |
-| 35. Stadium Builder | v3.0 | TBD | Not started | — |
-| 36. Planner + API Route Integration | v3.0 | TBD | Not started | — |
-| 37. UI — Device Selector + Download | v3.0 | TBD | Not started | — |
-| 38. Rig Emulation for Stadium | v3.0 | TBD | Not started | — |
+| 31. Device ID Research + Floor Fix | v3.0 | 2/2 | Complete | 2026-03-04 |
+| 32. Type System Foundation | v3.0 | 1/1 | Complete | 2026-03-04 |
+| 33. Stadium Model Catalog | v3.0 | 1/1 | Complete | 2026-03-04 |
+| 34. Stadium Chain Rules + Validation | v3.0 | 1/1 | Complete | 2026-03-04 |
+| 35. Stadium Builder | v3.0 | 1/1 | Complete | 2026-03-04 |
+| 36. Planner + API Route Integration | v3.0 | 1/1 | Complete | 2026-03-04 |
+| 37. UI — Device Selector + Download | v3.0 | 1/1 | Complete | 2026-03-04 |
+| 38. Rig Emulation for Stadium | v3.0 | 1/1 | Complete | 2026-03-04 |
 | 39. HX Stomp & HX Stomp XL Support | — | 3/3 | Complete | 2026-03-04 |
-| 40. Rebrand HelixAI to HelixTones | 1/1 | Complete   | 2026-03-04 | — |
+| 40. Rebrand HelixAI to HelixTones | — | 1/1 | Complete | 2026-03-04 |
 
 ### Phase 39: HX Stomp & HX Stomp XL Support
 

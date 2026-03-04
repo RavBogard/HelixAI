@@ -72,17 +72,22 @@ Generated presets must sound professional enough to compete with custom presets 
 - Multi-provider comparison UI — going single provider for quality focus
 - Full pedalboard OCR (auto-detect all pedals from a single board photo) — too unreliable at launch, per-pedal photos are the baseline
 
-## Current Milestone: v3.0 Helix Stadium Support
+## Current State
 
-**Goal:** Extend HelixAI to generate presets for Line 6 Helix Stadium — a new device users are actively requesting. Stadium presets must match the professional tone quality standard of existing devices. Includes fixing the Helix Floor device ID regression.
+v2.0 **Persistent Chat Platform** and v3.0 **Helix Stadium Support** are both shipped. The app has been rebranded to **HelixTones** (Phase 40) and now supports 6 devices: Helix LT, Helix Floor, Pod Go, Helix Stadium, HX Stomp, and HX Stomp XL.
 
-**Target features:**
-- Helix Stadium preset generation (format and constraints discovered via research)
-- Helix Stadium model catalog (Stadium-available models only)
-- Helix Stadium-specific chain rules (DSP limits, block constraints)
-- Helix Stadium in the device selector with correct download
-- Rig emulation support for Stadium (extends existing rig emulation)
-- Fix Helix Floor device ID regression (types.ts 2162692 vs test expecting 2162691)
+**Shipped milestones:**
+- v1.0: Full Rebuild — planner-executor engine, LT/Floor support
+- v1.1: Polish & Precision — bugs, prompt caching, genre defaults, visualization
+- v1.2: Pod Go Support — .pgp format, device catalog, chain rules
+- v1.3: Rig Emulation — pedal vision extraction, mapping engine, substitution card
+- v2.0: Persistent Chat Platform — Supabase auth/DB/storage, chat sidebar, dual-amp, auto-save
+- v3.0: Helix Stadium Support — .hsp format, Stadium builder, model catalog, chain rules, rig emulation
+
+**Recent phases (not yet in a named milestone):**
+- Phase 39: HX Stomp & HX Stomp XL Support
+- Phase 40: Rebrand HelixAI → HelixTones
+- Phase 41: Chat UX polish (device picker timing, pre-preset conversation flow)
 
 ## Context
 
@@ -98,11 +103,13 @@ Key architecture: Planner-Executor pattern where Claude selects creative model c
 
 v2.0 added the full persistence layer: Google auth (anonymous-first), Supabase database (conversations + messages), preset file storage, chat sidebar UI (resume/continue), dual-amp preset generation, and chat auto-save. The app is now a persistent platform.
 
-v3.0 targets Helix Stadium — a new Line 6 device users are actively requesting. The Planner-Executor architecture is well-suited for device extension: research will determine the file format and constraints, then the Knowledge Layer is extended to cover Stadium.
+v3.0 added Helix Stadium support: .hsp format (JSON-encoded same as .hlx), Stadium-specific model catalog (Agoura amps, 7-band Parametric EQ), chain rules, preset builder, planner integration, UI device picker, and rig emulation. Stadium uses the same Planner-Executor pattern — research confirmed the file format, then the Knowledge Layer was extended.
+
+Phases 39-41 (not yet in a milestone) added HX Stomp and HX Stomp XL support, rebranded the product to HelixTones, and improved the chat UX (device picker only appears after AI signals readiness).
 
 ## Constraints
 
-- **Hardware**: Line 6 Helix LT, Helix Floor, Pod Go, Helix Stadium — specific file formats (.hlx, .pgp, Stadium format TBD)
+- **Hardware**: Line 6 Helix LT, Helix Floor, Pod Go, Helix Stadium, HX Stomp, HX Stomp XL — file formats: .hlx (LT/Floor/Stomp/StompXL), .pgp (Pod Go), .hsp (Stadium)
 - **Deployment**: Vercel (free tier), serverless functions for AI calls — image payload size matters
 - **Frontend**: Next.js + TypeScript + Tailwind CSS, keep Warm Analog Studio design
 - **AI Provider**: Claude Sonnet 4.6 — supports vision input natively (base64 images in messages API)
@@ -125,7 +132,10 @@ v3.0 targets Helix Stadium — a new Line 6 device users are actively requesting
 | Anonymous-first auth model | Non-logged-in users get full functionality; login unlocks persistence only | ✓ Good |
 | Save last preset per chat (not all versions) | Balance between utility and storage cost — one .hlx/.pgp per conversation | ✓ Good |
 | Supabase for auth/database/storage | Single isomorphic SDK, anonymous sign-in with identity linking, generous free tier | ✓ Good |
-| Helix Stadium as v3.0 | Users actively requesting it; clean device-extension pattern established by Pod Go v1.2 | — Pending |
+| Helix Stadium as v3.0 | Users actively requesting it; clean device-extension pattern established by Pod Go v1.2 | ✓ Good |
+| HX Stomp/StompXL as Phase 39 | Same .hlx format as LT/Floor — additive extension, no milestone boundary needed | ✓ Good |
+| Rebrand to HelixTones | Brand name better reflects scope beyond just "Helix AI" — also covers Pod Go, Stadium, Stomp | ✓ Good |
+| Device picker after AI readiness signal | AI asks at least one follow-up before [READY_TO_GENERATE] — richer conversation before preset | ✓ Good |
 
 ---
-*Last updated: 2026-03-04 after v3.0 milestone start*
+*Last updated: 2026-03-04 after v2.0 milestone archival*

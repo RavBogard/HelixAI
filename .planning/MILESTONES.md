@@ -59,5 +59,27 @@
 **Phases:** 17-21 (5 plans total)
 **Completed:** 2026-03-02
 
+## v2.0 — Persistent Chat Platform (Complete)
+
+**Goal:** Transform HelixAI from a stateless generate-and-download tool into a persistent platform where users log in with Google, maintain a sidebar of past conversations, pick up where they left off, and re-download their most recent preset per chat. Anonymous usage remains fully functional; login unlocks history.
+
+**Shipped:**
+- Supabase SSR infrastructure: browser/server client factories, RLS-enabled DB schema (conversations + messages), Storage bucket, session-refreshing middleware, Vercel keep-alive cron
+- Anonymous-first Google OAuth via `linkIdentity()` — preserves UUID across redirect; PKCE callback; sessionStorage state preservation
+- Conversation CRUD API: 6 endpoints with defense-in-depth auth, RLS, server-side sequence numbers, storage cleanup
+- Persistence wiring: messages + presets saved to DB/Storage in `/api/chat` and `/api/generate`; full conversation lifecycle in page.tsx
+- Chat sidebar: CSS translateX toggle, conversation resume, optimistic delete, sign-in banner, loading state, continuation chips
+- Dual-amp preset generation: split/join AB topology, independent param resolution, per-snapshot bypass toggle, structural validation
+- Chat auto-save: first AI response triggers conversation creation and sidebar refresh with auto-title
+
+**Phases:** 24-30 (7 phases, 16 plans)
+**Files changed:** 61 files, +6,983 / -506 lines
+**Completed:** 2026-03-04
+
+**Archives:**
+- `.planning/milestones/v2.0-ROADMAP.md`
+- `.planning/milestones/v2.0-REQUIREMENTS.md`
+- `.planning/milestones/v2.0-MILESTONE-AUDIT.md`
+
 ---
-*Last updated: 2026-03-03*
+*Last updated: 2026-03-04*
