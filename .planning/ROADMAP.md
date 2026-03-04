@@ -564,14 +564,14 @@ Plans:
 
 ### Phase 41: Chat UX — device selection timing and pre-preset conversation flow
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Device picker only appears after AI signals readiness via [READY_TO_GENERATE]; AI requires at least one follow-up exchange before signaling — producing a richer musical conversation before preset generation
+**Requirements**: CHATUX-01, CHATUX-02
 **Depends on:** Phase 40
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 41 to break down)
+- [ ] 41-01-PLAN.md — page.tsx picker condition + gemini.ts prompt rewrite (CHATUX-01, CHATUX-02)
 
 ---
 *Roadmap created: 2026-03-01*
-*Last updated: 2026-03-04 — Phase 39 planned: 3 plans, 2 waves (Wave 1: 39-01 foundation; Wave 2: 39-02 API + 39-03 UI in parallel)*
+*Last updated: 2026-03-04 — Phase 41 planned: 1 plan, 1 wave (41-01: page.tsx condition + gemini.ts prompt rewrite)*
