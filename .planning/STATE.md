@@ -3,6 +3,19 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Persistent Chat Platform
 status: unknown
+last_updated: "2026-03-04T22:06:56.767Z"
+progress:
+  total_phases: 32
+  completed_phases: 25
+  total_plans: 49
+  completed_plans: 45
+---
+
+---
+gsd_state_version: 1.0
+milestone: v2.0
+milestone_name: Persistent Chat Platform
+status: unknown
 last_updated: "2026-03-04T03:51:18.363Z"
 progress:
   total_phases: 21
@@ -178,6 +191,7 @@ Last activity: 2026-03-04 — Phase 38 complete: STAD-08 tests added to rig-mapp
 | Phase 28 P02 | 4 | 2 tasks | 1 files |
 | Phase 28-chat-sidebar-ui-ux-polish P03 | continuation | 3 tasks | 1 files |
 | Phase 30 P01 | 5 | 2 tasks | 1 files |
+| Phase 39 P01 | 402 | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -249,6 +263,8 @@ Last activity: 2026-03-04 — Phase 38 complete: STAD-08 tests added to rig-mapp
 - [Phase 28-03]: Generate-for-other-device chip avoids pod_go as alternate — always maps to helix_lt or helix_floor
 - [Phase 30]: Phase 30: helixai:conversation-created dispatch moved from ensureConversation() to sendMessage() and generatePreset() success paths — fires after auto-title PATCH resolves, not on bare creation
 - [Phase 30]: Phase 30: generate-only flow persists last user message + data.summary as assistant message fire-and-forget after /api/generate success
+- [Phase 39]: stomp-builder.ts isolated from preset-builder.ts (prevents LT/Floor regression)
+- [Phase 39]: Parametric EQ and Gain Block skipped for Stomp (same as Pod Go — tight 6-block budget)
 
 ### Roadmap Evolution
 
