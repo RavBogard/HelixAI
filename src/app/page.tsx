@@ -306,7 +306,7 @@ function HomeContent() {
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [premiumKey, setPremiumKey] = useState<string | null>(null);
-  const [selectedDevice, setSelectedDevice] = useState<"helix_lt" | "helix_floor" | "pod_go" | "helix_stadium">("helix_lt");
+  const [selectedDevice, setSelectedDevice] = useState<"helix_lt" | "helix_floor" | "pod_go" | "helix_stadium" | "helix_stomp" | "helix_stomp_xl">("helix_lt");
   // Auth state (Phase 25)
   const [user, setUser] = useState<{ id: string; is_anonymous?: boolean; email?: string; user_metadata?: Record<string, string> } | null>(null);
 
@@ -765,6 +765,8 @@ function HomeContent() {
       : generatedPreset.device === "helix_floor" ? "_Floor"
       : generatedPreset.device === "pod_go" ? "_PodGo"
       : generatedPreset.device === "helix_stadium" ? "_Stadium"
+      : generatedPreset.device === "helix_stomp" ? "_Stomp"
+      : generatedPreset.device === "helix_stomp_xl" ? "_StompXL"
       : "";
     a.href = url;
     a.download = `${baseName.replace(/[^a-zA-Z0-9_()-]/g, "_")}${deviceSuffix}${ext}`;
@@ -802,6 +804,8 @@ function HomeContent() {
         : selectedDevice === "helix_floor" ? "_Floor"
         : selectedDevice === "pod_go" ? "_PodGo"
         : selectedDevice === "helix_stadium" ? "_Stadium"
+        : selectedDevice === "helix_stomp" ? "_Stomp"
+        : selectedDevice === "helix_stomp_xl" ? "_StompXL"
         : "";
       const filename = `HelixAI_Preset${deviceSuffix}${ext}`;
 
@@ -843,7 +847,7 @@ function HomeContent() {
 
       // Restore device
       if (data.device) {
-        setSelectedDevice(data.device as "helix_lt" | "helix_floor" | "pod_go" | "helix_stadium");
+        setSelectedDevice(data.device as "helix_lt" | "helix_floor" | "pod_go" | "helix_stadium" | "helix_stomp" | "helix_stomp_xl");
       }
 
       // Check for stored preset
@@ -1431,6 +1435,8 @@ function HomeContent() {
                         {generatedPreset.device === "helix_lt" ? "LT"
                           : generatedPreset.device === "helix_floor" ? "FLOOR"
                           : generatedPreset.device === "helix_stadium" ? "STADIUM"
+                          : generatedPreset.device === "helix_stomp" ? "STOMP"
+                          : generatedPreset.device === "helix_stomp_xl" ? "STOMP XL"
                           : "POD GO"}
                       </span>
                     </div>

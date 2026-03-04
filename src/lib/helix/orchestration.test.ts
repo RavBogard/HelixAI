@@ -371,7 +371,7 @@ describe("HX Stomp + HX Stomp XL (STOMP-01 through STOMP-05, STOMP-10)", () => {
     const snapshots = buildSnapshots(parameterized, intent.snapshots);
     const spec: PresetSpec = { name: "Test", description: "Test", tempo: 120, signalChain: parameterized, snapshots: snapshots.slice(0, 3) };
     const file = buildStompFile(spec, "helix_stomp");
-    const tone = file.data.tone as Record<string, unknown>;
+    const tone = file.data.tone as unknown as Record<string, unknown>;
     const dsp0 = tone.dsp0 as Record<string, unknown>;
     const inputA = dsp0.inputA as Record<string, unknown>;
     const outputA = dsp0.outputA as Record<string, unknown>;
@@ -386,7 +386,7 @@ describe("HX Stomp + HX Stomp XL (STOMP-01 through STOMP-05, STOMP-10)", () => {
     const snapshots = buildSnapshots(parameterized, intent.snapshots);
     const spec: PresetSpec = { name: "Test", description: "Test", tempo: 120, signalChain: parameterized, snapshots: snapshots.slice(0, 3) };
     const file = buildStompFile(spec, "helix_stomp");
-    const tone = file.data.tone as Record<string, unknown>;
+    const tone = file.data.tone as unknown as Record<string, unknown>;
     expect(tone.dsp1).toEqual({});
   });
   it("STOMP-03: Stomp has 3 valid snapshots (indices 0-2 @valid:true, 3-7 @valid:false)", () => {
@@ -396,7 +396,7 @@ describe("HX Stomp + HX Stomp XL (STOMP-01 through STOMP-05, STOMP-10)", () => {
     const snapshots = buildSnapshots(parameterized, intent.snapshots);
     const spec: PresetSpec = { name: "Test", description: "Test", tempo: 120, signalChain: parameterized, snapshots: snapshots.slice(0, 3) };
     const file = buildStompFile(spec, "helix_stomp");
-    const tone = file.data.tone as Record<string, unknown>;
+    const tone = file.data.tone as unknown as Record<string, unknown>;
     for (let i = 0; i < 3; i++) {
       const snap = tone[`snapshot${i}`] as Record<string, unknown>;
       expect(snap["@valid"]).toBe(true);
@@ -413,7 +413,7 @@ describe("HX Stomp + HX Stomp XL (STOMP-01 through STOMP-05, STOMP-10)", () => {
     const snapshots = buildSnapshots(parameterized, intent.snapshots);
     const spec: PresetSpec = { name: "Test", description: "Test", tempo: 120, signalChain: parameterized, snapshots: snapshots.slice(0, 4) };
     const file = buildStompFile(spec, "helix_stomp_xl");
-    const tone = file.data.tone as Record<string, unknown>;
+    const tone = file.data.tone as unknown as Record<string, unknown>;
     for (let i = 0; i < 4; i++) {
       const snap = tone[`snapshot${i}`] as Record<string, unknown>;
       expect(snap["@valid"]).toBe(true);
