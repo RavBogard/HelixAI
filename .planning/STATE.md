@@ -113,10 +113,10 @@ See: .planning/PROJECT.md (updated 2026-03-03)
 
 ## Current Position
 
-Phase: Phase 37 — UI Device Selector + Download (next)
+Phase: Phase 38 — Rig Emulation for Stadium (next)
 Plan: —
-Status: Phase 36 complete (108/108 tests, clean build, committed). Phase 37 next.
-Last activity: 2026-03-04 — Phase 36 complete: /api/generate Stadium path wired — buildHspFile() call, latest.hsp Supabase storage, fileExtension=".hsp" response
+Status: Phase 37 complete (108/108 tests, clean build, committed). Phase 38 next.
+Last activity: 2026-03-04 — Phase 37 complete: page.tsx Stadium device picker — both arrays grid-cols-4, Stadium badge, _Stadium suffix, .hsp ext detection, otherDevice chip updated
 
 ## Performance Metrics
 

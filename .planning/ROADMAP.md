@@ -471,7 +471,8 @@ Plans:
   3. Resuming a Stadium conversation downloads the stored `.hsp` from Supabase without regenerating
   4. "Generate for other device" chip correctly excludes Stadium as the alternate when Stadium is selected, and includes Stadium as an option when other devices are selected
   5. Both device arrays in `page.tsx` (~line 1275-1277 and ~line 1365-1367) are updated — neither is missed
-**Plans**: TBD
+**Plans**: 1 plan
+- [x] 37-01-PLAN.md — page.tsx: both device arrays grid-cols-4 + Stadium entry, badge STADIUM case, download suffix _Stadium/.hsp, otherDevice chip logic (STAD-07)
 
 ### Phase 38: Rig Emulation for Stadium
 **Goal**: Rig emulation (pedal photo + text description) works with Stadium selected — `mapRigToSubstitutions` accepts `"helix_stadium"`, `/api/map` routes correctly, and the substitution card shows Stadium-compatible model names

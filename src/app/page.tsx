@@ -306,7 +306,7 @@ function HomeContent() {
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [premiumKey, setPremiumKey] = useState<string | null>(null);
-  const [selectedDevice, setSelectedDevice] = useState<"helix_lt" | "helix_floor" | "pod_go">("helix_lt");
+  const [selectedDevice, setSelectedDevice] = useState<"helix_lt" | "helix_floor" | "pod_go" | "helix_stadium">("helix_lt");
   // Auth state (Phase 25)
   const [user, setUser] = useState<{ id: string; is_anonymous?: boolean; email?: string; user_metadata?: Record<string, string> } | null>(null);
 
@@ -649,7 +649,7 @@ function HomeContent() {
   // CHANGE 4-C: pass rigIntent in generate body; store substitutionMap from response
   // overrideMessages: used by handleRigGenerate() when calling from the welcome screen,
   // where React state hasn't flushed yet. Falls back to messages state for the chat flow.
-  async function generatePreset(overrideMessages?: Message[], overrideDevice?: "helix_lt" | "helix_floor" | "pod_go") {
+  async function generatePreset(overrideMessages?: Message[], overrideDevice?: "helix_lt" | "helix_floor" | "pod_go" | "helix_stadium") {
     setIsResumingConversation(false); // User is regenerating
     setIsGenerating(true);
     setError(null);
@@ -741,7 +741,7 @@ function HomeContent() {
   // Injects a synthetic user message so the /api/generate route's messages.length > 0
   // guard passes, then calls generatePreset() with the local message list before React
   // flushes state. Switches the UI to the chat flow by setting messages state.
-  async function handleRigGenerate(overrideDevice?: "helix_lt" | "helix_floor" | "pod_go") {
+  async function handleRigGenerate(overrideDevice?: "helix_lt" | "helix_floor" | "pod_go" | "helix_stadium") {
     const syntheticMsg: Message = {
       role: "user",
       content: "Build a preset from my pedal rig",
@@ -764,6 +764,7 @@ function HomeContent() {
       generatedPreset.device === "helix_lt" ? "_LT"
       : generatedPreset.device === "helix_floor" ? "_Floor"
       : generatedPreset.device === "pod_go" ? "_PodGo"
+      : generatedPreset.device === "helix_stadium" ? "_Stadium"
       : "";
     a.href = url;
     a.download = `${baseName.replace(/[^a-zA-Z0-9_()-]/g, "_")}${deviceSuffix}${ext}`;
@@ -793,11 +794,14 @@ function HomeContent() {
       }
 
       // Determine filename from stored path
-      const ext = storedPresetPath.endsWith(".pgp") ? ".pgp" : ".hlx";
+      const ext = storedPresetPath.endsWith(".hsp") ? ".hsp"
+        : storedPresetPath.endsWith(".pgp") ? ".pgp"
+        : ".hlx";
       const deviceSuffix =
         selectedDevice === "helix_lt" ? "_LT"
         : selectedDevice === "helix_floor" ? "_Floor"
         : selectedDevice === "pod_go" ? "_PodGo"
+        : selectedDevice === "helix_stadium" ? "_Stadium"
         : "";
       const filename = `HelixAI_Preset${deviceSuffix}${ext}`;
 
@@ -839,7 +843,7 @@ function HomeContent() {
 
       // Restore device
       if (data.device) {
-        setSelectedDevice(data.device as "helix_lt" | "helix_floor" | "pod_go");
+        setSelectedDevice(data.device as "helix_lt" | "helix_floor" | "pod_go" | "helix_stadium");
       }
 
       // Check for stored preset
@@ -1270,11 +1274,12 @@ function HomeContent() {
                       <p className="text-[11px] text-[var(--hlx-text-muted)] uppercase tracking-widest font-semibold text-center">
                         Which device are you building for?
                       </p>
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-4 gap-2">
                         {([
                           { id: "helix_lt" as const, label: "LT", desc: "Helix LT" },
                           { id: "helix_floor" as const, label: "FLOOR", desc: "Helix Floor" },
                           { id: "pod_go" as const, label: "POD GO", desc: "Pod Go" },
+                          { id: "helix_stadium" as const, label: "STADIUM", desc: "Helix Stadium" },
                         ]).map(({ id, label, desc }) => (
                           <button
                             key={id}
@@ -1360,11 +1365,12 @@ function HomeContent() {
                 <p className="text-[11px] text-[var(--hlx-text-muted)] uppercase tracking-widest font-semibold">
                   Which device are you building for?
                 </p>
-                <div className="grid grid-cols-3 gap-3 w-full max-w-sm">
+                <div className="grid grid-cols-4 gap-3 w-full max-w-sm">
                   {([
                     { id: "helix_lt" as const, label: "LT", desc: "Helix LT" },
                     { id: "helix_floor" as const, label: "FLOOR", desc: "Helix Floor" },
                     { id: "pod_go" as const, label: "POD GO", desc: "Pod Go" },
+                    { id: "helix_stadium" as const, label: "STADIUM", desc: "Helix Stadium" },
                   ]).map(({ id, label, desc }) => (
                     <button
                       key={id}
@@ -1424,6 +1430,7 @@ function HomeContent() {
                       >
                         {generatedPreset.device === "helix_lt" ? "LT"
                           : generatedPreset.device === "helix_floor" ? "FLOOR"
+                          : generatedPreset.device === "helix_stadium" ? "STADIUM"
                           : "POD GO"}
                       </span>
                     </div>
@@ -1535,8 +1542,9 @@ function HomeContent() {
           </button>
           <button
             onClick={() => {
-              const otherDevice = selectedDevice === "helix_lt" ? "helix_floor"
-                : selectedDevice === "helix_floor" ? "helix_lt"
+              const otherDevice = selectedDevice === "pod_go" ? "helix_lt"
+                : selectedDevice === "helix_stadium" ? "helix_lt"
+                : selectedDevice === "helix_lt" ? "helix_floor"
                 : "helix_lt"
               setSelectedDevice(otherDevice)
               generatePreset(undefined, otherDevice)
@@ -1545,7 +1553,7 @@ function HomeContent() {
             className="px-3 py-1.5 rounded-full border border-[var(--hlx-border)] bg-[var(--hlx-surface)] text-[11px] text-[var(--hlx-text-sub)] hover:border-[var(--hlx-border-warm)] hover:bg-[var(--hlx-elevated)] transition-all"
             style={{ fontFamily: "var(--font-mono), monospace" }}
           >
-            Generate for {selectedDevice === "pod_go" ? "Helix LT" : selectedDevice === "helix_lt" ? "Helix Floor" : "Helix LT"}
+            Generate for {selectedDevice === "pod_go" || selectedDevice === "helix_stadium" ? "Helix LT" : selectedDevice === "helix_lt" ? "Helix Floor" : "Helix LT"}
           </button>
         </div>
       )}
