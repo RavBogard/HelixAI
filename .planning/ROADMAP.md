@@ -402,6 +402,16 @@ Plans:
 - [ ] 29-02: Knowledge Layer — Chain + Params + Snapshots (DUAL-03, DUAL-04, DUAL-05)
 - [ ] 29-03: Preset Builder Topology + Validation (DUAL-06, DUAL-09)
 
+### Phase 30: Chat Auto-Save on First AI Response
+
+**Goal:** Authenticated users' conversations are automatically created and persisted after the first AI response — no user action required. Opening a new session shows all previous chats in the sidebar, just like any standard AI chat interface. Conversations should NOT be created for anonymous users (they can't retrieve them anyway).
+**Requirements**: TBD (run /gsd:plan-phase 30)
+**Depends on:** Phase 28
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 30 to break down)
+
 ---
 *Roadmap created: 2026-03-01*
 *Last updated: 2026-03-03 — Phase 26 Conversation CRUD API complete (1/1 plan); POST create, GET list, GET read-with-messages, PATCH title routes built with per-route auth verification*
