@@ -1,4 +1,4 @@
--- HelixAI v2.0 Database Schema
+-- HelixTones v2.0 Database Schema
 -- PART 1: Run this in Supabase SQL Editor (Dashboard -> SQL Editor -> New query -> Paste -> Run)
 -- PART 2: Storage bucket + policies must be created via Dashboard UI (see instructions below)
 

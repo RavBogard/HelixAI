@@ -21,7 +21,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "HelixAI — Helix Preset Builder",
+  title: "HelixTones — Helix Preset Builder",
   description: "AI-powered tone consultant and preset generator for Line 6 Helix",
 };
 

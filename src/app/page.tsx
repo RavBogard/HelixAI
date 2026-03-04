@@ -757,7 +757,7 @@ function HomeContent() {
     const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    const baseName = generatedPreset.spec?.name || "HelixAI_Preset";
+    const baseName = generatedPreset.spec?.name || "HelixTones_Preset";
     const ext = generatedPreset.fileExtension || ".hlx";
     // Include device in filename so users can spot a mismatch before importing
     const deviceSuffix =
@@ -807,7 +807,7 @@ function HomeContent() {
         : selectedDevice === "helix_stomp" ? "_Stomp"
         : selectedDevice === "helix_stomp_xl" ? "_StompXL"
         : "";
-      const filename = `HelixAI_Preset${deviceSuffix}${ext}`;
+      const filename = `HelixTones_Preset${deviceSuffix}${ext}`;
 
       const a = document.createElement("a");
       a.href = data.signedUrl;
@@ -1020,7 +1020,7 @@ function HomeContent() {
             <>
               <Image
                 src="/logo.jpg"
-                alt="HelixAI"
+                alt="HelixTones"
                 width={26}
                 height={26}
                 className="rounded-md opacity-90"
@@ -1029,7 +1029,7 @@ function HomeContent() {
                 className="text-[0.85rem] font-medium text-[var(--hlx-text-sub)]"
                 style={{ letterSpacing: "0.18em" }}
               >
-                helix ai
+                helixtones
               </span>
             </>
           )}
@@ -1086,7 +1086,7 @@ function HomeContent() {
                   />
                   <Image
                     src="/logo.jpg"
-                    alt="HelixAI"
+                    alt="HelixTones"
                     width={320}
                     height={320}
                     className="relative rounded-3xl"
@@ -1424,7 +1424,7 @@ function HomeContent() {
                     <div className="flex items-center gap-2.5">
                       <span className="hlx-led hlx-led-warm" />
                       <h3 className="hlx-font-display text-base font-semibold text-[var(--hlx-text)]">
-                        {generatedPreset.spec?.name || "HelixAI Preset"}
+                        {generatedPreset.spec?.name || "HelixTones Preset"}
                       </h3>
                       {/* Device badge — tells user which device this preset targets */}
                       <span

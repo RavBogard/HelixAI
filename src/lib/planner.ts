@@ -24,7 +24,7 @@ export function buildPlannerPrompt(modelList: string, device?: DeviceTarget): st
     ? "- Keep effects to 2-4 maximum — Pod Go has a 4 user-effect limit and limited DSP"
     : "- Keep effects minimal: 2-4 is typical, 6 is the maximum";
 
-  return `You are HelixAI's Planner. You choose creative model selections for ${deviceName} presets.
+  return `You are HelixTones' Planner. You choose creative model selections for ${deviceName} presets.
 
 ## Your Role
 
