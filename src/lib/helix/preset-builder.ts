@@ -6,7 +6,10 @@ import { FIRMWARE_CONFIG } from "./config";
 export function buildHlxFile(spec: PresetSpec, device: DeviceTarget = "helix_lt"): HlxFile {
   const tone = buildTone(spec);
 
-  return {
+  // Detect dual-amp from spec (DUAL-09)
+  const isDualAmp = spec.signalChain.filter(b => b.type === "amp" && b.dsp === 0).length > 1;
+
+  const result: HlxFile = {
     version: FIRMWARE_CONFIG.HLX_VERSION,
     data: {
       device: DEVICE_IDS[device],
@@ -27,6 +30,40 @@ export function buildHlxFile(spec: PresetSpec, device: DeviceTarget = "helix_lt"
     },
     schema: "L6Preset",
   };
+
+  // Structural validation for dual-amp presets (DUAL-09)
+  if (isDualAmp) {
+    if (tone.global["@topology0"] !== "AB") {
+      throw new Error("Dual-amp preset validation failed: @topology0 must be 'AB'");
+    }
+
+    const dsp0 = tone.dsp0;
+    if (!dsp0.split || dsp0.split["@model"] !== "HD2_SplitAB") {
+      throw new Error("Dual-amp preset validation failed: dsp0 must have split block with HD2_SplitAB");
+    }
+    if (!dsp0.join || dsp0.join["@model"] !== "HD2_MergerMixer") {
+      throw new Error("Dual-amp preset validation failed: dsp0 must have join block with HD2_MergerMixer");
+    }
+
+    // Verify two amp blocks exist with different paths
+    const ampBlockPaths: number[] = [];
+    for (const [key, value] of Object.entries(dsp0)) {
+      if (key.startsWith("block") && value && typeof value === "object" && "@type" in value) {
+        const blockObj = value as Record<string, unknown>;
+        if (blockObj["@type"] === getBlockType("amp")) {
+          ampBlockPaths.push(blockObj["@path"] as number);
+        }
+      }
+    }
+    if (ampBlockPaths.length < 2) {
+      throw new Error(`Dual-amp preset validation failed: expected 2 amp blocks in dsp0, found ${ampBlockPaths.length}`);
+    }
+    if (!ampBlockPaths.includes(0) || !ampBlockPaths.includes(1)) {
+      throw new Error("Dual-amp preset validation failed: amp blocks must be on different paths (0 and 1)");
+    }
+  }
+
+  return result;
 }
 
 function buildTone(spec: PresetSpec): HlxTone {
