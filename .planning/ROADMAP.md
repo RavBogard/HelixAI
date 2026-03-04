@@ -552,6 +552,26 @@ Plans:
 - [ ] 39-02-PLAN.md — /api/generate Stomp routing + rig-mapping Stomp support + end-to-end pipeline tests (STOMP-06, STOMP-08, STOMP-09)
 - [ ] 39-03-PLAN.md — page.tsx: both device pickers + download suffix + badge + otherDevice chip (STOMP-07)
 
+### Phase 40: Rebrand HelixAI to HelixTones
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 39
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 40 to break down)
+
+### Phase 41: Chat UX — device selection timing and pre-preset conversation flow
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 40
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 41 to break down)
+
 ---
 *Roadmap created: 2026-03-01*
 *Last updated: 2026-03-04 — Phase 39 planned: 3 plans, 2 waves (Wave 1: 39-01 foundation; Wave 2: 39-02 API + 39-03 UI in parallel)*

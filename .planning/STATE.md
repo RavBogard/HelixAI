@@ -255,7 +255,9 @@ Last activity: 2026-03-04 — Phase 38 complete: STAD-08 tests added to rig-mapp
 - Phases 22-23 (UI Overhaul, UX Polish) dropped — user did a UI redo, skipping these
 - v2.0 Persistent Chat Platform milestone started; roadmap phases 24-28 created 2026-03-03
 - Phase 29 (Dual-Amp Preset Generation Fix) added — user reports presets requesting two different amps generate with only one; bug fix phase appended to v2.0
-- Phase 39 added: HX Stomp Support
+- Phase 39 added: HX Stomp Support (expanded to HX Stomp & HX Stomp XL — both device IDs confirmed from real hardware exports)
+- Phase 40 added: Rebrand HelixAI to HelixTones
+- Phase 41 added: Chat UX — device selection timing and pre-preset conversation flow
 
 ### Pending Todos
 
