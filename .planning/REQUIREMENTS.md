@@ -203,5 +203,31 @@ Planner prompt additions (PROMPT-01 through PROMPT-03) must not increase prompt 
 
 ---
 
+## Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| AUDIT-01 | Phase 42 | Pending |
+| AUDIT-02 | Phase 42 | Pending |
+| AUDIT-03 | Phase 42 | Pending |
+| PROMPT-01 | Phase 43 | Pending |
+| PROMPT-02 | Phase 43 | Pending |
+| PROMPT-03 | Phase 43 | Pending |
+| PROMPT-04 | Phase 43 | Pending |
+| AMP-01 | Phase 44 | Pending |
+| AMP-02 | Phase 44 | Pending |
+| AMP-03 | Phase 44 | Pending |
+| AMP-04 | Phase 44 | Pending |
+| FX-01 | Phase 45 | Pending |
+| FX-02 | Phase 45 | Pending |
+| FX-03 | Phase 45 | Pending |
+| FX-04 | Phase 45 | Pending |
+| COMBO-01 | Phase 46 | Pending |
+| COMBO-02 | Phase 46 | Pending |
+| COMBO-03 | Phase 46 | Pending |
+| COST-01 | Phase 47 | Pending |
+
+---
+
 *v4.0 — Preset Quality Leap*
 *Written: 2026-03-04*

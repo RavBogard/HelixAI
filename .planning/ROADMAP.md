@@ -8,6 +8,7 @@
 - [x] **v1.3 Rig Emulation** - Phases 17-21 (shipped 2026-03-02)
 - [x] **v2.0 Persistent Chat Platform** - Phases 24-30 (shipped 2026-03-04)
 - [x] **v3.0 Helix Stadium Support** - Phases 31-38 (shipped 2026-03-04)
+- [ ] **v4.0 Preset Quality Leap** - Phases 42-47
 
 ## Phases
 
@@ -283,7 +284,7 @@ Plans:
 </details>
 
 <details>
-<summary>✅ v2.0 Persistent Chat Platform (Phases 24-30) — SHIPPED 2026-03-04</summary>
+<summary>v2.0 Persistent Chat Platform (Phases 24-30) — SHIPPED 2026-03-04</summary>
 
 - [x] Phase 24: Supabase Foundation — DB schema, RLS, client utilities, middleware, keep-alive (3 plans, complete 2026-03-03)
 - [x] Phase 25: Auth Flow — Anonymous sign-in + Google OAuth + identity linking (2 plans, complete 2026-03-03)
@@ -302,7 +303,7 @@ Full archive: `.planning/milestones/v2.0-ROADMAP.md`
 > v2.0 phase details (Phases 24-30) archived to `.planning/milestones/v2.0-ROADMAP.md`
 
 <details>
-<summary>✅ v3.0 Helix Stadium Support (Phases 31-38) — SHIPPED 2026-03-04</summary>
+<summary>v3.0 Helix Stadium Support (Phases 31-38) — SHIPPED 2026-03-04</summary>
 
 ### Phase 31: Device ID Research + Helix Floor Regression Fix
 **Goal**: Ground all Stadium implementation in verified hardware data, and fix the live Helix Floor device ID regression before adding a third device
@@ -406,10 +407,135 @@ Plans:
 
 </details>
 
+<details>
+<summary>Phases 39-41 (HX Stomp, Rebrand, Chat UX) — SHIPPED 2026-03-04</summary>
+
+### Phase 39: HX Stomp & HX Stomp XL Support
+
+**Goal:** Users can generate presets for HX Stomp (`helix_stomp`, 2162694) and HX Stomp XL (`helix_stomp_xl`, 2162699) — both output standard `.hlx` files using the same `data.*` structure as LT/Floor but with Stomp-specific I/O models, block limits, and snapshot counts; existing devices unaffected
+**Depends on:** Phase 38
+**Requirements**: STOMP-01, STOMP-02, STOMP-03, STOMP-04, STOMP-05, STOMP-06, STOMP-07, STOMP-08, STOMP-09, STOMP-10
+**Success Criteria** (what must be TRUE):
+  1. `DEVICE_IDS.helix_stomp === 2162694` and `DEVICE_IDS.helix_stomp_xl === 2162699` — both confirmed from real hardware exports; both differ from each other and from LT/Floor/Pod Go/Stadium
+  2. `buildStompFile(spec, "helix_stomp")` produces a `.hlx` file capped at 6 blocks, 3 snapshots, using `HelixStomp_AppDSPFlowInput` and `HelixStomp_AppDSPFlowOutputMain` I/O models
+  3. `buildStompFile(spec, "helix_stomp_xl")` produces a `.hlx` file capped at 9 blocks, 4 snapshots, with the same I/O model prefix
+  4. Generated `.hlx` files import into HX Edit without errors — hardware device ID validated
+  5. UI shows "STOMP" and "STOMP XL" device options; downloads named `HelixAI_[Name]_Stomp.hlx` and `HelixAI_[Name]_StompXL.hlx` respectively
+  6. Helix LT, Helix Floor, Pod Go, and Helix Stadium generation are completely unaffected
+**Plans:** 3/3 plans complete
+
+Plans:
+- [x] 39-01-PLAN.md — Type system + config constants + stomp-builder.ts + chain-rules + validate + models + index barrel + tests (STOMP-01, STOMP-02, STOMP-03, STOMP-04, STOMP-05, STOMP-10)
+- [x] 39-02-PLAN.md — /api/generate Stomp routing + rig-mapping Stomp support + end-to-end pipeline tests (STOMP-06, STOMP-08, STOMP-09)
+- [x] 39-03-PLAN.md — page.tsx: both device pickers + download suffix + badge + otherDevice chip (STOMP-07)
+
+### Phase 40: Rebrand HelixAI to HelixTones
+
+**Goal:** Rename all user-visible "HelixAI" strings and internal cross-file event/storage contracts to "HelixTones"/"helixtones" — browser title, logo alt text, wordmark, AI persona names, download filenames, DOM custom events, sessionStorage key, and package name
+**Requirements**: REBRAND-01, REBRAND-02, REBRAND-03, REBRAND-04
+**Depends on:** Phase 39
+**Plans:** 1/1 plans complete
+
+Plans:
+- [x] 40-01-PLAN.md — All categories A-E: layout.tsx title, page.tsx UI strings + filenames + events + storage key, gemini.ts + planner.ts persona, package.json name, supabase/schema.sql comment (REBRAND-01, REBRAND-02, REBRAND-03, REBRAND-04)
+
+### Phase 41: Chat UX — device selection timing and pre-preset conversation flow
+
+**Goal:** Device picker only appears after AI signals readiness via [READY_TO_GENERATE]; AI requires at least one follow-up exchange before signaling — producing a richer musical conversation before preset generation
+**Requirements**: CHATUX-01, CHATUX-02
+**Depends on:** Phase 40
+**Plans:** 1/1 plans complete
+
+Plans:
+- [x] 41-01-PLAN.md — page.tsx picker condition + gemini.ts prompt rewrite (CHATUX-01, CHATUX-02)
+
+</details>
+
+### v4.0 Preset Quality Leap (Phases 42-47)
+
+**Milestone Goal:** Close the gap between HelixTones-generated presets and the best custom/commercial presets; audit and optimize API costs. All 19 v4.0 requirements are backend/engine changes — zero UI work. Phases 44 and 45 can be developed in parallel but should deploy together to minimize prompt cache invalidation.
+
+- [ ] **Phase 42: Token Cost Audit + Quality Baseline** - Instrument API usage, establish reproducible 36-preset baseline, measure cache effectiveness
+- [ ] **Phase 43: Planner Prompt Quality** - Add gain-staging, cab pairing, and effect discipline rules to the planner prompt; regression test against baseline
+- [ ] **Phase 44: Knowledge Layer — Amp Parameters** - ampFamily classification, per-model parameter overrides, Master Volume strategy, cab affinity data
+- [ ] **Phase 45: Knowledge Layer — Effects, EQ, Snapshots** - Guitar-type EQ, reverb PreDelay scaling, tempo-scaled delay, snapshot volume balancing
+- [ ] **Phase 46: Effect Combination Intelligence** - Effect interaction parameter adjustments, genre block substitution table, cross-device validation
+- [ ] **Phase 47: Model Routing Decision** - Evidence-based analysis of whether the current model split is optimal; no changes without quality evidence
+
+### Phase 42: Token Cost Audit + Quality Baseline
+**Goal**: Every subsequent v4.0 phase has measurable cost data and a reproducible quality baseline to validate changes against — no blind optimization, no untested prompt changes
+**Depends on**: Phase 41
+**Requirements**: AUDIT-01, AUDIT-02, AUDIT-03
+**Success Criteria** (what must be TRUE):
+  1. After 10 test generations, a summary script reports average prompt tokens, completion tokens, total tokens, cached tokens, and cost estimate per call for both `/api/chat` and `/api/generate` endpoints
+  2. Running the baseline suite produces 36 preset files (6 tones x 6 devices) with deterministic ToneIntent snapshots that can be diffed against future v4.0 changes
+  3. A cache hit rate report across 20+ generations shows what percentage of planner calls hit the prompt cache vs. cold starts, with specific optimization recommendations if the rate is below 50%
+  4. The token logging is behind a `LOG_USAGE` environment flag and does not affect production performance when disabled
+**Plans**: TBD
+
+### Phase 43: Planner Prompt Quality
+**Goal**: The planner makes smarter creative decisions about gain staging, amp/cab pairing, and effect selection — without any Knowledge Layer or schema changes
+**Depends on**: Phase 42 (baseline required for regression testing)
+**Requirements**: PROMPT-01, PROMPT-02, PROMPT-03, PROMPT-04
+**Success Criteria** (what must be TRUE):
+  1. An "edge-of-breakup blues" preset uses appropriate boost level relative to amp drive setting — no unnecessary gain stacking on a clean amp
+  2. Generated presets consistently pair amp and cab models following real-world conventions (Fender with open-back 1x12/2x12, Marshall with closed-back 4x12, Mesa with oversized 4x12) unless the user explicitly requests otherwise
+  3. No generated preset contains two delays or two reverbs unless the tone description explicitly calls for it, and reverb is always placed after delay in the signal chain
+  4. A regression test suite run against the 6 baseline tone scenarios catches obvious planner mistakes (wrong amp category, missing expected effects, illogical combinations) with >90% accuracy
+  5. Total planner system prompt token count has not increased by more than 30% compared to the Phase 42 baseline measurement
+**Plans**: TBD
+
+### Phase 44: Knowledge Layer — Amp Parameters
+**Goal**: The param engine resolves amp parameters per-model rather than per-category — Fender Master is maxed, Mesa Master is conservative, and each popular amp gets Tonevault-derived defaults instead of flat category averages
+**Depends on**: Phase 43 (improved planner decisions feed better inputs to the param engine)
+**Requirements**: AMP-01, AMP-02, AMP-03, AMP-04
+**Success Criteria** (what must be TRUE):
+  1. Every amp model in models.ts has an `ampFamily` value (`fender`, `vox`, `marshall`, `mesa`, `modern_high_gain`, `boutique_clean`, `boutique_drive`) and `getAmpFamilyDefaults(family)` returns a parameter strategy object
+  2. `resolveAmpParams("US DLX Nrm", "clean")` returns Master >= 0.85, and `resolveAmpParams("Revv Gen Red", "high_gain")` returns Drive and Presence values that show inverse correlation — per-model overrides are not stomped by category defaults
+  3. A clean Fender preset has Master > 0.8 and a high-gain Mesa preset has Master < 0.6 — amp-family-aware Master Volume logic is audibly correct
+  4. `getPreferredCabs("US DLX Nrm")` returns cab models appropriate for Fender amps, and at least 10 amp models have populated `cabAffinity` data
+  5. All 6 devices produce valid presets after amp parameter changes — no device-specific validation errors
+**Plans**: TBD
+
+### Phase 45: Knowledge Layer — Effects, EQ, Snapshots
+**Goal**: Effect parameters are context-sensitive — EQ adapts to pickup type, reverb PreDelay scales with tempo, delay time uses musical subdivisions, and lead snapshots cut through the mix
+**Depends on**: Phase 43 (improved planner decisions feed better inputs to the param engine)
+**Requirements**: FX-01, FX-02, FX-03, FX-04
+**Success Criteria** (what must be TRUE):
+  1. The same tone description with `guitarType: "singlecoil"` vs `"humbucker"` produces measurably different EQ settings — single-coils get less treble cut, humbuckers get tighter low-end
+  2. A "fast punk rock" preset has reverb PreDelay < 40ms and a "slow ambient pad" preset has PreDelay > 60ms — PreDelay scales with tempo context
+  3. A "country chicken pickin'" preset has delay time corresponding to a musical subdivision of ~120 BPM rather than a generic fixed millisecond value
+  4. In a 4-snapshot preset, the Lead snapshot Channel Volume is measurably higher than Rhythm, and Clean is slightly lower — all within musical range (no absurd jumps)
+  5. All 6 devices produce valid presets after effect parameter changes — no device-specific validation errors
+**Plans**: TBD
+
+**Phases 44 and 45 Note:** These phases can be developed in parallel (ampFamily work in models.ts/param-engine.ts is independent of EQ/reverb/snapshot table extensions) but should deploy together to minimize prompt cache invalidation events. A single batched deployment preserves cache efficiency.
+
+### Phase 46: Effect Combination Intelligence
+**Goal**: When multiple effects are present in a preset, their parameters are adjusted for synergy rather than treated independently — and genre-appropriate effect choices are enforced across all 6 devices
+**Depends on**: Phase 44, Phase 45 (Layer 5 combo adjustments must sit on top of correct base parameter values)
+**Requirements**: COMBO-01, COMBO-02, COMBO-03
+**Success Criteria** (what must be TRUE):
+  1. A preset with compressor + overdrive has lower compressor output than a preset with compressor alone — at least 3 effect interaction rules fire correctly and are verified by unit tests
+  2. A "jazz" tone never includes a distortion pedal unless explicitly requested, and a "metal" tone always includes a noise gate — genre block substitution is enforced
+  3. The 36-preset baseline (AUDIT-02) regenerated after all v4.0 changes produces valid presets for all 6 devices with zero validation errors — Pod Go's 4-effect limit and HX Stomp's 6-block budget are respected
+  4. Effect combination rules are classified by minimum block budget so they do not generate presets that exceed device constraints
+**Plans**: TBD
+
+### Phase 47: Model Routing Decision
+**Goal**: An evidence-based decision about whether the current model split (Gemini Flash for chat, Claude Sonnet for generation) is optimal — "no changes needed" is a valid and expected outcome
+**Depends on**: Phase 42 (requires token audit data), Phase 46 (all quality changes must be stable before evaluating cost)
+**Requirements**: COST-01
+**Success Criteria** (what must be TRUE):
+  1. A decision document exists with token analysis, cost breakdown per endpoint, cache hit rate data, and quality comparison — the document explicitly recommends either keeping the current split or making a specific change
+  2. If a model change is implemented (e.g., Haiku for specific sub-tasks), the PROMPT-04 regression test passes with identical quality scores compared to the Sonnet baseline
+  3. If no model change is implemented, the document explains why with data (e.g., "Sonnet cache hit rate is 85%, switching to Haiku would save $X/month but risk Y quality regression")
+**Plans**: TBD
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → 13 → 14 → 15 → 16 → 17 → 18 → 19 → 20 → 21 → 24 → 25 → 26 → 27 → 28 → 29 → 30 → 31 → 32 → 33 → 34 → 35 → 36 → 37 → 38
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → 13 → 14 → 15 → 16 → 17 → 18 → 19 → 20 → 21 → 24 → 25 → 26 → 27 → 28 → 29 → 30 → 31 → 32 → 33 → 34 → 35 → 36 → 37 → 38 → 39 → 40 → 41 → 42 → 43 → 44 → 45 → 46 → 47
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -451,46 +577,14 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 38. Rig Emulation for Stadium | v3.0 | 1/1 | Complete | 2026-03-04 |
 | 39. HX Stomp & HX Stomp XL Support | — | 3/3 | Complete | 2026-03-04 |
 | 40. Rebrand HelixAI to HelixTones | — | 1/1 | Complete | 2026-03-04 |
-
-### Phase 39: HX Stomp & HX Stomp XL Support
-
-**Goal:** Users can generate presets for HX Stomp (`helix_stomp`, 2162694) and HX Stomp XL (`helix_stomp_xl`, 2162699) — both output standard `.hlx` files using the same `data.*` structure as LT/Floor but with Stomp-specific I/O models, block limits, and snapshot counts; existing devices unaffected
-**Depends on:** Phase 38
-**Requirements**: STOMP-01, STOMP-02, STOMP-03, STOMP-04, STOMP-05, STOMP-06, STOMP-07, STOMP-08, STOMP-09, STOMP-10
-**Success Criteria** (what must be TRUE):
-  1. `DEVICE_IDS.helix_stomp === 2162694` and `DEVICE_IDS.helix_stomp_xl === 2162699` — both confirmed from real hardware exports; both differ from each other and from LT/Floor/Pod Go/Stadium
-  2. `buildStompFile(spec, "helix_stomp")` produces a `.hlx` file capped at 6 blocks, 3 snapshots, using `HelixStomp_AppDSPFlowInput` and `HelixStomp_AppDSPFlowOutputMain` I/O models
-  3. `buildStompFile(spec, "helix_stomp_xl")` produces a `.hlx` file capped at 9 blocks, 4 snapshots, with the same I/O model prefix
-  4. Generated `.hlx` files import into HX Edit without errors — hardware device ID validated
-  5. UI shows "STOMP" and "STOMP XL" device options; downloads named `HelixAI_[Name]_Stomp.hlx` and `HelixAI_[Name]_StompXL.hlx` respectively
-  6. Helix LT, Helix Floor, Pod Go, and Helix Stadium generation are completely unaffected
-**Plans:** 3/3 plans complete
-
-Plans:
-- [x] 39-01-PLAN.md — Type system + config constants + stomp-builder.ts + chain-rules + validate + models + index barrel + tests (STOMP-01, STOMP-02, STOMP-03, STOMP-04, STOMP-05, STOMP-10)
-- [x] 39-02-PLAN.md — /api/generate Stomp routing + rig-mapping Stomp support + end-to-end pipeline tests (STOMP-06, STOMP-08, STOMP-09)
-- [x] 39-03-PLAN.md — page.tsx: both device pickers + download suffix + badge + otherDevice chip (STOMP-07)
-
-### Phase 40: Rebrand HelixAI to HelixTones
-
-**Goal:** Rename all user-visible "HelixAI" strings and internal cross-file event/storage contracts to "HelixTones"/"helixtones" — browser title, logo alt text, wordmark, AI persona names, download filenames, DOM custom events, sessionStorage key, and package name
-**Requirements**: REBRAND-01, REBRAND-02, REBRAND-03, REBRAND-04
-**Depends on:** Phase 39
-**Plans:** 1/1 plans complete
-
-Plans:
-- [ ] 40-01-PLAN.md — All categories A–E: layout.tsx title, page.tsx UI strings + filenames + events + storage key, gemini.ts + planner.ts persona, package.json name, supabase/schema.sql comment (REBRAND-01, REBRAND-02, REBRAND-03, REBRAND-04)
-
-### Phase 41: Chat UX — device selection timing and pre-preset conversation flow
-
-**Goal:** Device picker only appears after AI signals readiness via [READY_TO_GENERATE]; AI requires at least one follow-up exchange before signaling — producing a richer musical conversation before preset generation
-**Requirements**: CHATUX-01, CHATUX-02
-**Depends on:** Phase 40
-**Plans:** 1/1 plans complete
-
-Plans:
-- [ ] 41-01-PLAN.md — page.tsx picker condition + gemini.ts prompt rewrite (CHATUX-01, CHATUX-02)
+| 41. Chat UX | — | 1/1 | Complete | 2026-03-04 |
+| 42. Token Cost Audit + Quality Baseline | v4.0 | 0/TBD | Not started | - |
+| 43. Planner Prompt Quality | v4.0 | 0/TBD | Not started | - |
+| 44. Knowledge Layer — Amp Parameters | v4.0 | 0/TBD | Not started | - |
+| 45. Knowledge Layer — Effects, EQ, Snapshots | v4.0 | 0/TBD | Not started | - |
+| 46. Effect Combination Intelligence | v4.0 | 0/TBD | Not started | - |
+| 47. Model Routing Decision | v4.0 | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-03-01*
-*Last updated: 2026-03-04 — Phase 40 planned: 1 plan, 1 wave (40-01: full rebrand — all A–E categories, atomic event/storage rename)*
+*Last updated: 2026-03-04 — v4.0 Preset Quality Leap roadmap: 6 phases (42-47), 19 requirements mapped*
