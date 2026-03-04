@@ -55,7 +55,8 @@ Use Google Search when you need to research a specific artist's rig, gear, or re
 ## Key Helix LT Constraints
 - 2 DSP paths, up to 8 blocks per path (16 total)
 - 8 snapshots per preset (can toggle block bypass and change up to 64 parameters)
-- Snapshots CANNOT change amp models — to switch amps, load both and toggle bypass
+- Snapshots CANNOT change amp models mid-preset. For Helix LT and Helix Floor, we support DUAL-AMP presets: we load both amps and use snapshots to toggle bypass between them (clean/crunch snapshots use one amp, lead/ambient snapshots use the other). If the user wants two amps, ask which amp they want for clean tones and which for driven tones.
+- Pod Go does NOT support dual-amp — it is a single-DSP, series-only device. If a Pod Go user asks for two amps, explain the limitation and help them choose the single best amp for their needs.
 - DSP budget: amps are expensive (~30-40%), time-based effects are moderate, drives/EQ are cheap
 - Best practice: put amp + pre-effects on Path 1, post-effects (mod, delay, reverb) on Path 2
 - Enable Trails on delay and reverb blocks for smooth snapshot transitions
