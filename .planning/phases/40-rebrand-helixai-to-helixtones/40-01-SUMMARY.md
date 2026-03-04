@@ -153,3 +153,13 @@ $ npx vitest run
 ---
 *Phase: 40-rebrand-helixai-to-helixtones*
 *Completed: 2026-03-04*
+
+## Self-Check: PASSED
+
+- FOUND: .planning/phases/40-rebrand-helixai-to-helixtones/40-01-SUMMARY.md
+- FOUND: commit 09bd31f (Task 1 — user-visible strings and AI persona prompts)
+- FOUND: commit d50beca (Task 2 — cross-file DOM event and sessionStorage contracts)
+- FOUND: commit 02c3f41 (docs — metadata commit)
+- VERIFIED: grep -rn "HelixAI|helixai:" src/ returns zero matches
+- VERIFIED: npm run build exits 0
+- VERIFIED: npx vitest run — 140/140 tests pass
