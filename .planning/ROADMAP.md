@@ -6,7 +6,8 @@
 - [x] **v1.1 Polish & Precision** - Phases 7-11 (shipped 2026-03-02)
 - [x] **v1.2 Pod Go Support** - Phases 12-16 (shipped 2026-03-02)
 - [x] **v1.3 Rig Emulation** - Phases 17-21 (shipped 2026-03-02)
-- [ ] **v2.0 Persistent Chat Platform** - Phases 24-28 (in progress)
+- [x] **v2.0 Persistent Chat Platform** - Phases 24-30 (shipped 2026-03-04)
+- [ ] **v3.0 Helix Stadium Support** - Phases 31-38 (in progress)
 
 ## Phases
 
@@ -356,10 +357,130 @@ Plans:
   7. When resuming a past conversation, three static suggestion chips are visible — "Refine this tone", "Try a different amp", "Generate for [other device]" — clicking one populates the chat input with a starter message
 **Plans**: 3/3 complete
 
+### Phase 29: Dual-Amp Preset Generation Fix
+
+**Goal:** Users who request presets with two different amps receive a valid dual-amp preset with split/join AB topology, per-snapshot amp switching, and independent parameter resolution — single-amp presets are completely unaffected; Pod Go gracefully falls back to single-amp.
+**Requirements**: DUAL-01, DUAL-02, DUAL-03, DUAL-04, DUAL-05, DUAL-06, DUAL-07, DUAL-08, DUAL-09
+**Depends on:** Phase 28
+**Plans:** 3/3 plans complete
+
+Plans:
+- [x] 29-01: Schema Extension + AI Prompt Updates (DUAL-01, DUAL-02, DUAL-07, DUAL-08)
+- [x] 29-02: Knowledge Layer — Chain + Params + Snapshots (DUAL-03, DUAL-04, DUAL-05)
+- [x] 29-03: Preset Builder Topology + Validation (DUAL-06, DUAL-09)
+
+### Phase 30: Chat Auto-Save on First AI Response
+
+**Goal:** Authenticated users' conversations are automatically created and persisted after the first AI response — no user action required. Opening a new session shows all previous chats in the sidebar, just like any standard AI chat interface. Conversations should NOT be created for anonymous users (they can't retrieve them anyway).
+**Requirements**: SAVE-01, SAVE-02, SAVE-03, SAVE-04
+**Depends on:** Phase 28
+**Plans:** 1/1 plans complete
+
+Plans:
+- [x] 30-01-PLAN.md — Sidebar refresh after auto-title + generate-flow message persistence (SAVE-01, SAVE-02, SAVE-03, SAVE-04)
+
+---
+
+## v3.0 Helix Stadium Support (Phases 31-38)
+
+<details>
+<summary>v3.0 Helix Stadium Support (Phases 31-38) — IN PROGRESS</summary>
+
+### Phase 31: Device ID Research + Helix Floor Regression Fix
+**Goal**: Ground all Stadium implementation in verified hardware data, and fix the live Helix Floor device ID regression before adding a third device
+**Depends on**: Phase 30 (v2.0 complete)
+**Requirements**: FIX-01, STAD-02 (partial — device ID verification protocol)
+**Success Criteria** (what must be TRUE):
+  1. A real `.hsp` file has been opened and its `data.device` integer is documented in a source comment in `types.ts` — no guessing
+  2. `DEVICE_IDS.helix_floor !== DEVICE_IDS.helix_lt` — the regression is fixed; the constant includes a source comment
+  3. The test at `orchestration.test.ts:93` passes with the corrected Floor device ID
+  4. `xxd file.hsp | head -20` result is documented — confirms JSON vs msgpack encoding decision
+**Plans**: TBD
+
+### Phase 32: Type System Foundation
+**Goal**: The TypeScript type system knows about Stadium — `DeviceTarget`, `DEVICE_IDS`, config constants, and file extension handling all cover Stadium; compiler exhaustiveness errors surface every unimplemented handler
+**Depends on**: Phase 31 (device ID confirmed)
+**Requirements**: STAD-02, NFR-04
+**Success Criteria** (what must be TRUE):
+  1. `DeviceTarget` union includes `"helix_stadium"` — adding it causes TypeScript exhaustiveness errors in every switch/if-else that doesn't handle Stadium; these errors become the Phase 32-38 integration checklist
+  2. `DEVICE_IDS.helix_stadium` is set to the confirmed integer from Phase 31 with source comment
+  3. `config.ts` has `STADIUM_MAX_BLOCKS_PER_PATH = 12` and `STADIUM_MAX_SNAPSHOTS = 8` constants
+  4. `npm run build` passes with no type errors after type system changes
+**Plans**: TBD
+
+### Phase 33: Stadium Model Catalog
+**Goal**: The planner has a curated, Stadium-specific model catalog — Agoura amps, Stadium-compatible effects, and Stadium EQ — and Stadium models are excluded from LT/Floor/Pod Go planner prompts
+**Depends on**: Phase 31 (`.hsp` inspection confirms model ID prefixes)
+**Requirements**: STAD-03
+**Success Criteria** (what must be TRUE):
+  1. `STADIUM_AMPS` in `models.ts` contains at least 10 `Agoura_*` entries verified against the Stadium firmware model list
+  2. `STADIUM_EFFECTS` includes the 7-band Parametric EQ model ID; Simple EQ, Low/High Cut, Low/High Shelf, and Parametric 5-band are NOT in the Stadium catalog
+  3. `getModelsForDevice("helix_stadium")` returns Stadium-only models; `getModelsForDevice("helix_lt")` returns no `Agoura_*` entries
+  4. Planner prompt for Stadium references only Stadium model IDs — no cross-contamination with HD2/P34 models
+**Plans**: TBD
+
+### Phase 34: Stadium Chain Rules + Validation
+**Goal**: Signal chain assembly and validation work correctly for Stadium — path structure, block limits, and mandatory blocks all use Stadium-specific constants and model IDs
+**Depends on**: Phase 32, Phase 33
+**Requirements**: STAD-04
+**Success Criteria** (what must be TRUE):
+  1. `assembleSignalChain(intent, "helix_stadium")` returns a chain with Stadium-compatible mandatory block model IDs (noise gate, boost, EQ using Stadium variants)
+  2. Block count is capped at `STADIUM_MAX_BLOCKS_PER_PATH` (not `MAX_BLOCKS_PER_DSP`) — the constant name is different in code
+  3. `validatePresetSpec(spec, "helix_stadium")` rejects any block using a non-Stadium model ID with a descriptive error
+  4. Single-path (Path 1A) generation is the only supported topology for Stadium in v3.0 — multi-path validation not required
+**Plans**: TBD
+
+### Phase 35: Stadium Builder
+**Goal**: `stadium-builder.ts` produces valid `.hsp` files using the structure confirmed from Phase 31 inspection — `preset-builder.ts` and `podgo-builder.ts` are untouched
+**Depends on**: Phase 32, Phase 34
+**Requirements**: STAD-05
+**Success Criteria** (what must be TRUE):
+  1. `buildHspFile(spec)` returns an object with `data.device === DEVICE_IDS.helix_stadium` and the same literal integer value in the test assertion
+  2. The generated `.hsp` file imports into the Helix Stadium app (or Stadium native app) without errors — confirmed with one real import test
+  3. `summarizeStadiumPreset(spec)` returns a human-readable description of the tone
+  4. `stadium-builder.ts` is exported from `index.ts` barrel; `preset-builder.ts` and `podgo-builder.ts` are unmodified (git diff shows no changes to those files)
+**Plans**: TBD
+
+### Phase 36: Planner + API Route Integration
+**Goal**: The full generate pipeline works end-to-end for Stadium — planner selects Stadium models, `/api/generate` routes to `buildHspFile`, response includes `.hsp` payload and extension, Supabase storage uses `latest.hsp`
+**Depends on**: Phase 33, Phase 35
+**Requirements**: STAD-06
+**Success Criteria** (what must be TRUE):
+  1. POST `/api/generate` with `{ device: "helix_stadium" }` returns `{ fileExtension: ".hsp", ... }` with a valid `.hsp` payload — no 500 errors, no fallback to `.hlx`
+  2. The planner prompt sent to Claude contains only Stadium-compatible model IDs when `device === "helix_stadium"`
+  3. Supabase Storage receives the file at `presets/{user_id}/{conversation_id}/latest.hsp` (not `.hlx`)
+  4. Helix LT and Pod Go generation are completely unaffected — existing integration tests pass without modification
+**Plans**: TBD
+
+### Phase 37: UI — Device Selector + Download
+**Goal**: Users can select Helix Stadium in the device picker and download the generated `.hsp` file — both device selector arrays in `page.tsx` are updated; download and badge show "STADIUM"
+**Depends on**: Phase 36 (hardware validation confirmed)
+**Requirements**: STAD-07
+**Success Criteria** (what must be TRUE):
+  1. The device selector shows "STADIUM" as a fourth option — selecting it sets `selectedDevice = "helix_stadium"` and the badge shows "STADIUM"
+  2. Clicking "Download Preset" after Stadium generation downloads `HelixAI_[Name]_Stadium.hsp`
+  3. Resuming a Stadium conversation downloads the stored `.hsp` from Supabase without regenerating
+  4. "Generate for other device" chip correctly excludes Stadium as the alternate when Stadium is selected, and includes Stadium as an option when other devices are selected
+  5. Both device arrays in `page.tsx` (~line 1275-1277 and ~line 1365-1367) are updated — neither is missed
+**Plans**: TBD
+
+### Phase 38: Rig Emulation for Stadium
+**Goal**: Rig emulation (pedal photo + text description) works with Stadium selected — `mapRigToSubstitutions` accepts `"helix_stadium"`, `/api/map` routes correctly, and the substitution card shows Stadium-compatible model names
+**Depends on**: Phase 37
+**Requirements**: STAD-08
+**Success Criteria** (what must be TRUE):
+  1. Uploading a pedal photo with Stadium selected returns a substitution card with Stadium-compatible Helix model names (no HD2-only models)
+  2. `/api/map` returns 200 (not 400/500) when `device: "helix_stadium"` is passed
+  3. `mapRigToSubstitutions(rigIntent, "helix_stadium")` does not throw — Stadium substitutions prefer Agoura amps where applicable
+  4. Rig emulation for Helix LT, Helix Floor, and Pod Go is completely unaffected — all three existing rig flows pass verification
+**Plans**: TBD
+
+</details>
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → 13 → 14 → 15 → 16 → 17 → 18 → 19 → 20 → 21 → 24 → 25 → 26 → 27 → 28
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → 13 → 14 → 15 → 16 → 17 → 18 → 19 → 20 → 21 → 24 → 25 → 26 → 27 → 28 → 29 → 30 → 31 → 32 → 33 → 34 → 35 → 36 → 37 → 38
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -384,34 +505,22 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 19. Vision Extraction API | v1.3 | 1/1 | Complete | 2026-03-02 |
 | 20. Planner Integration & Orchestration | v1.3 | 1/1 | Complete | 2026-03-02 |
 | 21. Substitution Card & End-to-End Polish | v1.3 | 1/1 | Complete | 2026-03-02 |
-| 24. Supabase Foundation | v2.0 | Complete    | 2026-03-03 | 2026-03-03 |
-| 25. Auth Flow | 2/2 | Complete    | 2026-03-03 | - |
-| 26. Conversation CRUD API | 2/2 | Complete    | 2026-03-03 | 2026-03-03 |
-| 27. Persistence Wiring | 2/2 | Complete    | 2026-03-03 | - |
-| 28. Chat Sidebar UI + UX Polish | 3/3 | Complete    | 2026-03-03 | 2026-03-03 |
-
-### Phase 29: Dual-Amp Preset Generation Fix
-
-**Goal:** Users who request presets with two different amps receive a valid dual-amp preset with split/join AB topology, per-snapshot amp switching, and independent parameter resolution — single-amp presets are completely unaffected; Pod Go gracefully falls back to single-amp.
-**Requirements**: DUAL-01, DUAL-02, DUAL-03, DUAL-04, DUAL-05, DUAL-06, DUAL-07, DUAL-08, DUAL-09
-**Depends on:** Phase 28
-**Plans:** 3/3 plans complete
-
-Plans:
-- [ ] 29-01: Schema Extension + AI Prompt Updates (DUAL-01, DUAL-02, DUAL-07, DUAL-08)
-- [ ] 29-02: Knowledge Layer — Chain + Params + Snapshots (DUAL-03, DUAL-04, DUAL-05)
-- [ ] 29-03: Preset Builder Topology + Validation (DUAL-06, DUAL-09)
-
-### Phase 30: Chat Auto-Save on First AI Response
-
-**Goal:** Authenticated users' conversations are automatically created and persisted after the first AI response — no user action required. Opening a new session shows all previous chats in the sidebar, just like any standard AI chat interface. Conversations should NOT be created for anonymous users (they can't retrieve them anyway).
-**Requirements**: SAVE-01, SAVE-02, SAVE-03, SAVE-04
-**Depends on:** Phase 28
-**Plans:** 1/1 plans complete
-
-Plans:
-- [ ] 30-01-PLAN.md — Sidebar refresh after auto-title + generate-flow message persistence (SAVE-01, SAVE-02, SAVE-03, SAVE-04)
+| 24. Supabase Foundation | v2.0 | 3/3 | Complete | 2026-03-03 |
+| 25. Auth Flow | v2.0 | 2/2 | Complete | 2026-03-03 |
+| 26. Conversation CRUD API | v2.0 | 2/2 | Complete | 2026-03-03 |
+| 27. Persistence Wiring | v2.0 | 2/2 | Complete | 2026-03-03 |
+| 28. Chat Sidebar UI + UX Polish | v2.0 | 3/3 | Complete | 2026-03-03 |
+| 29. Dual-Amp Preset Generation Fix | v2.0 | 3/3 | Complete | 2026-03-04 |
+| 30. Chat Auto-Save on First AI Response | v2.0 | 1/1 | Complete | 2026-03-04 |
+| 31. Device ID Research + Floor Fix | v3.0 | TBD | Not started | — |
+| 32. Type System Foundation | v3.0 | TBD | Not started | — |
+| 33. Stadium Model Catalog | v3.0 | TBD | Not started | — |
+| 34. Stadium Chain Rules + Validation | v3.0 | TBD | Not started | — |
+| 35. Stadium Builder | v3.0 | TBD | Not started | — |
+| 36. Planner + API Route Integration | v3.0 | TBD | Not started | — |
+| 37. UI — Device Selector + Download | v3.0 | TBD | Not started | — |
+| 38. Rig Emulation for Stadium | v3.0 | TBD | Not started | — |
 
 ---
 *Roadmap created: 2026-03-01*
-*Last updated: 2026-03-03 — Phase 30 Chat Auto-Save planned (1 plan); sidebar refresh timing fix, generate-only message persistence, deferred conversation-created event*
+*Last updated: 2026-03-04 — v3.0 Helix Stadium Support planned (Phases 31-38); v2.0 marked complete through Phase 30*

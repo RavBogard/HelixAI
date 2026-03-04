@@ -1,465 +1,390 @@
 # Pitfalls Research
 
-**Domain:** Adding auth, chat persistence, and file storage to existing stateless Next.js app (HelixAI v2.0)
-**Researched:** 2026-03-03
-**Confidence:** HIGH for auth hydration/SSR issues (official Next.js docs + nextauth GitHub); HIGH for Vercel connection pooling (official Vercel docs + Vercel KB); HIGH for Supabase RLS risks (Supabase official docs + confirmed CVE-2025-48757); HIGH for OAuth redirect pitfalls (official NextAuth GitHub issues + Next.js deployment guides); MEDIUM for anonymous-to-authenticated migration (derived from Better Auth/NextAuth docs and community patterns, no single canonical source); MEDIUM for chat ordering (derived from architectural analysis + Ably/CockroachDB engineering blog posts)
+**Domain:** Adding Helix Stadium device support to existing multi-device Helix preset app (HelixAI v3.0)
+**Researched:** 2026-03-04
+**Confidence:** HIGH for device ID regression and file format discovery (codebase analysis + Phase 23 research + official Line 6 docs); HIGH for Stadium architecture differences (official Line 6 manuals + reverse engineering blog); MEDIUM for model catalog risks (official model list verified, internal naming convention confirmed from reverse engineering); MEDIUM for DSP limit specifics (official specs confirmed at hardware level, file format encoding unknown until real .hsp inspection)
 
-> This document supersedes the v1.3 pitfalls document (vision/rig emulation). The focus here is the risks of adding Google authentication, Supabase database persistence, Supabase Storage for .hlx/.pgp files, and a chat sidebar UI to an app that is currently fully stateless. The v1.3 document covered vision upload and mapping risks; those remain valid and are not repeated here.
+> This document supersedes the v2.0 pitfalls document (auth/persistence). The focus here is the risks of adding Helix Stadium as a new device target to an app that already generates presets for Helix LT, Helix Floor, and Pod Go. Previous pitfalls documents covered auth hydration, Supabase RLS, and OAuth redirect issues — those remain valid and are not repeated here.
 
 ---
 
 ## Critical Pitfalls
 
-These cause broken features, security exposures, data loss, or silent regressions.
+These cause broken features, hardware import errors, silent wrong-device generation, or complete format failures.
 
 ---
 
-### Pitfall 1: Auth State Hydration Mismatch Causes UI Flicker or Crashes
+### Pitfall 1: Assuming Stadium Uses .hlx Format — It Uses .hsp
 
-**What goes wrong:** The server renders the page without auth state (because it does not know if the user is logged in at render time), sending HTML with the logged-out UI (no sidebar, no user avatar, anonymous-flow controls). React then hydrates on the client, discovers the session cookie, and renders the logged-in UI. The mismatch either produces a React hydration error that crashes the page, or produces a visible flash where the logged-out state is displayed for 0.5–2 seconds before the logged-in state appears. On every page load, authenticated users see the anonymous UI before the authenticated UI.
+**What goes wrong:**
 
-**Why it happens:** When using the Next.js App Router, Server Components render at request time. If the session is not read server-side (from the cookie) and passed into `SessionProvider`, the server-rendered HTML reflects the logged-out state. The client then has a different opinion because `useSession()` returns an active session from the cookie. React flags the mismatch. The fix — reading the session server-side and passing it to `SessionProvider` — is non-obvious and is absent from many tutorials.
+The app currently generates `.hlx` files (for Helix LT/Floor) and `.pgp` files (for Pod Go). A developer adding Stadium support might assume Stadium uses `.hlx` with a new device ID, following the LT/Floor pattern. This is wrong. Helix Stadium uses a completely new `.hsp` preset format that is a one-way conversion: any preset exported from Stadium cannot be re-imported into Helix/HX.
 
-The specific failure pattern for this project: the sidebar is conditionally rendered based on `session !== null`. If the server renders no sidebar and the client then renders a sidebar, the DOM structure differs and React errors. If the sidebar is always rendered (but in a "loading" state) on the server, the flash is visual-only rather than a crash — but still unacceptable as the primary login flow for the app.
+The file format difference is not cosmetic. The `.hsp` format has a different file extension, a different schema, and Helix Stadium ships with a different editor application ("Helix Stadium" app, not "HX Edit"). Stadium CAN import `.hlx` files from existing devices (as a migration path), but files must originate from Helix/HX firmware v3.50 or newer. Stadium does NOT load `.hlx` files it exported itself.
 
-**How to avoid:** In `layout.tsx`, fetch the session server-side using `auth()` (for NextAuth v5/Auth.js) or Supabase's `createServerClient()` (for Supabase Auth) and pass it directly to the client-side session provider as a prop. This means the server and client render the same initial state. The sidebar should not conditionally mount/unmount based on auth state — instead, it should always be present in the DOM but conditionally show content based on session data that is pre-loaded. Any component that needs to show user-specific content (avatar, chat list) should use `useEffect` or be wrapped in a Suspense boundary with a skeleton state rather than rendering differently on server vs. client.
+**Why it happens:**
 
-```typescript
-// layout.tsx — server component
-const session = await auth(); // read server-side
-return (
-  <SessionProvider session={session}>  // pre-hydrate client
-    {children}
-  </SessionProvider>
-);
-```
+The existing codebase has two builder patterns — `preset-builder.ts` for `.hlx` and `podgo-builder.ts` for `.pgp`. A developer extending the pattern might reach for `preset-builder.ts` and add a new `DEVICE_IDS.helix_stadium` constant, expecting that to be sufficient. The rename from `.hlx` to `.hsp` and the schema changes are not discoverable from the existing codebase alone.
+
+**How to avoid:**
+
+Before writing any code, inspect a real `.hsp` file exported by the Helix Stadium app to determine the JSON schema. The internal structure is likely JSON (following the `.hlx` precedent), but field names, topology encoding, path numbering, and block type integers may differ. Build a new `stadium-builder.ts` analogous to `podgo-builder.ts` — do NOT extend `preset-builder.ts`.
+
+Key investigation questions that must be answered from a real `.hsp` file:
+1. Is the file plain JSON, MessagePack, or another encoding? (community reverse engineering suggests JSON-like but this must be confirmed by opening a `.hsp` in a text editor)
+2. What is the `schema` field value? (`"L6Preset"` in `.hlx` — does Stadium use a different schema string?)
+3. What is the `data.device` integer for Stadium?
+4. Does Stadium use `dsp0`/`dsp1` keys or a different path naming convention (e.g., `path1a`, `path1b`, `path2a`, `path2b`)?
+5. What are the `@type` integer values for block types in `.hsp`?
+6. Does the `@model` field use `HD2_*` prefixes, `Agoura_*` prefixes, `HX2_*` prefixes, or a mixed convention?
 
 **Warning signs:**
-- React console error: "Hydration failed because the initial UI does not match what was rendered on the server"
-- Sidebar flickers into existence on every page load for logged-in users
-- The logged-out UI is briefly visible before the logged-in UI after a page refresh
 
-**Phase to address:** Auth Phase — first phase of v2.0. Session provider setup is the first thing built. Getting hydration right from day one prevents cascading UI bugs in all subsequent phases.
+- "Stadium device" added to `DEVICE_IDS` constant pointing to `buildHlxFile()` — almost certainly wrong
+- Download file named `.hlx` for a Stadium preset — format mismatch
+- Stadium preset loads in HX Edit without error — should not be possible if format is correct
+- No `stadium-builder.ts` file created — Stadium has a different enough architecture to need its own builder
+
+**Phase to address:** Stadium file format discovery phase (first Stadium phase — must be completed before any builder code is written)
 
 ---
 
-### Pitfall 2: Vercel Serverless Cold Starts Exhaust or Leak Database Connections
+### Pitfall 2: Wrong Device ID Causes Immediate Hardware Rejection (-8309)
 
-**What goes wrong:** Each Vercel serverless function invocation that touches the database opens a new connection. On the free Hobby plan with default settings, functions spin down after a period of inactivity and spin up fresh on the next request. Each cold start opens a new database connection. On Supabase's free plan, the maximum concurrent connections to the connection pooler is 200. After a traffic spike (or after a Vercel deployment where old function instances are suspended), open connections are held as "phantom" connections — the function is suspended but the connection is not cleanly closed. Supabase sees the connection as still open. If 50+ phantom connections accumulate, new requests fail with "too many connections" errors that look like database outages.
+**What goes wrong:**
 
-**Why it happens:** Traditional database drivers (`pg`, Prisma's default `client`) hold a persistent TCP connection. In a long-running server process this is correct. In a serverless function, the process is ephemeral — but the TCP connection on the database side remains open until it times out, which can take minutes. If your function is called 100 times in a burst, 100 connections are opened. Even if each closes after the function returns, there is a window where all 100 are simultaneously open. Supabase's free plan cannot handle this without a connection pooler configured for transaction-mode pooling.
+Every `.hlx` (and presumably `.hsp`) file contains a `data.device` integer field. HX Edit and Helix Stadium app read this field on import and reject the file with error `-8309: Incompatible target device type` if the integer does not match the connected hardware's own device ID. This is a hard rejection — not a warning. The preset will not load.
 
-**How to avoid:** Use Supabase's built-in connection pooler in **transaction mode** (port 6543, not 5432). Transaction-mode pooling returns the connection to the pool after each statement completes, making it compatible with serverless. With Supabase, the connection string for serverless is the pooler URL (`db.[ref].pooler.supabase.com:6543/postgres?pgbouncer=true`), not the direct database URL. The Supabase JS client (`@supabase/supabase-js`) uses the REST API (PostgREST) by default, which is HTTP-based and sidesteps the connection issue entirely — use this for all application queries. Only use the direct database connection for migrations, which run in long-lived CI environments, not serverless functions.
+This project has a documented history of device ID errors:
+- Helix Floor started at `2162688` (unverified, suspected wrong from Phase 23 research)
+- The test in `orchestration.test.ts` was then updated to expect `2162691` (line 93)
+- But `types.ts` currently has `helix_floor: 2162692` (same as LT) with a comment "Floor and LT share the same preset format and device ID"
+- These two are now contradictory — the test expects `2162691` but the constant produces `2162692`
 
-Enable Vercel Fluid Compute to allow multiple concurrent requests to share a single warm function instance. When Fluid Compute reuses an instance, the database client initialized at module scope is also reused — removing the per-invocation connection cost entirely. This is a significant reduction in connection overhead.
+This means `helix_floor` already has a regression: tests fail because `DEVICE_IDS.helix_floor = 2162692` but `orchestration.test.ts` line 93 asserts `2162691`. Stadium will have a fresh device ID that is completely unknown until a real `.hsp` file is inspected.
+
+**Why it happens:**
+
+Device IDs are hardware-specific integers assigned by Line 6. They cannot be guessed or computed — they must be read from a real export from the target device. The Helix LT ID (`2162692`, hex `0x210004`) is confirmed working. The Floor ID has been changed multiple times by developers guessing at the correct value. Each guess that is wrong causes -8309 for the affected device's users.
+
+**How to avoid:**
+
+The only correct method is to obtain a real `.hsp` file exported by the Helix Stadium app and read `data.device` from the JSON. For Helix Floor, the same method applies — obtain a real `.hlx` file exported from a Helix Floor via HX Edit.
+
+**Sources for obtaining real exports:**
+
+1. Ask a Stadium user in the Line 6 community to export any preset from Stadium, share the `.hsp`, open in text editor, read `data.device`
+2. Check community preset sharing sites (fluidsolo.com lists Stadium presets as `.hsp` files for download)
+3. Check The Gear Forum's Helix Stadium Talk thread — users share `.hsp` presets
+4. For Floor ID: download a preset explicitly tagged "Helix Floor" from CustomTone (line6.com/customtone), inspect `data.device`
+
+**Anti-pattern to avoid absolutely:**
+
+Do NOT increment/decrement the existing constant by ±1 or ±4 to guess the Stadium ID. The hex pattern `0x210004` (LT) → `0x210007` (Pod Go) has a gap of 3, which does not tell us where Stadium falls. Wrong guesses produce -8309 for all Stadium users who download presets.
 
 **Warning signs:**
-- Supabase dashboard shows connection count approaching 200 (the free plan limit)
-- Database queries fail with `FATAL: remaining connection slots are reserved` errors
-- Errors occur in bursts immediately after deploying a new version (old function instances suspend without closing connections)
 
-**Phase to address:** Auth Phase / Database Phase — whichever introduces the first Supabase database query. The connection strategy must be decided before any database calls are written. Switching from direct connection to pooler URL after launch requires updating all connection strings and testing migration behavior.
+- `DEVICE_IDS.helix_stadium` set to any value without a comment citing a real `.hsp` file inspection
+- Test assertion for Stadium device hardcoded to a literal integer with no source comment
+- Stadium preset imports into HX Edit without error (Stadium presets should only load in the Helix Stadium app)
 
----
-
-### Pitfall 3: Supabase RLS Disabled or Misconfigured Exposes All User Chats Publicly
-
-**What goes wrong:** Row Level Security (RLS) is disabled by default on all new Supabase tables. If the `chats` and `messages` tables are created without enabling RLS, any user (or unauthenticated request with the public anon key) can read all chats from all users via the auto-generated REST API. A `GET /rest/v1/chats` request with no user filter returns every chat in the database. The data exposure happens silently — no error, just data that should be private being returned to anyone who makes the request.
-
-The second failure mode: RLS is enabled but policies are incomplete. A common gap is creating a SELECT policy (so users can read their own chats) but forgetting an INSERT policy (so writing fails with an opaque empty-result error) or forgetting WITH CHECK on the UPDATE policy (so users can read their own chats, write to their own chats, but could potentially update a chat to assign it to a different user_id).
-
-The third failure mode: a developer accidentally uses the `service_role` key in client-side code. The service role key bypasses all RLS. Any client that has the service role key has god-mode access to all data.
-
-**Why it happens:** Supabase makes RLS opt-in, not opt-in-by-default. The table creation SQL does not include RLS unless explicitly added. When prototyping, developers often skip RLS to avoid the configuration overhead and forget to add it before launch. In 2025, a CVE (CVE-2025-48757) affecting 170+ Lovable-generated applications was disclosed because AI code generators were creating tables without RLS. The Supabase dashboard shows a warning for tables without RLS, but the SQL Editor does not.
-
-**How to avoid:** Enable RLS immediately when creating any table that holds user data, before writing any application code:
-
-```sql
-ALTER TABLE chats ENABLE ROW LEVEL SECURITY;
-ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
-ALTER TABLE preset_files ENABLE ROW LEVEL SECURITY;
-
--- Example policy pattern — scope every policy by auth.uid()
-CREATE POLICY "Users can only see their own chats"
-  ON chats FOR SELECT
-  TO authenticated
-  USING (user_id = auth.uid());
-
-CREATE POLICY "Users can only insert their own chats"
-  ON chats FOR INSERT
-  TO authenticated
-  WITH CHECK (user_id = auth.uid());
-```
-
-Only the public anon key should ever appear in client-side environment variables (`NEXT_PUBLIC_SUPABASE_ANON_KEY`). The service role key must only appear in server-side environment variables and never in any `NEXT_PUBLIC_*` variable. Use Supabase's Security Advisor (dashboard → Database → Security Advisor) after creating tables to verify no tables are exposed.
-
-**Warning signs:**
-- Supabase dashboard Security Advisor shows red warnings for any table
-- A test request with `curl -H "apikey: [anon key]" [supabase-url]/rest/v1/chats` returns data without a user filter
-- `NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY` appears in any environment variable name (the key should never be NEXT_PUBLIC)
-
-**Phase to address:** Database Phase — the first phase that creates tables. RLS policies must be written as part of the same migration that creates the table. Adding RLS after table creation and after data is present is higher risk because existing rows must be audited.
+**Phase to address:** Device ID verification task (earliest Stadium phase — block all Stadium builder work until device ID is confirmed from real hardware)
 
 ---
 
-### Pitfall 4: Anonymous-to-Authenticated Migration Silently Loses the Current Session
+### Pitfall 3: Helix Floor Device ID Regression is Already Active and Blocking Tests
 
-**What goes wrong:** A user completes a tone interview anonymously, generates a preset, then decides to log in to save it. The login flow redirects through Google OAuth, the callback URL creates/restores the authenticated session, and the user lands back on the app. The in-progress chat conversation and the generated preset that were in React state are gone. State was held in component state (`useState`) with no persistence — the OAuth redirect wiped it. The user has to start over. They are unlikely to try logging in again during a session after experiencing this.
+**What goes wrong:**
 
-The secondary failure: the app does implement anonymous-to-authenticated migration, but the user's anonymous chat history is not linked to their new authenticated account. The sidebar shows an empty history even though they completed a chat before logging in.
-
-**Why it happens:** React component state is ephemeral — a full-page navigation (which OAuth redirects require) destroys it. The standard OAuth redirect flow for Google (`/api/auth/signin/google`) always does a full redirect. Preserving in-progress state across this redirect requires explicit persistence (localStorage, sessionStorage, or a URL parameter) before the redirect and restoration after the callback.
-
-The anonymous session identity (a temporary ID for tracking the pre-login chat) must be explicitly passed to the auth callback so the backend can associate the pre-login data with the newly authenticated user. Without this, the anonymous session and the authenticated user are unlinked.
-
-**How to avoid:** Before triggering the Google OAuth sign-in, serialize the current chat state to `sessionStorage`. After the OAuth callback completes and the user is authenticated, read `sessionStorage` in the root layout's `useEffect` and restore the pending chat state. This must happen before the sidebar and chat list render to prevent a flash of empty state.
-
-For linking pre-login chats to authenticated users: use a stable anonymous session ID (stored in a cookie with a long expiry). When the user authenticates, include the anonymous session ID in the sign-in callback. In the `signIn` callback (NextAuth) or equivalent Supabase hook, migrate any chats associated with that anonymous ID to the authenticated user's ID.
-
-Design the database schema to support this: a `chats` table with a nullable `user_id` and a separate `anon_session_id` field. After login, run an `UPDATE chats SET user_id = [authenticated_id] WHERE anon_session_id = [pre-login session id]`.
-
-**Warning signs:**
-- In-progress chat disappears when the user clicks "Sign In"
-- After login, the sidebar shows empty history even for users who had active sessions
-- `sessionStorage` is never written before the OAuth redirect
-- The `signIn` callback does not receive or handle an anonymous session ID
-
-**Phase to address:** Auth Phase — the sign-in flow must include the migration design from the start. Adding anonymous session migration after the auth flow is live requires a database migration to add the `anon_session_id` field and re-testing the entire login flow.
-
----
-
-### Pitfall 5: Google OAuth Callback URL Mismatch Breaks Production Login
-
-**What goes wrong:** Login works perfectly in local development (`http://localhost:3000/api/auth/callback/google`). After deploying to Vercel, the first login attempt fails with a `redirect_uri_mismatch` error from Google. No users can log in. The error is cryptic to end users — it shows a Google error page, not the app's error page. The Vercel deployment URL (`https://helixai.vercel.app`) was never added to Google Cloud Console's Authorized Redirect URIs. Or it was added, but with a trailing slash or wrong path segment, which Google rejects as an exact mismatch.
-
-The secondary failure: Vercel preview deployments each get a unique URL (`https://helixai-git-branch-user.vercel.app`). Google Cloud Console does not support wildcard redirect URIs. Every preview deployment URL must be manually added to the Google console, or preview deployments cannot test the auth flow at all.
-
-**Why it happens:** Google OAuth is strict about redirect URIs — it performs an exact string match including protocol, domain, port, path, and trailing slash. Developers test locally, get the localhost URI working, then forget to add the production URI to the Google console before deploying. The environment variable `NEXTAUTH_URL` (or its equivalent in the chosen auth library) must also match the production domain exactly, or the session cookie domain will mismatch and the cookie will not be set.
-
-**How to avoid:** Before deploying to production for the first time, add all target URLs to Google Cloud Console:
-- `https://helixai.vercel.app/api/auth/callback/google` (production)
-- `http://localhost:3000/api/auth/callback/google` (development)
-
-Set `NEXTAUTH_URL=https://helixai.vercel.app` (or the custom domain) in Vercel's environment variables, under the Production environment scope only. For preview deployments, add `NEXTAUTH_URL_INTERNAL` or use the Vercel system variable `VERCEL_URL` to construct the callback URL dynamically. Do not use `http://` in production — Google requires HTTPS for all non-localhost redirect URIs.
-
-Verify the callback path matches the auth library version: NextAuth v4 uses `/api/auth/callback/google`, Auth.js v5 / Better Auth may use different paths. Check the library documentation before registering with Google.
-
-**Warning signs:**
-- Google shows `Error 400: redirect_uri_mismatch` on login
-- Login works on localhost but fails on the deployed URL
-- The URL shown in the Google error message does not exactly match what is registered in the Google console
-- `NEXTAUTH_URL` is not set as a Vercel environment variable
-
-**Phase to address:** Auth Phase — before any production deployment of the auth flow. The Google Cloud Console setup and the Vercel environment variable must be configured as the first action in the auth phase, before writing any code.
-
----
-
-### Pitfall 6: Supabase Free Tier Pauses After 7 Days of Inactivity, Breaking Production
-
-**What goes wrong:** The app launches. Usage is light initially (as expected for a v2.0 launch). After a week with fewer than 7 days of user activity, Supabase pauses the project. The next user who tries to sign in or load their chat history gets a database connection error. The app appears broken. Reactivating the project from the dashboard takes 30–60 seconds, during which all database operations fail. Supabase sends warning emails, but if the developer is not monitoring email, the downtime is discovered when users report errors.
-
-**Why it happens:** Supabase's free plan pauses projects after 7 days of no database activity to reclaim resources. This is documented but often missed because the free plan is used for early-stage products that may have irregular usage. A product that is "live" but has infrequent users (e.g., launched but not yet marketed widely) can hit this limit even after the first week.
-
-**How to avoid:** Set up a keep-alive mechanism before launching, not after the first pause happens. Options:
-- A GitHub Actions scheduled workflow that runs every 4 days and makes a simple Supabase REST API call (e.g., `SELECT 1` via the REST endpoint)
-- A Vercel cron job (`/api/cron/ping-db`) configured in `vercel.json` to run every 4 days
-- An Upstash or cron-job.org scheduled task that hits the Supabase health endpoint
-
-The keep-alive does not need to write data — any authenticated read request keeps the project active. Set the interval to every 4 days to provide buffer against the 7-day limit.
-
-For the longer term, plan the $25/month Supabase Pro upgrade before significant user adoption. The Pro plan does not pause projects, includes daily backups, and raises connection limits significantly.
-
-**Warning signs:**
-- Supabase dashboard shows project status as "Paused"
-- All database-dependent features fail simultaneously with connection errors
-- Supabase sends emails with subject "Your project is about to be paused" — these are the early warning
-
-**Phase to address:** Database Phase — the keep-alive mechanism must be set up immediately when the Supabase project is created, before any other work. It takes 10 minutes to configure and prevents the most embarrassing possible production failure.
-
----
-
-### Pitfall 7: Middleware-Only Auth Allows Security Bypass
-
-**What goes wrong:** The auth protection is implemented only in `middleware.ts`: routes that require authentication (e.g., `/api/chats`, `/api/messages`) check for a valid session in the middleware and redirect unauthenticated requests. This feels complete — all protected routes are listed in the middleware config. However, CVE-2025-29927 (disclosed March 2025) demonstrated that Next.js middleware can be bypassed by sending a crafted `x-middleware-subrequest` header. Any attacker can access the protected API routes directly, bypassing the middleware check entirely, and read or write any user's chat data if the database queries do not also enforce ownership.
-
-More practically for this project: even without the CVE, middleware runs on the edge and the database is accessed in serverless functions. The middleware can be tricked, load-balanced around, or misconfigured. If the API route handler itself does not verify the session, a request that bypasses middleware goes through.
-
-**Why it happens:** Developers treat middleware as a complete auth gate because it is the most visible layer. The Next.js docs present middleware as the primary auth mechanism for route protection, which leads developers to stop there. The Data Access Layer pattern — verifying auth at the point of database access — is less visible in tutorials but is the only reliable protection.
-
-**How to avoid:** Every API route handler that reads or writes user data must independently verify the session:
-
-```typescript
-// /api/chats/route.ts
-export async function GET(request: Request) {
-  const session = await auth(); // verify session here, not only in middleware
-  if (!session?.user?.id) {
-    return new Response('Unauthorized', { status: 401 });
-  }
-  // Database query scoped to session.user.id
-  const chats = await supabase
-    .from('chats')
-    .select('*')
-    .eq('user_id', session.user.id); // always filter by authenticated user
-}
-```
-
-Middleware can still be used for redirect UX (bouncing unauthenticated users to the login page), but it must not be the only security layer. RLS policies in Supabase provide a second layer at the database level. API route session checks provide a third layer. Defense in depth: at least two of these three layers must be active at all times.
-
-Also: upgrade to Next.js 15.2.3+ which patches CVE-2025-29927. Vercel's edge network already strips the malicious header for hosted deployments, but the patch is still required for correctness.
-
-**Warning signs:**
-- API routes return data without checking `session.user.id` in the handler itself
-- A test request with no auth cookie reaches an API handler and gets a 200 response instead of 401
-- Middleware config is the only place user authorization is checked
-
-**Phase to address:** Auth Phase — security architecture must be designed before any API routes are written. Adding auth checks to API routes after writing them without auth requires auditing every route individually, which is error-prone.
-
----
-
-### Pitfall 8: File Storage Costs Spiral from Storing Every Preset Version
-
-**What goes wrong:** Every time a user regenerates a preset (tweaking the tone, adding effects, changing the amp), a new `.hlx` or `.pgp` file is generated. If the implementation stores every generated file in Supabase Storage (or any cloud storage), each conversation accumulates multiple versions. A user who iterates 10 times on a preset stores 10 files. At 50–200KB per file, this is manageable. But if 500 users each have 10 conversations with 5 regenerations each, that is 25,000 files — 1.25–5GB of storage, well above Supabase's free plan 1GB storage limit, and incurring bandwidth egress costs each time files are downloaded.
-
-The secondary problem: the PROJECT.md decision already establishes "Save last preset per chat (not all versions)." If the implementation violates this by naively appending every generated file, storage costs accumulate without corresponding user value.
-
-**Why it happens:** The natural implementation path is: generate preset → save to storage → return download URL. Each generation triggers a save. Without explicit "overwrite the previous version" logic, each generation creates a new file object in storage. Object storage does not automatically deduplicate or overwrite unless you use a deterministic key.
-
-**How to avoid:** Use a deterministic storage key per conversation that overwrites on each generation:
+The current codebase has a live regression that must be fixed before Stadium work begins:
 
 ```
-preset_files/{user_id}/{chat_id}/latest.hlx
-preset_files/{user_id}/{chat_id}/latest.pgp
+types.ts:    DEVICE_IDS.helix_floor = 2162692  (same as LT)
+test line 93: expect(hlx.data.device).toBe(2162691)  (expects different value)
 ```
 
-Using this key scheme, `supabase.storage.from('presets').upload(key, file, { upsert: true })` overwrites the previous file on every generation. Only the most recent preset per chat is ever stored, regardless of how many times the user regenerates. This matches the intended behavior and prevents storage accumulation.
+This means `orchestration.test.ts` is currently failing or the test was updated to pass with the wrong constant. Either way, the Floor device ID is wrong — a user who generates a Floor preset gets `data.device = 2162692` (same as LT), which will reject on actual Floor hardware with -8309.
 
-Apply Supabase Storage RLS policies so only the owning user can read their preset files:
-```sql
-CREATE POLICY "Users can access their own preset files"
-  ON storage.objects FOR SELECT
-  TO authenticated
-  USING (bucket_id = 'presets' AND auth.uid()::text = (storage.foldername(name))[1]);
-```
+**Why it happens:**
+
+From Phase 23 research: the constant was originally `2162688` (unverified), then a developer updated the test to expect `2162691` based on investigation, but did not update the constant. This left a broken pair: the code produces `2162692` but the test documents the value should be `2162691`. Adding Stadium to a broken codebase risks shipping the Stadium device ID wrong for the same reason.
+
+**How to avoid:**
+
+Fix the Floor device ID regression before adding Stadium. The process is:
+1. Obtain a real Helix Floor `.hlx` export and read `data.device`
+2. Update `DEVICE_IDS.helix_floor` in `types.ts` to the confirmed value
+3. Update `orchestration.test.ts` line 93 literal to match (both `DEVICE_IDS.helix_floor` reference AND the hardcoded integer assertion)
+4. Run tests — should pass
+
+Do not update only `types.ts` without updating the test, or vice versa. Both must change together.
 
 **Warning signs:**
-- Storage bucket contains multiple files per chat ID (e.g., `chat123/v1.hlx`, `chat123/v2.hlx`, `chat123/v3.hlx`)
-- Total storage usage grows faster than the number of active users
-- No `upsert: true` flag in the storage upload call
 
-**Phase to address:** File Storage Phase — the storage key scheme and upsert strategy must be defined in the initial implementation. Retrofitting it requires deleting orphaned files (requires a migration job) and changing the upload logic.
+- Test suite passes for `helix_lt` but the `helix_floor` test is skipped or commented out
+- `DEVICE_IDS.helix_floor` equals `DEVICE_IDS.helix_lt` (both `2162692`) — this is the current broken state
+- Test file `orchestration.test.ts` line 93 still says `2162691` after the constant is changed — tells you the test literal was never updated
+
+**Phase to address:** Phase 1 of Stadium milestone (fix Floor regression first, before any Stadium code — prevents inheriting the broken pattern)
 
 ---
 
-### Pitfall 9: Chat Message Ordering Breaks When Messages Are Saved Asynchronously
+### Pitfall 4: Model Catalog Using Wrong Naming Convention for Stadium
 
-**What goes wrong:** The streaming AI response arrives in chunks. The implementation saves each message to Supabase as a complete message only after the full response is received. However, if the user sends two rapid follow-up messages while the first response is still streaming, the message ordering in the database can become: `user_msg_2 → user_msg_1 → assistant_response_1 → user_msg_3`. When the chat is reloaded from the database later, the conversation makes no sense because the messages appear out of order.
+**What goes wrong:**
 
-The secondary failure: if messages are assigned `created_at` timestamps using `Date.now()` on the client, clock drift between the user's device and the server can cause messages to appear out of order when sorted by timestamp.
+The existing model catalog (`models.ts`) uses `HD2_*` prefixes for all model IDs (e.g., `HD2_AmpUSDeluxeNrm`, `HD2_DistMirrored`). Pod Go models use the same `HD2_*` prefix with `Mono`/`Stereo` suffixes. Helix Stadium introduces a new naming convention: Agoura amp models use `Agoura_*` prefix (e.g., `Agoura_AmpWhoWatt103`, `Agoura_AmpUSPrincess76`). Legacy HX models in Stadium appear to use `HX2_*` prefix instead of `HD2_*` (e.g., `HX2_GateHorizonGateMono` instead of `HD2_GateHorizonGateMono`).
 
-**Why it happens:** Serverless functions handling streaming responses are asynchronous. If the user does not wait for a response before sending another message, multiple concurrent write operations race to the database. `created_at` timestamps have millisecond resolution, and two rapid messages can get the same or reversed timestamps if the client clock is not synchronized.
+A developer building the Stadium model catalog who copies `HD2_` model IDs from the existing catalog — without verifying against real `.hsp` exports or the Stadium app's model definition file — will produce a catalog where every model ID is wrong. Generated presets will fail validation (`Invalid model ID`) or, worse, silently load a wrong model on hardware.
 
-**How to avoid:** Use an explicit `sequence_number` integer column on the `messages` table, not `created_at`, as the primary sort field. The sequence number is assigned server-side (as an auto-incrementing value or a counter maintained per conversation) and is never determined by the client. This guarantees ordering is determined by insertion order on the server, not by client timestamps.
+**Why it happens:**
 
-For the specific case of streaming responses: save the user's message to the database immediately when received (before beginning the AI response). Save the assistant's message after the stream completes. This ensures the user message always has a lower sequence number than the subsequent assistant response, regardless of timing.
+Stadium is both backward compatible (HX/Legacy models still exist) and forward-incompatible (Agoura models have entirely new IDs). The naming convention change from `HD2_` to `HX2_` for legacy HX models in Stadium is a gotcha: the models are functionally the same but have different internal IDs in the Stadium platform. A developer who checks `HD2_GateHorizonGate` against "does Stadium have Horizon Gate?" would get "yes" but the ID `HD2_GateHorizonGate` is wrong for Stadium.
 
-The chat sidebar resume feature reads messages sorted by `sequence_number ASC` — this field must be indexed: `CREATE INDEX messages_sequence_idx ON messages(chat_id, sequence_number)`.
+**How to avoid:**
+
+Model IDs for Stadium must come exclusively from Stadium sources:
+1. The Helix Stadium app ships with a binary model definition file at `[app path]/Contents/Resources/modeldefs/p35md-*.bin` (macOS). This is a msgpack stream containing all model names and their integer IDs.
+2. Real `.hsp` file inspection — the `@model` field in blocks contains the actual ID string used by the format
+3. The community reverse engineering blog (ilikekillnerds.com, December 2025) documents the msgpack model definition format
+
+Do NOT port `HD2_*` IDs to a Stadium catalog without verifying each one against a real Stadium source. Assume all IDs are wrong until proven correct from Stadium hardware.
 
 **Warning signs:**
-- Resumed conversations show messages in wrong chronological order
-- The chat history makes logical sense when read live but is jumbled when reopened
-- Messages table has no `sequence_number` column and relies only on `created_at` for ordering
 
-**Phase to address:** Database Phase — the schema must include `sequence_number` from day one. Adding an ordering column to an existing table with data requires backfilling sequence numbers, which is error-prone.
+- Stadium model catalog entries that are direct copies of `models.ts` entries with only the device filter changed
+- No `Agoura_` prefixed entries in Stadium amp models
+- Model IDs in Stadium catalog that start with `HD2_` for amp models (Stadium Agoura amps use `Agoura_` prefix)
+- Stadium validate.ts whitelist includes `HD2_Amp*` IDs without verifying they are valid in Stadium
+
+**Phase to address:** Stadium model catalog phase — requires dedicated research from real Stadium sources before catalog population
 
 ---
 
-### Pitfall 10: Performance Regression for Anonymous (Non-Logged-In) Users
+### Pitfall 5: DSP/Block Limit Assumptions Based on Helix LT Rules
 
-**What goes wrong:** Adding auth infrastructure causes measurable regressions for users who never log in. The most common ways this happens:
+**What goes wrong:**
 
-1. Every page load now calls a session check (even when the user has no session), adding 50–200ms database latency to every request.
-2. The `SessionProvider` wraps the entire app and triggers a client-side session fetch on every mount, even for anonymous users where it always returns null.
-3. The chat API route now queries the database to check "does this user have an existing chat to append to?" on every message, even for anonymous users who have no chat in the database.
-4. The new Supabase client import adds bundle size that is loaded for all users, including those who never authenticate.
+The existing `chain-rules.ts` enforces Helix block limits as `MAX_BLOCKS_PER_DSP = 8` per DSP. This is correct for Helix LT/Floor (dual DSP, 8 non-cab blocks each). Pod Go has its own `POD_GO_MAX_USER_EFFECTS = 4` and `POD_GO_TOTAL_BLOCKS = 10` limits.
 
-The existing v1.0–v1.3 product has no database dependency. Adding auth infrastructure must not add latency to the anonymous flow, which is the primary user experience for first-time visitors.
+Helix Stadium has an entirely different architecture: **4 stereo paths** (Path 1A, 1B, 2A, 2B) with **12 blocks per path**, for a total of up to 48 block locations. If Stadium chain rules reuse the `MAX_BLOCKS_PER_DSP = 8` constant, two problems occur:
+1. Stadium presets will be unnecessarily constrained to 8 blocks when 12 are available per path
+2. If Stadium uses a different path numbering scheme (paths instead of DSPs), the `dsp0`/`dsp1` field names in `BlockSpec` may be wrong for Stadium blocks
 
-**Why it happens:** Auth libraries (NextAuth, Supabase Auth) run session checks on every request by default. If middleware is configured to run globally (`matcher: ['/:path*']`), the session check runs for all requests including anonymous page loads and API calls. Database queries that check for existing user context run even when there is provably no user context.
+Additionally, Stadium uses "Dynamic DSP" where Agoura models consume significantly more DSP than HX Legacy models. The block count limit (12 per path) is a maximum location count, not a guaranteed usable count. A preset with 12 Agoura amp blocks would hit DSP limits before hitting the block count limit.
 
-**How to avoid:** Gate every database call on the presence of an authenticated session. The anonymous flow must touch zero database infrastructure:
+**Why it happens:**
 
-```typescript
-// API route pattern — no db calls for anonymous users
-const session = await auth();
-if (session?.user?.id) {
-  // Database operations for authenticated users only
-  await saveChatMessage(session.user.id, chatId, message);
-}
-// Anonymous path — no database interaction
-```
+The developer sees that Helix already has a dual-DSP architecture with block limits enforced in `chain-rules.ts` and assumes Stadium is "more of the same." The 4-path architecture is a fundamental structural difference that is not visible from the existing codebase.
 
-Configure middleware to run only on routes that require auth, not on the anonymous generate/chat flow. The existing `/api/generate` and `/api/chat` routes must not be added to the middleware matcher. Middleware should only protect `/api/chats`, `/api/messages`, and any user-profile routes.
+**How to avoid:**
 
-Use code splitting: the Supabase client should be imported only in modules that are actually used in the authenticated path, not in the shared layout or in anonymous-facing components.
+Stadium chain rules must be built from scratch, not derived from Helix chain rules. Key constraints to establish from real Stadium testing:
+1. Are block limits per-path (12/path) or per-DSP with DSPs having higher capacity?
+2. What is the effective block limit for a mix of Agoura + HX Legacy models? (DSP budget will be exhausted before position count for Agoura-heavy presets)
+3. Does the `.hsp` file use `dsp0`/`dsp1` keys or `path1a`/`path1b`/`path2a`/`path2b` keys?
+4. Is the `@path` integer encoding the same as Helix (0=Path A, 1=Path B)?
+
+For safety: generate Stadium presets with conservative block counts initially (e.g., 8 blocks per path maximum) until DSP limits are calibrated against real hardware testing. This is the same approach used for Pod Go v1.2 — start with documented limits, then increase if headroom is found.
 
 **Warning signs:**
-- The anonymous preset generation flow takes longer after v2.0 than it did in v1.3
-- Network tab shows a session check request firing on every page load, including anonymous ones
-- The middleware matcher includes `/api/generate` or `/api/chat`
 
-**Phase to address:** All phases of v2.0 — every phase must include explicit verification that the anonymous flow is unaffected. The end of each phase should have a regression test: "generate a preset without logging in and confirm the time-to-preset is within 5% of v1.3 baseline."
+- Stadium chain rules file contains `MAX_BLOCKS_PER_DSP = 8` directly (copied from Helix rules)
+- Stadium `BlockSpec` entries use `dsp: 0 | 1` field without verifying this is valid for Stadium path encoding
+- No `STADIUM_MAX_BLOCKS_PER_PATH` constant defined specifically for Stadium
+- Stadium chain rule tests using the same block limit assertions as Helix LT tests
+
+**Phase to address:** Stadium chain rules phase — do not write chain rules without first establishing block/path architecture from `.hsp` inspection
+
+---
+
+### Pitfall 6: EQ Model Mismatch — Stadium Replaced Four HX EQ Types
+
+**What goes wrong:**
+
+Helix Stadium does not include four EQ types that exist in Helix LT/Floor: Simple EQ, Low and High Cut, Low/High Shelf, and Parametric 5-band. These are replaced by a new 7-band Parametric EQ. If a Stadium preset is generated with any of these four EQ model IDs, the Stadium app will either reject the import or silently substitute the EQ — but a direct-generation workflow (bypassing import) would produce a preset with invalid model IDs that fail on hardware.
+
+The project's `mandatory blocks` pattern inserts a `PARAMETRIC_EQ = "Parametric EQ"` block into every Helix preset. This EQ block uses `HD2_EQ_ParametricMono` or similar. If Stadium uses a different model ID for its 7-band Parametric EQ, the mandatory EQ block insertion in Stadium chain rules will use the wrong model ID.
+
+**Why it happens:**
+
+The EQ replacement is documented in the official Stadium manual but is easy to miss when reading compatibility notes focused on presets being "nearly 100% backward compatible." The 100% compatibility claim refers to functional parity after auto-substitution during import, not identical model IDs.
+
+**How to avoid:**
+
+When building the Stadium model catalog's EQ section, verify the model ID for Stadium's 7-band Parametric EQ from a real `.hsp` file. Do not assume it is `HD2_EQ_Parametric` or any variant of the Helix EQ model IDs. The mandatory EQ block in Stadium chain rules must use this verified ID.
+
+Additionally, the Stadium model catalog must not include the four deprecated EQ model IDs. If validation checks against the Stadium catalog, these would fail — which is correct behavior. But if validation incorrectly allows them through, they will fail on hardware.
+
+**Warning signs:**
+
+- Stadium mandatory EQ block uses `PARAMETRIC_EQ = "Parametric EQ"` name from the Helix catalog without verification
+- Stadium catalog includes `HD2_EQ_Parametric`, `HD2_EQ_SimpleEQ`, `HD2_EQ_LowHighCut`, or `HD2_EQ_LowHighShelf` model IDs
+- Stadium validation whitelist allows any of the four deprecated EQ model IDs
+
+**Phase to address:** Stadium model catalog phase (EQ section specifically)
 
 ---
 
 ## Technical Debt Patterns
 
-Shortcuts that could be introduced while adding auth and persistence to the existing system.
+Shortcuts that seem reasonable but create long-term problems.
 
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| Store messages as a JSON blob in a single `chat` column | No separate `messages` table needed | Cannot query individual messages; cannot paginate; cannot sort; resume feature requires loading the entire chat | Never — separate messages table from day one |
-| Use `service_role` key in Next.js API routes | Bypasses RLS complexity during development | If the key ever leaks (client bundle, git commit, etc.), the entire database is exposed to anyone | Never in client-facing code; only in migration scripts |
-| Skip sequence numbers, rely on `created_at` for message ordering | Simpler schema | Client clock drift and concurrent writes cause ordering bugs; cannot be fixed without data migration | Never for chat ordering |
-| Enable RLS later, after prototyping | Faster initial development | All tables are publicly accessible while RLS is disabled; security hole in production if pushed prematurely | Never — enable RLS at table creation |
-| Store every preset version instead of overwriting | No "latest" tracking logic needed | Storage costs accumulate per regeneration; violates the "last preset per chat" design decision | Never — use deterministic key + upsert |
-| Implement auth protection only in middleware | One place to maintain | CVE-2025-29927 bypass; any middleware misconfiguration exposes all data | Never for data-access security; middleware is fine for redirect UX only |
-| Poll the database for chat list updates instead of real-time subscription | Simpler than Supabase Realtime | Polling adds constant database load; real-time is supported for free by Supabase and is the correct approach for sidebar updates | Acceptable as MVP-phase approach if real-time is deferred, but plan to replace |
-| Save the full AI streaming response as one message after completion | Simpler message storage logic | If the user navigates away mid-stream, the message is lost; progressive save during streaming is more resilient | Acceptable for MVP — losing a partial response is recoverable since the user can regenerate |
-
----
+| Reuse `preset-builder.ts` for Stadium by adding an `if (stadium)` branch | No new file, faster to write | Creates a builder that handles three incompatible formats; growing conditionals; Stadium differences are extensive enough to warrant their own file | Never — build `stadium-builder.ts` like `podgo-builder.ts` |
+| Copy HD2_ model IDs from Helix catalog to Stadium catalog | Fast catalog population | Every amp model ID is wrong (Stadium uses `Agoura_*`); presets silently load wrong models | Never — verify all IDs from real Stadium source |
+| Extend `DeviceTarget` type to `"helix_stadium"` before file format is confirmed | Unblocks TypeScript work | Creates false confidence that Stadium is wired up when format is unknown | Acceptable as a placeholder ONLY if clearly marked TODO with a test that fails |
+| Use `dsp: 0 \| 1` field from `BlockSpec` for Stadium path encoding | Reuses existing type | Stadium has 4 paths (1A, 1B, 2A, 2B); encoding 4 paths as 0/1 loses Path 1B and 2B | Never — if Stadium uses 4 paths, `BlockSpec` needs a Stadium-specific variant |
+| Guess Helix Floor device ID as same as LT (2162692) | Passes TypeScript | -8309 error for all Floor users; already the active regression | Never — must read from real Floor .hlx export |
+| Set `DEVICE_IDS.helix_stadium` to a placeholder value like `0` | Passes TypeScript | Silent wrong device ID in generated files; no error until hardware import fails | Acceptable only if accompanied by a test that asserts `0` is NOT a valid ID and must be replaced |
 
 ## Integration Gotchas
 
-Common mistakes when connecting auth, database, and storage to the existing system.
+Common mistakes when connecting to the Line 6 hardware ecosystem.
 
-| Integration Point | Common Mistake | Correct Approach |
-|-------------------|----------------|------------------|
-| NextAuth / Supabase Auth + App Router `SessionProvider` | Wrapping the layout without passing server-fetched session | `await auth()` in the server layout component and pass as prop to `SessionProvider` to prevent hydration mismatch |
-| Supabase client in API routes | Creating a new `createClient()` instance on every request | Use a singleton pattern or the `createServerClient` helper with request-scoped cookies; do not re-create the client per request |
-| Google OAuth callback URL | Registering localhost URL but not production URL in Google Cloud Console | Register both URLs before writing any code; the Google console setup is a prerequisite, not an afterthought |
-| Supabase Storage RLS | Creating storage bucket without a RLS policy | Storage objects are also subject to RLS; create `storage.objects` policies scoped to `auth.uid()` |
-| Chat message foreign keys | `messages.chat_id` references `chats.id` but `chats.user_id` is not validated in the messages table | RLS policy on `messages` must join through `chats` to verify the authenticated user owns the parent chat — not just that the chat exists |
-| Anonymous session ID | Generating the anonymous session ID client-side with `Math.random()` | Use a cryptographically random UUID (`crypto.randomUUID()`) stored in a cookie with a long expiry; client-side randomness is predictable |
-| Supabase connection in migration scripts | Using the Supabase JS client (REST API) for migrations | Migrations must use the direct database connection string (port 5432), not the pooler URL; Prisma/`pg` connect directly for DDL operations |
-| File storage download | Generating a long-lived public URL for preset files | Use signed URLs with short expiry (1 hour) generated server-side after session verification; public URLs bypass RLS |
-
----
+| Integration | Common Mistake | Correct Approach |
+|-------------|----------------|------------------|
+| Stadium preset generation | Assuming Stadium app accepts `.hlx` files as input format | Stadium uses `.hsp` format; `.hlx` is only for legacy Helix/HX hardware |
+| Stadium app on macOS | Assuming `HX Edit` opens Stadium presets | Stadium uses a separate "Helix Stadium" app for editing; HX Edit is for Helix/HX only |
+| Stadium import from Helix | Thinking import is the same as generation | Import converts `.hlx` → `.hsp` (one-way); generating directly requires Stadium's native format |
+| Device ID for Floor | Assuming LT and Floor share `2162692` | Phase 23 research confirms this assumption is wrong; Floor has a distinct ID confirmed to be something else |
+| Cab engine | Assuming `HD2_Cab*` model IDs work in Stadium | Stadium's Hybrid cab engine is removed; cab IDs may differ |
+| EQ mandatory block | Inserting `HD2_EQ_Parametric` as mandatory for Stadium | Stadium replaced this EQ; must verify Stadium's 7-band Parametric EQ model ID |
+| Snapshot controller | Assuming `@controller: 19` (Helix snapshot controller) works for Stadium | Pod Go uses `4`; Stadium may use yet another value — must verify from real `.hsp` |
+| Footswitch indices | Assuming `STOMP_FS_INDICES = [7, 8, 9, 10]` from `preset-builder.ts` | Helix Stadium XL has 12 footswitches with different FS index assignments; verify from real export |
 
 ## Performance Traps
 
+Patterns that work at small scale but fail as usage grows.
+
 | Trap | Symptoms | Prevention | When It Breaks |
 |------|----------|------------|----------------|
-| Session check on every anonymous API call | Anonymous generation takes 50–200ms longer after v2.0 | Gate all db calls on `if (session?.user?.id)` — skip entirely for anonymous | From day one if middleware or API routes run auth checks unconditionally |
-| Loading the entire chat message history to resume a conversation | Long chats (50+ messages) take 2–3 seconds to load on resume | Paginate: load the last 20 messages on resume, with "load more" for older history; index `messages` by `(chat_id, sequence_number)` | Any chat with 30+ messages |
-| Fetching the full chat list for the sidebar on every page navigation | Sidebar reload adds 300–500ms to every page change | Cache the chat list in React state after the first load; update optimistically on new chat creation; use Supabase Realtime for additions | Any user with 10+ chats |
-| Storing base64 preset data in the database instead of file storage | Message payload too large for database row | Preset files (.hlx/.pgp at 50–200KB) must go to Supabase Storage, not database columns; store only the Storage URL in the database | First time a preset is generated and stored as a DB column |
-| N+1 queries in the chat list: fetching messages count per chat individually | Sidebar takes 500ms–3s to populate for users with many chats | Use a single JOIN query: `SELECT chats.*, COUNT(messages.id) as message_count FROM chats LEFT JOIN messages ON messages.chat_id = chats.id GROUP BY chats.id` | Any user with 5+ chats |
-
----
+| Stadium model catalog sharing memory with Helix catalog | One large `getAllModels()` call returns LT + Floor + Stadium models mixed together | Keep Stadium models in a separate `STADIUM_*_MODELS` export; filter by device in `validate.ts` | At catalog build time — wrong IDs bleed across device validation |
+| Planner prompt including Stadium-only Agoura models for Helix devices | Claude selects `Agoura_AmpWhoWatt103` for a Helix LT preset | Device-filtered model list in planner prompt must strictly partition by device | First time Claude sees the full mixed catalog |
+| Permitting `HD2_*` and `Agoura_*` model IDs in same validate call | Validation passes for both — no clear device boundary | Device-specific validation: `validatePresetSpec(spec, "helix_stadium")` should only allow Stadium model IDs | Immediately — cross-device model IDs accepted silently |
 
 ## Security Mistakes
 
-Domain-specific security issues beyond general web security.
+Domain-specific security issues for this project.
 
 | Mistake | Risk | Prevention |
 |---------|------|------------|
-| Trusting `user_metadata` from JWT in RLS policies | Users can modify their own `user_metadata` claims; a policy using these values can be exploited to access other users' data | Use only `auth.uid()` in RLS policies — never `user_metadata` claims for ownership checks |
-| Exposing `service_role` key as a `NEXT_PUBLIC_` variable | Any user can read `NEXT_PUBLIC_` env variables from the browser; service role bypasses all RLS | `SUPABASE_SERVICE_ROLE_KEY` must never have the `NEXT_PUBLIC_` prefix; only `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `NEXT_PUBLIC_SUPABASE_URL` belong in public vars |
-| Using shared chat IDs that are predictable (sequential integers) | A user who knows one chat ID can guess adjacent chat IDs and attempt to read other users' chats | Use UUIDs (`gen_random_uuid()`) for all `chat_id` and `message_id` values — not sequential integers |
-| Allowing unauthenticated access to signed storage URLs by caching them | A signed URL cached in the browser is valid for its full expiry window; if shared or leaked it provides access to the user's preset file | Set signed URL expiry to 1 hour maximum; do not store signed URLs in the database — generate them on-demand per request |
-| Not validating chat ownership in resume flow | A user who intercepts another user's `chat_id` (e.g., from a leaked URL) can resume their conversation | Every API route that accepts a `chat_id` must verify `WHERE chats.user_id = auth.uid() AND chats.id = [chat_id]` — not just `WHERE chats.id = [chat_id]` |
-| Middleware-only auth on API routes (see Pitfall 7) | CVE-2025-29927 allows bypassing middleware; unprotected API route handlers expose all data | Verify session in every API route handler that accesses user data; run on Next.js 15.2.3+ |
-
----
+| Accepting user-supplied device type string directly as `DeviceTarget` without validation | `device: "helix_stadium"` could be sent before Stadium is shipped, generating broken files | TypeScript union type exhaustiveness check; API route validates `device` is one of the known supported values |
+| Generating Stadium presets before device ID is confirmed | Users download files that error on import; trust damage | Feature-flag Stadium device type behind a server-side constant; do not add to UI until confirmed working |
 
 ## UX Pitfalls
 
+Common user experience mistakes when adding a new device.
+
 | Pitfall | User Impact | Better Approach |
 |---------|-------------|-----------------|
-| Showing login prompt immediately on first visit | Blocks anonymous users from the core value; contradicts the "anonymous-first" design | Never prompt for login until the user attempts an action that requires it (e.g., clicking "Save chat" or the sidebar) |
-| Clearing the chat on login without warning | User loses the in-progress conversation when they sign in mid-session | Persist the anonymous chat to `sessionStorage` before the OAuth redirect; restore it after the callback |
-| Empty sidebar state with no guidance | Logged-in user with no chat history sees a blank sidebar with no explanation | Show a "No chats yet — start generating your first preset" state with a direct CTA |
-| No visual distinction between anonymous and authenticated mode | Users do not know that login would save their chats | Subtle persistent indicator: "Generating anonymously — sign in to save" visible below the chat, without blocking the flow |
-| Auto-loading the sidebar on mobile for authenticated users | Sidebar overlay obscures the chat on small screens | Sidebar is collapsed by default on mobile; authenticated users see a hamburger menu, not an open panel |
-| Resume conversation with no indication of where the conversation left off | Long chats open at the top (oldest message); user has to scroll to find the last exchange | Scroll to the bottom on resume; highlight the last user action with a subtle "Last session" marker |
-
----
+| Adding "Helix Stadium" to device selector before preset generation is confirmed working | Users select Stadium, get a broken download, lose trust | Only add Stadium to UI picker after end-to-end hardware test confirms presets load |
+| Offering Stadium download as `.hlx` extension | Users can't import — Stadium app shows "unsupported format" | Use `.hsp` extension for Stadium downloads |
+| Offering Stadium download as `.hsp` when format is unverified | Same import failure, harder to debug | Confirm format before shipping the download |
+| Same download button behavior for all devices | Stadium uses different app (Helix Stadium, not HX Edit); users don't know what to do with the file | Stadium download card should note "Import using Helix Stadium app (not HX Edit)" |
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **Auth hydration:** Log in, then hard-refresh the page. The logged-in UI (sidebar, user avatar) must appear immediately without any flash of the logged-out state.
-- [ ] **RLS enforcement:** With a logged-in session, make a direct REST API call to `/rest/v1/chats` without a user filter. Confirm it returns only that user's chats, not all chats.
-- [ ] **Anonymous flow unaffected:** Generate a preset without logging in. Confirm the time from first message to downloadable file is within 5% of the v1.3 baseline. Confirm no database calls appear in Supabase logs for this session.
-- [ ] **Anonymous-to-authenticated migration:** Start a chat anonymously, generate a preset, then sign in. Confirm the pre-login chat appears in the sidebar and the pre-login preset download still works.
-- [ ] **Preset file overwrite:** Generate a preset, then generate a second preset in the same chat. Confirm Supabase Storage shows exactly one file per chat, not two.
-- [ ] **Chat ordering after resume:** Open a resumed chat. Confirm messages appear in the correct chronological order. Do this for a chat where the user sent rapid follow-up messages.
-- [ ] **Connection count:** Under moderate load (10 concurrent users each generating a preset), check Supabase dashboard connection count. Confirm it does not spike above 50 connections.
-- [ ] **Google OAuth production:** Deploy to Vercel and attempt a Google login from the production URL. Confirm no `redirect_uri_mismatch` error. Confirm `NEXTAUTH_URL` is set to the production URL in Vercel's environment variables.
-- [ ] **Supabase keep-alive:** Wait 5 days without touching the project. Confirm the project is still active (not paused). This requires the keep-alive mechanism to be live.
-- [ ] **Signed URL access control:** Generate a signed preset download URL. Log out. Attempt to access the signed URL. After expiry (1 hour), confirm the URL returns 403.
-- [ ] **Service role key location:** Search the codebase for `SUPABASE_SERVICE_ROLE_KEY`. Confirm it only appears in server-side files, never in files that import from `"next/headers"` or are used in `"use client"` components.
+Things that appear complete but are missing critical pieces.
 
----
+- [ ] **Stadium in device selector:** Verify `buildStadiumFile()` is called, not `buildHlxFile()` — both produce valid-looking JSON but wrong format
+- [ ] **Stadium device ID:** Verify `DEVICE_IDS.helix_stadium` has a comment citing a real `.hsp` file inspection source, not a guess
+- [ ] **Stadium model catalog:** Verify at least one amp entry starts with `Agoura_` prefix — confirms catalog was built from Stadium sources, not copied from Helix catalog
+- [ ] **Helix Floor regression fix:** Verify `DEVICE_IDS.helix_floor` does NOT equal `DEVICE_IDS.helix_lt` (current broken state is both equal `2162692`)
+- [ ] **Test consistency:** Verify `orchestration.test.ts` line 93 literal matches `DEVICE_IDS.helix_floor` constant (currently `2162691` in test vs `2162692` in constant — these must agree)
+- [ ] **Stadium chain rules:** Verify `MAX_BLOCKS_PER_DSP` constant is NOT used in Stadium chain rules (Stadium uses per-path limits, not per-DSP)
+- [ ] **Stadium validation:** Verify `validatePresetSpec(spec, "helix_stadium")` rejects `HD2_Amp*` model IDs (if Stadium uses `Agoura_*` and `HX2_*`, the old `HD2_` IDs must not pass)
+- [ ] **Snapshot controller:** Verify Stadium snapshots use the correct `@controller` integer (Helix uses `19`, Pod Go uses `4`, Stadium may differ)
+- [ ] **Deprecated EQ models:** Verify Stadium model catalog does not contain `Simple EQ`, `Low/High Cut`, `Low/High Shelf`, or `Parametric 5-band` model IDs
 
 ## Recovery Strategies
 
+When pitfalls occur despite prevention, how to recover.
+
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| Auth hydration mismatch causing UI flicker | LOW | Add server-side session fetch to layout; pass session prop to SessionProvider; redeploy |
-| Supabase connection exhaustion | MEDIUM | Switch connection string to pooler URL (port 6543); enable Vercel Fluid Compute; existing in-flight connections drain within minutes of redeploy |
-| RLS not enabled on tables with existing data | HIGH | Audit existing data for unauthorized access; enable RLS; create policies; test all existing queries still return correct data — some may return empty results if policies are incomplete |
-| Google OAuth callback URL mismatch on deploy | LOW | Add production URL to Google Cloud Console; add `NEXTAUTH_URL` to Vercel env variables; redeploy is not required — Google console changes take effect immediately |
-| Supabase project paused | LOW | Restore from Supabase dashboard (30–60 second resume); set up keep-alive mechanism immediately after restore |
-| Anonymous session lost on login redirect | MEDIUM | Add `sessionStorage` persistence before OAuth redirect; add session restore after callback; add anonymous ID to sign-in callback for chat migration |
-| Multiple preset files per chat in storage | LOW | Write a one-time migration script to delete non-latest files; switch to deterministic key + upsert going forward |
-| Chat messages out of order in resume | HIGH | Backfill `sequence_number` column based on `created_at` order; switch sorting to `sequence_number`; risk of incorrect ordering for concurrent-write messages in history |
-| Performance regression in anonymous flow | LOW-MEDIUM | Add `if (session?.user?.id)` guard to every API route; remove auth routes from middleware matcher; measure before/after latency with Vercel function logs |
-
----
+| Stadium format wrong (used .hlx structure) | HIGH | Inspect real .hsp file; rebuild stadium-builder.ts from scratch; re-test all Stadium presets |
+| Stadium device ID wrong (-8309 on hardware) | LOW | Read data.device from real .hsp export; update DEVICE_IDS.helix_stadium; update test assertion; redeploy |
+| Floor device ID still wrong after v3.0 ships | LOW (code) / HIGH (user trust) | Read data.device from real Floor .hlx export; hotfix DEVICE_IDS.helix_floor; update test; redeploy |
+| Stadium model catalog with wrong HD2_ IDs | HIGH | All generated presets load wrong models; must rebuild catalog from Stadium source; retest all model paths |
+| Stadium block limits too tight (8 vs 12) | MEDIUM | Update chain-rules constant; regenerate test fixtures; no user-facing breakage for existing presets |
+| Stadium EQ mandatory block uses deprecated model | MEDIUM | Identify correct Stadium 7-band Parametric EQ model ID; update chain-rules mandatory insertion; re-verify |
 
 ## Pitfall-to-Phase Mapping
 
+How roadmap phases should address these pitfalls.
+
 | Pitfall | Prevention Phase | Verification |
 |---------|------------------|--------------|
-| Pitfall 1: Auth hydration mismatch | Auth Phase | Hard-refresh while logged in; no flash of logged-out UI |
-| Pitfall 2: Database connection exhaustion | Database Phase (any first db query) | Check Supabase connection count under 10 concurrent users; confirm pooler URL in connection string |
-| Pitfall 3: RLS disabled/misconfigured | Database Phase (table creation) | Direct REST API call returns only own data; Security Advisor shows green |
-| Pitfall 4: Anonymous session lost on login | Auth Phase (sign-in flow) | Start anonymous chat → sign in → chat appears in sidebar |
-| Pitfall 5: Google OAuth callback mismatch | Auth Phase (before first deploy) | Successful login from production Vercel URL |
-| Pitfall 6: Supabase free tier pause | Database Phase (project creation) | Keep-alive configured; project active after 5-day wait |
-| Pitfall 7: Middleware-only auth | Auth Phase (API route design) | Direct API request without session returns 401 |
-| Pitfall 8: Storage cost from multiple versions | File Storage Phase | Supabase Storage bucket shows exactly 1 file per chat after multiple generations |
-| Pitfall 9: Message ordering bugs | Database Phase (schema) | Resumed chat shows messages in correct logical order |
-| Pitfall 10: Anonymous flow regression | All phases | Time-to-preset for anonymous users within 5% of v1.3 baseline |
+| Stadium assumes .hlx format | Phase 1: Stadium file format research — inspect real .hsp before writing any builder code | `stadium-builder.ts` file exists; uses `.hsp` extension; NOT importing from `preset-builder.ts` |
+| Stadium device ID unknown/wrong | Phase 1: File format research — `data.device` must be read from real .hsp | `DEVICE_IDS.helix_stadium` comment cites real file inspection; test assertion uses same value |
+| Floor device ID regression | Phase 1 fix: Floor ID correction before Stadium work | `DEVICE_IDS.helix_floor !== DEVICE_IDS.helix_lt`; `orchestration.test.ts` line 93 literal matches constant; tests pass |
+| Model catalog HD2_ naming | Phase 2: Stadium model catalog — built from Agoura_ sources | At least one amp model has `Agoura_` prefix; validation rejects `HD2_Amp*` for Stadium |
+| DSP/block limits wrong | Phase 3: Stadium chain rules — use per-path limits from real hardware | `STADIUM_MAX_BLOCKS_PER_PATH` constant defined; value is 12 (or confirmed actual); Helix `MAX_BLOCKS_PER_DSP = 8` not used for Stadium |
+| EQ deprecated models | Phase 2: Stadium model catalog (EQ section) | Stadium catalog missing `Simple EQ`, `Low/High Cut`, `Low/High Shelf`; mandatory EQ uses verified ID |
+| Snapshot controller wrong | Phase 1: File format research + Phase 4: Stadium builder | Stadium builder snapshot section uses verified `@controller` value, not assumed 19 or 4 |
+| UI ships before hardware verified | Final phase: Stadium device selector + download | Device selector only shows Stadium after end-to-end import test on real Stadium hardware is confirmed |
 
----
+## The Device ID Verification Protocol
+
+The Helix Floor regression happened because device IDs were assumed, not verified from hardware. This protocol must be followed for every new device:
+
+### Step 1: Obtain Real Hardware Export
+Export any preset from the target device using its official editor application.
+- Helix LT/Floor: HX Edit → Export Preset → .hlx file
+- Pod Go: POD Go Edit → Export Preset → .pgp file
+- Helix Stadium: Helix Stadium app → Export Preset → .hsp file
+
+### Step 2: Read data.device
+Open the exported file in a text editor (all known Line 6 formats are JSON-based). Find `"device": [integer]` in the `data` section. This integer is the authoritative device ID.
+
+### Step 3: Verify Against Expected Value
+Cross-reference with any existing constant in `types.ts`. If they differ, the constant is wrong. If no constant exists yet, the read integer IS the value to use.
+
+### Step 4: Document Source in Code
+```typescript
+// CORRECT — cite source
+helix_stadium: 2162XXX, // Source: .hsp export from Helix Stadium v1.2 on 2026-03-XX
+
+// WRONG — never do this
+helix_stadium: 2162698, // guessed based on pattern
+helix_stadium: 2162692, // assumed same as LT
+```
+
+### Step 5: Update Test With Same Literal
+The test assertion must use BOTH the constant reference AND the same numeric literal:
+```typescript
+expect(hlx.data.device).toBe(DEVICE_IDS.helix_stadium);         // catches constant removal
+expect(hlx.data.device).toBe(2162XXX); // catches silent constant value change
+```
+
+If these two assertions ever disagree, a regression has been introduced.
 
 ## Sources
 
-**Official Documentation (HIGH confidence):**
-- [Next.js Hydration Error Docs](https://nextjs.org/docs/messages/react-hydration-error) — Official explanation of hydration mismatch causes and fixes
-- [Next.js Server and Client Components](https://nextjs.org/docs/app/getting-started/server-and-client-components) — RSC boundary rules; React context not supported in Server Components
-- [Vercel: Connection Pooling with Serverless Functions](https://vercel.com/kb/guide/connection-pooling-with-functions) — Official Vercel guide on the connection problem and Fluid Compute solution
-- [Vercel: Efficiently Manage Database Connection Pools with Fluid Compute](https://vercel.com/kb/guide/efficiently-manage-database-connection-pools-with-fluid-compute) — Fluid Compute connection reuse details
-- [Vercel Functions Limitations](https://vercel.com/docs/functions/limitations) — Hobby plan: 60s max duration; Fluid Compute changes duration limits
-- [Supabase Row Level Security Docs](https://supabase.com/docs/guides/database/postgres/row-level-security) — RLS opt-in model, policy syntax, common mistakes
-- [Supabase RLS Performance and Best Practices](https://supabase.com/docs/guides/troubleshooting/rls-performance-and-best-practices-Z5Jjwv) — Index columns used in RLS policies; performance impact
-- [Supabase Storage Access Control](https://supabase.com/docs/guides/storage/security/access-control) — Storage object RLS policies
-- [Supabase Production Checklist](https://supabase.com/docs/guides/deployment/going-into-prod) — Official pre-launch checklist
-- [NextAuth.js Google Provider](https://next-auth.js.org/providers/google) — Callback URL format requirements
+### HIGH Confidence (direct codebase analysis)
+- `src/lib/helix/types.ts` — DEVICE_IDS current values (`helix_floor: 2162692`, `helix_lt: 2162692`, `pod_go: 2162695`)
+- `src/lib/helix/orchestration.test.ts` — Line 87-94: test asserts `helix_floor` should produce `2162691`, contradicting the constant
+- `src/lib/helix/chain-rules.ts` — `MAX_BLOCKS_PER_DSP = 8`, Pod Go path exceptions, showing how device-specific rules are structured
+- `src/lib/helix/podgo-builder.ts` — Pattern for device-specific builder (Stadium should follow this pattern)
+- `.planning/phases/23-fix-incompatible-target-device-type-error-8309/23-RESEARCH.md` — Documented history of Floor device ID bug, correction methodology
 
-**Community/Engineering Analysis (MEDIUM confidence):**
-- [Fixing RLS Misconfigurations in Supabase — ProsperaSoft](https://prosperasoft.com/blog/database/supabase/supabase-rls-issues/) — Documented common RLS mistakes including missing WITH CHECK and INSERT/SELECT policy gaps
-- [Supabase Security Flaw: 170+ Apps Exposed by Missing RLS](https://byteiota.com/supabase-security-flaw-170-apps-exposed-by-missing-rls/) — CVE-2025-48757 analysis confirming RLS misconfiguration is systemic
-- [Next.js Session Management: Solving NextAuth Persistence Issues — Clerk](https://clerk.com/articles/nextjs-session-management-solving-nextauth-persistence-issues) — SessionProvider hydration pattern
-- [NextAuth.js to Better Auth: Why I Switched — DEV](https://dev.to/pipipi-dev/nextauthjs-to-better-auth-why-i-switched-auth-libraries-31h3) — Auth library landscape in 2025; Better Auth anonymous plugin
-- [Designing Chat Architecture for Reliable Message Ordering — Ably](https://ably.com/blog/chat-architecture-reliable-message-ordering) — Sequence number vs. timestamp ordering for chat systems
-- [CVE-2025-29927: Next.js Middleware Bypass — Clerk Article](https://clerk.com/articles/nextjs-session-management-solving-nextauth-persistence-issues) — Middleware-only auth insufficient; data access layer pattern
-- [Prevent Supabase Free Tier Pausing — Medium](https://shadhujan.medium.com/how-to-keep-supabase-free-tier-projects-active-d60fd4a17263) — Keep-alive strategies for free plan
-- [Complete Guide: Deploying Next.js + Google OAuth to Vercel — Medium](https://medium.com/@bhuvan.thota3/complete-guide-deploying-next-js-prisma-google-oauth-to-vercel-real-issues-solutions-2213505505b9) — Redirect URI mismatch patterns in production deployments
-- [Incorrect redirect URI in NextAuth Google docs — GitHub Issue #10713](https://github.com/nextauthjs/next-auth/issues/10713) — Confirmed App Router vs Pages Router callback path difference
+### HIGH Confidence (official Line 6 documentation)
+- Line 6 Stadium Manual (manuals.line6.com/en/helix-stadium/live/presets) — Confirms `.hsp` format, one-way conversion, 48 block locations
+- Line 6 Stadium Manual (manuals.line6.com/en/helix-stadium/live/signal-path-routing) — 4-path architecture (1A, 1B, 2A, 2B), 12 blocks per path
+- Line 6 announcement (line6.com/support/announcement/118) — `.hlx` → `.hsp` one-way, legacy Hybrid cab removal, deprecated EQ models
+- Line 6 Helix Stadium Models (line6.com/helix-stadium-models/) — Confirms Agoura model names for Stadium
+
+### MEDIUM Confidence (community reverse engineering, single source)
+- ilikekillnerds.com (December 2025) — Reverse engineering Helix Stadium XL editor protocol; confirms `Agoura_*` and `HX2_*` model ID naming conventions; msgpack model definition file at `[app]/Contents/Resources/modeldefs/p35md-*.bin`
+- The Gear Forum Helix Stadium Talk thread — Confirms `.hsp` files are shareable, 15-47 KB sizes (consistent with JSON)
+
+### LOW Confidence (unverified, needs hardware confirmation)
+- `.hsp` internal JSON structure: assumed JSON based on `.hlx` precedent and community forum file sizes (15-47 KB, consistent with JSON). NOT confirmed by opening a real `.hsp` in a text editor.
+- Stadium `data.device` integer: completely unknown — no community source found with the actual integer value
+- `@controller` integer for Stadium snapshots: unknown — Helix uses 19, Pod Go uses 4, Stadium value not found in any source
 
 ---
-
-*Pitfalls research for: Adding auth, chat persistence, and file storage to HelixAI (v2.0)*
-*Researched: 2026-03-03*
+*Pitfalls research for: Helix Stadium device addition (v3.0)*
+*Researched: 2026-03-04*

@@ -1,314 +1,277 @@
 # Architecture Research
 
-**Domain:** Persistent chat, authentication, and file storage — v2.0 additions to existing stateless Next.js App Router guitar preset generator
-**Researched:** 2026-03-03
-**Confidence:** HIGH — all integration patterns verified against official Supabase, Auth.js, and Next.js documentation; existing codebase fully inspected
+**Domain:** Helix Stadium device extension — v3.0 addition to existing HelixAI preset generator
+**Researched:** 2026-03-04
+**Confidence:** HIGH for existing codebase analysis; MEDIUM for Stadium .hsp format (not publicly documented); HIGH for DSP/routing constraints (official Line 6 manuals)
 
 ---
 
 ## Context: What This Document Covers
 
-This document covers the v2.0 Persistent Chat Platform milestone only. It answers:
-- How auth, database, and file storage integrate with the existing Next.js App Router + Vercel serverless architecture
-- What new routes, components, and providers are needed
-- How data flows change relative to v1.3
-- What build order is required given dependencies
-- How the chat sidebar interacts with the existing single-page chat flow
+This document covers the v3.0 Helix Stadium milestone only. It answers:
 
-The existing validated stack (Next.js App Router, TypeScript, Tailwind CSS, Claude Sonnet 4.6, Gemini chat, Vercel) is NOT re-researched here.
+- Whether Helix Stadium reuses `preset-builder.ts` or needs a new `stadium-builder.ts`
+- Exactly which files change versus which stay the same
+- The suggested build order with dependency rationale
+- How `page.tsx` device selector expands
+- Key unknowns that must be resolved before writing the builder
+
+The existing v2.0 architecture (Supabase auth, persistence, sidebar) is NOT re-researched here.
+
+---
+
+## Critical Decision: New Builder vs. Extend Existing
+
+**Recommendation: New `stadium-builder.ts`. Do NOT extend `preset-builder.ts`.**
+
+Evidence:
+
+1. **Different file format.** Helix Stadium uses `.hsp` (Helix Stadium Preset). `preset-builder.ts` emits `.hlx` (Helix LT/Floor format) with `schema: "L6Preset"`. These are distinct formats confirmed by Line 6's own documentation: "Helix Stadium and the Helix Stadium application save and export all presets in a new (.hsp) preset file format." Source: https://manuals.line6.com/en/helix-stadium/live/presets
+
+2. **Not back-compatible.** "Any imported Helix/HX/Helix Native preset (.hlx) and Favorite (.fav) files are no longer back-compatible with the original device or software once exported from Helix Stadium." This means the internal structure has diverged enough that the format is a one-way street. Sharing builder logic assumes structural similarity that Line 6 has explicitly not guaranteed.
+
+3. **Different model IDs.** Stadium uses Agoura models with new integer IDs (e.g., `Agoura_AmpWhoWatt103`) distinct from the HX model IDs used in `.hlx` presets. The `.hsp` format encodes these differently.
+
+4. **Established precedent: Pod Go.** When Pod Go was added (v1.2), a separate `podgo-builder.ts` was created precisely because the `.pgp` format differed from `.hlx` in keys, DSP count, snapshot count, controller ID, and block encoding. The same logic applies here.
+
+5. **Zero regression risk.** A new file means `preset-builder.ts` is never touched. Helix LT/Floor generation cannot regress. This is the safest pattern for a format that requires real-device inspection to fully understand.
 
 ---
 
 ## System Overview
 
-### Current Architecture (v1.3 — Stateless)
-
 ```
-+--------------------------------------------------------------------+
-|                     BROWSER (page.tsx)                             |
-|                                                                    |
-|  +------------------+  +------------------+  +----------------+   |
-|  | Chat Interview   |  | Device Selector  |  | Image Upload   |   |
-|  | (React useState) |  | (React useState) |  | (React useState|   |
-|  +--------+---------+  +--------+---------+  +--------+-------+   |
-|           |                     |                     |           |
-+-----------+---------------------+---------------------+-----------+
-            |
-            v POST body: { messages[], device, rigIntent, rigText }
-+--------------------------------------------------------------------+
-|                   VERCEL SERVERLESS FUNCTIONS                      |
-|                                                                    |
-|  /api/chat      /api/generate      /api/vision      /api/map      |
-|  (Gemini SSE)   (Claude Planner    (Claude Vision)  (mapping)     |
-|                  + Knowledge Layer)                                |
-|                                                                    |
-|  NO database. NO user identity. NO persistent state.              |
-+--------------------------------------------------------------------+
-```
-
-### Target Architecture (v2.0 — Persistent)
-
-```
-+--------------------------------------------------------------------+
-|                     BROWSER                                        |
-|                                                                    |
-|  +---------------+  +----------------------------------+           |
-|  | Chat Sidebar  |  | Chat Area (existing page.tsx)   |           |
-|  | (NEW — server |  |                                  |           |
-|  |  component    |  |  +----------------------------+  |           |
-|  |  + client     |  |  | Chat Interview / Generate  |  |           |
-|  |  toggle)      |  |  | (modified — saves to DB)   |  |           |
-|  |               |  |  +----------------------------+  |           |
-|  | [past chats]  |  |                                  |           |
-|  | [new chat +]  |  +----------------------------------+           |
-|  +-------+-------+                    |                            |
-|          |                            |                            |
-+----------+----------------------------+----------------------------+
-           |                            |
-           v                            v
-+--------------------------------------------------------------------+
-|                   VERCEL SERVERLESS FUNCTIONS                      |
-|                                                                    |
-|  EXISTING (unchanged):    NEW:                                     |
-|  /api/chat (Gemini)       /api/auth/[...nextauth]  (Auth.js v5)   |
-|  /api/generate (Claude)   /api/conversations       (CRUD)          |
-|  /api/vision (Claude)     /api/conversations/[id]  (read/update)   |
-|  /api/map (mapping)       /api/preset-upload       (signed URL)    |
-|                                                                    |
-+--------------------------------------------------------------------+
-           |                            |
-           v                            v
-+--------------------------------------------------------------------+
-|                      SUPABASE                                      |
-|                                                                    |
-|  Auth (native Supabase Auth with Google OAuth + anonymous sign-in) |
-|                                                                    |
-|  PostgreSQL:                                                       |
-|  +-------------------+  +------------------+  +-----------------+ |
-|  | users             |  | conversations    |  | messages        | |
-|  | (id, email, name, |  | (id, user_id,    |  | (id,            | |
-|  |  avatar_url,      |  |  title, device,  |  |  conversation_  | |
-|  |  created_at,      |  |  created_at,     |  |  id, role,      | |
-|  |  is_anonymous)    |  |  updated_at,     |  |  content,       | |
-|  +-------------------+  |  preset_url)     |  |  created_at)    | |
-|                         +------------------+  +-----------------+ |
-|                                                                    |
-|  Storage:                                                          |
-|  +---------------------------------------------------+            |
-|  | presets bucket (private)                          |            |
-|  | path: {user_id}/{conversation_id}/preset.hlx      |            |
-|  | path: {user_id}/{conversation_id}/preset.pgp      |            |
-|  +---------------------------------------------------+            |
-+--------------------------------------------------------------------+
++---------------------------------------------------------------------+
+|                        Frontend (page.tsx)                           |
+|                                                                      |
+|  Device Selector:                                                    |
+|    [LT]  [FLOOR]  [POD GO]  [STADIUM]  <-- add Stadium here         |
+|                                                                      |
+|  selectedDevice: "helix_lt" | "helix_floor" | "pod_go"              |
+|                              | "helix_stadium"  <-- add              |
+|                                                                      |
+|  downloadPreset():                                                   |
+|    fileExtension ".hsp", suffix "_Stadium"  <-- add                 |
++------------------------------+--------------------------------------+
+                               |
+                      POST /api/generate
+                      { device: "helix_stadium", ... }
+                               |
++------------------------------v--------------------------------------+
+|                   API Route (generate/route.ts)                      |
+|                                                                      |
+|  Resolve deviceTarget:                                               |
+|    if device === "helix_stadium" -> "helix_stadium"  <-- add        |
+|                                                                      |
+|  Pipeline (shared, device-aware):                                   |
+|    callClaudePlanner(messages, deviceTarget, toneContext)            |
+|    assembleSignalChain(toneIntent, deviceTarget)                     |
+|    resolveParameters(chain, toneIntent)                              |
+|    buildSnapshots(parameterized, toneIntent.snapshots)               |
+|    validatePresetSpec(presetSpec, deviceTarget)                      |
+|                                                                      |
+|  Branch on deviceTarget:                                             |
+|    isPodGo?   -> buildPgpFile()     -> ".pgp"                       |
+|    isStadium? -> buildHspFile()     -> ".hsp"  <-- add              |
+|    else       -> buildHlxFile()     -> ".hlx"                       |
++------------------------------+--------------------------------------+
+                               |
+                 PresetSpec (device-agnostic intermediate)
+                               |
++------------------------------v--------------------------------------+
+|                    Knowledge Layer (deterministic)                   |
+|                                                                      |
+|  chain-rules.ts    param-engine.ts    snapshot-engine.ts            |
+|                                                                      |
+|  Stadium changes:                                                    |
+|    chain-rules.ts: add isStadium() branch                           |
+|      - 12 blocks per path (vs 8 per DSP for Helix LT/Floor)        |
+|      - full mandatory blocks (EQ, Gain Block, boost, gate)          |
+|      - note: Stadium 7-band Parametric EQ replaces 5-band           |
+|                                                                      |
+|  param-engine.ts: NO CHANGE (model-level, not device-level)         |
+|  snapshot-engine.ts: VERIFY snapshot count (likely 8, same as LT)   |
++------------------------------+--------------------------------------+
+                               |
++------------------------------v--------------------------------------+
+|                        Builder Layer                                 |
+|                                                                      |
+|  preset-builder.ts     -> .hlx  (LT, Floor) -- NO CHANGE            |
+|  podgo-builder.ts      -> .pgp  (Pod Go)    -- NO CHANGE            |
+|  stadium-builder.ts    -> .hsp  (Stadium)   -- NEW FILE              |
++---------------------------------------------------------------------+
 ```
 
 ---
 
 ## Component Responsibilities
 
-| Component | Responsibility | Existing or New |
-|-----------|----------------|-----------------|
-| `src/app/layout.tsx` | Root layout — add Supabase session provider, sidebar shell | MODIFIED |
-| `src/app/page.tsx` | Main chat flow — add conversation ID state, auto-save on generate | MODIFIED |
-| `src/components/sidebar/ChatSidebar.tsx` | Pull-out panel — list past conversations, new chat button | NEW |
-| `src/components/sidebar/ChatHistoryList.tsx` | Server component — fetches conversation list from Supabase | NEW |
-| `src/components/sidebar/SidebarToggle.tsx` | Client component — toggle open/closed state | NEW |
-| `src/components/auth/AuthButton.tsx` | Login / avatar / logout — reflects current session | NEW |
-| `src/lib/supabase/server.ts` | `createServerClient()` — Supabase client for server components, route handlers | NEW |
-| `src/lib/supabase/client.ts` | `createBrowserClient()` — Supabase client for client components | NEW |
-| `src/lib/supabase/middleware.ts` | Session refresh via `updateSession()` | NEW |
-| `middleware.ts` (project root) | Next.js middleware — calls `updateSession`, routes session cookies | NEW |
-| `src/app/auth/callback/route.ts` | PKCE callback for Google OAuth + anonymous link flow | NEW |
-| `/api/conversations` route | Create new conversation, list user conversations | NEW |
-| `/api/conversations/[id]` route | Fetch full message history, update title | NEW |
-| `/api/preset-upload` route | Create Supabase Storage signed upload URL, return to client | NEW |
-| `src/app/api/generate/route.ts` | Existing generation — extended to accept `conversationId?`, save preset | MODIFIED |
-| `src/app/api/chat/route.ts` | Existing Gemini chat — extended to persist messages when `conversationId` provided | MODIFIED |
+### Files That Change
+
+| File | Change Type | What Changes |
+|------|-------------|--------------|
+| `src/lib/helix/types.ts` | Extend | Add `"helix_stadium"` to `DeviceTarget` union; add `isStadium()` predicate; add `DEVICE_IDS.helix_stadium` (value requires .hsp inspection); fix `helix_floor` device ID regression (currently 2162692, test expects 2162691) |
+| `src/lib/helix/config.ts` | Extend | Add `STADIUM_FIRMWARE_CONFIG` block with version constants (requires .hsp inspection) |
+| `src/lib/helix/models.ts` | Extend | Add Stadium availability flags on existing models; add Agoura model entries (~50 amp channels); Stadium does NOT have: Simple EQ, Low/High Cut, Low/High Shelf, 5-band Parametric EQ |
+| `src/lib/helix/chain-rules.ts` | Extend | Add `isStadium()` branch for 12-block/path limit; use Stadium 7-band Parametric EQ model name for mandatory EQ block |
+| `src/lib/helix/validate.ts` | Extend | Add Stadium validation rules (block count, snapshot count) |
+| `src/lib/helix/index.ts` | Extend | Export `buildHspFile`, `summarizeStadiumPreset`, `isStadium`, Stadium constants |
+| `src/lib/planner.ts` | Extend | Add `isStadium` device name label ("Helix Stadium"); add Stadium model filter branch |
+| `src/app/api/generate/route.ts` | Extend | Add `"helix_stadium"` device resolution; add `isStadium()` branch calling `buildHspFile()`; Supabase storage path uses `.hsp` for Stadium |
+| `src/app/page.tsx` | Extend | Add `"helix_stadium"` to both device selector arrays; update `selectedDevice` state type; update `downloadPreset()` suffix (`"_Stadium"`); update `downloadStoredPreset()` and device badge |
+
+### Files That Are New
+
+| File | Purpose |
+|------|---------|
+| `src/lib/helix/stadium-builder.ts` | `.hsp` file builder — the primary deliverable of the Stadium milestone |
+
+### Files That Must Not Change
+
+| File | Reason |
+|------|--------|
+| `src/lib/helix/preset-builder.ts` | Helix LT/Floor .hlx generation — no Stadium code here |
+| `src/lib/helix/podgo-builder.ts` | Pod Go .pgp generation — untouched |
+| `src/lib/helix/param-engine.ts` | Parameter resolution is model-level, not device-level |
+| `src/lib/helix/snapshot-engine.ts` | Unless Stadium snapshot count differs from Helix LT/Floor's 8 |
+| `src/lib/helix/tone-intent.ts` | ToneIntent schema is device-agnostic |
+| `src/lib/rig-mapping.ts` | Rig emulation mapping is device-agnostic until Phase 8 |
 
 ---
 
 ## Recommended Project Structure (additions only)
 
 ```
-src/
-├── app/
-│   ├── api/
-│   │   ├── chat/route.ts              # MODIFIED — persist messages when conversationId provided
-│   │   ├── generate/route.ts          # MODIFIED — persist preset URL when conversationId provided
-│   │   ├── conversations/
-│   │   │   ├── route.ts               # NEW — POST create, GET list
-│   │   │   └── [id]/
-│   │   │       └── route.ts           # NEW — GET history, PATCH title
-│   │   ├── preset-upload/
-│   │   │   └── route.ts               # NEW — signed upload URL for Supabase Storage
-│   │   └── auth/
-│   │       └── callback/
-│   │           └── route.ts           # NEW — OAuth PKCE callback handler
-│   ├── layout.tsx                     # MODIFIED — add sidebar shell, session context
-│   └── page.tsx                       # MODIFIED — conversation ID state, save triggers
-│
-├── components/
-│   ├── sidebar/
-│   │   ├── ChatSidebar.tsx            # NEW — outer sidebar shell (client, handles toggle)
-│   │   ├── ChatHistoryList.tsx        # NEW — server component, fetches from Supabase
-│   │   └── SidebarToggle.tsx          # NEW — hamburger / close button, client only
-│   └── auth/
-│       └── AuthButton.tsx             # NEW — login with Google / avatar / logout
-│
-├── lib/
-│   └── supabase/
-│       ├── server.ts                  # NEW — createServerClient() using @supabase/ssr
-│       ├── client.ts                  # NEW — createBrowserClient() using @supabase/ssr
-│       └── middleware.ts              # NEW — updateSession() helper
-│
-└── middleware.ts                      # NEW — project root, session refresh on every request
+src/lib/helix/
+├── types.ts              # MODIFIED: add "helix_stadium", isStadium(), fix helix_floor ID
+├── config.ts             # MODIFIED: add STADIUM_FIRMWARE_CONFIG
+├── models.ts             # MODIFIED: add Agoura models, Stadium availability flags
+├── chain-rules.ts        # MODIFIED: add isStadium() 12-block/path branch
+├── validate.ts           # MODIFIED: add Stadium validation case
+├── index.ts              # MODIFIED: export new Stadium symbols
+├── stadium-builder.ts    # NEW: .hsp builder
+src/lib/
+├── planner.ts            # MODIFIED: add "helix_stadium" device label + filter
+src/app/
+├── page.tsx              # MODIFIED: Stadium in device selector, download handling
+└── api/generate/route.ts # MODIFIED: Stadium routing branch
 ```
 
 ---
 
 ## Architectural Patterns
 
-### Pattern 1: Native Supabase Auth (not Auth.js adapter)
+### Pattern 1: New Builder per File Format (established by Pod Go)
 
-**What:** Use Supabase Auth directly via `@supabase/ssr` for all auth operations, including Google OAuth and anonymous sign-in. Do NOT use the `@auth/supabase-adapter` with Auth.js.
+**What:** Each distinct hardware format family has its own builder module. A shared `PresetSpec` intermediate flows into device-specific serialization.
 
-**When to use:** Any time user identity is needed in server components, route handlers, or client components.
-
-**Why not Auth.js Supabase adapter:** The `@auth/supabase-adapter` stores sessions in a separate `next_auth` schema and does not interface with Supabase Auth. This means Supabase's native `signInAnonymously()` and `linkIdentity()` for anonymous-to-authenticated upgrade are unavailable — which is the core mechanic of the anonymous-first requirement. Native Supabase Auth is the only supported path for this use case.
+**When to use:** When the preset file format, JSON schema, or block encoding differs meaningfully between devices.
 
 **Trade-offs:**
-- No need for Auth.js `next-auth` package — one fewer dependency
-- Supabase Auth handles Google OAuth natively with fewer configuration steps
-- Supabase Auth handles PKCE flow natively for App Router compatibility
-- Locked to Supabase as auth provider (acceptable given Supabase is also the database)
+- Pro: Zero regression risk to existing devices — each builder is isolated
+- Pro: Independently testable
+- Pro: Format-specific constants are localized (no conditional explosion in shared code)
+- Con: Some structural duplication between builders (footswitch logic, snapshot serialization)
+
+**Why Stadium needs this:** Stadium uses `.hsp` (not `.hlx`), encodes Agoura model IDs differently, and the internal JSON structure is not yet known — building on assumptions about sharing structure with `.hlx` is high risk.
 
 **Example:**
 ```typescript
-// src/lib/supabase/server.ts
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+// stadium-builder.ts — mirror podgo-builder.ts structure
+import { STADIUM_FIRMWARE_CONFIG } from "./config";
+import { DEVICE_IDS } from "./types";
 
-export async function createSupabaseServerClient() {
-  const cookieStore = await cookies()
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return cookieStore.getAll() },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
-          )
-        },
-      },
-    }
-  )
+export function buildHspFile(spec: PresetSpec): HspFile {
+  return {
+    version: STADIUM_FIRMWARE_CONFIG.HSP_VERSION,  // from .hsp inspection
+    data: {
+      device: DEVICE_IDS.helix_stadium,             // from .hsp inspection
+      device_version: STADIUM_FIRMWARE_CONFIG.HSP_DEVICE_VERSION,
+      meta: { ... },
+      tone: buildHspTone(spec),
+    },
+    meta: { original: 0, pbn: 0, premium: 0 },
+    schema: "L6Preset",  // VERIFY: may be different for .hsp
+  };
 }
 ```
 
-### Pattern 2: Anonymous-First with Identity Linking
+### Pattern 2: DeviceTarget Union Extension
 
-**What:** On first page load, call `supabase.auth.signInAnonymously()` if no session exists. The user gets a real Supabase user ID immediately, but with `is_anonymous: true` in their JWT. When they click "Login with Google," call `supabase.auth.linkIdentity({ provider: 'google' })` to upgrade that existing session — all data (conversations, presets) migrated automatically because the user ID does not change.
+**What:** Add `"helix_stadium"` to the `DeviceTarget` union and a corresponding `isStadium()` predicate. TypeScript exhaustiveness checks flag all unhandled cases.
 
-**When to use:** Anonymous-first auth is the core UX requirement: non-logged-in users get full functionality, login unlocks persistence history.
-
-**Critical requirement:** The Supabase project must have "Enable Manual Linking" turned on in the Auth settings dashboard. Without this, `linkIdentity()` fails silently.
+**When to use:** Every time a new Line 6 device is added.
 
 **Trade-offs:**
-- Anonymous sessions persist only in the current browser — clearing cookies loses the history, which is acceptable per the requirements (logging in is what creates durable persistence)
-- Known issue: user metadata (avatar_url, email, full_name) may not populate immediately after linking; it appears on the next sign-in. Plan for a re-fetch on the post-link callback.
-- RLS policies must distinguish between anonymous users (read own data only) and authenticated users (read own data only) using the `is_anonymous` claim
+- TypeScript will flag every switch/conditional over `DeviceTarget` that does not handle Stadium — this is the desired behavior
+- All existing `isHelix()` and `isPodGo()` callsites remain unchanged
 
-**Example:**
+**The Helix Floor Device ID Regression:**
+
+The test at `orchestration.test.ts:87-93` expects `DEVICE_IDS.helix_floor` to be `2162691`, but `types.ts:173` sets it to `2162692` (same as LT, with comment "Floor and LT share the same preset format and device ID"). This is the bug described in PROJECT.md. Resolution requires inspecting a real `.hlx` file exported from a Helix Floor device. If Floor and LT genuinely share ID 2162692, the test is wrong. If the correct Floor ID is 2162691, `types.ts` must be corrected. This MUST be resolved before extending `DeviceTarget` to avoid compounding a known incorrect value.
+
 ```typescript
-// In a client component — initialize session on mount
-useEffect(() => {
-  const initSession = async () => {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
-      await supabase.auth.signInAnonymously()
-    }
+// types.ts — after fix and Stadium addition
+export type DeviceTarget = "helix_lt" | "helix_floor" | "pod_go" | "helix_stadium";
+
+export const DEVICE_IDS: Record<DeviceTarget, number> = {
+  helix_lt: 2162692,
+  helix_floor: 2162691, // FIX if test expectation is correct
+  pod_go: 2162695,
+  helix_stadium: ???,   // UNKNOWN — requires .hsp file inspection
+};
+
+export function isStadium(device: DeviceTarget): boolean {
+  return device === "helix_stadium";
+}
+```
+
+### Pattern 3: Chain Rules Device Branching
+
+**What:** `assembleSignalChain()` already dispatches on `isPodGo(device)`. Stadium requires a parallel branch for its block limits.
+
+**Stadium-specific DSP constraints:**
+- 12 blocks per path (Helix LT/Floor: 8 per DSP, Pod Go: 10 total)
+- Single-path generation is the v3.0 target (Path 1A only) — dual/quad-path is out of scope for launch
+- Full mandatory blocks apply (boost, gate for high-gain, Parametric EQ, Gain Block)
+- 7-band Parametric EQ model name required (Stadium removed 5-band) — must match Stadium model catalog key
+
+```typescript
+// chain-rules.ts — add alongside isPodGo check
+const stadium = device ? isStadium(device) : false;
+const MAX_BLOCKS_STADIUM_PATH = 12;
+
+// In DSP limit validation:
+if (stadium) {
+  const pathBlocks = allBlocks.filter(b => b.dsp === 0 && b.type !== "cab");
+  if (pathBlocks.length > MAX_BLOCKS_STADIUM_PATH) {
+    throw new Error(`Stadium path block limit exceeded: ${pathBlocks.length} blocks (max ${MAX_BLOCKS_STADIUM_PATH})`);
   }
-  initSession()
-}, [])
-
-// Login with Google — links to existing anonymous session
-const handleLogin = async () => {
-  await supabase.auth.linkIdentity({
-    provider: 'google',
-    options: { redirectTo: `${window.location.origin}/auth/callback` }
-  })
 }
 ```
 
-### Pattern 3: Server Component Sidebar with Client Island Toggle
+### Pattern 4: Model Catalog Device Availability Flags
 
-**What:** The sidebar shell and chat history list are server components — they fetch conversation data from Supabase at render time and ship zero client JavaScript for the data layer. The toggle button (open/close) is a small client component island imported inside the server component shell.
+**What:** Each model entry in `models.ts` carries device availability flags. The planner filters the catalog to only the models available on the target device.
 
-**When to use:** Chat history list with server-side data fetching. Layout-level component that persists across navigation.
+**Stadium catalog facts (HIGH confidence):**
+- Stadium includes ALL HX models (the 111 HX amp channels plus effects) — backward compatible
+- Stadium adds ~50 Agoura amp channels (22 launched, growing with firmware updates)
+- Stadium does NOT have: Simple EQ, Low/High Cut EQ, Low/High Shelf EQ, 5-band Parametric EQ
+- Stadium has a new 7-band Parametric EQ that replaces the 5-band version
 
-**Trade-offs:**
-- Server component fetches are faster (no client-side data fetch waterfall) and more secure (no exposure of Supabase client credentials in browser)
-- The sidebar mounts in `layout.tsx` so it persists across child page navigations without re-mounting — the layout non-unmounting behavior handles sidebar state preservation automatically
-- Client toggle state (open/closed) does not survive page reload — acceptable for a sidebar
-
-**Example:**
+**Model catalog extension approach:**
 ```typescript
-// src/components/sidebar/ChatHistoryList.tsx (Server Component)
-import { createSupabaseServerClient } from '@/lib/supabase/server'
-
-export async function ChatHistoryList() {
-  const supabase = await createSupabaseServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) return null
-
-  const { data: conversations } = await supabase
-    .from('conversations')
-    .select('id, title, updated_at, device')
-    .eq('user_id', user.id)
-    .order('updated_at', { ascending: false })
-    .limit(50)
-
-  return (
-    <ul>
-      {conversations?.map(c => (
-        <li key={c.id}>{c.title}</li>
-      ))}
-    </ul>
-  )
-}
-```
-
-### Pattern 4: Signed Upload URLs for Preset Files
-
-**What:** When generating a preset, the `/api/generate` route creates a Supabase Storage signed upload URL via `supabase.storage.from('presets').createSignedUploadUrl(path)`, returns it to the client alongside the preset binary. The client uploads the preset file directly to Supabase Storage using `supabase.storage.from('presets').uploadToSignedUrl(path, token, file)`. The `/api/generate` route then stores the public download URL in the `conversations` table.
-
-**Why not upload from the serverless function:** The preset file is generated in memory inside the serverless function. Uploading from the function is possible but requires the service role key in server code. The signed URL pattern keeps the service role key away from clients while still routing the binary directly to Supabase Storage (bypassing serverless size limits). Given preset files are small (.hlx is typically 10–50KB), either approach works — the signed URL pattern is used here for consistency and security clarity.
-
-**Trade-offs:**
-- Two-step: generate URL on server, upload from client — slightly more complex orchestration
-- Signed URLs expire after 2 hours — not a concern for the immediate post-generate upload
-- Preset files are very small (~10–50KB) — no file size concerns
-
-**Example:**
-```typescript
-// In /api/generate/route.ts — after building the preset file
-if (conversationId && userId) {
-  const supabase = await createSupabaseServerClient()
-  const path = `${userId}/${conversationId}/preset${fileExtension}`
-  const { data } = await supabase.storage
-    .from('presets')
-    .createSignedUploadUrl(path)
-
-  // Return signed URL to client alongside preset data
-  return NextResponse.json({
-    preset: hlxFile,
-    presetUploadToken: data?.token,
-    presetUploadPath: path,
-    // ... other existing fields
-  })
+// models.ts — extend HelixModel interface
+export interface HelixModel {
+  // ... existing fields ...
+  availableOn?: {
+    helix_lt?: boolean;
+    helix_floor?: boolean;
+    pod_go?: boolean;
+    helix_stadium?: boolean;
+  };
+  stadiumOnly?: boolean;  // Agoura models: true
 }
 ```
 
@@ -316,406 +279,341 @@ if (conversationId && userId) {
 
 ## Data Flow
 
-### Request Flow: New Chat (Anonymous User)
+### Preset Generation Request Flow (Stadium)
 
 ```
-User opens app (no session)
+User selects "STADIUM" in device selector
     |
     v
-layout.tsx loads — Supabase middleware refreshes/creates anonymous session
+page.tsx: selectedDevice = "helix_stadium"
+    |
+    v POST /api/generate { device: "helix_stadium", messages, conversationId, ... }
     |
     v
-page.tsx mounts — anonymous user ID available from session
+route.ts: deviceTarget = "helix_stadium"
     |
     v
-User chats with Gemini (/api/chat) — messages stored in React useState only
+callClaudePlanner(messages, "helix_stadium", toneContext)
+    - planner.ts: deviceName = "Helix Stadium"
+    - model list filtered: Stadium models only (Agoura + HX, excluding removed EQs)
+    - returns ToneIntent
     |
     v
-User clicks "Generate" — POST /api/generate { messages, device }
+assembleSignalChain(toneIntent, "helix_stadium")
+    - chain-rules.ts: isStadium() branch, 12-block/path limit
+    - mandatory blocks: boost + Horizon Gate (high-gain) + Stadium 7-band EQ + Gain Block
+    - returns BlockSpec[]
     |
     v
-/api/generate builds preset (existing pipeline, unchanged)
-    |
-    v (NO conversationId provided — anonymous flow)
-Returns preset data to client (no DB write, no Storage upload)
+resolveParameters(chain, toneIntent)
+    - param-engine.ts: UNCHANGED (model-level, device-agnostic)
+    - returns parameterized BlockSpec[]
     |
     v
-Client downloads preset file (existing behavior, unchanged)
+buildSnapshots(parameterized, toneIntent.snapshots)
+    - snapshot-engine.ts: 8 snapshots (VERIFY for Stadium)
+    - returns SnapshotSpec[]
+    |
+    v
+validatePresetSpec(presetSpec, "helix_stadium")
+    - validate.ts: Stadium-specific block count and snapshot count checks
+    |
+    v
+isStadium(deviceTarget) -> buildHspFile(presetSpec)
+    - stadium-builder.ts: .hsp JSON serialization
+    - returns HspFile object
+    |
+    v
+Supabase storage: {userId}/{conversationId}/latest.hsp  (if conversationId present)
+    |
+    v
+NextResponse.json({
+  preset: hspFile,
+  summary,
+  spec: presetSpec,
+  toneIntent,
+  device: "helix_stadium",
+  fileExtension: ".hsp",
+  ...
+})
+    |
+    v
+page.tsx: downloadPreset()
+    - ext = ".hsp"
+    - suffix = "_Stadium"
+    - filename: "HelixAI_[PresetName]_Stadium.hsp"
 ```
 
-### Request Flow: Save Conversation (Authenticated User)
+### page.tsx Device Selector Expansion
 
-```
-User clicks "Login with Google"
-    |
-    v
-supabase.auth.linkIdentity({ provider: 'google' }) — redirects to Google
-    |
-    v
-/auth/callback route handles PKCE exchange, merges identity to anonymous user
-    |
-    v
-router.refresh() — sidebar re-renders with user's Google name/avatar
-    |
-    v
-User chats with Gemini (/api/chat) — POST includes conversationId
-    |
-    v (first message in this session)
-/api/chat creates conversation row if conversationId is new, saves message
-    |
-    v
-User clicks "Generate" — POST /api/generate { messages, device, conversationId }
-    |
-    v
-/api/generate runs existing pipeline (unchanged)
-    |
-    v
-/api/generate creates signed upload URL, saves preset_url to conversations row
-    |
-    v
-Returns preset + presetUploadToken + presetUploadPath to client
-    |
-    v
-Client uploads preset binary to Supabase Storage via signed URL
-    |
-    v
-Client downloads same preset file (existing behavior)
-    |
-    v
-Sidebar updates (next navigation or router.refresh() call) — new conversation appears
+The device selector currently renders two separate arrays of device options — one in the substitution card CTA (line 1275-1277) and one in the post-interview generate CTA (line 1365-1367). Both must be updated identically:
+
+```typescript
+// CURRENT (page.tsx lines 1275-1277 and 1365-1367)
+{ id: "helix_lt" as const, label: "LT", desc: "Helix LT" },
+{ id: "helix_floor" as const, label: "FLOOR", desc: "Helix Floor" },
+{ id: "pod_go" as const, label: "POD GO", desc: "Pod Go" },
+
+// AFTER STADIUM ADDITION
+{ id: "helix_lt" as const, label: "LT", desc: "Helix LT" },
+{ id: "helix_floor" as const, label: "FLOOR", desc: "Helix Floor" },
+{ id: "pod_go" as const, label: "POD GO", desc: "Pod Go" },
+{ id: "helix_stadium" as const, label: "STADIUM", desc: "Helix Stadium" },
 ```
 
-### Request Flow: Resume Conversation
-
-```
-User clicks a past conversation in sidebar
-    |
-    v
-Client fetches GET /api/conversations/{id} — returns messages[], preset_url, device
-    |
-    v
-page.tsx repopulates messages state from response
-    |
-    v
-User continues chatting (sends more messages, generates new preset)
-    |
-    v
-/api/chat appends new messages to existing conversation
-    |
-    v
-/api/generate overwrites preset_url in conversations row with new file
-```
-
-### State Management
-
-```
-Supabase Auth (source of truth for user identity)
-    |
-    v (session cookie on every request)
-Server Components (read session via createServerClient)
-    |
-    v (props to client components)
-Client Components (supabase.auth.onAuthStateChange for reactive updates)
-
-Conversation List (server-fetched in ChatHistoryList)
-    |
-    v (re-fetched on router.refresh() or navigation)
-Sidebar updates — layout non-unmounting preserves scroll position
-
-Active Chat State (React useState in page.tsx — unchanged from v1.3)
-    conversationId: string | null
-    messages: Message[]
-    device: DeviceTarget
-    rigIntent: RigIntent | null
-```
+Additional `page.tsx` changes required:
+- `useState<"helix_lt" | "helix_floor" | "pod_go">` → add `| "helix_stadium"`
+- `generatePreset(overrideDevice?)` signature type — add `"helix_stadium"`
+- `handleRigGenerate(overrideDevice?)` signature type — add `"helix_stadium"`
+- `downloadPreset()`: add `generatedPreset.device === "helix_stadium" ? "_Stadium"` case
+- `downloadStoredPreset()`: add Stadium suffix and `.hsp` extension detection
+- Device badge display: add `"helix_stadium"` → `"STADIUM"` case
+- `setSelectedDevice` cast on conversation load: add `"helix_stadium"` to type assertion
+- The "Generate for other device" button (line 1538-1548): update tertiary toggle logic
 
 ---
 
-## Database Schema
+## Critical Unknown: .hsp Internal Structure
 
-### conversations
+**This is the single highest-risk unknown in the entire Stadium milestone.**
 
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | `uuid` DEFAULT `gen_random_uuid()` | Primary key |
-| `user_id` | `uuid` NOT NULL | References `auth.users(id)` |
-| `title` | `text` | Auto-generated from first user message (truncated to 60 chars) |
-| `device` | `text` | `'helix_lt' | 'helix_floor' | 'pod_go'` — device used in last generation |
-| `preset_url` | `text` | Supabase Storage URL of most recent preset file, nullable |
-| `created_at` | `timestamptz` DEFAULT `now()` | |
-| `updated_at` | `timestamptz` DEFAULT `now()` | Updated on each message insert |
+The `.hsp` file format is not publicly documented as of 2026-03-04. No community reverse-engineering of the JSON structure (schema keys, device integer ID, DSP key names, block encoding, snapshot controller ID) has been published in indexed sources. The reverse-engineering article from December 2025 (ilikekillnerds.com) covers only the WiFi editor protocol (OSC/ZMTP), not file content.
 
-### messages
+**What must be determined before writing stadium-builder.ts:**
 
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | `uuid` DEFAULT `gen_random_uuid()` | Primary key |
-| `conversation_id` | `uuid` NOT NULL | References `conversations(id)` |
-| `role` | `text` NOT NULL | `'user' | 'assistant'` |
-| `content` | `text` NOT NULL | Full message text |
-| `created_at` | `timestamptz` DEFAULT `now()` | |
+| Question | Why It Matters | How to Get Answer |
+|----------|----------------|-------------------|
+| Is .hsp plain JSON like .hlx? | Determines if text-editor inspection works | Open a .hsp file in any text editor |
+| Does it use `schema: "L6Preset"`? | Top-level schema key in HlxFile interface | Inspect .hsp JSON |
+| What is the `device` integer for Stadium? | `DEVICE_IDS.helix_stadium` constant | Inspect .hsp JSON `data.device` field |
+| Are DSP keys `dsp0`/`dsp1` or different? | Core DSP structure of HspTone | Inspect .hsp tone section |
+| Are block keys `block0`/`block1` format? | Block serialization in buildHspDsp | Inspect .hsp dsp0 section |
+| What is snapshot controller ID? | Helix=19, PodGo=4, Stadium=? | Inspect .hsp controller section |
+| Are input/output keys `inputA`/`outputA`? | DSP I/O model names | Inspect .hsp dsp0.inputA |
+| How many snapshots? | snapshot-engine.ts count | Inspect .hsp snapshot count |
+| What are footswitch indices? | Helix=7-10, PodGo=0-5, Stadium=? | Inspect .hsp footswitch section |
+| What firmware version constants? | STADIUM_FIRMWARE_CONFIG | Inspect .hsp meta section |
 
-### Row Level Security Policies
-
-All tables require RLS enabled. Core policies:
-
-```sql
--- conversations: users see only their own rows
-CREATE POLICY "users_own_conversations" ON conversations
-  FOR ALL USING (auth.uid() = user_id);
-
--- messages: users see messages in their own conversations
-CREATE POLICY "users_own_messages" ON messages
-  FOR ALL USING (
-    conversation_id IN (
-      SELECT id FROM conversations WHERE user_id = auth.uid()
-    )
-  );
-
--- Storage: users read/write only their own prefix
-CREATE POLICY "users_own_presets" ON storage.objects
-  FOR ALL USING (
-    bucket_id = 'presets' AND
-    (storage.foldername(name))[1] = auth.uid()::text
-  );
-```
+**How to obtain a .hsp file:** Install the "Helix Stadium" editing application (free download from line6.com/software) and either connect to a Stadium device or use the standalone editor to create and export a preset. The file format is accessible once you have a single real .hsp file.
 
 ---
 
-## Integration Points
+## Suggested Build Order
 
-### New vs. Modified
+Dependencies flow strictly from type system → constants → catalog → rules → builder → API → UI.
 
-| File | Status | Change |
-|------|--------|--------|
-| `src/app/layout.tsx` | MODIFIED | Add sidebar shell div, Supabase session context, `<ChatSidebar>` |
-| `src/app/page.tsx` | MODIFIED | Add `conversationId` state, pass to API calls, handle `presetUploadToken` response |
-| `src/app/api/chat/route.ts` | MODIFIED | Accept optional `conversationId`, persist messages to Supabase when present |
-| `src/app/api/generate/route.ts` | MODIFIED | Accept optional `conversationId`, create signed upload URL, save `preset_url` |
-| `src/lib/helix/*` | UNCHANGED | All Knowledge Layer files untouched |
-| `src/lib/planner.ts` | UNCHANGED | Claude planner untouched |
-| `src/lib/gemini.ts` | UNCHANGED | Gemini chat untouched |
-| `src/lib/rig-*.ts` | UNCHANGED | Rig mapping and vision untouched |
+### Phase 1: Device ID Research + Helix Floor Regression Fix
 
-### External Services
+**Goal:** Ground-truth constants before anything else is written.
 
-| Service | Integration Pattern | Notes |
-|---------|---------------------|-------|
-| Supabase Auth | Native `@supabase/ssr` — cookie-based, SSR-compatible | Google OAuth via Supabase dashboard config (no Auth.js needed) |
-| Supabase PostgreSQL | `supabase-js` client in route handlers, server components | RLS enforces per-user isolation at DB level |
-| Supabase Storage | Signed upload URL — server creates URL, client uploads binary | Private bucket, RLS on `storage.objects` |
-| Google OAuth 2.0 | Configured in Supabase dashboard (not Google Cloud Console directly) | Supabase handles callback URL, token exchange |
+**Tasks:**
+- Obtain and inspect a real `.hsp` file from Helix Stadium Edit app
+- Document: device integer ID, schema string, version constants, DSP keys, snapshot controller ID, footswitch indices
+- Determine correct Helix Floor device ID (inspect a real `.hlx` from a Floor unit)
+- Fix `helix_floor: 2162692` → correct value in `types.ts` (one-line change)
+- Run existing test suite to verify regression fix passes
 
-### Internal Boundaries
-
-| Boundary | Communication | Notes |
-|----------|---------------|-------|
-| `page.tsx` ↔ `/api/chat` | HTTP POST — existing + optional `conversationId` field | Backward compatible: no `conversationId` = existing stateless behavior |
-| `page.tsx` ↔ `/api/generate` | HTTP POST — existing + optional `conversationId`; response + optional `presetUploadToken` | Backward compatible: anonymous users get same response as before |
-| `ChatHistoryList` ↔ Supabase | Direct server component query via `createServerClient()` | No API route needed; server component reads DB directly |
-| `layout.tsx` ↔ Supabase | Session check in `layout.tsx` to conditionally render sidebar | Uses `createServerClient()` in async server component |
-| `middleware.ts` ↔ Supabase | `updateSession()` on every request to refresh session cookie | Required — without this, session expires unexpectedly |
+**Files:** `src/lib/helix/types.ts` (Floor ID fix only)
+**Dependency:** None — this is the prerequisite for everything
+**Confidence gate:** Do NOT proceed past this phase until .hsp structure is documented
 
 ---
 
-## Build Order
+### Phase 2: Type System Foundation
 
-Dependencies determine build order strictly. Each phase must be independently testable before the next begins.
+**Goal:** Establish the type foundation that TypeScript exhaustiveness will use to flag all remaining integration points.
 
-### Phase 1: Supabase Project Setup + Auth Infrastructure
+**Tasks:**
+- Add `"helix_stadium"` to `DeviceTarget` union in `types.ts`
+- Add `isStadium()` predicate function
+- Add `DEVICE_IDS.helix_stadium` (from Phase 1)
+- Add Stadium-specific constants to `types.ts` if needed (e.g., `STADIUM_MAX_BLOCKS_PER_PATH = 12`)
+- Add `STADIUM_FIRMWARE_CONFIG` to `config.ts` (version constants from Phase 1)
+- Run TypeScript compiler — all type errors in other files are the integration checklist
 
-**What:** Create Supabase project, configure database schema, install packages, create server/client utilities, set up middleware.
-
-**Why first:** Every other phase depends on being able to create a Supabase client. The schema must exist before any data can be written. The middleware must be in place before any session-dependent component works.
-
-**Delivers:**
-- Supabase project created, PostgreSQL tables `conversations` and `messages` created with RLS
-- Storage bucket `presets` created with RLS policy
-- `npm install @supabase/supabase-js @supabase/ssr` installed
-- `src/lib/supabase/server.ts`, `src/lib/supabase/client.ts`, `src/lib/supabase/middleware.ts`
-- `middleware.ts` at project root calling `updateSession`
-- `.env.local` with `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
-- Supabase Google OAuth provider configured in dashboard
-
-**Does NOT touch:** Any existing routes, page.tsx, layout.tsx, or any existing lib code.
-
-**Test gate:** `createSupabaseServerClient()` runs without error in a test route handler. An anonymous user can be created via `supabase.auth.signInAnonymously()` in a client component.
+**Files:** `src/lib/helix/types.ts`, `src/lib/helix/config.ts`
+**Dependency:** Phase 1 (need device ID and version constants)
 
 ---
 
-### Phase 2: Anonymous Sign-In + Google OAuth Link Flow
+### Phase 3: Model Catalog
 
-**What:** Implement the anonymous-first auth UX. On mount, sign in anonymously if no session. Add Login/Logout button component. Implement Google OAuth link flow with PKCE callback route.
+**Goal:** Correct model set available for Stadium presets.
 
-**Why before persistence:** The auth user ID is the foreign key for all conversations and messages. The user ID must exist before any data can be written to the database.
+**Tasks:**
+- Add `stadiumOnly?: boolean` flag to `HelixModel` interface (or extend existing device availability field)
+- Add Agoura amp model entries with `stadiumOnly: true` (sourced from line6.com/helix-stadium-models/)
+- Flag removed Stadium models (Simple EQ, 5-band Parametric EQ, etc.) as `!availableOn.helix_stadium`
+- Add Stadium 7-band Parametric EQ model entry (new model, Stadium-exclusive)
+- Verify `getModelListForPrompt()` and `isModelAvailableForDevice()` respect Stadium filtering
 
-**Delivers:**
-- `src/app/auth/callback/route.ts` — PKCE code exchange, redirect back to app
-- `src/components/auth/AuthButton.tsx` — "Login with Google" when anonymous, avatar + logout when authenticated
-- `page.tsx` MODIFIED — `useEffect` to call `signInAnonymously()` on mount if no session
-- `layout.tsx` MODIFIED — render `<AuthButton>` in header area
-- "Enable Manual Linking" confirmed enabled in Supabase dashboard
-
-**Does NOT touch:** Conversation list, message persistence, file storage.
-
-**Test gate:** Open app as new user — anonymous session created (confirm in Supabase dashboard Auth > Users). Click Login with Google — Google OAuth flow completes, user record in Supabase shows `email` populated and `is_anonymous: false`. Check that user ID is unchanged between anonymous and authenticated state (same UUID in Supabase dashboard before and after linking).
+**Files:** `src/lib/helix/models.ts`
+**Dependency:** Phase 2 (DeviceTarget extended)
 
 ---
 
-### Phase 3: Conversation CRUD Routes
+### Phase 4: Chain Rules + Validation
 
-**What:** Build API routes that create, list, and fetch conversations and messages. These are the persistence layer that the frontend will call.
+**Goal:** Stadium-aware signal chain assembly and validation.
 
-**Why before sidebar:** The sidebar needs real data to display. Build the data layer before the display layer.
+**Tasks:**
+- Add `isStadium()` branch in `assembleSignalChain()` for 12-block/path limit
+- Update mandatory block insertion: use Stadium 7-band Parametric EQ model name (not 5-band)
+- Add `STADIUM` case to `getDspForSlot()` (Stadium uses dual DSP like Helix, not single DSP like Pod Go)
+- Add Stadium validation in `validate.ts` (max blocks per path, snapshot count)
+- Update chain-rules tests to cover Stadium path
 
-**Delivers:**
-- `POST /api/conversations` — create new conversation row, return `conversationId`
-- `GET /api/conversations` — list all conversations for current user (ordered by `updated_at` desc)
-- `GET /api/conversations/[id]` — fetch conversation + all messages, return for resume flow
-- `PATCH /api/conversations/[id]` — update title (auto-titled from first message)
-
-**Note:** All routes must use `createSupabaseServerClient()` and verify `user.id` matches the resource's `user_id` — do not rely solely on RLS (defense in depth).
-
-**Does NOT touch:** page.tsx chat flow, sidebar UI, file storage.
-
-**Test gate:** Use a REST client (curl or Postman) to POST a new conversation and GET the list. Verify RLS blocks access from a different user ID.
+**Files:** `src/lib/helix/chain-rules.ts`, `src/lib/helix/validate.ts`
+**Dependency:** Phase 3 (Stadium EQ model name must exist in catalog)
 
 ---
 
-### Phase 4: Chat and Generate Route Persistence
+### Phase 5: Stadium Builder
 
-**What:** Modify `/api/chat` and `/api/generate` to optionally persist messages and preset URLs when a `conversationId` is provided. Anonymous users (no `conversationId`) continue to work exactly as before.
+**Goal:** `buildHspFile()` emits a valid .hsp file that loads on Helix Stadium hardware.
 
-**Why after routes:** The conversation must exist in the database before messages can be inserted into it. Phase 3's routes handle conversation creation; these routes handle message and preset insertion.
+**Tasks:**
+- Create `src/lib/helix/stadium-builder.ts` modeled on `podgo-builder.ts` structure
+- Implement `buildHspDsp()` using .hsp key structure from Phase 1
+- Implement `buildHspSnapshot()` with correct controller ID from Phase 1
+- Implement `buildHspFootswitchSection()` with Stadium footswitch indices from Phase 1
+- Implement `buildHspControllerSection()` with Stadium controller ID
+- Export `buildHspFile()` and `summarizeStadiumPreset()`
+- Export from `index.ts`
+- Test: generate a preset, write to .hsp file, load into Helix Stadium Edit app to verify
 
-**Delivers:**
-- `src/app/api/chat/route.ts` MODIFIED — if `conversationId` in body, insert each message to `messages` table; update `conversations.updated_at`
-- `src/app/api/generate/route.ts` MODIFIED — if `conversationId` in body, create signed upload URL via Supabase Storage, store `preset_url` in `conversations` row, return `presetUploadToken` + `presetUploadPath` to client
-
-**Backward compatibility:** Both routes must remain fully functional when no `conversationId` is provided. Existing anonymous generate flow must not change.
-
-**Test gate:**
-- POST `/api/chat` WITHOUT `conversationId` — identical response to v1.3 (no regression)
-- POST `/api/chat` WITH `conversationId` — message appears in Supabase messages table
-- POST `/api/generate` WITH `conversationId` — `preset_url` written to conversations table, `presetUploadToken` returned in response
-- Verify Anthropic API response still shows `cache_read_input_tokens > 0` (prompt caching not broken by persistence logic)
-
----
-
-### Phase 5: Chat Sidebar UI
-
-**What:** Add the pull-out sidebar panel with conversation history list. Wire the sidebar to the Phase 3 API routes. Add "new chat" button. Implement conversation resume by loading messages from `/api/conversations/[id]`.
-
-**Why last:** Requires stable API routes (Phase 3) and stable conversation creation flow (Phase 4). UI is the outermost layer.
-
-**Delivers:**
-- `src/components/sidebar/ChatSidebar.tsx` — outer shell, handles open/close toggle state (client component)
-- `src/components/sidebar/ChatHistoryList.tsx` — server component that fetches and renders conversation list
-- `src/components/sidebar/SidebarToggle.tsx` — hamburger button, client component
-- `src/app/layout.tsx` MODIFIED — sidebar mounted in layout (persists across navigation), flex layout with sidebar + main content
-- `src/app/page.tsx` MODIFIED — `conversationId` state, auto-creates conversation on first message send, handles resume flow from sidebar click (load messages from API)
-- "New chat" button creates new conversation, resets `messages` state, clears `conversationId`
-
-**Sidebar interaction with existing page flow:**
-- The sidebar lives in `layout.tsx`, not in `page.tsx`. This is critical — `page.tsx` remains the single-page chat interface it has always been.
-- When user clicks a past conversation: page.tsx receives the `conversationId` (via URL param or event), fetches messages from `/api/conversations/[id]`, populates `messages` state.
-- When user starts a new chat: `conversationId` set to `null`, `messages` reset to `[]`. Sidebar reflects this once a new conversation is created on first message send.
-- The sidebar toggle uses CSS transform (`translateX`) not conditional rendering — keeps the server-fetched list mounted and avoids re-fetch on every open.
-
-**Test gate:**
-- Open sidebar — past conversations appear
-- Click a conversation — chat area repopulates with saved messages
-- Generate a preset from resumed conversation — new preset overwrites old `preset_url` in Supabase
-- Click "New Chat" — sidebar closes (or stays open), chat area clears, new conversationId assigned on first message send
+**Files:** `src/lib/helix/stadium-builder.ts` (new), `src/lib/helix/index.ts`
+**Dependency:** Phase 1 (format), Phase 2 (constants), Phase 3 (model IDs)
 
 ---
 
-## Scaling Considerations
+### Phase 6: Planner + API Route Integration
 
-| Scale | Architecture Adjustments |
-|-------|--------------------------|
-| 0–1k users | Current plan works. Supabase free tier (50k MAU). No optimizations needed. |
-| 1k–10k users | Add Supabase connection pooling (PgBouncer, already included in Supabase). Cache conversation list with `revalidate` in server components. Consider rate-limiting auth routes. |
-| 10k+ users | Supabase Pro tier for higher connection limits and larger storage. Add pagination to conversation list (currently capped at 50). Consider caching conversation lists in Redis (Upstash) to reduce DB load on sidebar renders. |
+**Goal:** Wire Stadium through the full generation pipeline.
 
-**First bottleneck:** Supabase free tier pauses projects after 1 week of inactivity. This is a hobbyist-tier concern; upgrade to Pro ($25/month) removes it. Not an architecture problem.
+**Tasks:**
+- Update `planner.ts`: add `isStadium(device)` → `deviceName = "Helix Stadium"` label
+- Update `generate/route.ts`: add `else if (device === "helix_stadium")` → `deviceTarget = "helix_stadium"`
+- Add `isStadium(deviceTarget)` branch in route calling `buildHspFile()` and `summarizeStadiumPreset()`
+- Update Supabase storage path: `latest.hsp` for Stadium presets
+- Import `buildHspFile`, `summarizeStadiumPreset`, `isStadium` into route
 
-**Second bottleneck:** The conversation list is re-fetched on every navigation that causes a layout re-render. Add `revalidate: 60` to the server component fetch to cache for 60 seconds. For most users, slightly stale sidebar data is acceptable.
+**Files:** `src/lib/planner.ts`, `src/app/api/generate/route.ts`
+**Dependency:** Phase 5 (builder must exist)
+
+---
+
+### Phase 7: UI — Device Selector + Download
+
+**Goal:** Stadium option visible and functional for users.
+
+**Tasks:**
+- Add `{ id: "helix_stadium" as const, label: "STADIUM", desc: "Helix Stadium" }` to both device arrays
+- Update `selectedDevice` state type to include `"helix_stadium"`
+- Update all function signatures that type the device parameter explicitly
+- Update `downloadPreset()`: add `"helix_stadium" ? "_Stadium"` suffix case
+- Update `downloadStoredPreset()`: add Stadium case (`.hsp` extension)
+- Update device badge: `"helix_stadium"` → `"STADIUM"`
+- Update `setSelectedDevice` cast on conversation load
+- Update the "Generate for other device" toggle button logic
+- Verify rig emulation device picker in substitution card CTA includes Stadium
+
+**Files:** `src/app/page.tsx`
+**Dependency:** Phase 6 (API accepts Stadium requests)
+
+---
+
+### Phase 8: Rig Emulation for Stadium
+
+**Goal:** Pedal photo + text rig description works for Stadium.
+
+**Tasks:**
+- Verify `mapRigToSubstitutions(rigIntent, deviceTarget)` in `rig-mapping.ts` handles `"helix_stadium"` — the current Pod Go path uses device-specific model names; Stadium uses the same model name format as Helix LT/Floor (no Mono/Stereo suffix), so the Helix branch likely applies
+- Update `api/map/route.ts` to accept `"helix_stadium"` as a valid device
+- Test: upload a pedal photo, select Stadium, verify substitution card shows Stadium-appropriate model names
+
+**Files:** `src/lib/rig-mapping.ts` (verify/minor extend), `src/app/api/map/route.ts`
+**Dependency:** Phase 7 (Stadium in UI)
 
 ---
 
 ## Anti-Patterns
 
-### Anti-Pattern 1: Using Auth.js `@auth/supabase-adapter` with Supabase
+### Anti-Pattern 1: Extending preset-builder.ts for Stadium
 
-**What people do:** Install both `next-auth` and `@supabase/supabase-js`, use the community Supabase adapter to store Auth.js sessions in Supabase tables.
+**What people do:** Add `if (isStadium(device)) { ... } else { /* existing hlx logic */ }` inside `buildHlxFile()`.
 
-**Why it's wrong:** The adapter stores sessions in a separate `next_auth` schema that does not interface with Supabase Auth. This means `signInAnonymously()` and `linkIdentity()` — the core mechanics of the anonymous-first auth requirement — are unavailable. You end up with two separate auth systems. The adapter is not maintained by Supabase.
+**Why it's wrong:** `.hsp` and `.hlx` have different JSON schemas, different model ID encoding (Agoura vs HX integer IDs), potentially different DSP key names, different footswitch indices, and different snapshot controller IDs. Mixing two format families in one function creates dual-responsibility code that breaks when either format updates, and risks silently emitting invalid files for Helix LT/Floor users.
 
-**Do this instead:** Use native Supabase Auth with `@supabase/ssr`. One package, one auth system, all Supabase features available.
-
----
-
-### Anti-Pattern 2: Skipping `middleware.ts` Session Refresh
-
-**What people do:** Install Supabase, create server/client utilities, build components — but skip the middleware step because "it's optional."
-
-**Why it's wrong:** Without `middleware.ts` calling `updateSession()` on every request, session cookies expire and are not refreshed. Users randomly get logged out mid-session. The auth state becomes inconsistent between server and client.
-
-**Do this instead:** Add `middleware.ts` at the project root that calls `updateSession()` on every request. This is non-negotiable for cookie-based sessions in Next.js App Router.
+**Do this instead:** `stadium-builder.ts` is the correct answer, following the `podgo-builder.ts` precedent.
 
 ---
 
-### Anti-Pattern 3: Storing `conversationId` in the URL Path Instead of State
+### Anti-Pattern 2: Assuming .hsp is "basically .hlx with a different extension"
 
-**What people do:** Change the app from `app/page.tsx` to `app/chat/[conversationId]/page.tsx` to mirror patterns like ChatGPT.
+**What people do:** Copy `preset-builder.ts`, rename to `stadium-builder.ts`, change the extension constant from `.hlx` to `.hsp`.
 
-**Why it's wrong for this app:** The existing architecture has a single `page.tsx` with a complex state machine (chat flow → generation → download). Migrating to dynamic routes requires refactoring `page.tsx` into a layout + page hierarchy, re-architecting how state is passed, and changing how the sidebar navigates. This is a major rewrite, not an addition.
+**Why it's wrong:** Line 6 created a new format for Stadium. The `.hsp` format carries Agoura model IDs, a potentially different schema string, an unknown device integer, and possibly different DSP/snapshot structures. Copying without inspecting a real file produces a builder that generates syntactically plausible but semantically wrong preset data that won't load on hardware.
 
-**Do this instead:** Keep the single `page.tsx`. Store `conversationId` in React state. Load a conversation when the user clicks it in the sidebar — either via URL search params (`?conversation=abc123`) that `page.tsx` reads on mount, or via a context/event that the sidebar emits. URL search params are simpler and preserve the single-page architecture.
-
----
-
-### Anti-Pattern 4: Writing Messages to DB Inside the Streaming SSE Loop
-
-**What people do:** Inside the streaming response loop in `/api/chat/route.ts`, write each chunk to the database as it arrives.
-
-**Why it's wrong:** Serverless functions on Vercel should not hold DB connections open for the duration of a stream. Writing per-chunk creates many tiny writes and holds the connection. The stream can be interrupted, leaving a partial message in the database.
-
-**Do this instead:** Accumulate the full streamed response, then write the complete message to the database after the stream closes. The client already handles partial rendering via SSE — the DB write is a completion action, not a streaming action. In `/api/chat/route.ts`, buffer the text and insert one complete row after `controller.close()`.
+**Do this instead:** Phase 1 requires inspection of a real `.hsp` file before any code is written. No assumptions.
 
 ---
 
-### Anti-Pattern 5: Fetching Conversation List in `page.tsx`
+### Anti-Pattern 3: Adding Agoura Models to the Universal Catalog Without Device Filtering
 
-**What people do:** Move the conversation list fetch into `page.tsx` as a `useEffect` that calls `/api/conversations`.
+**What people do:** Add Agoura models to `models.ts` without a device availability flag, allowing the planner to offer `Agoura_AmpWhoWatt103` to Helix LT/Floor users.
 
-**Why it's wrong:** `page.tsx` re-renders on every navigation. The conversation list would re-fetch on every page visit, even when the user is just continuing an existing chat. The sidebar would flicker on every route change.
+**Why it's wrong:** Helix LT/Floor does not have Agoura models. A preset referencing an Agoura model ID on a Helix LT unit will fail to load or silently produce a default block.
 
-**Do this instead:** Fetch the conversation list in `ChatHistoryList.tsx` as a server component mounted in `layout.tsx`. Layouts persist across child navigations — the list is fetched once per layout mount, not per page render. Use `router.refresh()` only when the list actually changes (new conversation created, conversation renamed).
+**Do this instead:** Mark Agoura models `stadiumOnly: true`. The existing device filtering mechanism in `getModelListForPrompt()` must exclude them for non-Stadium devices.
+
+---
+
+### Anti-Pattern 4: Skipping Phase 1 and Guessing Format Constants
+
+**What people do:** Implement `stadium-builder.ts` using guessed values for the device ID, schema key, and snapshot controller ID because "it's probably similar to Helix LT."
+
+**Why it's wrong:** The device integer in the preset file is what the hardware uses to verify it can load the preset. A wrong device ID means the preset either fails to import or loads as a corrupt/unknown preset on the Stadium.
+
+**Do this instead:** One real `.hsp` file, opened in a text editor, answers all format questions in 5 minutes. The Helix Stadium Edit application is a free download. This is the cheapest possible research step.
+
+---
+
+### Anti-Pattern 5: Hardcoding Helix LT/Floor Snapshot Count for Stadium
+
+**What people do:** Copy the `buildSnapshots(parameterized, toneIntent.snapshots)` call from the Helix branch without verifying Stadium's snapshot count.
+
+**Why it's wrong:** Pod Go uses 4 snapshots; Helix LT/Floor uses 8. If Stadium uses a different count, `snapshot-engine.ts` and the builder will generate the wrong number of snapshot entries. The Stadium Owner's Manual documents the snapshot count — verify it in Phase 1.
+
+**Do this instead:** Confirm Stadium snapshot count from official documentation or a real .hsp file before hardcoding 8.
+
+---
+
+## Scaling Considerations
+
+Stadium support is additive — no scaling concerns beyond what v2.0 already addressed. The Vercel serverless limit remains the same for all devices. Stadium preset files will be similar in size to Helix LT/Floor `.hlx` files (~10-50KB JSON), well within limits.
+
+| Concern | Impact | Note |
+|---------|--------|------|
+| Preset file size (.hsp) | Negligible | Same magnitude as .hlx (~10-50KB) |
+| Agoura model catalog size | Minimal | ~50 additional catalog entries in models.ts |
+| API response payload | Unchanged | Same JSON structure returned to client |
+| Supabase Storage paths | Trivial | Add `.hsp` extension case to existing storage path logic |
 
 ---
 
 ## Sources
 
-- Supabase Anonymous Sign-Ins (official): https://supabase.com/docs/guides/auth/auth-anonymous
-- Supabase Identity Linking (official): https://supabase.com/docs/guides/auth/auth-identity-linking
-- Supabase `linkIdentity()` JS reference (official): https://supabase.com/docs/reference/javascript/auth-linkidentity
-- Supabase Auth with Next.js App Router (official): https://supabase.com/docs/guides/auth/auth-helpers/nextjs
-- Setting Up Server-Side Auth for Next.js (official): https://supabase.com/docs/guides/auth/server-side/nextjs
-- Supabase Storage signed upload URLs (official): https://supabase.com/docs/reference/javascript/storage-from-createsigneduploadurl
-- Supabase Storage `uploadToSignedUrl` (official): https://supabase.com/docs/reference/javascript/storage-from-uploadtosignedurl
-- Vercel + Supabase Next.js App Router Starter Template: https://vercel.com/templates/next.js/supabase
-- Auth.js Supabase adapter limitations (official authjs.dev): https://authjs.dev/getting-started/adapters/supabase
-- Auth.js v5 migration guide (official): https://authjs.dev/getting-started/migrating-to-v5
-- Next.js App Router authentication guide (official): https://nextjs.org/docs/app/guides/authentication
-- Next.js layouts and partial rendering (official): https://nextjs.org/docs/app
-- Supabase + Next.js quickstart (official): https://supabase.com/docs/guides/getting-started/quickstarts/nextjs
-- Signed URL uploads with Next.js + Supabase (community, Feb 2025): https://medium.com/@olliedoesdev/signed-url-file-uploads-with-nextjs-and-supabase-74ba91b65fe0
-- WorkOS Next.js auth guide 2026 (MEDIUM confidence): https://workos.com/blog/nextjs-app-router-authentication-guide-2026
-- Next.js 15 App Router sidebar layout pattern (community, multiple sources, MEDIUM confidence): https://medium.com/@vigneshuthra/how-i-structure-real-world-next-js-apps-using-the-app-router-2025-edition-58a5c8f447fb
+- Line 6 Helix Stadium Presets Manual (.hsp format confirmation): https://manuals.line6.com/en/helix-stadium/live/presets
+- Helix/HX preset transfers to Helix Stadium (back-compat details): https://line6.com/support/announcement/118-helixhx-preset-transfers-to-helix-stadium/
+- Helix Stadium Signal Path Routing (12 blocks/path, 4 paths): https://manuals.line6.com/en/helix-stadium/live/signal-path-routing
+- Helix Stadium Models catalog (Agoura + HX model list): https://line6.com/helix-stadium-models/
+- Reverse engineering Helix Stadium XL editor protocol (modeldefs msgpack, model ID structure — protocol only, not file format): https://ilikekillnerds.com/2025/12/21/reverse-engineering-the-helix-stadium-xl-editor-protocol/
+- Helix Stadium 1.2.1 Release Notes (Jan 2026, 50 Agoura channels as of 1.2): https://line6.com/support/page/kb/effects-controllers/helix_130/helix-stadium-121-release-notes-r1105
+- Sweetwater Stadium XL amp/DSP specs: https://www.sweetwater.com/store/detail/StadiumXL--line-6-helix-stadium-xl-amp-modeler-and-fx-processor
+- Existing codebase (ground truth for all existing architecture claims): src/lib/helix/
 
 ---
 
-*Architecture research for: HelixAI v2.0 Persistent Chat Platform — auth, database, file storage integration*
-*Researched: 2026-03-03*
+*Architecture research for: HelixAI v3.0 — Helix Stadium device support*
+*Researched: 2026-03-04*
