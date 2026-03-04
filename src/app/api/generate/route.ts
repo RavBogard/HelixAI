@@ -11,8 +11,11 @@ import {
   summarizePodGoPreset,
   buildHspFile,
   summarizeStadiumPreset,
+  buildStompFile,
+  summarizeStompPreset,
   isPodGo,
   isStadium,
+  isStomp,
 } from "@/lib/helix";
 import type { PresetSpec, DeviceTarget, SubstitutionMap } from "@/lib/helix";
 import type { RigIntent } from "@/lib/helix";
@@ -23,7 +26,7 @@ export async function POST(req: NextRequest) {
   try {
     const { messages, device, rigIntent, rigText, conversationId } = await req.json();
 
-    // Resolve device target — supports helix_lt, helix_floor, pod_go, helix_stadium
+    // Resolve device target — supports helix_lt, helix_floor, pod_go, helix_stadium, helix_stomp, helix_stomp_xl
     let deviceTarget: DeviceTarget;
     if (device === "helix_floor") {
       deviceTarget = "helix_floor";
@@ -31,6 +34,10 @@ export async function POST(req: NextRequest) {
       deviceTarget = "pod_go";
     } else if (device === "helix_stadium") {
       deviceTarget = "helix_stadium";
+    } else if (device === "helix_stomp") {
+      deviceTarget = "helix_stomp";
+    } else if (device === "helix_stomp_xl") {
+      deviceTarget = "helix_stomp_xl";
     } else {
       deviceTarget = "helix_lt";
     }
@@ -95,6 +102,52 @@ export async function POST(req: NextRequest) {
     validatePresetSpec(presetSpec, deviceTarget);
 
     // Step 5: Build preset file with device target
+    if (isStomp(deviceTarget)) {
+      // Step 5b: Stomp — build .hlx file with Stomp-specific I/O models (STOMP-06)
+      const hlxFile = buildStompFile(presetSpec, deviceTarget as "helix_stomp" | "helix_stomp_xl");
+      const summary = summarizeStompPreset(presetSpec, deviceTarget as "helix_stomp" | "helix_stomp_xl");
+
+      // --- Persistence: fire-and-forget upload + preset_url update ---
+      if (conversationId) {
+        const supabase = await createSupabaseServerClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const storagePath = `${user.id}/${conversationId}/latest.hlx`; // Same extension as LT/Floor (STOMP-06)
+          const fileBuffer = Buffer.from(JSON.stringify(hlxFile));
+
+          // Non-blocking — do NOT await before return
+          supabase.storage
+            .from("presets")
+            .upload(storagePath, fileBuffer, {
+              contentType: "application/json",
+              upsert: true,
+            })
+            .then(({ error: uploadError }) => {
+              if (!uploadError) {
+                return supabase
+                  .from("conversations")
+                  .update({ preset_url: storagePath, updated_at: new Date().toISOString() })
+                  .eq("id", conversationId)
+                  .eq("user_id", user.id);
+              }
+              console.error("Preset storage upload failed (non-fatal):", uploadError.message);
+            })
+            .catch((err) => console.error("Preset persistence error (non-fatal):", err));
+        }
+      }
+      // --- End persistence ---
+
+      return NextResponse.json({
+        preset: hlxFile,
+        summary,
+        spec: presetSpec,
+        toneIntent,
+        device: deviceTarget,
+        fileExtension: ".hlx", // Stomp uses .hlx — same as LT/Floor (STOMP-06)
+        ...(substitutionMap !== undefined ? { substitutionMap } : {}),
+      });
+    }
+
     if (isStadium(deviceTarget)) {
       // Stadium: build .hsp file (STAD-06)
       const hspFile = buildHspFile(presetSpec);
