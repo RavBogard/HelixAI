@@ -168,10 +168,12 @@ export type CabSize = "small" | "medium" | "large";
 // Device target for .hlx / .pgp file generation
 export type DeviceTarget = "helix_lt" | "helix_floor" | "pod_go";
 
+// Source: Phase 23 research and commit 3ba0768 (fix(phase-23): correct Helix Floor device ID)
+// Regression: commit 68ad895 (docs: start milestone v2.0) incorrectly reset helix_floor to 2162692
 export const DEVICE_IDS: Record<DeviceTarget, number> = {
-  helix_lt: 2162692,
-  helix_floor: 2162692, // Floor and LT share the same preset format and device ID
-  pod_go: 2162695,
+  helix_lt: 2162692,    // 0x210004 — confirmed from real Helix LT .hlx exports (Phase 1, FNDN-03)
+  helix_floor: 2162691, // 0x210003 — confirmed from real Helix Floor .hlx export (Phase 23, commit 3ba0768); regression in commit 68ad895 set this back to 2162692 — now restored
+  pod_go: 2162695,      // 0x210007 — confirmed from 18 real .pgp files (Phase 12)
 } as const;
 
 /** Returns true if the device target is a Helix (LT or Floor) */
