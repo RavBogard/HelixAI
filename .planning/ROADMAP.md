@@ -407,7 +407,7 @@ Plans:
 **Goal:** Authenticated users' conversations are automatically created and persisted after the first AI response — no user action required. Opening a new session shows all previous chats in the sidebar, just like any standard AI chat interface. Conversations should NOT be created for anonymous users (they can't retrieve them anyway).
 **Requirements**: SAVE-01, SAVE-02, SAVE-03, SAVE-04
 **Depends on:** Phase 28
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 - [ ] 30-01-PLAN.md — Sidebar refresh after auto-title + generate-flow message persistence (SAVE-01, SAVE-02, SAVE-03, SAVE-04)

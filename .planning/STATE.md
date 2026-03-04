@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Persistent Chat Platform
 status: unknown
-last_updated: "2026-03-04T03:43:53.932Z"
+last_updated: "2026-03-04T03:47:19.577Z"
 progress:
   total_phases: 21
-  completed_phases: 17
+  completed_phases: 18
   total_plans: 37
-  completed_plans: 35
+  completed_plans: 36
 ---
 
 ---
@@ -100,12 +100,12 @@ See: .planning/PROJECT.md (updated 2026-03-03)
 
 ## Current Position
 
-Phase: 28 (Complete — all 3 plans done)
-Plan: 03 (complete — UX polish: sign-in banner, loading state, continuation chips)
-Status: Phase 28 Chat Sidebar UI + UX Polish complete; Phase 29 (Dual-Amp Fix) next
-Last activity: 2026-03-03 — 28-03 executed; UXP-01/02/03 implemented in page.tsx
+Phase: 30 (Complete — 1 plan done)
+Plan: 01 (complete — chat auto-save: deferred sidebar refresh, generate-flow message persistence)
+Status: Phase 30 Chat Auto-Save complete; conversations appear in sidebar with real titles
+Last activity: 2026-03-04 — 30-01 executed; sidebar refresh deferred to after auto-title PATCH, generate flow now persists messages
 
-Progress: [----------] 4/5 phases complete (13 plans done in v2.0)
+Progress: [----------] 6/6 phases complete (16 plans done in v2.0)
 
 ## Performance Metrics
 
@@ -159,11 +159,14 @@ Progress: [----------] 4/5 phases complete (13 plans done in v2.0)
 | 26. Conversation CRUD API | 2 plans | Complete — POST create, GET list, GET read-with-messages, PATCH title, POST message, DELETE conversation |
 | 27. Persistence Wiring | 2 plans | Complete — /api/chat + /api/generate server persistence + page.tsx client lifecycle wiring |
 | 28. Chat Sidebar UI + UX Polish | 3 plans | Complete — sidebar shell, conversation navigation, UX polish (sign-in banner, loading state, continuation chips) |
+| 29. Dual-Amp Preset Generation Fix | 3 plans | Complete — dual-amp structural validation, DSP budget logic, correct chain generation |
+| 30. Chat Auto-Save on First AI Response | 1 plan | Complete — deferred sidebar refresh to after auto-title PATCH; generate flow now persists messages |
 | Phase 27 P01 | 112s | 2 tasks | 2 files |
 | Phase 27-persistence-wiring P02 | 145 | 2 tasks | 1 files |
 | Phase 28 P01 | 2 | 2 tasks | 3 files |
 | Phase 28 P02 | 4 | 2 tasks | 1 files |
 | Phase 28-chat-sidebar-ui-ux-polish P03 | continuation | 3 tasks | 1 files |
+| Phase 30 P01 | 5 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -227,12 +230,14 @@ Progress: [----------] 4/5 phases complete (13 plans done in v2.0)
 - [Phase 28-01]: ChatSidebar mounted in layout.tsx — persists without remount across navigations; CSS translateX toggle keeps conversation list in memory when sidebar closes
 - [Phase 28-01]: Server-side isAuthenticated check in async layout.tsx — anonymous users see no sidebar, no client-side auth check needed
 - [Phase 28]: useSearchParams used to read conversation URL param in page.tsx — URL param watcher triggers loadConversation, router.replace cleans URL after load
-- [Phase 28]: helixai:conversation-created dispatch in ensureConversation() success path — closes sidebar refresh loop with ChatSidebar listener from Plan 01
+- [Phase 28 → Phase 30 override]: helixai:conversation-created dispatch MOVED from ensureConversation() to sendMessage()/generatePreset() success paths (Phase 30) — deferred to after auto-title PATCH for real title display
 - [Phase 28]: isResumingConversation cleared on sendMessage/generatePreset — once user acts in resumed conversation, continuation chips (Plan 03) disappear
 - [Phase 28-03]: showSignInBanner triggered when conversationId is null post-download — null conversationId is the anonymous user signal from Phase 27-02 contract
 - [Phase 28-03]: isLoadingConversation cleared in finally block — ensures spinner always clears even if early-return branch fires
 - [Phase 28-03]: Continuation chips rendered outside the form div at same nesting level — appears above input bar without being inside form element
 - [Phase 28-03]: Generate-for-other-device chip avoids pod_go as alternate — always maps to helix_lt or helix_floor
+- [Phase 30]: Phase 30: helixai:conversation-created dispatch moved from ensureConversation() to sendMessage() and generatePreset() success paths — fires after auto-title PATCH resolves, not on bare creation
+- [Phase 30]: Phase 30: generate-only flow persists last user message + data.summary as assistant message fire-and-forget after /api/generate success
 
 ### Roadmap Evolution
 
@@ -250,7 +255,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-03
-Stopped at: Phase 28 Plan 03 complete — UX polish (sign-in banner, loading state, continuation chips) done; Phase 28 fully complete
+Last session: 2026-03-04
+Stopped at: Phase 30 Plan 01 complete — chat auto-save on first AI response done; Phase 30 fully complete
 Resume file: None
-Next command: /gsd:execute-phase 29 (Dual-Amp Preset Generation Fix)
+Next command: (Phase 30 complete — check ROADMAP.md for next phase)
