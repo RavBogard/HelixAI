@@ -113,10 +113,10 @@ See: .planning/PROJECT.md (updated 2026-03-03)
 
 ## Current Position
 
-Phase: Phase 36 — Planner + API Route Integration (next)
+Phase: Phase 37 — UI Device Selector + Download (next)
 Plan: —
-Status: Phase 35 complete (108/108 tests, clean build, committed). Phase 36 next.
-Last activity: 2026-03-04 — Phase 35 complete: stadium-builder.ts with buildHspFile() (rpshnosj header, meta+preset structure, b00..bNN blocks, P35_* I/O, 8 snapshots) + summarizeStadiumPreset()
+Status: Phase 36 complete (108/108 tests, clean build, committed). Phase 37 next.
+Last activity: 2026-03-04 — Phase 36 complete: /api/generate Stadium path wired — buildHspFile() call, latest.hsp Supabase storage, fileExtension=".hsp" response
 
 ## Performance Metrics
 

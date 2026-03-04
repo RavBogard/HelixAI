@@ -9,6 +9,8 @@ import {
   validatePresetSpec,
   buildPgpFile,
   summarizePodGoPreset,
+  buildHspFile,
+  summarizeStadiumPreset,
   isPodGo,
   isStadium,
 } from "@/lib/helix";
@@ -93,12 +95,51 @@ export async function POST(req: NextRequest) {
     validatePresetSpec(presetSpec, deviceTarget);
 
     // Step 5: Build preset file with device target
-    // TODO Phase 35: replace Stadium stub with buildHspFile() call
     if (isStadium(deviceTarget)) {
-      return NextResponse.json(
-        { error: "Helix Stadium preset generation not yet implemented (Phase 35)" },
-        { status: 501 }
-      );
+      // Stadium: build .hsp file (STAD-06)
+      const hspFile = buildHspFile(presetSpec);
+      const summary = summarizeStadiumPreset(presetSpec);
+
+      // --- Persistence: fire-and-forget upload + preset_url update (STORE-01, STORE-03) ---
+      if (conversationId) {
+        const supabase = await createSupabaseServerClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          // Store full serialized .hsp (magic header + JSON) so download has correct format
+          const storagePath = `${user.id}/${conversationId}/latest.hsp`;
+          const fileBuffer = Buffer.from(hspFile.serialized);
+
+          // Non-blocking — do NOT await before return
+          supabase.storage
+            .from("presets")
+            .upload(storagePath, fileBuffer, {
+              contentType: "application/octet-stream",
+              upsert: true,
+            })
+            .then(({ error: uploadError }) => {
+              if (!uploadError) {
+                return supabase
+                  .from("conversations")
+                  .update({ preset_url: storagePath, updated_at: new Date().toISOString() })
+                  .eq("id", conversationId)
+                  .eq("user_id", user.id);
+              }
+              console.error("Preset storage upload failed (non-fatal):", uploadError.message);
+            })
+            .catch((err) => console.error("Preset persistence error (non-fatal):", err));
+        }
+      }
+      // --- End persistence ---
+
+      return NextResponse.json({
+        preset: hspFile.json,
+        summary,
+        spec: presetSpec,
+        toneIntent,
+        device: deviceTarget,
+        fileExtension: ".hsp",
+        ...(substitutionMap !== undefined ? { substitutionMap } : {}),
+      });
     }
 
     if (isPodGo(deviceTarget)) {

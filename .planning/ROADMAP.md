@@ -458,7 +458,8 @@ Plans:
   2. The planner prompt sent to Claude contains only Stadium-compatible model IDs when `device === "helix_stadium"`
   3. Supabase Storage receives the file at `presets/{user_id}/{conversation_id}/latest.hsp` (not `.hlx`)
   4. Helix LT and Pod Go generation are completely unaffected — existing integration tests pass without modification
-**Plans**: TBD
+**Plans**: 1 plan
+- [x] 36-01-PLAN.md — /api/generate Stadium path: buildHspFile(), Supabase latest.hsp upload, fileExtension=".hsp" response (STAD-06)
 
 ### Phase 37: UI — Device Selector + Download
 **Goal**: Users can select Helix Stadium in the device picker and download the generated `.hsp` file — both device selector arrays in `page.tsx` are updated; download and badge show "STADIUM"
