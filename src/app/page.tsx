@@ -1496,7 +1496,22 @@ function HomeContent() {
                 </span>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <button
-                    onClick={() => window.dispatchEvent(new Event('helixtones:before-signin'))}
+                    onClick={async () => {
+                      // Serialize chat state before OAuth redirect (same as AuthButton.handleSignIn)
+                      window.dispatchEvent(new Event('helixtones:before-signin'))
+                      const supabase = createSupabaseBrowserClient()
+                      const { data: { user: currentUser } } = await supabase.auth.getUser()
+                      const oauthOptions = {
+                        provider: 'google' as const,
+                        options: { redirectTo: `${window.location.origin}/auth/callback` },
+                      }
+                      if (currentUser?.is_anonymous) {
+                        const { error } = await supabase.auth.linkIdentity(oauthOptions)
+                        if (error) await supabase.auth.signInWithOAuth(oauthOptions)
+                      } else {
+                        await supabase.auth.signInWithOAuth(oauthOptions)
+                      }
+                    }}
                     className="text-[var(--hlx-amber)] hover:text-[var(--hlx-text)] font-medium transition-colors text-[0.8125rem]"
                   >
                     Sign in
