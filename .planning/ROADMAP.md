@@ -392,13 +392,13 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 ### Phase 29: Dual-Amp Preset Generation Fix
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Users who request presets with two different amps receive a valid dual-amp preset with split/join AB topology, per-snapshot amp switching, and independent parameter resolution — single-amp presets are completely unaffected; Pod Go gracefully falls back to single-amp.
+**Requirements**: DUAL-01, DUAL-02, DUAL-03, DUAL-04, DUAL-05, DUAL-06, DUAL-07, DUAL-08, DUAL-09
 **Depends on:** Phase 28
-**Plans:** 3/3 plans complete
+**Plans:** 0/0 plans (planning in progress)
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 29 to break down)
+- [ ] TBD (planning in progress)
 
 ---
 *Roadmap created: 2026-03-01*

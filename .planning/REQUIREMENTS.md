@@ -242,6 +242,18 @@ Requirements for Persistent Chat Platform milestone. Transform HelixAI from a st
 - [x] **UXP-03**: Continuation suggestion chips shown when resuming a past conversation — "Refine this tone", "Try a different amp", "Generate for [other device]" — static suggestions based on chat state, no AI call
 - [x] **UXP-04**: Existing text-only generation flow (no auth, no persistence) produces identical output and performance to v1.3 — no new API calls, no changed loading states, no response shape changes for anonymous users
 
+### Dual-Amp Preset Support
+
+- **DUAL-01**: ToneIntentSchema adds optional `secondAmpName` and `secondCabName` fields with Zod validation — single-amp presets are unaffected
+- **DUAL-02**: Planner prompt updated to document dual-amp fields, when to use them, and DSP budget constraints for dual-amp presets
+- **DUAL-03**: Chain assembler builds split/join AB topology when `secondAmpName` is present and device is Helix (LT or Floor)
+- **DUAL-04**: Param engine resolves second amp parameters using the second amp's model category independently — no cross-contamination with primary amp defaults
+- **DUAL-05**: Snapshot engine applies per-snapshot bypass toggle: clean/crunch snapshots activate primary amp, lead/ambient snapshots activate second amp; ChVol overrides applied to both
+- **DUAL-06**: Preset builder sets `@topology0: "AB"` and writes `split`/`join` blocks to dsp0 for dual-amp presets — uses existing `HlxSplit`/`HlxJoin` interfaces
+- **DUAL-07**: Pod Go guard — `secondAmpName` is silently ignored when device is Pod Go; Gemini and Planner prompts warn of single-amp-only limitation
+- **DUAL-08**: Gemini system prompt updated to accurately describe dual-amp capability for Helix devices and Pod Go limitation — no more over-promising
+- **DUAL-09**: Generated dual-amp `.hlx` file is structurally valid — correct topology, split/join blocks, two amp+cab pairs on separate paths, and both amps visible when loaded
+
 ## Future Requirements
 
 Deferred to future milestones. Tracked but not in current roadmap.
@@ -294,7 +306,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | Multi-provider comparison UI | Going single provider for quality focus; one excellent preset > three mediocre options |
 | Preset rating / feedback loop | Requires data pipeline and retraining infrastructure; out of scope for this rebuild |
 | Maximum gain / extreme saturation defaults | Cap drive at 6; use 808 boost for saturation — prevents muddy, compressed presets |
-| Parallel dual-amp paths as default | Serial single-path is correct; dual-path only for specific genre patterns |
+| Parallel dual-amp paths as default | Serial single-path is correct as default; dual-amp supported when user explicitly requests it (Phase 29: DUAL-01–DUAL-09) |
 | Global EQ as tone fix | Apply all tone shaping in the preset itself via cab block and post-cab EQ |
 | Full pedalboard OCR (single photo) | Too error-prone at launch — per-pedal photos are the reliable baseline (v1.3 scope) |
 | Gemini/Google Vision for pedal extraction | Zero accuracy advantage over Claude for rotary knob reading; adds SDK complexity and API key management |
