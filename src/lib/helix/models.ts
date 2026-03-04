@@ -1222,6 +1222,7 @@ export const EFFECT_NAMES = [
 ] as [string, ...string[]];
 
 // Convenience lookup: all models by ID
+// Includes Stadium-specific catalogs so validate.ts VALID_IDS picks up Agoura_ and Stadium EQ IDs (STAD-04)
 export function getAllModels(): Record<string, HelixModel> {
   return {
     ...AMP_MODELS,
@@ -1234,6 +1235,9 @@ export function getAllModels(): Record<string, HelixModel> {
     ...EQ_MODELS,
     ...WAH_MODELS,
     ...VOLUME_MODELS,
+    // Stadium-specific catalogs (stadiumOnly: true entries excluded from non-Stadium prompts)
+    ...STADIUM_AMPS,
+    ...STADIUM_EQ_MODELS,
   };
 }
 

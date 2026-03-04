@@ -1,6 +1,7 @@
 import { getAllModels } from "./models";
 import type { PresetSpec, DeviceTarget } from "./types";
-import { isPodGo } from "./types";
+import { isPodGo, isStadium } from "./types";
+import { STADIUM_CONFIG } from "./config";
 
 // Build a set of all valid model IDs from our database
 function getValidModelIds(): Set<string> {
@@ -18,6 +19,9 @@ function getValidModelIds(): Set<string> {
   // Pod Go system models
   ids.add("P34_AppDSPFlowInput");
   ids.add("P34_AppDSPFlowOutput");
+  // Stadium system models (P35_* prefix, Phase 35 will add more) (STAD-04)
+  ids.add("P35_AppDSPFlowInput");
+  ids.add("P35_AppDSPFlowOutput");
   return ids;
 }
 
@@ -48,6 +52,7 @@ const VALID_IDS_WITH_SUFFIXES = getValidModelIdsWithSuffixes();
  */
 export function validatePresetSpec(spec: PresetSpec, device?: DeviceTarget): void {
   const podGo = device ? isPodGo(device) : false;
+  const stadium = device ? isStadium(device) : false;
   const validIds = podGo ? VALID_IDS_WITH_SUFFIXES : VALID_IDS;
 
   // 1. Signal chain not empty
@@ -127,6 +132,20 @@ export function validatePresetSpec(spec: PresetSpec, device?: DeviceTarget): voi
     // Validate exactly 4 snapshots (PGSNAP-01)
     if (spec.snapshots.length !== 4) {
       throw new Error(`Pod Go requires exactly 4 snapshots (got ${spec.snapshots.length})`);
+    }
+  } else if (stadium) {
+    // Stadium: single path (dsp0), max 12 blocks (STAD-04)
+    const nonDsp0 = spec.signalChain.filter(b => b.dsp !== 0);
+    if (nonDsp0.length > 0) {
+      throw new Error(`Stadium preset has blocks on dsp1 — Stadium v3.0 is single-path only (all blocks must be on dsp0)`);
+    }
+    const totalBlocks = spec.signalChain.length;
+    if (totalBlocks > STADIUM_CONFIG.STADIUM_MAX_BLOCKS_PER_PATH) {
+      throw new Error(`Stadium exceeds ${STADIUM_CONFIG.STADIUM_MAX_BLOCKS_PER_PATH}-block limit (${totalBlocks} blocks)`);
+    }
+    // Stadium supports up to 8 snapshots (STAD-04)
+    if (spec.snapshots.length > STADIUM_CONFIG.STADIUM_MAX_SNAPSHOTS) {
+      throw new Error(`Stadium supports at most ${STADIUM_CONFIG.STADIUM_MAX_SNAPSHOTS} snapshots (got ${spec.snapshots.length})`);
     }
   } else {
     // Helix: dual DSP, max 8 non-cab blocks per DSP

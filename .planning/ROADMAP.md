@@ -434,7 +434,8 @@ Plans:
   2. Block count is capped at `STADIUM_MAX_BLOCKS_PER_PATH` (not `MAX_BLOCKS_PER_DSP`) — the constant name is different in code
   3. `validatePresetSpec(spec, "helix_stadium")` rejects any block using a non-Stadium model ID with a descriptive error
   4. Single-path (Path 1A) generation is the only supported topology for Stadium in v3.0 — multi-path validation not required
-**Plans**: TBD
+**Plans**: 1 plan
+- [x] 34-01-PLAN.md — Stadium chain rules (Agoura amp lookup, Stadium 7-band EQ mandatory, 12-block limit), validate.ts Stadium branch, getAllModels() includes Stadium catalogs (STAD-04)
 
 ### Phase 35: Stadium Builder
 **Goal**: `stadium-builder.ts` produces valid `.hsp` files using the structure confirmed from Phase 31 inspection — `preset-builder.ts` and `podgo-builder.ts` are untouched

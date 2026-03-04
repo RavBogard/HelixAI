@@ -7,7 +7,8 @@
 
 import type { ToneIntent } from "./tone-intent";
 import type { BlockSpec, DeviceTarget } from "./types";
-import { isPodGo, POD_GO_MAX_USER_EFFECTS } from "./types";
+import { isPodGo, isStadium, POD_GO_MAX_USER_EFFECTS } from "./types";
+import { STADIUM_CONFIG } from "./config";
 import {
   AMP_MODELS,
   CAB_MODELS,
@@ -19,6 +20,8 @@ import {
   EQ_MODELS,
   WAH_MODELS,
   VOLUME_MODELS,
+  STADIUM_AMPS,
+  STADIUM_EQ_MODELS,
 } from "./models";
 import type { HelixModel } from "./models";
 
@@ -27,11 +30,15 @@ import type { HelixModel } from "./models";
 // ---------------------------------------------------------------------------
 
 const MAX_BLOCKS_PER_DSP = 8;
+// Stadium: 12 blocks per path (single path, no dual DSP split) (STAD-04)
+const STADIUM_MAX_BLOCKS_PER_PATH = STADIUM_CONFIG.STADIUM_MAX_BLOCKS_PER_PATH;
 
 // Model name constants for mandatory blocks
 const MINOTAUR = "Minotaur";
 const SCREAM_808 = "Scream 808";
 const PARAMETRIC_EQ = "Parametric EQ";
+// Stadium uses the 7-band Parametric EQ (HD2_EQParametric7Band) instead of 5-band
+const STADIUM_PARAMETRIC_EQ = "Stadium Parametric EQ";
 const HORIZON_GATE = "Horizon Gate";
 const GAIN_BLOCK = "Gain Block";
 
@@ -66,7 +73,10 @@ const CATALOG_TO_BLOCK_TYPE: Record<string, BlockType> = {
 // ---------------------------------------------------------------------------
 
 /** Look up an effect model name across all effect catalogs. Throws if not found. */
-function resolveEffectModel(name: string): ResolvedEffect {
+function resolveEffectModel(name: string, device?: DeviceTarget): ResolvedEffect {
+  const stadium = device ? isStadium(device) : false;
+
+  // For Stadium, also search STADIUM_EQ_MODELS (7-band Parametric EQ etc.)
   const catalogs: Array<[Record<string, HelixModel>, string]> = [
     [DISTORTION_MODELS, "DISTORTION_MODELS"],
     [DELAY_MODELS, "DELAY_MODELS"],
@@ -76,6 +86,7 @@ function resolveEffectModel(name: string): ResolvedEffect {
     [EQ_MODELS, "EQ_MODELS"],
     [WAH_MODELS, "WAH_MODELS"],
     [VOLUME_MODELS, "VOLUME_MODELS"],
+    ...(stadium ? [[STADIUM_EQ_MODELS, "EQ_MODELS"] as [Record<string, HelixModel>, string]] : []),
   ];
 
   for (const [catalog, catalogName] of catalogs) {
@@ -243,11 +254,16 @@ function buildBlockSpec(
  */
 export function assembleSignalChain(intent: ToneIntent, device?: DeviceTarget): BlockSpec[] {
   const podGo = device ? isPodGo(device) : false;
+  const stadium = device ? isStadium(device) : false;
+
   // 1. Resolve amp model
-  const ampModel = AMP_MODELS[intent.ampName];
+  // Stadium: look up in STADIUM_AMPS first, then AMP_MODELS as fallback
+  const ampModel = stadium
+    ? (STADIUM_AMPS[intent.ampName] ?? AMP_MODELS[intent.ampName])
+    : AMP_MODELS[intent.ampName];
   if (!ampModel) {
     throw new Error(
-      `Unknown amp model: "${intent.ampName}". Model name must exactly match a key in AMP_MODELS.`
+      `Unknown amp model: "${intent.ampName}". Model name must exactly match a key in ${stadium ? "STADIUM_AMPS" : "AMP_MODELS"}.`
     );
   }
 
@@ -260,7 +276,8 @@ export function assembleSignalChain(intent: ToneIntent, device?: DeviceTarget): 
   }
 
   // 2b. Detect dual-amp intent (DUAL-03)
-  const isDualAmp = !!(intent.secondAmpName && intent.secondCabName && !podGo);
+  // Stadium v3.0: single-path only — dual-amp not supported (STAD-04)
+  const isDualAmp = !!(intent.secondAmpName && intent.secondCabName && !podGo && !stadium);
 
   let secondAmpModel: HelixModel | undefined;
   let secondCabModel: HelixModel | undefined;
@@ -287,7 +304,7 @@ export function assembleSignalChain(intent: ToneIntent, device?: DeviceTarget): 
   const userEffectNames = new Set<string>();
 
   for (const effect of intent.effects) {
-    const resolved = resolveEffectModel(effect.modelName);
+    const resolved = resolveEffectModel(effect.modelName, device);
     const slot = classifyEffectSlot(resolved, effect.modelName);
     userEffectNames.add(effect.modelName);
     userEffects.push({
@@ -302,6 +319,12 @@ export function assembleSignalChain(intent: ToneIntent, device?: DeviceTarget): 
   // Pod Go: enforce maximum 4 user-assignable effect blocks (PGCHAIN-01)
   if (podGo && userEffects.length > POD_GO_MAX_USER_EFFECTS) {
     userEffects.length = POD_GO_MAX_USER_EFFECTS;
+  }
+
+  // Stadium: enforce maximum 4 effects (amp+cab+boost+gate+eq+gain = 6 mandatory, leaves ~4 flex) (STAD-04)
+  // Conservative limit: ensures total stays within STADIUM_MAX_BLOCKS_PER_PATH (12)
+  if (stadium && userEffects.length > 4) {
+    userEffects.length = 4;
   }
 
   // Dual-amp: enforce tighter pre-amp effect limit (DUAL-03)
@@ -349,8 +372,11 @@ export function assembleSignalChain(intent: ToneIntent, device?: DeviceTarget): 
   }
 
   // 5c. Post-cab Parametric EQ — skip for Pod Go (PGCHAIN-02: DSP budget reserved)
+  //     Stadium uses 7-band Parametric EQ (STAD-04)
   if (!podGo) {
-    const eqModel = EQ_MODELS[PARAMETRIC_EQ]!;
+    const eqModel = stadium
+      ? STADIUM_EQ_MODELS[STADIUM_PARAMETRIC_EQ]!
+      : EQ_MODELS[PARAMETRIC_EQ]!;
     mandatoryBlocks.push({
       model: eqModel,
       blockType: "eq",
@@ -437,9 +463,19 @@ export function assembleSignalChain(intent: ToneIntent, device?: DeviceTarget): 
     // Pod Go total: amp(1) + boost(1) + gate?(0-1) + user effects (up to 4) ≤ ~10
     // We check against the total block limit including cab
     const totalBlocks = allBlocks.length;
+    void totalNonCab; // used via totalBlocks
     if (totalBlocks > 10) {
       throw new Error(
         `Pod Go block limit exceeded: ${totalBlocks} blocks (max 10 total). ` +
+          `Reduce the number of effects.`
+      );
+    }
+  } else if (stadium) {
+    // Stadium: single path, max 12 blocks (including cab) (STAD-04)
+    const totalBlocks = allBlocks.length;
+    if (totalBlocks > STADIUM_MAX_BLOCKS_PER_PATH) {
+      throw new Error(
+        `Stadium block limit exceeded: ${totalBlocks} blocks (max ${STADIUM_MAX_BLOCKS_PER_PATH} per path). ` +
           `Reduce the number of effects.`
       );
     }
