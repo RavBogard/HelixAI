@@ -395,7 +395,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 **Goal:** Users who request presets with two different amps receive a valid dual-amp preset with split/join AB topology, per-snapshot amp switching, and independent parameter resolution — single-amp presets are completely unaffected; Pod Go gracefully falls back to single-amp.
 **Requirements**: DUAL-01, DUAL-02, DUAL-03, DUAL-04, DUAL-05, DUAL-06, DUAL-07, DUAL-08, DUAL-09
 **Depends on:** Phase 28
-**Plans:** 0/3 plans complete
+**Plans:** 1/3 plans executed
 
 Plans:
 - [ ] 29-01: Schema Extension + AI Prompt Updates (DUAL-01, DUAL-02, DUAL-07, DUAL-08)
@@ -405,13 +405,13 @@ Plans:
 ### Phase 30: Chat Auto-Save on First AI Response
 
 **Goal:** Authenticated users' conversations are automatically created and persisted after the first AI response — no user action required. Opening a new session shows all previous chats in the sidebar, just like any standard AI chat interface. Conversations should NOT be created for anonymous users (they can't retrieve them anyway).
-**Requirements**: TBD (run /gsd:plan-phase 30)
+**Requirements**: SAVE-01, SAVE-02, SAVE-03, SAVE-04
 **Depends on:** Phase 28
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 30 to break down)
+- [ ] 30-01-PLAN.md — Sidebar refresh after auto-title + generate-flow message persistence (SAVE-01, SAVE-02, SAVE-03, SAVE-04)
 
 ---
 *Roadmap created: 2026-03-01*
-*Last updated: 2026-03-03 — Phase 26 Conversation CRUD API complete (1/1 plan); POST create, GET list, GET read-with-messages, PATCH title routes built with per-route auth verification*
+*Last updated: 2026-03-03 — Phase 30 Chat Auto-Save planned (1 plan); sidebar refresh timing fix, generate-only message persistence, deferred conversation-created event*
