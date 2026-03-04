@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, Suspense } from "react";
 import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -281,7 +281,7 @@ function SubstitutionCard({ entries }: { entries: SubstitutionEntryDisplay[] }) 
   );
 }
 
-export default function Home() {
+function HomeContent() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
@@ -1579,5 +1579,13 @@ export default function Home() {
       </div>
       )}
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={null}>
+      <HomeContent />
+    </Suspense>
   );
 }
