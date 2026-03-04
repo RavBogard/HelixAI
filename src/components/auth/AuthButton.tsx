@@ -20,6 +20,19 @@ export function AuthButton() {
     setMounted(true)
     const supabase = createSupabaseBrowserClient()
 
+    // If Supabase returned identity_already_exists, the Google account is already
+    // linked to a previous user — retry with a plain OAuth sign-in to reach it.
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('error_code') === 'identity_already_exists') {
+      // Clean up the error params from the URL before redirecting
+      window.history.replaceState({}, '', window.location.pathname)
+      supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: `${window.location.origin}/auth/callback` },
+      })
+      return
+    }
+
     // Set initial user state
     supabase.auth.getUser().then(({ data: { user: currentUser } }) => {
       setUser(currentUser as UserState | null)
@@ -47,23 +60,22 @@ export function AuthButton() {
     const supabase = createSupabaseBrowserClient()
     const { data: { user: currentUser } } = await supabase.auth.getUser()
 
+    const oauthOptions = {
+      provider: 'google' as const,
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    }
+
     if (currentUser?.is_anonymous) {
       // Preserve anonymous UUID — link Google identity to the same user
-      const { error } = await supabase.auth.linkIdentity({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      })
-      if (error) console.error('[AuthButton] linkIdentity error:', error.message)
+      const { error } = await supabase.auth.linkIdentity(oauthOptions)
+      if (error) {
+        // Identity already linked to another account — sign in to that account instead
+        const { error: oauthError } = await supabase.auth.signInWithOAuth(oauthOptions)
+        if (oauthError) console.error('[AuthButton] signInWithOAuth error:', oauthError.message)
+      }
     } else {
-      // Fallback: no anonymous session exists — start a fresh OAuth flow
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      })
+      // No anonymous session — start a fresh OAuth flow
+      const { error } = await supabase.auth.signInWithOAuth(oauthOptions)
       if (error) console.error('[AuthButton] signInWithOAuth error:', error.message)
     }
   }
