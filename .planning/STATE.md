@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Persistent Chat Platform
 status: unknown
-last_updated: "2026-03-04T22:13:31.619Z"
+last_updated: "2026-03-04T22:26:32.918Z"
 progress:
   total_phases: 32
-  completed_phases: 26
+  completed_phases: 27
   total_plans: 51
-  completed_plans: 47
+  completed_plans: 48
 ---
 
 ---
@@ -194,6 +194,7 @@ Last activity: 2026-03-04 — Phase 38 complete: STAD-08 tests added to rig-mapp
 | Phase 39 P01 | 402 | 3 tasks | 7 files |
 | Phase 39 P02 | 120 | 2 tasks | 1 files |
 | Phase 39 P03 | 180 | 2 tasks | 1 files |
+| Phase 41 P01 | 8 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -268,6 +269,8 @@ Last activity: 2026-03-04 — Phase 38 complete: STAD-08 tests added to rig-mapp
 - [Phase 39]: stomp-builder.ts isolated from preset-builder.ts (prevents LT/Floor regression)
 - [Phase 39]: Parametric EQ and Gain Block skipped for Stomp (same as Pod Go — tight 6-block budget)
 - [Phase 39]: grid-cols-3 (2x3) for device pickers — two rows group form factors visually
+- [Phase 41]: Gate device picker on readyToGenerate flag, not messages.length >= 2 — AI signal is the authoritative readiness indicator
+- [Phase 41]: System prompt minimum rule: AI must never emit [READY_TO_GENERATE] on first response even with complete upfront info — enforces 3-beat conversational arc
 
 ### Roadmap Evolution
 

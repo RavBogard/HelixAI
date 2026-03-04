@@ -568,7 +568,7 @@ Plans:
 **Goal:** Device picker only appears after AI signals readiness via [READY_TO_GENERATE]; AI requires at least one follow-up exchange before signaling — producing a richer musical conversation before preset generation
 **Requirements**: CHATUX-01, CHATUX-02
 **Depends on:** Phase 40
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 - [ ] 41-01-PLAN.md — page.tsx picker condition + gemini.ts prompt rewrite (CHATUX-01, CHATUX-02)
