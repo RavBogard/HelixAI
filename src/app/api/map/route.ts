@@ -31,6 +31,8 @@ export async function POST(req: NextRequest) {
       device = "helix_floor";
     } else if (body.device === "pod_go") {
       device = "pod_go";
+    } else if (body.device === "helix_stadium") {
+      device = "helix_stadium";
     }
 
     // Safe cast: rigIntent was already Zod-validated by /api/vision before being

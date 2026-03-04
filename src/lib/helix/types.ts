@@ -165,15 +165,16 @@ export type TopologyTag =
 
 export type CabSize = "small" | "medium" | "large";
 
-// Device target for .hlx / .pgp file generation
-export type DeviceTarget = "helix_lt" | "helix_floor" | "pod_go";
+// Device target for .hlx / .pgp / .hsp file generation
+export type DeviceTarget = "helix_lt" | "helix_floor" | "pod_go" | "helix_stadium";
 
 // Source: Phase 23 research and commit 3ba0768 (fix(phase-23): correct Helix Floor device ID)
 // Regression: commit 68ad895 (docs: start milestone v2.0) incorrectly reset helix_floor to 2162692
 export const DEVICE_IDS: Record<DeviceTarget, number> = {
-  helix_lt: 2162692,    // 0x210004 — confirmed from real Helix LT .hlx exports (Phase 1, FNDN-03)
-  helix_floor: 2162691, // 0x210003 — confirmed from real Helix Floor .hlx export (Phase 23, commit 3ba0768); regression in commit 68ad895 set this back to 2162692 — now restored
-  pod_go: 2162695,      // 0x210007 — confirmed from 18 real .pgp files (Phase 12)
+  helix_lt: 2162692,      // 0x210004 — confirmed from real Helix LT .hlx exports (Phase 1, FNDN-03)
+  helix_floor: 2162691,   // 0x210003 — confirmed from real Helix Floor .hlx export (Phase 23, commit 3ba0768); regression in commit 68ad895 set this back to 2162692 — now restored
+  pod_go: 2162695,        // 0x210007 — confirmed from 18 real .pgp files (Phase 12)
+  helix_stadium: 2490368, // Source: FluidSolo Stadium_Metal_Rhythm.hsp, meta.device_id, 2026-03-04 (Phase 31)
 } as const;
 
 /** Returns true if the device target is a Helix (LT or Floor) */
@@ -184,6 +185,11 @@ export function isHelix(device: DeviceTarget): boolean {
 /** Returns true if the device target is a Pod Go */
 export function isPodGo(device: DeviceTarget): boolean {
   return device === "pod_go";
+}
+
+/** Returns true if the device target is a Helix Stadium */
+export function isStadium(device: DeviceTarget): boolean {
+  return device === "helix_stadium";
 }
 
 // ---------------------------------------------------------------------------

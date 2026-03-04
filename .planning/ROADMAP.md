@@ -410,7 +410,8 @@ Plans:
   2. `DEVICE_IDS.helix_stadium` is set to the confirmed integer from Phase 31 with source comment
   3. `config.ts` has `STADIUM_MAX_BLOCKS_PER_PATH = 12` and `STADIUM_MAX_SNAPSHOTS = 8` constants
   4. `npm run build` passes with no type errors after type system changes
-**Plans**: TBD
+**Plans**: 1 plan
+- [x] 32-01-PLAN.md — DeviceTarget + DEVICE_IDS + STADIUM_CONFIG + isStadium() + 501 stub in /api/generate (STAD-02, NFR-04)
 
 ### Phase 33: Stadium Model Catalog
 **Goal**: The planner has a curated, Stadium-specific model catalog — Agoura amps, Stadium-compatible effects, and Stadium EQ — and Stadium models are excluded from LT/Floor/Pod Go planner prompts
@@ -524,6 +525,16 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 36. Planner + API Route Integration | v3.0 | TBD | Not started | — |
 | 37. UI — Device Selector + Download | v3.0 | TBD | Not started | — |
 | 38. Rig Emulation for Stadium | v3.0 | TBD | Not started | — |
+
+### Phase 39: HX Stomp Support
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 38
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 39 to break down)
 
 ---
 *Roadmap created: 2026-03-01*

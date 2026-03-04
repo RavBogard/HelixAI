@@ -10,6 +10,7 @@ import {
   buildPgpFile,
   summarizePodGoPreset,
   isPodGo,
+  isStadium,
 } from "@/lib/helix";
 import type { PresetSpec, DeviceTarget, SubstitutionMap } from "@/lib/helix";
 import type { RigIntent } from "@/lib/helix";
@@ -20,12 +21,14 @@ export async function POST(req: NextRequest) {
   try {
     const { messages, device, rigIntent, rigText, conversationId } = await req.json();
 
-    // Resolve device target — now supports pod_go (PGUX-01)
+    // Resolve device target — supports helix_lt, helix_floor, pod_go, helix_stadium
     let deviceTarget: DeviceTarget;
     if (device === "helix_floor") {
       deviceTarget = "helix_floor";
     } else if (device === "pod_go") {
       deviceTarget = "pod_go";
+    } else if (device === "helix_stadium") {
+      deviceTarget = "helix_stadium";
     } else {
       deviceTarget = "helix_lt";
     }
@@ -90,6 +93,14 @@ export async function POST(req: NextRequest) {
     validatePresetSpec(presetSpec, deviceTarget);
 
     // Step 5: Build preset file with device target
+    // TODO Phase 35: replace Stadium stub with buildHspFile() call
+    if (isStadium(deviceTarget)) {
+      return NextResponse.json(
+        { error: "Helix Stadium preset generation not yet implemented (Phase 35)" },
+        { status: 501 }
+      );
+    }
+
     if (isPodGo(deviceTarget)) {
       // Pod Go: build .pgp file (PGP-01)
       const pgpFile = buildPgpFile(presetSpec);

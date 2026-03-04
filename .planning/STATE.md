@@ -113,10 +113,10 @@ See: .planning/PROJECT.md (updated 2026-03-03)
 
 ## Current Position
 
-Phase: Phase 31 — Device ID Research + Floor Fix (not started)
+Phase: Phase 33 — Stadium Model Catalog (next)
 Plan: —
-Status: Planning complete — REQUIREMENTS.md and ROADMAP.md written; ready to execute Phase 31
-Last activity: 2026-03-04 — v3.0 planning complete (Phases 31-38 defined)
+Status: Phase 32 complete (108/108 tests, clean build, committed). Phase 33 next.
+Last activity: 2026-03-04 — Phase 32 complete: DeviceTarget expanded, DEVICE_IDS.helix_stadium=2490368, STADIUM_CONFIG, isStadium(), 501 stub in /api/generate
 
 ## Performance Metrics
 
@@ -255,6 +255,7 @@ Last activity: 2026-03-04 — v3.0 planning complete (Phases 31-38 defined)
 - Phases 22-23 (UI Overhaul, UX Polish) dropped — user did a UI redo, skipping these
 - v2.0 Persistent Chat Platform milestone started; roadmap phases 24-28 created 2026-03-03
 - Phase 29 (Dual-Amp Preset Generation Fix) added — user reports presets requesting two different amps generate with only one; bug fix phase appended to v2.0
+- Phase 39 added: HX Stomp Support
 
 ### Pending Todos
 

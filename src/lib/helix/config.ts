@@ -29,3 +29,22 @@ export const POD_GO_FIRMWARE_CONFIG = {
   /** Application name shown in .pgp meta */
   PGP_APPLICATION: "POD Go Edit",
 } as const;
+
+/**
+ * Helix Stadium file format constants.
+ * Source: Direct inspection of real .hsp file (FluidSolo Stadium_Metal_Rhythm.hsp, 2026-03-04)
+ * File format: 8-byte ASCII magic header ("rpshnosj") prepended before UTF-8 JSON content.
+ * Top-level structure: { "meta": { "device_id": 2490368, ... }, "preset": { "flow": [...], ... } }
+ */
+export const STADIUM_CONFIG = {
+  /** Magic header prepended to all .hsp files — 8 ASCII bytes before JSON content */
+  STADIUM_MAGIC_HEADER: "rpshnosj",
+  /** Maximum user-assignable effect blocks per path (b00-b11) */
+  STADIUM_MAX_BLOCKS_PER_PATH: 12,
+  /** Maximum snapshot slots per preset (confirmed from real .hsp snapshots array length) */
+  STADIUM_MAX_SNAPSHOTS: 8,
+  /** Maximum signal paths (1A, 1B, 2A, 2B — 2 flows × 2 paths each) */
+  STADIUM_MAX_PATHS: 4,
+  /** Device version integer from real .hsp inspection */
+  STADIUM_DEVICE_VERSION: 301990022,
+} as const;

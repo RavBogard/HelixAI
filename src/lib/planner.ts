@@ -5,7 +5,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { ToneIntentSchema, getModelListForPrompt, isPodGo } from "@/lib/helix";
+import { ToneIntentSchema, getModelListForPrompt, isPodGo, isStadium } from "@/lib/helix";
 import type { ToneIntent, DeviceTarget } from "@/lib/helix";
 
 /**
@@ -17,7 +17,8 @@ import type { ToneIntent, DeviceTarget } from "@/lib/helix";
  */
 export function buildPlannerPrompt(modelList: string, device?: DeviceTarget): string {
   const podGo = device ? isPodGo(device) : false;
-  const deviceName = podGo ? "Pod Go" : device === "helix_floor" ? "Helix Floor" : "Helix LT";
+  const stadium = device ? isStadium(device) : false;
+  const deviceName = podGo ? "Pod Go" : stadium ? "Helix Stadium" : device === "helix_floor" ? "Helix Floor" : "Helix LT";
   const maxEffects = podGo ? 4 : 6;
   const effectNote = podGo
     ? "- Keep effects to 2-4 maximum — Pod Go has a 4 user-effect limit and limited DSP"
@@ -77,7 +78,7 @@ ${effectNote}
 - For dual-amp presets, limit pre-amp effects to 2 maximum (DSP budget is tighter)
 - ampName handles clean/crunch snapshots; secondAmpName handles lead/ambient snapshots
 - NEVER use secondAmpName for Pod Go — Pod Go is single-DSP, series-only hardware
-${podGo ? "\n**DEVICE RESTRICTION: This is a Pod Go preset. Pod Go does NOT support dual-amp. Do NOT populate secondAmpName or secondCabName.**\n" : ""}
+${podGo ? "\n**DEVICE RESTRICTION: This is a Pod Go preset. Pod Go does NOT support dual-amp. Do NOT populate secondAmpName or secondCabName.**\n" : ""}${stadium ? "\n**DEVICE RESTRICTION: This is a Helix Stadium preset. Use only Stadium-compatible model names (Agoura_* amps, P35_* I/O). Stadium preset generation is in preview — keep the signal chain simple (single amp, 4 effects maximum).**\n" : ""}
 Based on the conversation below, generate a ToneIntent:`;
 }
 
