@@ -165,6 +165,8 @@ function classifyEffectSlot(resolved: ResolvedEffect, modelName: string): ChainS
 function getDspForSlot(slot: ChainSlot, device?: DeviceTarget): 0 | 1 {
   // Pod Go: single DSP — all blocks on dsp0 (PGCHAIN-03)
   if (device && isPodGo(device)) return 0;
+  // Stadium: single path — all blocks on dsp0 (STAD-04)
+  if (device && isStadium(device)) return 0;
   // Stomp: single DSP — all blocks on dsp0 (STOMP-04)
   if (device && isStomp(device)) return 0;
 
