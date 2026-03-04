@@ -8,10 +8,13 @@ import { assembleSignalChain } from "./chain-rules";
 import { resolveParameters } from "./param-engine";
 import { buildSnapshots } from "./snapshot-engine";
 import { buildHlxFile } from "./preset-builder";
+import { buildStompFile, summarizeStompPreset } from "./stomp-builder";
 import { validatePresetSpec } from "./validate";
-import { DEVICE_IDS } from "./types";
+import { DEVICE_IDS, isStomp } from "./types";
+import { STOMP_CONFIG } from "./config";
 import type { PresetSpec, BlockSpec, DeviceTarget, HlxFile } from "./types";
 import type { ToneIntent, SnapshotIntent } from "./tone-intent";
+import { mapRigToSubstitutions } from "../rig-mapping";
 
 // ---------------------------------------------------------------------------
 // Test fixtures
@@ -278,5 +281,293 @@ describe("HLX-04: Snapshot key rebuilding", () => {
         expect(idx).toBeLessThan(dsp1NonCabCount);
       }
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// HX Stomp + HX Stomp XL (STOMP-01 through STOMP-05, STOMP-10)
+// ---------------------------------------------------------------------------
+
+describe("HX Stomp + HX Stomp XL (STOMP-01 through STOMP-05, STOMP-10)", () => {
+  // STOMP-01: Device IDs confirmed from real hardware exports
+  it("STOMP-01: helix_stomp device ID is 2162694", () => {
+    expect(DEVICE_IDS.helix_stomp).toBe(2162694);
+  });
+  it("STOMP-01: helix_stomp_xl device ID is 2162699", () => {
+    expect(DEVICE_IDS.helix_stomp_xl).toBe(2162699);
+  });
+  it("STOMP-01: Stomp IDs differ from LT, Floor, Pod Go, and Stadium", () => {
+    const ids = Object.values(DEVICE_IDS);
+    expect(DEVICE_IDS.helix_stomp).not.toBe(DEVICE_IDS.helix_lt);
+    expect(DEVICE_IDS.helix_stomp).not.toBe(DEVICE_IDS.helix_floor);
+    expect(DEVICE_IDS.helix_stomp).not.toBe(DEVICE_IDS.pod_go);
+    expect(DEVICE_IDS.helix_stomp).not.toBe(DEVICE_IDS.helix_stadium);
+    expect(DEVICE_IDS.helix_stomp_xl).not.toBe(DEVICE_IDS.helix_stomp);
+    // All IDs must be unique
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+  it("STOMP-01: isStomp() returns true for both Stomp variants", () => {
+    expect(isStomp("helix_stomp")).toBe(true);
+    expect(isStomp("helix_stomp_xl")).toBe(true);
+    expect(isStomp("helix_lt")).toBe(false);
+    expect(isStomp("helix_floor")).toBe(false);
+    expect(isStomp("pod_go")).toBe(false);
+    expect(isStomp("helix_stadium")).toBe(false);
+  });
+
+  // STOMP-02: STOMP_CONFIG constants
+  it("STOMP-02: STOMP_CONFIG has correct block limits", () => {
+    expect(STOMP_CONFIG.STOMP_MAX_BLOCKS).toBe(6);
+    expect(STOMP_CONFIG.STOMP_XL_MAX_BLOCKS).toBe(9);
+  });
+  it("STOMP-02: STOMP_CONFIG has correct snapshot counts", () => {
+    expect(STOMP_CONFIG.STOMP_MAX_SNAPSHOTS).toBe(3);
+    expect(STOMP_CONFIG.STOMP_XL_MAX_SNAPSHOTS).toBe(4);
+  });
+  it("STOMP-02: STOMP_CONFIG has correct I/O model names", () => {
+    expect(STOMP_CONFIG.STOMP_INPUT_MODEL).toBe("HelixStomp_AppDSPFlowInput");
+    expect(STOMP_CONFIG.STOMP_OUTPUT_MAIN_MODEL).toBe("HelixStomp_AppDSPFlowOutputMain");
+    expect(STOMP_CONFIG.STOMP_OUTPUT_SEND_MODEL).toBe("HelixStomp_AppDSPFlowOutputSend");
+  });
+
+  // STOMP-03: buildStompFile output structure
+  it("STOMP-03: buildStompFile(spec, helix_stomp) has correct device ID", () => {
+    const intent = cleanIntent();
+    const chain = assembleSignalChain(intent, "helix_stomp");
+    const parameterized = resolveParameters(chain, intent);
+    const snapshots = buildSnapshots(parameterized, intent.snapshots);
+    const spec: PresetSpec = {
+      name: "Test Stomp",
+      description: "Test",
+      tempo: 120,
+      signalChain: parameterized,
+      snapshots: snapshots.slice(0, STOMP_CONFIG.STOMP_MAX_SNAPSHOTS),
+    };
+    const file = buildStompFile(spec, "helix_stomp");
+    expect(file.data.device).toBe(2162694);
+    expect(file.data.device).toBe(DEVICE_IDS.helix_stomp);
+    expect(file.schema).toBe("L6Preset");
+  });
+  it("STOMP-03: buildStompFile(spec, helix_stomp_xl) has correct device ID", () => {
+    const intent = cleanIntent();
+    const chain = assembleSignalChain(intent, "helix_stomp_xl");
+    const parameterized = resolveParameters(chain, intent);
+    const snapshots = buildSnapshots(parameterized, intent.snapshots);
+    const spec: PresetSpec = {
+      name: "Test Stomp XL",
+      description: "Test",
+      tempo: 120,
+      signalChain: parameterized,
+      snapshots: snapshots.slice(0, STOMP_CONFIG.STOMP_XL_MAX_SNAPSHOTS),
+    };
+    const file = buildStompFile(spec, "helix_stomp_xl");
+    expect(file.data.device).toBe(2162699);
+    expect(file.data.device).toBe(DEVICE_IDS.helix_stomp_xl);
+  });
+  it("STOMP-03: Stomp output uses HelixStomp_* I/O models (not HD2_App*)", () => {
+    const intent = cleanIntent();
+    const chain = assembleSignalChain(intent, "helix_stomp");
+    const parameterized = resolveParameters(chain, intent);
+    const snapshots = buildSnapshots(parameterized, intent.snapshots);
+    const spec: PresetSpec = { name: "Test", description: "Test", tempo: 120, signalChain: parameterized, snapshots: snapshots.slice(0, 3) };
+    const file = buildStompFile(spec, "helix_stomp");
+    const tone = file.data.tone as Record<string, unknown>;
+    const dsp0 = tone.dsp0 as Record<string, unknown>;
+    const inputA = dsp0.inputA as Record<string, unknown>;
+    const outputA = dsp0.outputA as Record<string, unknown>;
+    expect(inputA["@model"]).toBe("HelixStomp_AppDSPFlowInput");
+    expect(outputA["@model"]).toBe("HelixStomp_AppDSPFlowOutputMain");
+    expect((inputA["@model"] as string).startsWith("HD2_")).toBe(false);
+  });
+  it("STOMP-03: Stomp dsp1 is empty", () => {
+    const intent = cleanIntent();
+    const chain = assembleSignalChain(intent, "helix_stomp");
+    const parameterized = resolveParameters(chain, intent);
+    const snapshots = buildSnapshots(parameterized, intent.snapshots);
+    const spec: PresetSpec = { name: "Test", description: "Test", tempo: 120, signalChain: parameterized, snapshots: snapshots.slice(0, 3) };
+    const file = buildStompFile(spec, "helix_stomp");
+    const tone = file.data.tone as Record<string, unknown>;
+    expect(tone.dsp1).toEqual({});
+  });
+  it("STOMP-03: Stomp has 3 valid snapshots (indices 0-2 @valid:true, 3-7 @valid:false)", () => {
+    const intent = cleanIntent();
+    const chain = assembleSignalChain(intent, "helix_stomp");
+    const parameterized = resolveParameters(chain, intent);
+    const snapshots = buildSnapshots(parameterized, intent.snapshots);
+    const spec: PresetSpec = { name: "Test", description: "Test", tempo: 120, signalChain: parameterized, snapshots: snapshots.slice(0, 3) };
+    const file = buildStompFile(spec, "helix_stomp");
+    const tone = file.data.tone as Record<string, unknown>;
+    for (let i = 0; i < 3; i++) {
+      const snap = tone[`snapshot${i}`] as Record<string, unknown>;
+      expect(snap["@valid"]).toBe(true);
+    }
+    for (let i = 3; i < 8; i++) {
+      const snap = tone[`snapshot${i}`] as Record<string, unknown>;
+      expect(snap["@valid"]).toBe(false);
+    }
+  });
+  it("STOMP-03: Stomp XL has 4 valid snapshots (indices 0-3 @valid:true, 4-7 @valid:false)", () => {
+    const intent = cleanIntent();
+    const chain = assembleSignalChain(intent, "helix_stomp_xl");
+    const parameterized = resolveParameters(chain, intent);
+    const snapshots = buildSnapshots(parameterized, intent.snapshots);
+    const spec: PresetSpec = { name: "Test", description: "Test", tempo: 120, signalChain: parameterized, snapshots: snapshots.slice(0, 4) };
+    const file = buildStompFile(spec, "helix_stomp_xl");
+    const tone = file.data.tone as Record<string, unknown>;
+    for (let i = 0; i < 4; i++) {
+      const snap = tone[`snapshot${i}`] as Record<string, unknown>;
+      expect(snap["@valid"]).toBe(true);
+    }
+    for (let i = 4; i < 8; i++) {
+      const snap = tone[`snapshot${i}`] as Record<string, unknown>;
+      expect(snap["@valid"]).toBe(false);
+    }
+  });
+
+  // STOMP-04: chain-rules enforces single DSP
+  it("STOMP-04: assembleSignalChain forces all Stomp blocks to dsp0", () => {
+    const intent = cleanIntent();
+    const chain = assembleSignalChain(intent, "helix_stomp");
+    expect(chain.every(b => b.dsp === 0)).toBe(true);
+  });
+  it("STOMP-04: assembleSignalChain forces all Stomp XL blocks to dsp0", () => {
+    const intent = cleanIntent();
+    const chain = assembleSignalChain(intent, "helix_stomp_xl");
+    expect(chain.every(b => b.dsp === 0)).toBe(true);
+  });
+
+  // STOMP-05: validate.ts enforces limits
+  it("STOMP-05: validatePresetSpec accepts valid Stomp preset", () => {
+    const intent = cleanIntent();
+    const chain = assembleSignalChain(intent, "helix_stomp");
+    const parameterized = resolveParameters(chain, intent);
+    const snapshots = buildSnapshots(parameterized, intent.snapshots).slice(0, 3);
+    const spec: PresetSpec = { name: "Test", description: "Test", tempo: 120, signalChain: parameterized, snapshots };
+    expect(() => validatePresetSpec(spec, "helix_stomp")).not.toThrow();
+  });
+  it("STOMP-05: validatePresetSpec accepts valid Stomp XL preset", () => {
+    const intent = cleanIntent();
+    const chain = assembleSignalChain(intent, "helix_stomp_xl");
+    const parameterized = resolveParameters(chain, intent);
+    const snapshots = buildSnapshots(parameterized, intent.snapshots).slice(0, 4);
+    const spec: PresetSpec = { name: "Test", description: "Test", tempo: 120, signalChain: parameterized, snapshots };
+    expect(() => validatePresetSpec(spec, "helix_stomp_xl")).not.toThrow();
+  });
+  it("STOMP-05: validatePresetSpec rejects Stomp preset with too many snapshots", () => {
+    const intent = cleanIntent();
+    const chain = assembleSignalChain(intent, "helix_stomp");
+    const parameterized = resolveParameters(chain, intent);
+    const snapshots = buildSnapshots(parameterized, intent.snapshots); // 4 snapshots from engine
+    const spec: PresetSpec = { name: "Test", description: "Test", tempo: 120, signalChain: parameterized, snapshots };
+    // 4 snapshots exceeds Stomp's max of 3
+    expect(() => validatePresetSpec(spec, "helix_stomp")).toThrow(/snapshot limit exceeded/);
+  });
+
+  // STOMP-10: Regression — existing devices unaffected
+  it("STOMP-10: Helix LT generation still works after Stomp additions", () => {
+    const intent = cleanIntent();
+    const chain = assembleSignalChain(intent, "helix_lt");
+    // LT uses dual DSP — eq and gain block go to dsp1
+    expect(chain.some(b => b.dsp === 1)).toBe(true);
+    const parameterized = resolveParameters(chain, intent);
+    const snapshots = buildSnapshots(parameterized, intent.snapshots);
+    const spec: PresetSpec = { name: "Test LT", description: "Test", tempo: 120, signalChain: parameterized, snapshots };
+    expect(() => validatePresetSpec(spec, "helix_lt")).not.toThrow();
+    const file = buildHlxFile(spec, "helix_lt");
+    expect(file.data.device).toBe(DEVICE_IDS.helix_lt);
+  });
+  it("STOMP-10: summarizeStompPreset returns a non-empty string with device info", () => {
+    const intent = cleanIntent();
+    const chain = assembleSignalChain(intent, "helix_stomp");
+    const parameterized = resolveParameters(chain, intent);
+    const snapshots = buildSnapshots(parameterized, intent.snapshots).slice(0, 3);
+    const spec: PresetSpec = { name: "Test", description: "Test", tempo: 120, signalChain: parameterized, snapshots };
+    const summary = summarizeStompPreset(spec, "helix_stomp");
+    expect(summary).toContain("HX Stomp");
+    expect(summary).toContain("Test");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// HX Stomp end-to-end pipeline (STOMP-06 simulation)
+// ---------------------------------------------------------------------------
+
+describe("HX Stomp end-to-end pipeline (STOMP-06 simulation)", () => {
+  it("STOMP-06: Full Stomp pipeline: chain -> params -> snapshots -> validate -> build", () => {
+    const intent = cleanIntent();
+    const chain = assembleSignalChain(intent, "helix_stomp");
+    const parameterized = resolveParameters(chain, intent);
+    const snaps = buildSnapshots(parameterized, intent.snapshots);
+    const spec: PresetSpec = {
+      name: "Pipeline Test Stomp",
+      description: "Full pipeline test",
+      tempo: 120,
+      signalChain: parameterized,
+      snapshots: snaps.slice(0, STOMP_CONFIG.STOMP_MAX_SNAPSHOTS),
+    };
+
+    expect(() => validatePresetSpec(spec, "helix_stomp")).not.toThrow();
+
+    const file = buildStompFile(spec, "helix_stomp");
+    expect(file.data.device).toBe(2162694);
+    expect(file.schema).toBe("L6Preset");
+
+    expect(chain.every(b => b.dsp === 0)).toBe(true);
+  });
+
+  it("STOMP-06: Full Stomp XL pipeline produces valid output with 4 snapshots", () => {
+    const intent = cleanIntent();
+    const chain = assembleSignalChain(intent, "helix_stomp_xl");
+    const parameterized = resolveParameters(chain, intent);
+    const snaps = buildSnapshots(parameterized, intent.snapshots);
+    const spec: PresetSpec = {
+      name: "Pipeline Test Stomp XL",
+      description: "Full pipeline test",
+      tempo: 120,
+      signalChain: parameterized,
+      snapshots: snaps.slice(0, STOMP_CONFIG.STOMP_XL_MAX_SNAPSHOTS),
+    };
+    expect(() => validatePresetSpec(spec, "helix_stomp_xl")).not.toThrow();
+    const file = buildStompFile(spec, "helix_stomp_xl");
+    expect(file.data.device).toBe(2162699);
+  });
+
+  it("STOMP-10: Regression — Helix LT pipeline unaffected by Stomp additions", () => {
+    const intent = cleanIntent();
+    const chain = assembleSignalChain(intent, "helix_lt");
+    const parameterized = resolveParameters(chain, intent);
+    const snaps = buildSnapshots(parameterized, intent.snapshots);
+    const spec: PresetSpec = { name: "LT Regression", description: "Test", tempo: 120, signalChain: parameterized, snapshots: snaps };
+    expect(() => validatePresetSpec(spec, "helix_lt")).not.toThrow();
+    const file = buildHlxFile(spec, "helix_lt");
+    expect(file.data.device).toBe(DEVICE_IDS.helix_lt);
+  });
+
+  it("STOMP-08: mapRigToSubstitutions does not throw for helix_stomp", () => {
+    const mockRigIntent = {
+      pedals: [{
+        brand: "Boss",
+        model: "DS-1",
+        fullName: "Boss DS-1",
+        knobPositions: {},
+        imageIndex: 0,
+        confidence: "high" as const,
+      }],
+    };
+    expect(() => mapRigToSubstitutions(mockRigIntent, "helix_stomp")).not.toThrow();
+  });
+
+  it("STOMP-08: mapRigToSubstitutions does not throw for helix_stomp_xl", () => {
+    const mockRigIntent = {
+      pedals: [{
+        brand: "Ibanez",
+        model: "TS9",
+        fullName: "Ibanez TS9",
+        knobPositions: {},
+        imageIndex: 0,
+        confidence: "high" as const,
+      }],
+    };
+    expect(() => mapRigToSubstitutions(mockRigIntent, "helix_stomp_xl")).not.toThrow();
   });
 });
