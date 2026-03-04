@@ -1113,7 +1113,7 @@ function HomeContent() {
                     letterSpacing: "0.14em",
                   }}
                 >
-                  helix ai
+                  helixtones
                 </h1>
                 <p
                   className="text-[var(--hlx-text-sub)] max-w-sm leading-relaxed mx-auto"
