@@ -40,8 +40,8 @@ export function ChatSidebar() {
   // Listen for new conversation creation from page.tsx (Phase 28 Plan 02)
   useEffect(() => {
     const handler = () => fetchConversations()
-    window.addEventListener('helixai:conversation-created', handler)
-    return () => window.removeEventListener('helixai:conversation-created', handler)
+    window.addEventListener('helixtones:conversation-created', handler)
+    return () => window.removeEventListener('helixtones:conversation-created', handler)
   }, [fetchConversations])
 
   async function handleDelete(id: string) {
@@ -64,7 +64,7 @@ export function ChatSidebar() {
   }
 
   function handleNewChat() {
-    window.dispatchEvent(new Event('helixai:new-chat'))
+    window.dispatchEvent(new Event('helixtones:new-chat'))
     router.push('/')
     setIsOpen(false)
   }

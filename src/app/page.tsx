@@ -387,7 +387,13 @@ function HomeContent() {
       setUser(currentUser)
 
       // 2. Restore pre-OAuth chat state if redirected back from Google
-      const preserved = sessionStorage.getItem('helixai_pre_oauth_state')
+      // One-time migration: carry forward any pre_oauth_state saved under the old key
+      const legacyOauthState = sessionStorage.getItem('helixai_pre_oauth_state')
+      if (legacyOauthState) {
+        sessionStorage.setItem('helixtones_pre_oauth_state', legacyOauthState)
+        sessionStorage.removeItem('helixai_pre_oauth_state')
+      }
+      const preserved = sessionStorage.getItem('helixtones_pre_oauth_state')
       if (preserved) {
         try {
           const parsed = JSON.parse(preserved)
@@ -397,7 +403,7 @@ function HomeContent() {
             if (parsed.device) setSelectedDevice(parsed.device)
           }
         } catch { /* corrupt state — ignore */ }
-        sessionStorage.removeItem('helixai_pre_oauth_state')
+        sessionStorage.removeItem('helixtones_pre_oauth_state')
       }
 
       // 3. Subscribe to auth state changes
@@ -453,7 +459,7 @@ function HomeContent() {
   // Phase 25: Serialize chat state to sessionStorage before OAuth redirect.
   // Called by AuthButton (Plan 02) before triggering OAuth redirect.
   const serializeChatState = useCallback(() => {
-    sessionStorage.setItem('helixai_pre_oauth_state', JSON.stringify({
+    sessionStorage.setItem('helixtones_pre_oauth_state', JSON.stringify({
       messages,
       device: selectedDevice,
       timestamp: Date.now(),
@@ -464,8 +470,8 @@ function HomeContent() {
   // avoids React Context — AuthButton lives in layout.tsx, serializeChatState lives here).
   useEffect(() => {
     const handler = () => serializeChatState()
-    window.addEventListener('helixai:before-signin', handler)
-    return () => window.removeEventListener('helixai:before-signin', handler)
+    window.addEventListener('helixtones:before-signin', handler)
+    return () => window.removeEventListener('helixtones:before-signin', handler)
   }, [serializeChatState])
 
   // Phase 28: SIDE-04 — resume conversation from URL param
@@ -486,8 +492,8 @@ function HomeContent() {
       startOver()
       // conversationId and storedPresetPath are cleared by startOver()
     }
-    window.addEventListener('helixai:new-chat', handler)
-    return () => window.removeEventListener('helixai:new-chat', handler)
+    window.addEventListener('helixtones:new-chat', handler)
+    return () => window.removeEventListener('helixtones:new-chat', handler)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // startOver is defined once, no deps
 
@@ -629,12 +635,12 @@ function HomeContent() {
           .then((res) => {
             if (res.ok) {
               // Phase 30: notify sidebar AFTER title is set — shows real title, not "New Chat"
-              window.dispatchEvent(new Event('helixai:conversation-created'));
+              window.dispatchEvent(new Event('helixtones:conversation-created'));
             }
           })
           .catch(() => {
             // Title failed but conversation exists — still notify sidebar so it appears
-            window.dispatchEvent(new Event('helixai:conversation-created'));
+            window.dispatchEvent(new Event('helixtones:conversation-created'));
           });
       }
     } catch (err) {
@@ -721,11 +727,11 @@ function HomeContent() {
           })
             .then((res) => {
               if (res.ok) {
-                window.dispatchEvent(new Event('helixai:conversation-created'));
+                window.dispatchEvent(new Event('helixtones:conversation-created'));
               }
             })
             .catch(() => {
-              window.dispatchEvent(new Event('helixai:conversation-created'));
+              window.dispatchEvent(new Event('helixtones:conversation-created'));
             });
         }
       }
@@ -1490,7 +1496,7 @@ function HomeContent() {
                 </span>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <button
-                    onClick={() => window.dispatchEvent(new Event('helixai:before-signin'))}
+                    onClick={() => window.dispatchEvent(new Event('helixtones:before-signin'))}
                     className="text-[var(--hlx-amber)] hover:text-[var(--hlx-text)] font-medium transition-colors text-[0.8125rem]"
                   >
                     Sign in

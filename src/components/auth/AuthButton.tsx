@@ -55,7 +55,7 @@ export function AuthButton() {
 
   async function handleSignIn() {
     // Dispatch event so page.tsx can serialize chat state before redirect
-    window.dispatchEvent(new Event('helixai:before-signin'))
+    window.dispatchEvent(new Event('helixtones:before-signin'))
 
     const supabase = createSupabaseBrowserClient()
     const { data: { user: currentUser } } = await supabase.auth.getUser()
