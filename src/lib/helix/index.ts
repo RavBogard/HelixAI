@@ -4,6 +4,9 @@ export { getModelListForPrompt, getAllModels, LED_COLORS, BLOCK_TYPES, AMP_MODEL
 export { getModelIdForDevice, getBlockTypeForDevice, isModelAvailableForDevice, POD_GO_EXCLUDED_MODELS } from "./models";
 // Stadium model catalog (Phase 33)
 export { STADIUM_AMPS, STADIUM_EQ_MODELS } from "./models";
+// Stadium builder (Phase 35)
+export { buildHspFile, summarizeStadiumPreset } from "./stadium-builder";
+export type { HspFile } from "./stadium-builder";
 export { validatePresetSpec, validateAndFixPresetSpec } from "./validate";
 export type { PresetSpec, BlockSpec, SnapshotSpec, HlxFile, DeviceTarget } from "./types";
 export type { AmpCategory, TopologyTag, CabSize, HlxCab } from "./types";

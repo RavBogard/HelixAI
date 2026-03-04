@@ -113,10 +113,10 @@ See: .planning/PROJECT.md (updated 2026-03-03)
 
 ## Current Position
 
-Phase: Phase 35 — Stadium Builder (next)
+Phase: Phase 36 — Planner + API Route Integration (next)
 Plan: —
-Status: Phase 34 complete (108/108 tests, clean build, committed). Phase 35 next.
-Last activity: 2026-03-04 — Phase 34 complete: Stadium chain rules (Agoura amp lookup, Stadium 7-band EQ mandatory, 12-block limit), validate.ts Stadium branch, getAllModels() includes Stadium catalogs
+Status: Phase 35 complete (108/108 tests, clean build, committed). Phase 36 next.
+Last activity: 2026-03-04 — Phase 35 complete: stadium-builder.ts with buildHspFile() (rpshnosj header, meta+preset structure, b00..bNN blocks, P35_* I/O, 8 snapshots) + summarizeStadiumPreset()
 
 ## Performance Metrics
 

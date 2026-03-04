@@ -446,7 +446,8 @@ Plans:
   2. The generated `.hsp` file imports into the Helix Stadium app (or Stadium native app) without errors — confirmed with one real import test
   3. `summarizeStadiumPreset(spec)` returns a human-readable description of the tone
   4. `stadium-builder.ts` is exported from `index.ts` barrel; `preset-builder.ts` and `podgo-builder.ts` are unmodified (git diff shows no changes to those files)
-**Plans**: TBD
+**Plans**: 1 plan
+- [x] 35-01-PLAN.md — stadium-builder.ts: buildHspFile() (rpshnosj header, meta+preset, b00..bNN blocks, P35_* I/O, 8 snapshots), summarizeStadiumPreset(), index.ts barrel exports (STAD-05)
 
 ### Phase 36: Planner + API Route Integration
 **Goal**: The full generate pipeline works end-to-end for Stadium — planner selects Stadium models, `/api/generate` routes to `buildHspFile`, response includes `.hsp` payload and extension, Supabase storage uses `latest.hsp`
