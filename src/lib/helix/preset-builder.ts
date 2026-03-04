@@ -33,7 +33,11 @@ function buildTone(spec: PresetSpec): HlxTone {
   const dsp0Blocks = spec.signalChain.filter(b => b.dsp === 0);
   const dsp1Blocks = spec.signalChain.filter(b => b.dsp === 1);
 
-  const dsp0 = buildDsp(dsp0Blocks, 0);
+  // Detect dual-amp: two amp blocks on different paths in DSP0 (DUAL-06)
+  const dsp0Amps = dsp0Blocks.filter(b => b.type === "amp");
+  const isDualAmp = dsp0Amps.length > 1 && dsp0Amps.some(a => a.path === 1);
+
+  const dsp0 = buildDsp(dsp0Blocks, 0, isDualAmp);
   const dsp1 = buildDsp(dsp1Blocks, 1);
 
   // Build footswitch section FIRST — we need stomp assignments for @pedalstate
@@ -69,8 +73,8 @@ function buildTone(spec: PresetSpec): HlxTone {
     footswitch,
     global: {
       "@model": "@global_params",
-      "@topology0": "A",
-      "@topology1": "A",
+      "@topology0": isDualAmp ? "AB" : "A",
+      "@topology1": "A",  // DSP1 is always series
       "@cursor_dsp": 0,
       "@cursor_path": 0,
       "@cursor_position": 0,
@@ -85,7 +89,7 @@ function buildTone(spec: PresetSpec): HlxTone {
   return tone;
 }
 
-function buildDsp(blocks: BlockSpec[], dspIndex: number): HlxDsp {
+function buildDsp(blocks: BlockSpec[], dspIndex: number, isDualAmp?: boolean): HlxDsp {
   const dsp: HlxDsp = {
     inputA: {
       "@input": 1, // 1 = Guitar In
@@ -149,10 +153,19 @@ function buildDsp(blocks: BlockSpec[], dspIndex: number): HlxDsp {
       // Add amp-specific fields and cab reference
       if (block.type === "amp") {
         hlxBlock["@bypassvolume"] = 1;
-        // Find the first cab after this amp in signal chain order
-        const ampIdx = blocks.indexOf(block);
-        const associatedCab = blocks.slice(ampIdx + 1).find(b => b.type === "cab")
-          || blocks.find(b => b.type === "cab"); // fallback to any cab
+
+        // Path-aware cab association for dual-amp (DUAL-06)
+        let associatedCab: BlockSpec | undefined;
+        if (isDualAmp) {
+          // Find the cab on the same path as this amp
+          associatedCab = blocks.find(b => b.type === "cab" && b.path === block.path);
+        }
+        // Fallback: original logic (first cab after amp, or any cab)
+        if (!associatedCab) {
+          const ampIdx = blocks.indexOf(block);
+          associatedCab = blocks.slice(ampIdx + 1).find(b => b.type === "cab")
+            || blocks.find(b => b.type === "cab");
+        }
         if (associatedCab) {
           hlxBlock["@cab"] = `cab${cabIndexMap.get(associatedCab) ?? 0}`;
         }
@@ -166,6 +179,36 @@ function buildDsp(blocks: BlockSpec[], dspIndex: number): HlxDsp {
       dsp[blockKey] = hlxBlock as unknown as HlxDsp[string];
       blockIndex++;
     }
+  }
+
+  // Dual-amp: write split and join blocks to dsp0 (DUAL-06)
+  if (isDualAmp && dspIndex === 0) {
+    // Split block: placed before the first amp
+    const firstAmpPos = blocks
+      .filter(b => b.type === "amp")
+      .reduce((min, b) => Math.min(min, b.position), Infinity);
+    const splitPosition = Math.max(0, firstAmpPos);
+
+    dsp.split = {
+      "@model": "HD2_SplitAB",
+      "@enabled": true,
+      "@position": splitPosition,
+    };
+
+    // Join block: placed after the last non-cab block position
+    const maxBlockPos = blocks
+      .filter(b => b.type !== "cab")
+      .reduce((max, b) => Math.max(max, b.position), 0);
+    const joinPosition = maxBlockPos + 1;
+
+    dsp.join = {
+      "@model": "HD2_MergerMixer",
+      "@position": joinPosition,
+      "A Level": 1.0,
+      "B Level": 1.0,
+      "A Pan": 0.5,
+      "B Pan": 0.5,
+    };
   }
 
   return dsp;
