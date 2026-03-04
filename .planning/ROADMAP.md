@@ -395,10 +395,12 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 **Goal:** Users who request presets with two different amps receive a valid dual-amp preset with split/join AB topology, per-snapshot amp switching, and independent parameter resolution — single-amp presets are completely unaffected; Pod Go gracefully falls back to single-amp.
 **Requirements**: DUAL-01, DUAL-02, DUAL-03, DUAL-04, DUAL-05, DUAL-06, DUAL-07, DUAL-08, DUAL-09
 **Depends on:** Phase 28
-**Plans:** 0/0 plans (planning in progress)
+**Plans:** 0/3 plans complete
 
 Plans:
-- [ ] TBD (planning in progress)
+- [ ] 29-01: Schema Extension + AI Prompt Updates (DUAL-01, DUAL-02, DUAL-07, DUAL-08)
+- [ ] 29-02: Knowledge Layer — Chain + Params + Snapshots (DUAL-03, DUAL-04, DUAL-05)
+- [ ] 29-03: Preset Builder Topology + Validation (DUAL-06, DUAL-09)
 
 ---
 *Roadmap created: 2026-03-01*
