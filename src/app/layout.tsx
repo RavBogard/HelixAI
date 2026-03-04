@@ -22,7 +22,19 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: "HelixTones — Helix Preset Builder",
-  description: "AI-powered tone consultant and preset generator for Line 6 Helix",
+  description: "Describe your tone and get a mix-ready preset for Line 6 Helix, Pod Go, Helix Stadium, or HX Stomp. AI-powered, instant, free.",
+  metadataBase: new URL('https://helixtones.com'),
+  openGraph: {
+    title: "HelixTones — Helix Preset Builder",
+    description: "Describe your tone and get a mix-ready preset for Line 6 Helix, Pod Go, Helix Stadium, or HX Stomp.",
+    type: "website",
+    siteName: "HelixTones",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "HelixTones — Helix Preset Builder",
+    description: "Describe your tone and get a mix-ready preset for Line 6 Helix, Pod Go, Helix Stadium, or HX Stomp.",
+  },
 };
 
 export default async function RootLayout({
