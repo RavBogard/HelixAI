@@ -532,7 +532,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 37. UI — Device Selector + Download | v3.0 | TBD | Not started | — |
 | 38. Rig Emulation for Stadium | v3.0 | TBD | Not started | — |
 | 39. HX Stomp & HX Stomp XL Support | — | 3/3 | Complete | 2026-03-04 |
-| 40. Rebrand HelixAI to HelixTones | — | 0/1 | Not started | — |
+| 40. Rebrand HelixAI to HelixTones | 1/1 | Complete   | 2026-03-04 | — |
 
 ### Phase 39: HX Stomp & HX Stomp XL Support
 
@@ -558,7 +558,7 @@ Plans:
 **Goal:** Rename all user-visible "HelixAI" strings and internal cross-file event/storage contracts to "HelixTones"/"helixtones" — browser title, logo alt text, wordmark, AI persona names, download filenames, DOM custom events, sessionStorage key, and package name
 **Requirements**: REBRAND-01, REBRAND-02, REBRAND-03, REBRAND-04
 **Depends on:** Phase 39
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 - [ ] 40-01-PLAN.md — All categories A–E: layout.tsx title, page.tsx UI strings + filenames + events + storage key, gemini.ts + planner.ts persona, package.json name, supabase/schema.sql comment (REBRAND-01, REBRAND-02, REBRAND-03, REBRAND-04)
