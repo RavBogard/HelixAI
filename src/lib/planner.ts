@@ -41,6 +41,8 @@ Generate a JSON object with these fields:
 
 - **ampName**: Exact name from the AMPS list above
 - **cabName**: Exact name from the CABS list above
+- **secondAmpName** (OPTIONAL): A second amp from the AMPS list above. Use ONLY when the user explicitly requests two different amps (e.g., "clean Fender and heavy Mesa" or "switch between Vox and Marshall"). Leave empty for single-amp presets (the default). Convention: ampName = the amp for clean/crunch snapshots, secondAmpName = the amp for lead/ambient snapshots.
+- **secondCabName** (OPTIONAL): Cab for the second amp. REQUIRED if secondAmpName is set. Choose a cab that complements the second amp.
 - **guitarType**: "single_coil", "humbucker", or "p90" — based on what the user described
 - **genreHint**: Optional genre or style description (e.g., "blues rock", "modern metal")
 - **effects**: Array of up to ${maxEffects} effects, each with:
@@ -69,6 +71,13 @@ ${effectNote}
 - Generate a creative preset name that captures the tone character
 - If relevant, suggest guitar setup tips (bridge vs. neck pickup, tone knob position)
 
+## Dual-Amp Rules
+
+- Dual-amp uses split/join topology — consumes 4 extra DSP0 slots (split + amp2 + cab2 + join)
+- For dual-amp presets, limit pre-amp effects to 2 maximum (DSP budget is tighter)
+- ampName handles clean/crunch snapshots; secondAmpName handles lead/ambient snapshots
+- NEVER use secondAmpName for Pod Go — Pod Go is single-DSP, series-only hardware
+${podGo ? "\n**DEVICE RESTRICTION: This is a Pod Go preset. Pod Go does NOT support dual-amp. Do NOT populate secondAmpName or secondCabName.**\n" : ""}
 Based on the conversation below, generate a ToneIntent:`;
 }
 
