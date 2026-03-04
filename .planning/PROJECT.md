@@ -2,7 +2,7 @@
 
 ## What This Is
 
-An AI-powered tone consultant that interviews guitarists about the sound they're after — an artist, a song, a genre, a vibe, or their existing physical rig — then generates a downloadable preset file for Line 6 Helix LT, Helix Floor, Pod Go, and Helix Stadium. Presets must be world-class: mix-ready out of the box, dynamically responsive to playing, and built with the same signal chain intelligence as paid professional presets.
+An AI-powered tone consultant that interviews guitarists about the sound they're after — an artist, a song, a genre, a vibe, or their existing physical rig — then generates a downloadable preset file for Line 6 Helix LT, Helix Floor, Pod Go, Helix Stadium, HX Stomp, and HX Stomp XL. Presets must be world-class: mix-ready out of the box, dynamically responsive to playing, and built with the same signal chain intelligence as paid professional presets.
 
 ## Core Value
 
@@ -54,27 +54,47 @@ Generated presets must sound professional enough to compete with custom presets 
 - ✓ Anonymous usage remains fully functional without login — v2.0
 - ✓ Dual-amp preset generation (AB topology, split/join blocks) — v2.0
 - ✓ Chat auto-save on first AI response — v2.0
+- ✓ Helix Stadium preset generation (.hsp format, device 2162696) — v3.0
+- ✓ Helix Stadium device selector in UI + .hsp download — v3.0
+- ✓ Helix Stadium model catalog (Agoura amps, 7-band Parametric EQ) — v3.0
+- ✓ Helix Stadium-specific chain rules (dual DSP, extended block limits) — v3.0
+- ✓ Rig emulation support for Helix Stadium — v3.0
+- ✓ HX Stomp & HX Stomp XL support (.hlx format, 6-block budget) — v3.1
+- ✓ HelixTones rebrand (HelixAI → HelixTones) — v3.1
+- ✓ Chat UX polish (device picker timing, conversational arc) — v3.1
 
 ### Active
 
-- [ ] Helix Stadium preset generation (file format and device constraints TBD via research)
-- [ ] Helix Stadium device selector in UI + Stadium-specific download
-- [ ] Helix Stadium model catalog (Stadium-available models only)
-- [ ] Helix Stadium-specific chain rules (DSP limits, block constraints TBD)
-- [ ] Rig emulation support for Helix Stadium
-- [ ] Fix Helix Floor device ID regression (test expects 2162691 but types.ts has 2162692)
+- [ ] Preset quality leap: smarter effect combinations and interactions
+- [ ] Preset quality leap: more nuanced parameter resolution (surgical knob values)
+- [ ] Preset quality leap: advanced signal routing (parallel paths, creative splits)
+- [ ] Preset quality leap: study top community presets to reverse-engineer quality patterns
+- [ ] Preset quality leap: improved AI creative decisions (richer ToneIntent prompting)
+- [ ] API cost audit: analyze token usage across chat and generation flows
+- [ ] API cost optimization: evaluate model split (Haiku chat vs. Sonnet generation)
 
 ### Out of Scope
 
-- HX Stomp support — different hardware constraints, defer to future
 - MIDI configuration — focus on tone, not hardware routing
 - IR (impulse response) loading — stick with stock cabs
 - Multi-provider comparison UI — going single provider for quality focus
-- Full pedalboard OCR (auto-detect all pedals from a single board photo) — too unreliable at launch, per-pedal photos are the baseline
+- Full pedalboard OCR (auto-detect all pedals from a single board photo) — too unreliable, per-pedal photos are the baseline
+
+## Current Milestone: v4.0 Preset Quality Leap
+
+**Goal:** Close the gap between HelixTones-generated presets and the best custom/commercial presets used by professionals, while auditing and optimizing API costs.
+
+**Target features:**
+- Study top community presets to reverse-engineer what premium preset makers do differently
+- Smarter effect combinations and interactions (not just "add delay + reverb")
+- More nuanced parameter resolution (surgical knob values, context-sensitive defaults)
+- Advanced signal routing (parallel paths, creative splits where appropriate)
+- Improved AI creative decisions (richer ToneIntent prompting based on research)
+- API cost audit and optimization (token analysis, model split evaluation)
 
 ## Current State
 
-v2.0 **Persistent Chat Platform** and v3.0 **Helix Stadium Support** are both shipped. The app has been rebranded to **HelixTones** (Phase 40) and now supports 6 devices: Helix LT, Helix Floor, Pod Go, Helix Stadium, HX Stomp, and HX Stomp XL.
+All device support complete. The app is rebranded to **HelixTones** and supports 6 devices: Helix LT, Helix Floor, Pod Go, Helix Stadium, HX Stomp, and HX Stomp XL.
 
 **Shipped milestones:**
 - v1.0: Full Rebuild — planner-executor engine, LT/Floor support
@@ -83,11 +103,7 @@ v2.0 **Persistent Chat Platform** and v3.0 **Helix Stadium Support** are both sh
 - v1.3: Rig Emulation — pedal vision extraction, mapping engine, substitution card
 - v2.0: Persistent Chat Platform — Supabase auth/DB/storage, chat sidebar, dual-amp, auto-save
 - v3.0: Helix Stadium Support — .hsp format, Stadium builder, model catalog, chain rules, rig emulation
-
-**Recent phases (not yet in a named milestone):**
-- Phase 39: HX Stomp & HX Stomp XL Support
-- Phase 40: Rebrand HelixAI → HelixTones
-- Phase 41: Chat UX polish (device picker timing, pre-preset conversation flow)
+- v3.1: HX Stomp/XL, HelixTones rebrand, Chat UX polish (Phases 39-41)
 
 ## Context
 
@@ -138,4 +154,4 @@ Phases 39-41 (not yet in a milestone) added HX Stomp and HX Stomp XL support, re
 | Device picker after AI readiness signal | AI asks at least one follow-up before [READY_TO_GENERATE] — richer conversation before preset | ✓ Good |
 
 ---
-*Last updated: 2026-03-04 after v2.0 milestone archival*
+*Last updated: 2026-03-04 after v4.0 milestone start*
