@@ -422,7 +422,8 @@ Plans:
   2. `STADIUM_EFFECTS` includes the 7-band Parametric EQ model ID; Simple EQ, Low/High Cut, Low/High Shelf, and Parametric 5-band are NOT in the Stadium catalog
   3. `getModelsForDevice("helix_stadium")` returns Stadium-only models; `getModelsForDevice("helix_lt")` returns no `Agoura_*` entries
   4. Planner prompt for Stadium references only Stadium model IDs — no cross-contamination with HD2/P34 models
-**Plans**: TBD
+**Plans**: 1 plan
+- [x] 33-01-PLAN.md — STADIUM_AMPS (12 Agoura entries), STADIUM_EQ_MODELS, stadiumOnly flag, getModelListForPrompt() Stadium path, isModelAvailableForDevice() Stadium logic (STAD-03)
 
 ### Phase 34: Stadium Chain Rules + Validation
 **Goal**: Signal chain assembly and validation work correctly for Stadium — path structure, block limits, and mandatory blocks all use Stadium-specific constants and model IDs

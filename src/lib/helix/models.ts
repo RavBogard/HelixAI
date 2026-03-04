@@ -2,7 +2,7 @@
 // Model IDs match the HD2_* naming convention used in .hlx files
 
 import type { AmpCategory, TopologyTag, DeviceTarget } from "./types";
-import { BLOCK_TYPES_PODGO, isPodGo } from "./types";
+import { BLOCK_TYPES_PODGO, isPodGo, isStadium } from "./types";
 
 export interface HelixModel {
   id: string;
@@ -14,6 +14,7 @@ export interface HelixModel {
   cabAffinity?: string[];     // preferred cab names (keys in CAB_MODELS) — amp models only
   defaultParams: Record<string, number>;
   blockType: number; // @type value in .hlx
+  stadiumOnly?: boolean;      // true for Agoura_* models — excluded from Helix LT/Floor/Pod Go catalogs (STAD-03)
 }
 
 // Block type constants
@@ -1024,6 +1025,189 @@ export const VOLUME_MODELS: Record<string, HelixModel> = {
   "Gain Block": { id: "HD2_VolPanGain", name: "Gain Block", basedOn: "Line 6 Original Gain", category: "gain", blockType: BLOCK_TYPES.VOLUME, defaultParams: { Gain: 0.0 } },
 };
 
+// ============================================================
+// STADIUM AMP MODELS — Agoura_* prefix (STAD-03)
+// Source: Phase 31 real .hsp inspection + Line 6 Stadium model documentation
+// These models are EXCLUSIVE to Helix Stadium. stadiumOnly: true prevents them
+// from appearing in Helix LT/Floor/Pod Go planner prompts.
+// ============================================================
+export const STADIUM_AMPS: Record<string, HelixModel> = {
+  // --- Confirmed from real .hsp file (Phase 31 inspection, 2026-03-04) ---
+  "Agoura German Xtra Red": {
+    id: "Agoura_AmpGermanXtraRed",
+    name: "Agoura German Xtra Red",
+    basedOn: "Mesa/Boogie Mark V+ (Extreme Red channel)",
+    category: "high_gain",
+    ampCategory: "high_gain" as const,
+    topology: "plate_fed" as const,
+    cabAffinity: ["4x12 Uber V30"],
+    defaultParams: { Drive: 0.65, Bass: 0.50, Mid: 0.45, Treble: 0.55, Master: 0.45, ChVol: 0.80 },
+    blockType: BLOCK_TYPES.AMP_WITH_CAB,
+    stadiumOnly: true,
+  },
+  "Agoura Brit 2203 MV": {
+    id: "Agoura_AmpBrit2203MV",
+    name: "Agoura Brit 2203 MV",
+    basedOn: "Marshall JCM800 2203 Master Volume",
+    category: "high_gain",
+    ampCategory: "high_gain" as const,
+    topology: "plate_fed" as const,
+    cabAffinity: ["4x12 Greenback 25"],
+    defaultParams: { Drive: 0.60, Bass: 0.50, Mid: 0.50, Treble: 0.60, Master: 0.45, ChVol: 0.80 },
+    blockType: BLOCK_TYPES.AMP_WITH_CAB,
+    stadiumOnly: true,
+  },
+  // --- Documented in architecture research (ARCHITECTURE.md, 2026-03-04) ---
+  "Agoura WhoWatt 103": {
+    id: "Agoura_AmpWhoWatt103",
+    name: "Agoura WhoWatt 103",
+    basedOn: "Koch Who Watt 103",
+    category: "crunch",
+    ampCategory: "crunch" as const,
+    topology: "plate_fed" as const,
+    cabAffinity: ["4x12 Greenback 25", "2x12 Double C12N"],
+    defaultParams: { Drive: 0.50, Bass: 0.50, Mid: 0.55, Treble: 0.55, Master: 0.50, ChVol: 0.80 },
+    blockType: BLOCK_TYPES.AMP_WITH_CAB,
+    stadiumOnly: true,
+  },
+  // --- Derived from Line 6 Stadium model naming conventions ---
+  "Agoura German Clean": {
+    id: "Agoura_AmpGermanClean",
+    name: "Agoura German Clean",
+    basedOn: "Mesa/Boogie Mark V (Clean channel)",
+    category: "clean",
+    ampCategory: "clean" as const,
+    topology: "plate_fed" as const,
+    cabAffinity: ["4x12 Uber V30", "2x12 Double C12N"],
+    defaultParams: { Drive: 0.20, Bass: 0.50, Mid: 0.50, Treble: 0.55, Master: 0.55, ChVol: 0.80 },
+    blockType: BLOCK_TYPES.AMP_WITH_CAB,
+    stadiumOnly: true,
+  },
+  "Agoura German Crunch": {
+    id: "Agoura_AmpGermanCrunch",
+    name: "Agoura German Crunch",
+    basedOn: "Mesa/Boogie Mark V (Crunch channel)",
+    category: "crunch",
+    ampCategory: "crunch" as const,
+    topology: "plate_fed" as const,
+    cabAffinity: ["4x12 Uber V30"],
+    defaultParams: { Drive: 0.45, Bass: 0.50, Mid: 0.48, Treble: 0.55, Master: 0.48, ChVol: 0.80 },
+    blockType: BLOCK_TYPES.AMP_WITH_CAB,
+    stadiumOnly: true,
+  },
+  "Agoura German Lead": {
+    id: "Agoura_AmpGermanLead",
+    name: "Agoura German Lead",
+    basedOn: "Mesa/Boogie Mark V (Lead channel)",
+    category: "high_gain",
+    ampCategory: "high_gain" as const,
+    topology: "plate_fed" as const,
+    cabAffinity: ["4x12 Uber V30"],
+    defaultParams: { Drive: 0.58, Bass: 0.45, Mid: 0.42, Treble: 0.55, Master: 0.45, ChVol: 0.80 },
+    blockType: BLOCK_TYPES.AMP_WITH_CAB,
+    stadiumOnly: true,
+  },
+  "Agoura Brit 800": {
+    id: "Agoura_AmpBrit800",
+    name: "Agoura Brit 800",
+    basedOn: "Marshall JCM800 2203 (non-MV)",
+    category: "crunch",
+    ampCategory: "crunch" as const,
+    topology: "plate_fed" as const,
+    cabAffinity: ["4x12 Greenback 25", "4x12 Brit T75"],
+    defaultParams: { Drive: 0.55, Bass: 0.50, Mid: 0.50, Treble: 0.60, Master: 0.50, ChVol: 0.80 },
+    blockType: BLOCK_TYPES.AMP_WITH_CAB,
+    stadiumOnly: true,
+  },
+  "Agoura Brit Plexi": {
+    id: "Agoura_AmpBritPlexi",
+    name: "Agoura Brit Plexi",
+    basedOn: "Marshall Super Lead Plexi 1959",
+    category: "crunch",
+    ampCategory: "crunch" as const,
+    topology: "plate_fed" as const,
+    cabAffinity: ["4x12 Greenback 25"],
+    defaultParams: { Drive: 0.50, Bass: 0.50, Mid: 0.55, Treble: 0.60, Master: 0.55, ChVol: 0.80 },
+    blockType: BLOCK_TYPES.AMP_WITH_CAB,
+    stadiumOnly: true,
+  },
+  "Agoura US Clean": {
+    id: "Agoura_AmpUSClean",
+    name: "Agoura US Clean",
+    basedOn: "Fender Twin Reverb (Clean)",
+    category: "clean",
+    ampCategory: "clean" as const,
+    topology: "plate_fed" as const,
+    cabAffinity: ["2x12 Double C12N", "1x12 US Deluxe"],
+    defaultParams: { Drive: 0.18, Bass: 0.50, Mid: 0.50, Treble: 0.55, Master: 0.60, ChVol: 0.80 },
+    blockType: BLOCK_TYPES.AMP_WITH_CAB,
+    stadiumOnly: true,
+  },
+  "Agoura US Trem": {
+    id: "Agoura_AmpUSTrem",
+    name: "Agoura US Trem",
+    basedOn: "Fender Vibrolux Reverb (Tremolo channel)",
+    category: "clean",
+    ampCategory: "clean" as const,
+    topology: "plate_fed" as const,
+    cabAffinity: ["2x12 Double C12N", "1x12 US Deluxe"],
+    defaultParams: { Drive: 0.22, Bass: 0.50, Mid: 0.50, Treble: 0.55, Master: 0.60, ChVol: 0.80 },
+    blockType: BLOCK_TYPES.AMP_WITH_CAB,
+    stadiumOnly: true,
+  },
+  "Agoura Tread Plate Red": {
+    id: "Agoura_AmpTreadPlateRed",
+    name: "Agoura Tread Plate Red",
+    basedOn: "Mesa/Boogie Dual Rectifier (Red mode)",
+    category: "high_gain",
+    ampCategory: "high_gain" as const,
+    topology: "plate_fed" as const,
+    cabAffinity: ["4x12 Uber V30"],
+    defaultParams: { Drive: 0.60, Bass: 0.45, Mid: 0.40, Treble: 0.55, Master: 0.45, ChVol: 0.80 },
+    blockType: BLOCK_TYPES.AMP_WITH_CAB,
+    stadiumOnly: true,
+  },
+  "Agoura Tread Plate Orange": {
+    id: "Agoura_AmpTreadPlateOrange",
+    name: "Agoura Tread Plate Orange",
+    basedOn: "Mesa/Boogie Dual Rectifier (Orange mode)",
+    category: "crunch",
+    ampCategory: "crunch" as const,
+    topology: "plate_fed" as const,
+    cabAffinity: ["4x12 Uber V30"],
+    defaultParams: { Drive: 0.52, Bass: 0.48, Mid: 0.45, Treble: 0.55, Master: 0.48, ChVol: 0.80 },
+    blockType: BLOCK_TYPES.AMP_WITH_CAB,
+    stadiumOnly: true,
+  },
+};
+
+// ============================================================
+// STADIUM EQ MODELS — Stadium-specific EQ (STAD-03)
+// Stadium replaces the 5-band Parametric EQ with a 7-band version.
+// Models NOT available on Stadium: Simple EQ, Low and High Cut,
+// Tilt EQ, Cali Q Graphic (5-band EQ style removed).
+// ============================================================
+export const STADIUM_EQ_MODELS: Record<string, HelixModel> = {
+  "Stadium Parametric EQ": {
+    id: "HD2_EQParametric7Band",
+    name: "Stadium Parametric EQ",
+    basedOn: "Line 6 Stadium 7-Band Parametric EQ",
+    category: "parametric",
+    defaultParams: {
+      LowFreq: 0.10, LowGain: 0.50,
+      LowMidFreq: 0.25, LowMidGain: 0.50, LowMidQ: 0.50,
+      MidFreq: 0.45, MidGain: 0.50, MidQ: 0.50,
+      HighMidFreq: 0.65, HighMidGain: 0.50, HighMidQ: 0.50,
+      HighFreq: 0.80, HighGain: 0.50,
+      Level: 0.0,
+    },
+    blockType: BLOCK_TYPES.EQ,
+    stadiumOnly: true,
+  },
+  // Stadium retains the 10-band graphic EQ
+  "10 Band Graphic": { id: "HD2_EQGraphic10Band", name: "10 Band Graphic", basedOn: "MXR 10-Band Graphic EQ", category: "graphic", blockType: BLOCK_TYPES.EQ, defaultParams: { Level: 0.0 } },
+};
+
 // Model name tuples for z.enum() constraints in ToneIntentSchema
 // z.enum() requires a non-empty tuple: [string, ...string[]]
 export const AMP_NAMES = Object.keys(AMP_MODELS) as [string, ...string[]];
@@ -1054,15 +1238,39 @@ export function getAllModels(): Record<string, HelixModel> {
 }
 
 // Build a condensed model list string for the system prompt
-// Accepts optional device parameter to filter models for Pod Go
+// Accepts optional device parameter to filter models for Pod Go or Stadium (STAD-03)
 export function getModelListForPrompt(device?: DeviceTarget): string {
+  // Stadium path: return Stadium-specific catalog (Agoura amps + HD2 effects + Stadium EQ)
+  if (device && isStadium(device)) {
+    const sections = [
+      { title: "AMPS", models: STADIUM_AMPS },
+      { title: "CABS", models: CAB_MODELS },
+      { title: "DISTORTION/OVERDRIVE", models: DISTORTION_MODELS },
+      { title: "DELAY", models: DELAY_MODELS },
+      { title: "REVERB", models: REVERB_MODELS },
+      { title: "MODULATION", models: MODULATION_MODELS },
+      { title: "DYNAMICS", models: DYNAMICS_MODELS },
+      { title: "EQ", models: STADIUM_EQ_MODELS },
+      { title: "WAH", models: WAH_MODELS },
+      { title: "VOLUME", models: VOLUME_MODELS },
+    ];
+    return sections.map(s => {
+      const entries = Object.entries(s.models)
+        .map(([name, m]) => `  - ${name} (${m.id}) — based on ${m.basedOn}`)
+        .join("\n");
+      return `### ${s.title}\n${entries}`;
+    }).join("\n\n");
+  }
+
+  // Helix LT/Floor/Pod Go path: exclude stadiumOnly models, apply Pod Go exclusion list
   const filterModels = (models: Record<string, HelixModel>): Record<string, HelixModel> => {
-    if (!device || !isPodGo(device)) return models;
     const filtered: Record<string, HelixModel> = {};
     for (const [name, model] of Object.entries(models)) {
-      if (!POD_GO_EXCLUDED_MODELS.has(name)) {
-        filtered[name] = model;
-      }
+      // Exclude Stadium-only (Agoura) models from non-Stadium devices
+      if (model.stadiumOnly) continue;
+      // Exclude Pod Go excluded models
+      if (device && isPodGo(device) && POD_GO_EXCLUDED_MODELS.has(name)) continue;
+      filtered[name] = model;
     }
     return filtered;
   };
@@ -1199,12 +1407,36 @@ export function getBlockTypeForDevice(
 }
 
 /**
- * Check if a model is available on Pod Go (PGMOD-03, PGMOD-04).
+ * Check if a model is available on a given device (PGMOD-03, PGMOD-04, STAD-03).
+ *
+ * - Pod Go: excludes models in POD_GO_EXCLUDED_MODELS
+ * - Non-Stadium devices: excludes Stadium-only (Agoura_*) models
+ * - Stadium: all Stadium models available; HD2_ effects are backward-compatible
  */
 export function isModelAvailableForDevice(
   modelName: string,
   device: DeviceTarget,
 ): boolean {
+  // Stadium: check if model is in Stadium catalog (Agoura amps + all HD2_ effects)
+  if (isStadium(device)) {
+    // Stadium-specific Agoura amps are available
+    if (modelName in STADIUM_AMPS) return true;
+    // Stadium-specific EQ is available
+    if (modelName in STADIUM_EQ_MODELS) return true;
+    // Standard effects (delay, reverb, modulation, dynamics, wah, volume, cabs) are backward-compatible
+    // Stadium does NOT have: Simple EQ, Low and High Cut, Tilt EQ (HX 5-band removed)
+    const STADIUM_UNAVAILABLE = new Set(["Simple EQ", "Low and High Cut", "Tilt EQ"]);
+    if (STADIUM_UNAVAILABLE.has(modelName)) return false;
+    return true;
+  }
+
+  // Non-Stadium: Agoura models are stadium-only
+  if (modelName in STADIUM_AMPS || modelName in STADIUM_EQ_MODELS) {
+    const allStadium = { ...STADIUM_AMPS, ...STADIUM_EQ_MODELS };
+    if (allStadium[modelName]?.stadiumOnly) return false;
+  }
+
+  // Pod Go exclusion list
   if (!isPodGo(device)) return true;
   return !POD_GO_EXCLUDED_MODELS.has(modelName);
 }

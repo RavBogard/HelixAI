@@ -113,10 +113,10 @@ See: .planning/PROJECT.md (updated 2026-03-03)
 
 ## Current Position
 
-Phase: Phase 33 — Stadium Model Catalog (next)
+Phase: Phase 34 — Stadium Chain Rules + Validation (next)
 Plan: —
-Status: Phase 32 complete (108/108 tests, clean build, committed). Phase 33 next.
-Last activity: 2026-03-04 — Phase 32 complete: DeviceTarget expanded, DEVICE_IDS.helix_stadium=2490368, STADIUM_CONFIG, isStadium(), 501 stub in /api/generate
+Status: Phase 33 complete (108/108 tests, clean build, committed). Phase 34 next.
+Last activity: 2026-03-04 — Phase 33 complete: STADIUM_AMPS (12 Agoura entries), STADIUM_EQ_MODELS, stadiumOnly flag, getModelListForPrompt() Stadium path, isModelAvailableForDevice() Stadium logic
 
 ## Performance Metrics
 
