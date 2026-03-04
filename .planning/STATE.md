@@ -113,10 +113,10 @@ See: .planning/PROJECT.md (updated 2026-03-03)
 
 ## Current Position
 
-Phase: Phase 38 — Rig Emulation for Stadium (next)
-Plan: —
-Status: Phase 37 complete (108/108 tests, clean build, committed). Phase 38 next.
-Last activity: 2026-03-04 — Phase 37 complete: page.tsx Stadium device picker — both arrays grid-cols-4, Stadium badge, _Stadium suffix, .hsp ext detection, otherDevice chip updated
+Phase: Phase 38 — Rig Emulation for Stadium (complete)
+Plan: 01
+Status: Phase 38 complete (115/115 tests, clean build, committed). v3.0 Helix Stadium Support milestone complete.
+Last activity: 2026-03-04 — Phase 38 complete: STAD-08 tests added to rig-mapping.test.ts — 7 new Stadium rig mapping tests all green
 
 ## Performance Metrics
 

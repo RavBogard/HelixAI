@@ -305,3 +305,64 @@ describe("SubstitutionEntry shape", () => {
     expect(result.physicalPedal).toBe("TS9 Tube Screamer");
   });
 });
+
+// ---------------------------------------------------------------------------
+// STAD-08: helix_stadium rig mapping
+// ---------------------------------------------------------------------------
+describe("mapRigToSubstitutions — helix_stadium (STAD-08)", () => {
+  it("does not throw for a known pedal", () => {
+    const rig = makeRig("TS9 Tube Screamer");
+    expect(() => mapRigToSubstitutions(rig, "helix_stadium")).not.toThrow();
+  });
+
+  it("returns standard HD2_ IDs (no Mono/Stereo suffix)", () => {
+    const rig = makeRig("TS9 Tube Screamer");
+    const result = mapRigToSubstitutions(rig, "helix_stadium");
+    expect(result[0].helixModel).toBe("HD2_DistScream808");
+    expect(result[0].helixModel).not.toMatch(/Mono$/);
+    expect(result[0].helixModel).not.toMatch(/Stereo$/);
+  });
+
+  it("returns confidence 'direct' for known pedal", () => {
+    const rig = makeRig("TS9 Tube Screamer");
+    const result = mapRigToSubstitutions(rig, "helix_stadium");
+    expect(result[0].confidence).toBe("direct");
+  });
+
+  it("effect substitutions use HD2_ IDs, not Agoura_ IDs", () => {
+    // Agoura_ IDs are amps — rig mapping only handles effects from PEDAL_HELIX_MAP
+    // All PEDAL_HELIX_MAP entries reference HD2_ effect models
+    const rig = makeRig("Boss DM-2", "DM-2", "Boss");
+    const result = mapRigToSubstitutions(rig, "helix_stadium");
+    expect(result[0].helixModel).toMatch(/^HD2_/);
+    expect(result[0].helixModel).not.toMatch(/^Agoura_/);
+  });
+
+  it("returns a flat array with the correct length", () => {
+    const rig: RigIntent = {
+      pedals: [
+        { brand: "Ibanez", model: "TS9", fullName: "TS9 Tube Screamer", knobPositions: {}, imageIndex: 0, confidence: "high" },
+        { brand: "Boss", model: "DM-2", fullName: "Boss DM-2", knobPositions: {}, imageIndex: 1, confidence: "high" },
+      ],
+    };
+    const result = mapRigToSubstitutions(rig, "helix_stadium");
+    expect(Array.isArray(result)).toBe(true);
+    expect(result).toHaveLength(2);
+  });
+
+  it("helix_lt result is unaffected by Stadium path", () => {
+    const rig = makeRig("TS9 Tube Screamer");
+    const lt = mapRigToSubstitutions(rig, "helix_lt");
+    const stadium = mapRigToSubstitutions(rig, "helix_stadium");
+    // Both use the same HD2_ ID (no Pod Go suffix, no Agoura substitution for effects)
+    expect(lt[0].helixModel).toBe(stadium[0].helixModel);
+    expect(lt[0].confidence).toBe(stadium[0].confidence);
+  });
+
+  it("pod_go result is unaffected by Stadium path", () => {
+    const rig = makeRig("TS9 Tube Screamer");
+    const podgo = mapRigToSubstitutions(rig, "pod_go");
+    // Pod Go still appends Mono suffix — Stadium path does not touch this
+    expect(podgo[0].helixModel).toMatch(/Mono$/);
+  });
+});

@@ -7,7 +7,7 @@
 - [x] **v1.2 Pod Go Support** - Phases 12-16 (shipped 2026-03-02)
 - [x] **v1.3 Rig Emulation** - Phases 17-21 (shipped 2026-03-02)
 - [x] **v2.0 Persistent Chat Platform** - Phases 24-30 (shipped 2026-03-04)
-- [ ] **v3.0 Helix Stadium Support** - Phases 31-38 (in progress)
+- [x] **v3.0 Helix Stadium Support** - Phases 31-38 (shipped 2026-03-04)
 
 ## Phases
 
@@ -483,7 +483,8 @@ Plans:
   2. `/api/map` returns 200 (not 400/500) when `device: "helix_stadium"` is passed
   3. `mapRigToSubstitutions(rigIntent, "helix_stadium")` does not throw — Stadium substitutions prefer Agoura amps where applicable
   4. Rig emulation for Helix LT, Helix Floor, and Pod Go is completely unaffected — all three existing rig flows pass verification
-**Plans**: TBD
+**Plans**: 1 plan
+- [x] 38-01-PLAN.md — rig-mapping.test.ts STAD-08 tests: helix_stadium does not throw, HD2_ IDs, direct confidence, no Agoura in effects, regression for LT/Floor/PodGo (STAD-08)
 
 </details>
 
