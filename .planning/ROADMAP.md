@@ -287,9 +287,9 @@ Plans:
 **Milestone Goal:** Transform HelixAI from a stateless generate-and-download tool into a persistent platform where users log in with Google, maintain a sidebar of past conversations, pick up where they left off, and re-download their most recent preset per chat. Anonymous usage remains fully functional; login unlocks history.
 
 - [x] **Phase 24: Supabase Foundation** - Database schema, RLS, client utilities, middleware, keep-alive (3 plans, complete 2026-03-03)
-- [x] **Phase 25: Auth Flow** - Anonymous sign-in + Google OAuth + identity linking (completed 2026-03-03)
+- [x] **Phase 25: Auth Flow** - Anonymous sign-in + Google OAuth + identity linking (completed 2026-03-03)
 - [x] **Phase 26: Conversation CRUD API** - Full data API for creating, reading, listing, and title update (1 plan, complete 2026-03-03)
-- [x] **Phase 27: Persistence Wiring** - Modify chat/generate routes to persist messages and preset files (completed 2026-03-03)
+- [x] **Phase 27: Persistence Wiring** - Modify chat/generate routes to persist messages and preset files (completed 2026-03-03)
 - [x] **Phase 28: Chat Sidebar UI + UX Polish** - Sidebar panel, resume flow, new chat, sign-in prompt (completed 2026-03-03)
 
 ## Phase Details
@@ -395,7 +395,11 @@ Plans:
   2. `DEVICE_IDS.helix_floor !== DEVICE_IDS.helix_lt` — the regression is fixed; the constant includes a source comment
   3. The test at `orchestration.test.ts:93` passes with the corrected Floor device ID
   4. `xxd file.hsp | head -20` result is documented — confirms JSON vs msgpack encoding decision
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 31-01-PLAN.md — Restore helix_floor device ID to 2162691 with source comment; full test suite green (FIX-01)
+- [ ] 31-02-PLAN.md — Inspect real .hsp file; document data.device integer and .hsp version constants for Phase 32 (STAD-02)
 
 ### Phase 32: Type System Foundation
 **Goal**: The TypeScript type system knows about Stadium — `DeviceTarget`, `DEVICE_IDS`, config constants, and file extension handling all cover Stadium; compiler exhaustiveness errors surface every unimplemented handler
@@ -512,7 +516,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 28. Chat Sidebar UI + UX Polish | v2.0 | 3/3 | Complete | 2026-03-03 |
 | 29. Dual-Amp Preset Generation Fix | v2.0 | 3/3 | Complete | 2026-03-04 |
 | 30. Chat Auto-Save on First AI Response | v2.0 | 1/1 | Complete | 2026-03-04 |
-| 31. Device ID Research + Floor Fix | v3.0 | TBD | Not started | — |
+| 31. Device ID Research + Floor Fix | v3.0 | 0/2 | Not started | — |
 | 32. Type System Foundation | v3.0 | TBD | Not started | — |
 | 33. Stadium Model Catalog | v3.0 | TBD | Not started | — |
 | 34. Stadium Chain Rules + Validation | v3.0 | TBD | Not started | — |
@@ -523,4 +527,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 ---
 *Roadmap created: 2026-03-01*
-*Last updated: 2026-03-04 — v3.0 Helix Stadium Support planned (Phases 31-38); v2.0 marked complete through Phase 30*
+*Last updated: 2026-03-04 — Phase 31 planned (2 plans: Floor fix + Stadium .hsp inspection checkpoint)*
