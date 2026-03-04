@@ -531,12 +531,13 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 36. Planner + API Route Integration | v3.0 | TBD | Not started | — |
 | 37. UI — Device Selector + Download | v3.0 | TBD | Not started | — |
 | 38. Rig Emulation for Stadium | v3.0 | TBD | Not started | — |
+| 39. HX Stomp & HX Stomp XL Support | v3.1 | 0/3 | Not started | — |
 
 ### Phase 39: HX Stomp & HX Stomp XL Support
 
 **Goal:** Users can generate presets for HX Stomp (`helix_stomp`, 2162694) and HX Stomp XL (`helix_stomp_xl`, 2162699) — both output standard `.hlx` files using the same `data.*` structure as LT/Floor but with Stomp-specific I/O models, block limits, and snapshot counts; existing devices unaffected
 **Depends on:** Phase 38
-**Requirements**: TBD (to be written when Phase 38 ships)
+**Requirements**: STOMP-01, STOMP-02, STOMP-03, STOMP-04, STOMP-05, STOMP-06, STOMP-07, STOMP-08, STOMP-09, STOMP-10
 **Success Criteria** (what must be TRUE):
   1. `DEVICE_IDS.helix_stomp === 2162694` and `DEVICE_IDS.helix_stomp_xl === 2162699` — both confirmed from real hardware exports; both differ from each other and from LT/Floor/Pod Go/Stadium
   2. `buildStompFile(spec, "helix_stomp")` produces a `.hlx` file capped at 6 blocks, 3 snapshots, using `HelixStomp_AppDSPFlowInput` and `HelixStomp_AppDSPFlowOutputMain` I/O models
@@ -544,11 +545,13 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
   4. Generated `.hlx` files import into HX Edit without errors — hardware device ID validated
   5. UI shows "STOMP" and "STOMP XL" device options; downloads named `HelixAI_[Name]_Stomp.hlx` and `HelixAI_[Name]_StompXL.hlx` respectively
   6. Helix LT, Helix Floor, Pod Go, and Helix Stadium generation are completely unaffected
-**Plans:** TBD
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 39 to break down)
+- [ ] 39-01-PLAN.md — Type system + config constants + stomp-builder.ts + chain-rules + validate + models + index barrel + tests (STOMP-01, STOMP-02, STOMP-03, STOMP-04, STOMP-05, STOMP-10)
+- [ ] 39-02-PLAN.md — /api/generate Stomp routing + rig-mapping Stomp support + end-to-end pipeline tests (STOMP-06, STOMP-08, STOMP-09)
+- [ ] 39-03-PLAN.md — page.tsx: both device pickers + download suffix + badge + otherDevice chip (STOMP-07)
 
 ---
 *Roadmap created: 2026-03-01*
-*Last updated: 2026-03-04 — Phase 39 expanded to HX Stomp & HX Stomp XL (both device IDs confirmed from real .hlx exports)*
+*Last updated: 2026-03-04 — Phase 39 planned: 3 plans, 2 waves (Wave 1: 39-01 foundation; Wave 2: 39-02 API + 39-03 UI in parallel)*
