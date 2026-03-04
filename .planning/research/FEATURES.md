@@ -1,20 +1,33 @@
 # Feature Research
 
-**Domain:** Persistent chat platform — auth, chat history, file storage, chat sidebar UI
-**Researched:** 2026-03-03
-**Confidence:** HIGH (based on direct analysis of ChatGPT, Claude.ai, Gemini UX patterns; Supabase and Firebase official docs; LibreChat and assistant-ui open-source implementations; multiple corroborating sources per finding)
+**Domain:** Preset quality leap + API cost optimization — HelixTones v4.0
+**Researched:** 2026-03-04
+**Confidence:** HIGH for quality patterns (multiple professional sources, community consensus, Tonevault 250-preset data); HIGH for API cost optimization (official Anthropic/Google pricing docs, multiple corroborating industry sources); MEDIUM for model-specific parameter targets (community-derived, not from Line 6 engineering)
 
 ---
 
 ## Context: What Already Exists vs. What This Milestone Adds
 
-HelixAI v1.3 is a **stateless** app. Every page load is a fresh session — no user identity, no saved chats, no memory of previous conversations. The existing flow is:
+HelixTones v3.1 has a fully working planner-executor architecture. The Planner (Claude Sonnet 4.6) selects amp/cab/effects. The Knowledge Layer deterministically assigns all numeric parameters. The chat interview uses Gemini 2.5 Flash (not Claude) for cost reasons, with Google Search grounding for artist research.
 
-```
-Page load (anonymous) → chat interview → preset generated → download .hlx/.pgp → session ends
-```
+**What already works well:**
+- Category-level amp defaults (clean/crunch/high_gain) with Sag, Bias, Master, Drive, EQ
+- Topology-aware mid adjustment (cathode_follower vs plate_fed)
+- Cab LowCut/HighCut filtering per category
+- Post-cab Parametric EQ per category
+- Genre-aware effect defaults for delay/reverb/modulation (9 genres)
+- Snapshot design with 4 toneRoles (clean/crunch/lead/ambient)
+- Always-on mandatory blocks: Minotaur/Scream 808 boost, Horizon Gate, post-cab Parametric EQ
+- Dual-amp AB topology (split/join) for Helix LT/Floor/Stadium
+- Prompt caching on the planner call (~50% cost reduction already achieved)
+- Chat uses Gemini 2.5 Flash with Google Search grounding (not Claude)
+- Planner uses Claude Sonnet 4.6 with structured output (Zod schema enforcement)
 
-v2.0 adds a persistence layer **on top of** the existing flow. The anonymous generate-and-download experience must remain fully intact. Login unlocks history only — it does not gate the core product.
+**The quality gap this milestone closes:**
+Premium commercial presets (Alex Price, M. Britt, Tone Junkie, komposition101) differ from HelixTones-generated presets in three measurable ways:
+1. **Effect selection intelligence** — Pro presets pick effect combinations that interact musically, not just "add delay + reverb." They use parallel compression, stacked modulation, specific delay subdivision pairings, and pre-amp EQ shaping tailored to specific amp inputs.
+2. **Parameter precision** — Pro presets set amp-specific parameter values based on per-model circuit behavior (not just category-level averages). SAG, Bias, Master interact differently across amp models — a flat category default misses model-specific sweet spots.
+3. **Signal routing creativity** — Pro presets use parallel paths (frequency splits, dual-mic cab blends, parallel compression) rather than purely serial chains.
 
 ---
 
@@ -22,33 +35,31 @@ v2.0 adds a persistence layer **on top of** the existing flow. The anonymous gen
 
 ### Table Stakes (Users Expect These)
 
-Features that users of any chat persistence platform expect. Missing these = product feels broken or incomplete. These are established norms set by ChatGPT, Claude.ai, and Gemini.
+Features that define the quality floor for an AI preset generator competing with paid commercial presets.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| **Conversation list sidebar** | Every major chat AI (ChatGPT, Claude, Gemini) shows a left sidebar with past conversations. Users arriving from those products will immediately look for it. | MEDIUM | Pull-out or persistent left panel. Shows conversation title + timestamp. Must collapse on mobile. |
-| **Auto-generated conversation title** | ChatGPT, Claude, and Gemini all auto-title conversations from the first message. Users expect this — manually naming every chat is a friction point. | LOW | Generate title from first user message or first AI response. A short summary (5-8 words) is sufficient. No second AI call needed — derive from the first message text client-side. |
-| **New chat button** | Users expect a clear "New Chat" affordance in the sidebar or header. Without it, there's no way to start fresh without knowing to reload the page. | LOW | Button in sidebar header or top of nav. Clears current session, optionally saves current chat if authenticated. |
-| **Conversation resumption** | Returning to a past chat and continuing the interview is the core user value of persistence. Without it, history is read-only — useful but limited. | HIGH | Must reload the full message history into the chat state, restore the device selection, and allow continued conversation with context intact. The API must re-establish conversation context for the AI. |
-| **Delete conversation** | All major chat platforms offer delete. Users expect to manage their history. Missing it feels like the app is keeping data without giving control. | LOW | Confirm dialog + optimistic removal from sidebar. Soft-delete with a brief undo window is best practice, but immediate delete is acceptable for v2.0. |
-| **Google sign-in** | Google auth is the path of least resistance for a tool aimed at guitarists who likely have Google accounts. Password-based auth adds signup friction with no benefit for this use case. | LOW | NextAuth.js or Supabase Auth both support Google OAuth natively. Auth should be a single "Sign in with Google" button. |
-| **Anonymous-first flow** | The existing anonymous generate-and-download experience must be preserved. Requiring login before the app does anything is a conversion killer. Users who just want a preset should never be forced to log in. | LOW (UX logic) / MEDIUM (data model) | Anonymous users get full functionality. Login prompt appears contextually — e.g., after first preset download, with copy like "Save this chat to your account." Must not break on logout or session expiry. |
-| **Session persistence across refreshes** | Once logged in, users expect to still be logged in after closing and reopening the browser. Cookie-based or token-based session that doesn't expire frequently. | LOW | Standard OAuth token refresh. Supabase and NextAuth both handle this. Not a custom implementation concern. |
-| **Last-preset re-download** | If a user returns to a past chat, they expect to be able to re-download the preset they generated. Without this, history is purely conversational — the actual product deliverable is lost. | MEDIUM | Store the most recent .hlx/.pgp file per conversation in cloud storage (Supabase Storage or Vercel Blob). A "Download Preset" button in the resumed chat view re-fetches from storage. |
+| **Amp-model-specific parameter tuning** | Category defaults (clean/crunch/high_gain) are correct on average but wrong for specific models. The Tonevault 250-preset analysis shows Panama presets run flat EQ with 808-only gain shaping, while Rectifire presets scoop mids inversely correlated with Drive. A premium generator must know the model, not just the category. | MEDIUM | Extend param-engine.ts to include per-model override tables layered on top of category defaults. Start with the 10-15 most-requested amp models (Panama, Placater, WhoWatt, Litigator, Mandarin, Essex, etc.). Not all 80+ models need overrides — target the popular ones. |
+| **Correct Master Volume strategy per amp type** | 94% of Fender/Vox-style clean presets in Tonevault data max the Master (9-10). Marshall-types sit 3-6. Setting Master to a flat 0.60 for crunch regardless of amp type is wrong. The power amp character of non-master-volume amps (Fender, Vox AC30, Hiwatt) only engages when Master is fully open. | LOW | Add ampFamily categorization (fender_style, marshall_style, boutique_clean, high_gain_modern) to the model catalog. Master default table indexed by ampFamily, not just category. |
+| **Pre-amp EQ shaping for specific amp inputs** | Professional presets routinely add an EQ block before the amp to shape how the signal hits the input — not to make huge changes, but to tighten bass mud before distortion or open highs before a dark-voiced amp. This is documented in the Tonevault Panama analysis (808 provides input shaping, not pre-amp EQ). For darker amps (Bogner Shiva / German Mahadeva) a pre-amp hi-cut adds clarity. | MEDIUM | Add optional pre-amp EQ block insertion logic to chain-rules.ts. Condition: if amp model is in a "dark-voiced" or "bass-heavy" category AND the user's genreHint suggests clarity is needed. Should be opt-in via the Knowledge Layer, not AI-decided. |
+| **Context-sensitive delay parameters (tempo sync + subdivision)** | A quarter-note delay at 120 BPM is 500ms. A dotted-eighth at 120 BPM is 562.5ms. Professional presets match delay timing to musical context. Ambience/worship genres use longer subdivisions with higher feedback; metal uses short tight slap with low mix (12%). Current genre defaults use a single static Time value per genre — no musical subdivision logic. | MEDIUM | Extend GENRE_EFFECT_DEFAULTS to include subdivision type + tempo-scaled time calculation when tempoHint is present. When BPM is provided, convert to note-value-based timing: quarter = 60/BPM, dotted-eighth = (60/BPM)*0.75, etc. |
+| **Reverb pre-delay for note definition** | Professional reverb settings always include pre-delay (20-80ms) to keep the initial note articulate before the reverb tail blooms. Absent pre-delay, reverb immediately smears the attack. Current param-engine sets generic reverb Mix only; PreDelay is not set. | LOW | Add PreDelay to GENRE_EFFECT_DEFAULTS reverb entries. Jazz/clean: 30ms. Rock/crunch: 20ms. Ambient: 50ms. Metal: 10ms (short, tight). This is a single additional parameter field per genre entry. |
+| **End-of-chain compression option** | Professional studio engineers place an LA Studio Comp after amp+cab — exactly like inserting an LA-2A on a guitar bus. This "bus compression" warmer tone and more consistent dynamics across playing dynamics. Current mandatory blocks do not include an optional end-chain compressor. | LOW | Allow intentRole "always_on" on a compressor effect to resolve to end-of-chain placement in chain-rules.ts. The Planner already supports intentRole — the chain rules just need to place dynamics blocks appropriately when role indicates post-cab positioning. |
 
 ---
 
 ### Differentiators (Competitive Advantage)
 
-Features that go beyond what's expected. These are where HelixAI can do better than a generic chat UI by leveraging its guitar/preset domain.
+Features that lift HelixTones above what any existing AI generator does, and closer to what premium hand-crafted presets achieve.
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| **Device context preserved in chat history** | When a user resumes a conversation, the device selector (Helix LT / Helix Floor / Pod Go) should restore to what it was during that chat. Generic chat platforms don't have device context — HelixAI does. | LOW | Store `deviceTarget` as metadata per conversation. Restore it when resuming. Prevents the jarring experience of returning to a "Helix LT" chat and accidentally downloading a Pod Go preset. |
-| **Preset metadata in sidebar** | Show the device type and maybe the tone style alongside the conversation title in the sidebar (e.g., "Edge Delay Tone · Helix LT"). Generic chat sidebars show only titles. This makes a guitar preset tool's history immediately more useful. | LOW | Store `deviceTarget` and first-message-derived title. Optionally extract genre/style from ToneIntent for richer labels. |
-| **Contextual sign-in prompt after preset download** | Rather than front-loading login, prompt after the user's first successful preset download: "Save this chat to your account so you can come back and refine it." This is the highest-value moment to request auth. | LOW | Trigger after `downloadFile()` fires. Show a non-blocking banner or tooltip. Users have already received value — they're most receptive to an account pitch here. |
-| **Continuation prompts in resumed chats** | When a user returns to a saved chat, show a suggested action: "Refine this tone," "Try a different amp," "Generate for Pod Go instead." Helps users know what to do with the resumed context. Gemini does this with Gems. | MEDIUM | Rendered as pre-filled suggestion chips below the chat input on resume. No AI call needed — static suggestions based on chat state. |
-| **Conversation search** | ChatGPT Plus has it; free tiers don't surface it prominently. For a user who has 20+ saved chats ("Stevie Ray Vaughan tone," "post-rock reverb," "clean Nashville"), search is genuinely useful. | MEDIUM | Full-text search on conversation titles and first messages. Supabase provides Postgres full-text search natively. Not essential for MVP but high value at 10+ chats. |
+| **Parallel frequency split routing** | Professional presets split the signal at a crossover frequency (typically 190-500Hz for guitar) and process high and low bands separately — giving each band its own amp voicing, compression, or distortion character. This is how Craig Anderton's multiband presets achieve "bigger, more articulated" high-gain tones. No AI preset generator currently does this. | HIGH | Add a "parallel_split" topologyHint to ToneIntent. The chain-rules assembler inserts a Split block (crossover mode) and assigns upper/lower path effects. Knowledge Layer pre-sets the crossover frequency by genre (high-gain: 200Hz, ambient: 300Hz). Only available on Helix LT/Floor/Stadium (not Pod Go/Stomp — they lack dual-path). |
+| **Dual-cab mic blend (parallel IR paths)** | Pro preset makers load two cab blocks on parallel paths with different mic choices — emulating the classic Fredman dual-mic technique (57 Dynamic on axis + 121 Ribbon off-axis). This gives complex, studio-grade cab texture. Current presets run a single cab block per amp. | MEDIUM | When a second cab block is used (already supported in dual-amp topology), assign distinct Mic values per path (e.g., Mic=0 for 57 Dynamic, Mic=6 for 121 Ribbon). Add mic combination presets to the Knowledge Layer's cab param tables indexed by ampCategory + dualMic flag. |
+| **Pickup-specific EQ variants in snapshots** | Alex Price's 2024 library update adds a separate preset variant for single coil vs. humbucker guitars — the difference being small EQ tweaks in post-amp parametric EQ. ToneIntent already captures guitarType (single_coil / humbucker / p90). The Knowledge Layer can vary the post-cab EQ parameters based on guitarType. This closes the "sounds great with humbuckers but too bright with singles" complaint. | LOW | Add guitarType dimension to EQ_PARAMS table in param-engine.ts. single_coil: slightly higher HighGain (presence boost) + lower MidGain. humbucker: slightly lower HighGain (tame high-end) + higher LowGain (tighten warmth). p90: midpoint. Already have guitarType in ToneIntent. |
+| **Snapshot-aware volume compensation** | Professional presets use Channel Volume differences between snapshots to volume-balance clean vs. lead tones — louder snapshots for leads that need to cut through a mix. Current preset engine sets Channel Volume identically across all snapshots. Snapshot-aware ChVol differentiation per toneRole is documented practice in the professional community. | MEDIUM | Extend snapshot-engine.ts to apply ChVol adjustments per toneRole. Proposed deltas: clean = base ChVol (0.70), crunch = +0.05, lead = +0.10, ambient = -0.05. These deltas are applied as snapshot parameter overrides, which the Helix snapshot system supports natively. |
+| **Richer ToneIntent creative prompting** | The Planner prompt currently gives general creative guidelines. Premium preset creators make specific, intentional choices: "Panama at Drive 4.0 with an 808 for input shaping" vs. "add a distortion block." The Planner prompt should prime Claude with the same mental model professional preset makers use — teaching it to think in terms of amp input shaping, gain staging, and interaction between effects. | MEDIUM | Rewrite the Planner's Creative Guidelines section with model-specific guidance derived from the Tonevault analysis and professional community patterns. Add a "Gain Staging" section: what level of drive to set on high-gain amps (moderate, let the amp's preamp do the work + boost at input), what drives are "tone shapers" vs. "distortion adds." This is a prompt-only change — no schema changes required. |
+| **Genre-specific mandatory block substitution** | The current mandatory-block rules always insert both Minotaur and Horizon Gate. For ambient/worship genres, a compressor (Red Squeeze or LA Studio) is more valuable at the front of chain than an 808 boost. For jazz, neither a boost nor a hard gate is appropriate — a light LA Studio Comp as a "polishing compressor" is the right always-on block. | MEDIUM | Add genreHint-aware mandatory block selection to chain-rules.ts. Resolve mandatory boost: if high_gain → Scream 808, if crunch → Minotaur, if jazz/ambient → skip boost entirely. Resolve mandatory gate: if metal → Horizon Gate, else → lighter gate or omit. Already have genreHint available at chain assembly time. |
 
 ---
 
@@ -56,93 +67,133 @@ Features that go beyond what's expected. These are where HelixAI can do better t
 
 | Feature | Why Requested | Why Problematic | Alternative |
 |---------|---------------|-----------------|-------------|
-| **Real-time sync / live updates across tabs** | Power users may have the app open in multiple tabs | Adds Supabase Realtime subscription complexity for minimal benefit. HelixAI is a single-user, sequential interaction tool — not a collaborative platform. The complexity is not justified at this scale. | Simple refresh-on-focus or reload conversation list on tab visibility change. No WebSocket subscription needed. |
-| **Conversation folders / project grouping** | Claude has "Projects," ChatGPT has project-level memory | Significant UX and data model complexity. Users of a specialized guitar preset tool are unlikely to have enough chats to need folder organization before simpler search is sufficient. Premature organizational features add clutter. | Auto-chronological grouping (Today, This Week, Earlier) in the sidebar is sufficient. Add search before folders. |
-| **Version history / all preset versions per chat** | Users want to download the preset from "three turns ago" | Storage cost grows unbounded. The most recent preset is what matters — users iterate toward it. Storing every intermediate generation creates storage bills and a confusing download UX ("which version is the good one?"). | Store only the most recent .hlx/.pgp per conversation. This is explicitly scoped in PROJECT.md. |
-| **Email/password auth** | Some users may prefer not to use Google | Adds password reset flows, email verification, security surface area. For a v2.0 launch with a single dev, Google OAuth is the right call — one auth provider, battle-tested flow, zero password management. | Google OAuth only. Add additional providers only if there's explicit user demand and bandwidth to implement. |
-| **Cross-conversation memory ("remember I play a Les Paul")** | ChatGPT has cross-conversation memory; users expect parity | Memory that persists across all chats is a different product — it changes the AI interaction model, adds a separate management UI, and creates privacy expectations. HelixAI's value is in per-conversation expertise, not a persistent user profile. | Per-conversation context is sufficient. If a user wants the AI to remember their guitar, they mention it in the chat. |
-| **Chat sharing / permalink** | Users want to share a preset conversation link | Shared conversations require public access controls, potentially exposing the AI prompt engineering, and creating moderation concerns. The preset file download is the shareable artifact. | Share the .hlx/.pgp file directly. No conversation sharing in v2.0. |
-| **Offline mode / local-first storage** | Users in low-connectivity environments | Service worker + IndexedDB complexity for a server-dependent AI app. The AI calls require internet anyway — offline mode is false comfort. LibreChat's own issue tracker documents how sidebar sync breaks offline. | Clear "you're offline" state. Don't fake offline capability. |
-| **Bulk delete / conversation export** | Power users want to clean up or backup history | Data export is a GDPR concern, not a feature. Bulk delete is a UX edge case. Both are v3+ concerns if user demand materializes. | Single-conversation delete with confirm is sufficient at v2.0 scale. |
+| **AI-generated numeric parameter values** | "Let Claude set the exact Drive and Master values for each amp" | Every experiment with AI-generated numbers has produced worse results than deterministic tables. AI is not calibrated against actual hardware output levels, Helix's normalized float encoding, or the interaction between Sag/Bias/Master in specific amp models. The Tonevault data shows professional presets cluster around specific values that cannot be reliably reproduced by language model generation. The Planner-Executor separation exists precisely because this was already tried and failed. | Extend the Knowledge Layer's deterministic tables (per-model overrides) rather than giving Claude numeric output fields. |
+| **Third-party impulse response (IR) loading** | Users request IRs for better cab sounds; professional presets often use them | Already explicitly out of scope in PROJECT.md. IRs require file loading infrastructure, IR hosting, and purchasing/licensing third-party captures. The stock cab models are sufficient for a competitive product when mic and EQ parameters are correctly set. Pursuing IRs would delay quality improvements that are achievable now through better parameter tuning. | Better mic choice selection and dual-cab blending achieves much of the IR benefit within stock cabs. |
+| **Fully open-ended parallel routing** | "Let Claude design any signal topology it wants" | The Helix's parallel routing is powerful but the DSP budget constraints are precise and model-dependent. Unconstrained AI topology selection will produce DSP overflows, split/join block count violations, and broken presets that don't load. Routing must be handled by the Knowledge Layer with specific topologies as selectable patterns. | Expose 2-3 named routing topologies (serial, dual_amp_AB, frequency_split) that the Planner can select from. Each topology has a pre-validated block budget and assembly rule. |
+| **Per-note or dynamic parameter automation** | "Change Drive automatically based on playing dynamics" | The Helix supports controller assignment and expression pedal mapping, but this is MIDI controller territory (already out of scope in PROJECT.md). Generating MIDI CC assignments requires a separate UI, user hardware mapping knowledge, and significantly more preset file complexity. | Snapshot-based volume compensation (the differentiator above) achieves dynamic response without controller complexity. |
+| **Haiku for preset generation to save costs** | "Use Claude Haiku for the Planner call — it's 3x cheaper" | The Planner call is where quality lives. Claude's model selection for a "Soldano SLO-100 for a singing lead tone" is the creative decision that determines the entire preset. Haiku 4.5 achieves 90% of Sonnet 4.5's benchmark performance — but preset quality is not a benchmark. It requires deep knowledge of guitar gear, amp behavior, and musical context. The Planner call is called once per preset generation (not per chat turn) — its cost is negligible relative to the chat cost. Saving 3x on a call that represents ~5% of total costs is not worth quality risk. | Optimize the chat tier (Gemini 2.5 Flash is already in use). Leave Sonnet 4.6 on the Planner. |
+| **Embedding-based context retrieval for presets** | "Use RAG to retrieve relevant presets as context" | HelixTones does not have a preset corpus to embed. The Knowledge Layer is code, not documents. RAG adds infrastructure complexity (vector store, embedding API calls, retrieval logic) for a use case that does not exist in the current architecture. The Planner prompt already provides the complete model list as context. | Improve the Planner prompt's creative guidance directly (richer ToneIntent prompting differentiator). |
 
 ---
 
 ## Feature Dependencies
 
 ```
-Google Auth
-    └──required by──> Conversation Persistence
-                          └──required by──> Conversation List Sidebar
-                                                └──required by──> New Chat Button (sidebar)
-                                                └──required by──> Delete Conversation (sidebar)
-                                                └──required by──> Resume Conversation
+Amp-model-specific parameter tuning
+    └──requires──> Per-model override table in param-engine.ts
+                       └──requires──> ampFamily classification in models.ts
 
-Resume Conversation
-    ├──requires──> Conversation history stored in database (messages + device target)
-    └──requires──> Chat state restoration logic (load messages into existing UI)
+Correct Master Volume strategy per amp type
+    └──requires──> ampFamily classification in models.ts
+    └──enhances──> Amp-model-specific parameter tuning (shares ampFamily field)
 
-Last-Preset Re-download
-    ├──requires──> Cloud file storage (Supabase Storage or Vercel Blob)
-    ├──requires──> Preset stored on generation (not just at download time)
-    └──requires──> Signed URL or storage URL returned on conversation resume
+Pre-amp EQ shaping
+    └──requires──> chain-rules.ts to support optional pre-amp block insertion
+    └──requires──> ampFamily OR per-model "dark-voiced" flag in models.ts
 
-Anonymous-First Flow
-    ├──compatible with──> Full existing generate-and-download experience
-    └──transition to──> Authenticated flow when user signs in
-       └──requires──> Anonymous session data optionally migrated on first login
+Parallel frequency split routing
+    └──requires──> topology_hint field added to ToneIntent schema
+    └──requires──> chain-rules.ts to implement Split block + parallel path assembly
+    └──conflicts with──> Pod Go / HX Stomp (single-path only — guard required)
+    └──requires──> frequency_split is tested for DSP budget validity
 
-Auto-Generated Title
-    ├──requires──> First user message (already available in message array)
-    └──enhances──> Conversation List Sidebar (display quality)
+Dual-cab mic blend
+    └──requires──> dual_mic flag or second cab mic choice in param-engine.ts cab tables
+    └──enhances──> Parallel frequency split routing (uses second path for second cab)
+    └──compatible with──> Existing dual-amp topology (second cab already created)
 
-Device Context in Chat History
-    ├──requires──> `deviceTarget` stored per conversation (database field)
-    └──enhances──> Resume Conversation (restores correct device selector state)
+Pickup-specific EQ variants
+    └──requires──> guitarType dimension added to EQ_PARAMS in param-engine.ts
+    └──depends on──> guitarType already present in ToneIntent (already shipped)
 
-Contextual Sign-In Prompt
-    ├──requires──> Post-download event hook in existing download flow
-    └──enhances──> Auth conversion rate (not required for auth to work)
+Snapshot-aware volume compensation
+    └──requires──> per-toneRole ChVol delta table in snapshot-engine.ts
+    └──depends on──> toneRole already present in SnapshotIntent (already shipped)
+
+Genre-specific mandatory block substitution
+    └──requires──> genreHint available at chain assembly time in chain-rules.ts
+    └──depends on──> genreHint already in ToneIntent (already shipped)
+
+Richer ToneIntent creative prompting
+    └──no code dependencies — prompt-only change to planner.ts
+    └──enhances──> All quality features above (better Planner decisions drive better Knowledge Layer inputs)
+
+Context-sensitive delay parameters
+    └──requires──> subdivision type + tempo-scaled calculation in GENRE_EFFECT_DEFAULTS
+    └──depends on──> tempoHint already in ToneIntent (already shipped)
+
+Reverb pre-delay
+    └──requires──> PreDelay added to GENRE_EFFECT_DEFAULTS reverb entries
+    └──depends on──> reverb block parameter resolution already in param-engine.ts
 ```
 
 ### Dependency Notes
 
-- **Auth is the root dependency.** Without Google sign-in, nothing else in this milestone is buildable. Auth must land first, in isolation, before any persistence features are attempted.
-- **Conversation persistence requires auth but is independent of file storage.** Message history (text) and file storage (binary .hlx/.pgp) are separate concerns. Message history should be implemented before file storage — text is simpler, lower cost, and validates the database schema.
-- **Resume conversation is the highest-complexity feature.** It requires loading messages into existing chat state, restoring device context, re-establishing AI conversation context (the AI must know what was said before), and potentially re-rendering substitution cards and signal chain visualization. Plan dedicated implementation time.
-- **Sidebar can render before resume is complete.** The conversation list (read-only titles + dates) is useful even if clicking a conversation doesn't resume it yet. Consider phasing: list first, resume second.
-- **Anonymous flow must not regress.** Every change to the auth layer must be tested against the anonymous path. The existing generate-and-download experience is the product's core — persistence is additive, not a replacement.
+- **ampFamily is the shared foundation for three quality features.** Amp-model-specific overrides, Master Volume strategy, and pre-amp EQ shaping all benefit from a per-model `ampFamily` classification. This should be implemented once as part of the models.ts extension, then all three features can use it.
+- **ToneIntent schema changes must be backward-compatible.** Any new optional fields added (e.g., topologyHint) must have fallback behavior in chain-rules.ts so existing presets generated without the new field continue to work correctly. Use `z.optional()` and default to the current serial topology.
+- **Parallel routing is high-complexity and should be gated.** The frequency split topology introduces new chain assembly paths, DSP budget complexity, and device-specific guards. It should be developed after the lower-complexity quality improvements (ampFamily, pickup EQ, reverb pre-delay) are shipped and validated.
+- **Prompt improvements are zero-risk and should ship first.** Richer ToneIntent creative prompting requires no schema changes, no Knowledge Layer changes, and no testing beyond end-to-end generation. It is the highest-ROI quality improvement and should be the first thing shipped.
+
+---
+
+## API Cost Optimization
+
+### Current State Analysis
+
+The app uses two AI providers:
+- **Gemini 2.5 Flash** — chat interview (tone conversation, artist research via Google Search grounding)
+- **Claude Sonnet 4.6** — preset generation (Planner structured output call)
+
+Prompt caching is already implemented on the Planner call, achieving ~50% cost reduction there.
+
+### Optimization Opportunities
+
+| Opportunity | Estimated Saving | Complexity | Risk |
+|-------------|-----------------|------------|------|
+| **Context window management for chat** | HIGH — conversations with long history send the entire conversation as context on every turn, including the Gemini system prompt (~3000 tokens) and all prior messages. At 20 turns, this is 20K+ tokens per request. | MEDIUM | LOW — Gemini's multi-turn Chat API handles history natively; implementing rolling summarization or keeping only last 10 turns needs careful testing to ensure [READY_TO_GENERATE] detection and signal chain visualization context are preserved. |
+| **Gemini 2.5 Flash-Lite for standard chat turns** | HIGH — Gemini 2.5 Flash-Lite is $0.10/$0.40 per million tokens vs. $0.30/$2.50 for Flash. For conversational turns that don't require Google Search grounding (most turns), Flash-Lite may be adequate. | LOW | MEDIUM — Flash-Lite may miss artist research quality. Only safe for non-research turns (turns without artist/rig lookups). Need A/B testing to validate quality preservation. |
+| **Cache the Planner system prompt (already done)** | Already implemented. Prompt caching on the ~3K-token model list provides ~50% reduction on Planner input. | N/A | N/A |
+| **Structured output schema size reduction** | MEDIUM — The ToneIntent Zod schema generates a JSON Schema that is included as tokens on every Planner call. Reducing enum sizes (fewer models exposed to the Planner) or flattening the schema slightly reduces schema token overhead. | LOW | LOW — Must not reduce the model list to the point where the Planner lacks options. Evaluate actual schema token count first before optimizing. |
+| **Lazy Gemini system prompt (already done)** | Already implemented per gemini.ts comment: system prompt intentionally excludes the HD2 model ID list (~3K tokens saved per chat turn). | N/A | N/A |
+| **Batch Planner calls for future bulk operations** | LOW — Anthropic Batch API offers 50% discount. Relevant if HelixTones ever offers preset bundles or batch generation. Not relevant for single real-time preset generation. | HIGH | MEDIUM | Not applicable to current single-preset generation flow. |
+
+### Recommended Cost Optimization Approach
+
+**Phase A (immediate, low risk):** Token audit — instrument the generate and chat routes to log actual token counts per call (input, output, cache hits). Without data, cost optimization is guesswork. This is a one-hour engineering task that unblocks all further optimization decisions.
+
+**Phase B (medium term):** Chat context management — implement rolling context window for the Gemini chat. Keep the last 10 turns verbatim (preserves recent conversational context for [READY_TO_GENERATE] detection) and summarize older turns into a brief "conversation so far" paragraph prepended to the history. This matches the JetBrains NeurIPS 2025 finding: "last 10 turns verbatim + summary of earlier content" gave the best balance of performance and token efficiency.
+
+**Phase C (evaluate carefully):** Gemini Flash-Lite for non-research turns — route turns that don't need Google Search grounding to Flash-Lite. Requires detecting whether the current turn involves artist/gear research. The safest heuristic: if the user's message contains a band name, artist name, or specific gear model, use Flash (with Search); otherwise use Flash-Lite. Flash-Lite is $3x cheaper on output tokens.
 
 ---
 
 ## MVP Definition
 
-This milestone's MVP is the minimum set of features that transforms HelixAI from stateless to persistent while keeping the anonymous flow intact.
+### Launch With (v4.0 — Preset Quality Leap)
 
-### Launch With (v2.0)
+Minimum set of quality improvements that makes a measurable, perceptible difference in generated preset quality:
 
-- [ ] **Google sign-in** — Single "Sign in with Google" button. Session persists across refreshes. Required before all other persistence features.
-- [ ] **Anonymous flow unchanged** — Existing generate-and-download works without login. No auth gate on any existing functionality.
-- [ ] **Conversation list sidebar** — Pull-out panel showing saved chats (title + timestamp + device). Visible only when authenticated. Collapsible.
-- [ ] **New chat button** — In sidebar header. Creates a fresh session, saves current in-progress chat if authenticated.
-- [ ] **Auto-generated conversation title** — Derived from first user message. No extra AI call.
-- [ ] **Conversation persistence (messages)** — Full message history saved per conversation in database. Authenticated users' chats are saved automatically.
-- [ ] **Device target stored per conversation** — `deviceTarget` (helixLT / helixFloor / podGo) saved as conversation metadata.
-- [ ] **Resume conversation** — Click a sidebar item to reload its messages and device context into the chat UI.
-- [ ] **Last-preset re-download** — Most recent .hlx/.pgp stored in cloud storage. "Download Preset" button in resumed chat re-fetches the file.
-- [ ] **Delete conversation** — Confirm dialog, remove from sidebar, delete messages and stored preset from storage.
-- [ ] **Contextual sign-in prompt** — Non-blocking prompt after first preset download for anonymous users: "Sign in to save this chat."
+- [ ] **Richer ToneIntent creative prompting** — Rewrite Planner Creative Guidelines with gain staging philosophy, model-specific guidance, and effect interaction patterns. Zero code risk. Ships first.
+- [ ] **ampFamily classification + per-model parameter overrides** — Add ampFamily to models.ts, extend param-engine.ts with per-model overlay table for the 10-15 most popular amps. Closes the "flat Fender with wrong Master" problem.
+- [ ] **Correct Master Volume strategy per amp type** — Fender/Vox styles max Master; Marshall/Mesa types use conservative Master. Uses the ampFamily classification above.
+- [ ] **Pickup-specific EQ variants (guitarType dimension)** — Extend EQ_PARAMS table with humbucker/single_coil/p90 variants. One table change, high quality impact for hum vs. single users.
+- [ ] **Reverb pre-delay** — Add PreDelay to GENRE_EFFECT_DEFAULTS for all genres. Single parameter addition, professional-grade improvement.
+- [ ] **Context-sensitive delay timing** — Tempo-scaled delay calculations when tempoHint is provided. Quarter and dotted-eighth note targets by genre.
+- [ ] **Snapshot-aware volume compensation (ChVol per toneRole)** — Lead snapshots are louder than clean. One delta table in snapshot-engine.ts.
+- [ ] **Token usage audit** — Log actual token counts per API route. Required before any cost optimization decisions.
 
-### Add After Validation (v2.x)
+### Add After Validation (v4.x)
 
-- [ ] **Conversation search** — Add once users have enough history that scrolling the sidebar becomes unwieldy (10+ chats).
-- [ ] **Continuation suggestions on resume** — Suggestion chips ("Refine this tone," "Try a different amp") shown when loading a past conversation.
-- [ ] **Preset metadata in sidebar** — Show device type alongside conversation title once device storage is confirmed working.
+- [ ] **Genre-specific mandatory block substitution** — Swap Minotaur/808 based on genre. Jazz gets compressor; ambient omits boost. Medium-complexity change to chain-rules.ts.
+- [ ] **Dual-cab mic blend** — Second cab block gets a different Mic index for dual-mic emulation. Layered on top of existing dual-amp or frequency-split routing.
+- [ ] **Chat context window management** — Rolling 10-turn window + summary. Implement after token audit confirms chat is the cost driver.
+- [ ] **Pre-amp EQ shaping for dark-voiced amps** — Optional pre-amp EQ block for German Mahadeva, Essex, and other dark-voiced models. Low priority unless user feedback surfaces this specifically.
 
-### Future Consideration (v3+)
+### Future Consideration (v5+)
 
-- [ ] **Conversation export** — Export full message history as JSON or PDF. GDPR-relevant but not urgent.
-- [ ] **Additional auth providers** — GitHub, Apple, email/password — only if Google OAuth proves to be a meaningful barrier.
-- [ ] **Conversation search with full text** — Postgres full-text search on message content, not just titles.
+- [ ] **Parallel frequency split routing** — Full crossover topology with dual-path processing. High complexity, high payoff. Requires thorough DSP budget validation across all 6 devices.
+- [ ] **Gemini Flash-Lite for non-research chat turns** — Model routing based on turn complexity. Requires A/B testing framework and quality monitoring before production rollout.
+- [ ] **Artist-specific parameter profiles** — Dedicated parameter overrides derived from known artist rig analysis (Fender Strat + AB763 + Klon = specific parameter constellation). High quality, high research cost.
 
 ---
 
@@ -150,95 +201,71 @@ This milestone's MVP is the minimum set of features that transforms HelixAI from
 
 | Feature | User Value | Implementation Cost | Priority |
 |---------|------------|---------------------|----------|
-| Google sign-in | HIGH (gateway feature) | LOW | P1 |
-| Anonymous flow preserved | HIGH (must not regress) | LOW (guard, not build) | P1 |
-| Conversation persistence (messages) | HIGH (core value) | MEDIUM | P1 |
-| Conversation list sidebar | HIGH (discoverability) | MEDIUM | P1 |
-| New chat button | HIGH (navigation) | LOW | P1 |
-| Auto-generated title | MEDIUM (polish) | LOW | P1 |
-| Resume conversation | HIGH (core value) | HIGH | P1 |
-| Device target stored per conversation | HIGH (correctness) | LOW | P1 |
-| Last-preset re-download | HIGH (core value) | MEDIUM | P1 |
-| Delete conversation | MEDIUM (expected by users) | LOW | P1 |
-| Contextual sign-in prompt | MEDIUM (conversion) | LOW | P1 |
-| Continuation suggestions on resume | MEDIUM (UX) | MEDIUM | P2 |
-| Preset metadata in sidebar | LOW (polish) | LOW | P2 |
-| Conversation search | MEDIUM (utility at scale) | MEDIUM | P2 |
+| Richer ToneIntent creative prompting | HIGH | LOW (prompt only) | P1 |
+| ampFamily + per-model param overrides | HIGH | MEDIUM | P1 |
+| Correct Master Volume per amp type | HIGH | LOW (uses ampFamily) | P1 |
+| Pickup-specific EQ variants (guitarType) | HIGH | LOW | P1 |
+| Reverb pre-delay | MEDIUM | LOW | P1 |
+| Context-sensitive delay timing (tempo sync) | MEDIUM | MEDIUM | P1 |
+| Snapshot-aware volume compensation | HIGH | LOW | P1 |
+| Token usage audit (instrumentation) | HIGH (enabler) | LOW | P1 |
+| Genre-specific mandatory block substitution | MEDIUM | MEDIUM | P2 |
+| Dual-cab mic blend | MEDIUM | MEDIUM | P2 |
+| Chat context window management | HIGH (cost) | MEDIUM | P2 |
+| Pre-amp EQ shaping (dark-voiced amps) | LOW | MEDIUM | P2 |
+| Parallel frequency split routing | HIGH | HIGH | P3 |
+| Flash-Lite model routing | MEDIUM (cost) | MEDIUM | P3 |
 
 **Priority key:**
-- P1: Must have for v2.0 launch — without these, the milestone is incomplete
-- P2: Should have — add after P1 features are working and tested
-- P3: Nice to have — defer to v2.x or v3+
+- P1: Delivers the most quality-per-effort in v4.0. No architecture changes, no schema changes, or small additive changes only.
+- P2: Meaningful quality/cost improvements that require more careful design and testing.
+- P3: High-impact but high-complexity features that need their own planning cycle.
 
 ---
 
 ## Competitor Feature Analysis
 
-How ChatGPT, Claude.ai, and Gemini handle the patterns relevant to this milestone:
+How premium human-crafted preset packs approach the quality dimensions this milestone targets:
 
-| Feature | ChatGPT | Claude.ai | Gemini | HelixAI v2.0 Approach |
-|---------|---------|-----------|--------|----------------------|
-| Sidebar layout | Persistent left panel, collapsible | Persistent left panel, collapsible | Collapsible left panel | Pull-out sidebar panel; collapse on mobile |
-| Conversation list grouping | Chronological (Today / Yesterday / Previous 7 Days / etc.) | Chronological with Projects grouping | Chronological | Chronological grouping only — Today / This Week / Earlier |
-| Auto-naming | AI-generated title from first exchange | AI-generated title | AI-generated title | Derived from first user message text (no second AI call) |
-| Manual rename | Yes (inline edit on hover) | Yes | Yes | Defer to v2.x — auto-title is sufficient for v2.0 |
-| Delete | Immediate with 30-day recovery window | Immediate | Immediate | Immediate with confirm dialog; no recovery window in v2.0 |
-| Archive | Yes (distinct from delete) | No | No | Not in v2.0 — delete is sufficient |
-| Anonymous access | No (login required) | No (login required) | No (login required) | YES — full functionality without login |
-| Auth providers | Google, Microsoft, Apple, email | Google, Apple, email | Google only (tied to Google account) | Google only for v2.0 |
-| File storage | Files in Projects, 30-day retention | Files per conversation, limited retention | Files in conversations | One .hlx/.pgp stored per conversation in Supabase Storage |
-| Resume conversation | Yes — full message history restored | Yes — full message history restored | Yes | Yes — restore messages + device context |
-| Cross-conversation memory | Yes (opt-in) | Yes (via Projects) | Yes | No — per-conversation context only |
-| Search | Yes (ChatGPT Plus) | No | Limited | v2.x — after user feedback |
-| Mobile sidebar | Collapsible overlay | Collapsible overlay | Collapsible overlay | Collapsible overlay |
-| Offline state | Error banner, retry | Error banner, retry | Error banner | Error banner; no offline capability |
-
----
-
-## Critical UX Findings from Research
-
-### 1. Anonymous-first is the right call
-
-All three major chat platforms (ChatGPT, Claude, Gemini) require login before any usage. HelixAI's anonymous-first approach is a genuine differentiator — users can generate and download a preset before ever creating an account. This is the correct strategy for a specialized tool where the value is proven first, account is created second. Research confirms: "The app should provide basic functionality to let the user explore and use features that do not require any additional data or access."
-
-### 2. Conversation deletion is the most common platform failure point
-
-Multiple platforms (Claude.ai, Gemini, GitHub Copilot, Cursor) have documented conversation history loss bugs. The #1 user complaint across all platforms is: "My conversations disappeared and I didn't do it." The implication for HelixAI: never silently delete conversations. Deletion must be explicit (confirm dialog), and sidebar state must accurately reflect database state. Don't implement cold storage tiering — at HelixAI's scale, all conversations should be immediately accessible.
-
-### 3. Optimistic updates are expected for sidebar interactions
-
-Users expect the sidebar to update instantly when they delete, rename, or create a conversation. Waiting for a server round-trip before updating the UI (e.g., removing a deleted conversation from the list) feels broken. Use optimistic updates with rollback on error. TanStack Query or React's `useOptimistic` hook are the implementation patterns used by real chat apps.
-
-### 4. Resume conversation is architecturally harder than it looks
-
-The chat input, message history, device selector state, substitution card state, and signal chain visualization all need to be restored from stored data. The AI conversation context also needs to be reconstructed — the AI doesn't remember previous conversations, so resuming requires either sending the full message history as context or accepting that the AI response quality degrades on resume. Sending full history is the correct approach.
-
-### 5. Store only the last preset per conversation
-
-ChatGPT's approach of storing file attachments for 30 days and providing recovery windows is appropriate for a general-purpose platform. For HelixAI, the simpler model — one .hlx/.pgp per conversation, always the most recent — matches user mental models ("what's the preset for this chat?"). The research validates PROJECT.md's decision: balance between utility and storage cost.
+| Dimension | M. Britt / Alex Price / Tone Junkie (human-crafted) | HelixTones v3.1 (AI-generated) | HelixTones v4.0 Target |
+|-----------|------------------------------------------------------|-------------------------------|------------------------|
+| Amp-specific tuning | Per-model hand-tuned parameters based on circuit knowledge and ears | Category-level defaults (clean/crunch/high_gain) | Per-model overlay tables derived from community analysis |
+| Master Volume strategy | Maxed for Fender/Vox (power amp fully engaged); conservative for Marshall/Mesa | Flat 0.60 per category | ampFamily-indexed Master defaults |
+| Pickup optimization | Separate single coil vs. humbucker versions of each preset | Single EQ table per category | guitarType-indexed EQ variants |
+| Delay interaction | Tempo-synced dotted-eighth and quarter combos; genre-matched subdivisions | Static time values per genre | Tempo-scaled note-value calculations + genre subdivision targets |
+| Reverb definition | Pre-delay 20-60ms to preserve note attack before tail | No pre-delay set | Genre-indexed PreDelay values |
+| Dynamic response | Snapshot ChVol balancing; lead +3-5dB over clean | Uniform ChVol across snapshots | toneRole-indexed ChVol deltas |
+| Signal routing | Parallel paths, dual-mic cabs, frequency splits in flagship presets | Serial chain (dual-amp AB topology exists but no frequency splits) | Frequency split and dual-mic blend added as explicit topologies |
+| Effect stacking intelligence | Effects chosen for specific genre+amp interaction (808 for input shaping vs. saturation) | Generic effect slot filling | Planner prompt restructured with gain staging mental model |
 
 ---
 
 ## Sources
 
-- [Comparing Conversational AI Tool User Interfaces 2025 — IntuitionLabs](https://intuitionlabs.ai/articles/conversational-ai-ui-comparison-2025) — MEDIUM confidence (editorial analysis of ChatGPT, Claude, Gemini sidebar UX patterns)
-- [Claude.ai Conversation History Loss Issue — GitHub](https://github.com/anthropics/claude-code/issues/14225) — HIGH confidence (official issue tracker, firsthand UX failure documentation)
-- [ChatGPT Chat and File Retention Policies — OpenAI Help Center](https://help.openai.com/en/articles/8983778-chat-and-file-retention-policies-in-chatgpt) — HIGH confidence (official OpenAI documentation)
-- [Google OAuth Best Practices — Google Developers](https://developers.google.com/identity/protocols/oauth2/resources/best-practices) — HIGH confidence (official Google documentation on incremental authorization, anonymous-first patterns)
-- [Login & Signup UX 2025 Guide — Authgear](https://www.authgear.com/post/login-signup-ux-guide) — MEDIUM confidence (industry guide, multiple corroborating sources)
-- [Supabase Anonymous Sign-Ins — Supabase Docs](https://supabase.com/docs/guides/auth/auth-anonymous) — HIGH confidence (official Supabase documentation)
-- [Use Supabase Auth with Next.js — Supabase Docs](https://supabase.com/docs/guides/auth/quickstarts/nextjs) — HIGH confidence (official Supabase documentation)
-- [Supabase Storage — Supabase Docs](https://supabase.com/docs/guides/storage) — HIGH confidence (official Supabase documentation)
-- [Firebase vs Supabase 2025 — DEV Community](https://dev.to/dev_tips/firebase-vs-supabase-in-2025-which-one-actually-scales-with-you-2374) — MEDIUM confidence (community analysis, multiple sources agree on Firebase anonymous auth maturity)
-- [Supabase vs Firebase Auth for Next.js — GetSabo](https://getsabo.com/blog/supabase-vs-firebase-auth) — MEDIUM confidence (comparison article, corroborated by official docs)
-- [Optimistic Updates for Conversation Deletion — OpenHands PR #6745](https://github.com/All-Hands-AI/OpenHands/pull/6745) — HIGH confidence (production implementation, real open-source chat app)
-- [Optimistic Updates and Error Handling — Scira](https://zread.ai/zaidmukaddam/scira/22-optimistic-updates-and-error-handling) — MEDIUM confidence (open-source AI chat app implementation reference)
-- [Chat Persistence — Chainlit Docs](https://docs.chainlit.io/data-persistence/history) — HIGH confidence (official Chainlit documentation confirming auth + persistence co-dependency)
-- [Supabase + Next.js AI Chatbot — supabase-community GitHub](https://github.com/supabase-community/vercel-ai-chatbot) — HIGH confidence (official community reference implementation)
-- [Gemini Conversation Deletion Bug — Google Support Forum](https://support.google.com/gemini/thread/410679684/) — HIGH confidence (official Google support forum, documents deletion sync failures)
-- [ChatGPT Memory Controls — OpenAI](https://openai.com/index/memory-and-new-controls-for-chatgpt/) — HIGH confidence (official OpenAI blog, memory architecture details)
+- [Dialing in Your Helix Amps: What the Top 250 Presets Teach Us — Tonevault Blog](https://www.tonevault.io/blog/250-helix-amps-analyzed) — HIGH confidence (data-driven analysis of 250 real professional presets; specific amp parameter correlations)
+- [Understanding Helix Amp Parameters — Sweetwater InSync](https://www.sweetwater.com/insync/understanding-helix-amp-parameters/) — HIGH confidence (official Sweetwater editorial, corroborated by Line 6 manuals)
+- [Common Amp Settings — Helix Help](https://helixhelp.com/tips-and-guides/universal/common-amp-settings) — MEDIUM confidence (community reference, widely cited)
+- [Mastering Amp Parameters in Line 6 Products — Komposition101](https://www.komposition101.com/blog/mastering-amp-parameters-on-line6-helix) — MEDIUM confidence (commercial preset maker analysis)
+- [Double Down for the Best Line 6 Helix Tone — Sweetwater InSync](https://www.sweetwater.com/insync/double-best-line-6-helix-tone/) — HIGH confidence (Sweetwater editorial)
+- [Multiband Processing — Sweetwater InSync](https://www.sweetwater.com/insync/multiband-processing-technique-effects/) — HIGH confidence (Sweetwater editorial, Craig Anderton technique)
+- [Multiband Processing on Guitars — Reverb News](https://reverb.com/news/why-use-multiband-processing-on-guitars) — MEDIUM confidence (editorial, single source)
+- [Signal Path Routing — Line 6 Stadium Manuals](https://manuals.line6.com/en/helix-stadium/live/signal-path-routing) — HIGH confidence (official Line 6 documentation)
+- [Common Signal Flow Traits on the Helix — Line 6 KB](https://line6.com/support/page/kb/effects-controllers/helix/common-signal-flow-traits-on-the-helix-r880/) — HIGH confidence (official Line 6 knowledge base)
+- [8 Tips for Using Reverbs and Delays on Guitars — iZotope](https://www.izotope.com/en/learn/8-tips-for-using-reverbs-and-delays-on-guitars.html) — HIGH confidence (iZotope professional audio reference)
+- [Reverb and Delay Pedal Placement Guide — Pro Sound HQ](https://prosoundhq.com/reverb-and-delay-pedal-placement-guide-best-chain-order/) — MEDIUM confidence (single editorial source, broadly consistent with professional practice)
+- [Alex Price Musician — Complete Preset Library](https://www.alexpricemusician.com/helix) — MEDIUM confidence (commercial preset maker methodology, single source)
+- [Tone Factor — Preset Architecture Description](https://www.tonefactor.co/helix) — MEDIUM confidence (commercial preset maker, detailed signal chain description)
+- [Premium Line 6 Helix Presets — M. Britt](https://mbritt.com/product/m-britt-helix-preset-pack-1/) — MEDIUM confidence (commercial preset library, methodology inferred from descriptions)
+- [LLM Token Optimization: Cut Costs & Latency — Redis](https://redis.io/blog/llm-token-optimization-speed-up-apps/) — HIGH confidence (Redis official blog, corroborated by multiple industry sources)
+- [LLM Cost Optimization Complete Guide — Koombea AI](https://ai.koombea.com/blog/llm-cost-optimization) — MEDIUM confidence (industry guide, corroborated by official pricing docs)
+- [Prompt Caching — Claude API Docs](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) — HIGH confidence (official Anthropic documentation)
+- [Claude Models Overview + Pricing — Anthropic](https://docs.anthropic.com/en/docs/about-claude/pricing) — HIGH confidence (official Anthropic pricing)
+- [Claude Haiku 4.5 Deep Dive — Caylent](https://caylent.com/blog/claude-haiku-4-5-deep-dive-cost-capabilities-and-the-multi-agent-opportunity) — MEDIUM confidence (editorial, pricing corroborated by official Anthropic docs)
+- [Gemini API Pricing 2026 — MetaCTO](https://www.metacto.com/blogs/the-true-cost-of-google-gemini-a-guide-to-api-pricing-and-integration) — MEDIUM confidence (editorial, corroborated by Google pricing pages)
+- [LLM Chat History Summarization Guide — Mem0](https://mem0.ai/blog/llm-chat-history-summarization-guide-2025) — MEDIUM confidence (vendor blog, corroborated by JetBrains research citation)
+- [Efficient Context Management — JetBrains Research Blog](https://blog.jetbrains.com/research/2025/12/efficient-context-management/) — HIGH confidence (published research, NeurIPS 2025 workshop)
 
 ---
 
-*Feature research for: HelixAI v2.0 Persistent Chat Platform Milestone*
-*Researched: 2026-03-03*
+*Feature research for: HelixTones v4.0 Preset Quality Leap + API Cost Optimization*
+*Researched: 2026-03-04*

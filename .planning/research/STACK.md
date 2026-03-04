@@ -1,42 +1,45 @@
 # Stack Research
 
-**Domain:** Helix Stadium preset generation for HelixAI v3.0
+**Domain:** HelixTones v4.0 — Preset Quality Leap + API Cost Optimization
 **Researched:** 2026-03-04
-**Confidence:** MEDIUM overall — file format internals are LOW confidence (no public .hsp spec); device architecture and model catalog are HIGH confidence
+**Confidence:** HIGH overall — AI pricing from official docs, Helix routing patterns from community + official manuals, param data from Tonevault's 250-preset analysis
 
 ---
 
 ## Scope
 
-This file covers ONLY what is needed to add Helix Stadium support to HelixAI. The validated
-existing stack (Next.js 14+, TypeScript, Tailwind CSS, Claude Sonnet 4.6, Supabase, Vercel,
-`@anthropic-ai/sdk`, `@supabase/supabase-js`, `@supabase/ssr`) is NOT re-researched.
+This file covers ONLY what is new or changed for v4.0. The validated existing stack is NOT
+re-researched. The existing stack is:
 
-Stadium support requires investigation of:
-1. Whether Stadium uses `.hlx` or a new format (critical: drives the entire implementation)
-2. The Stadium device ID (for the preset file header)
-3. Whether `preset-builder.ts` can be reused or a new builder is needed
-4. What DSP/path architecture differences affect chain-rules.ts
-5. Whether any new npm packages are needed
+| Layer | Technology | Version |
+|-------|-----------|---------|
+| Framework | Next.js | 16.1.6 |
+| Language | TypeScript | ^5 |
+| UI | Tailwind CSS | ^4 |
+| AI (generation) | Claude Sonnet 4.6 via `@anthropic-ai/sdk` | ^0.78.0 |
+| AI (chat) | Gemini 2.5 Flash via `@google/genai` | ^1.42.0 |
+| Auth + DB + Storage | Supabase | `@supabase/supabase-js` ^2.98.0, `@supabase/ssr` ^0.9.0 |
+| Hosting | Vercel (serverless) | — |
+| Schema validation | Zod | ^4.3.6 |
+| Image compression | browser-image-compression | ^2.0.2 |
+| Testing | Vitest | ^4.0.18 |
+
+v4.0 has two work tracks:
+
+1. **Preset quality leap** — smarter effect combos, nuanced params, advanced routing
+2. **API cost optimization** — token analysis, model split evaluation, prompt engineering
+
+Neither track requires new npm packages. All changes are in TypeScript source files.
 
 ---
 
 ## The Single Most Important Finding
 
-**Helix Stadium uses a new `.hsp` file format. It does NOT use `.hlx`.**
+**No new npm packages are needed for v4.0.**
 
-This drives everything:
-- `preset-builder.ts` cannot be used for Stadium — it outputs `.hlx` (JSON)
-- A new `stadium-builder.ts` is required (same pattern as `podgo-builder.ts`)
-- The `.hsp` format's internal structure is NOT publicly documented by Line 6
-- The `.hsp` device ID is unknown — must be extracted from a real `.hsp` file
-- A mandatory investigation step is needed before coding: download a `.hsp` file from
-  [Fluid Solo](https://www.fluidsolo.com/) and inspect its format with a hex editor or
-  the `file` command
+The entire v4.0 scope — richer param tables, community-derived parameter values, parallel routing topology support, and model cost optimization — is accomplished by modifying TypeScript files in `src/lib/helix/` and `src/lib/planner.ts`. The existing stack already has every tool required.
 
-Sources (HIGH confidence, official):
-- [Line 6 Helix/HX preset transfers to Helix Stadium](https://line6.com/support/announcement/118-helixhx-preset-transfers-to-helix-stadium/)
-- [Line 6 Manuals — Helix Stadium Presets](https://manuals.line6.com/en/helix-stadium/live/presets)
+This is good news: zero new dependencies means zero integration risk, no bundle size increase, and no compatibility testing against Next.js 16 / Tailwind 4.
 
 ---
 
@@ -44,213 +47,248 @@ Sources (HIGH confidence, official):
 
 ### Core Technologies — No Changes
 
-The existing stack requires zero additions for Stadium support at the framework level.
-All new work lives inside `src/lib/helix/`.
+| Technology | Version | Purpose | v4.0 Impact |
+|------------|---------|---------|-------------|
+| Next.js | 16.1.6 (existing) | App framework | No changes |
+| TypeScript | ^5 (existing) | Type safety | New types in `tone-intent.ts`, `types.ts` |
+| `@anthropic-ai/sdk` | ^0.78.0 (existing) | Claude Sonnet 4.6 planner | Model ID stays `claude-sonnet-4-6`; monitor `usage` field |
+| `@google/genai` | ^1.42.0 (existing) | Gemini 2.5 Flash chat | Stays as chat model — see model decision below |
+| Zod | ^4.3.6 (existing) | ToneIntent schema validation | New optional fields for parallel routing |
+| Supabase | existing | Auth + DB + Storage | No changes |
 
-| Technology | Version | Purpose | Stadium Impact |
-|------------|---------|---------|----------------|
-| Next.js | 14.x (existing) | App framework | Device selector UI extension only |
-| TypeScript | 5.x (existing) | Type safety | New Stadium types in types.ts |
-| Tailwind CSS | 3.x (existing) | UI styling | Device selector radio button addition |
-| Supabase | existing | Auth + storage | `.hsp` storage alongside `.hlx`/`.pgp` |
-| Claude Sonnet 4.6 | existing | AI planner | No change — ToneIntent is device-agnostic |
+### Supporting Libraries — No New Additions
 
-### Supporting Libraries — Conditional
-
-| Library | Version | Purpose | When to Add |
+| Library | Version | Purpose | When to Use |
 |---------|---------|---------|-------------|
-| `@msgpack/msgpack` | ^3.0.0 | Encode `.hsp` if it is msgpack binary | ONLY add after inspecting a real .hsp file and confirming binary msgpack encoding |
+| `@anthropic-ai/sdk` | ^0.78.0 (existing) | Access `response.usage` for token logging | Every planner call — log `input_tokens`, `output_tokens`, `cache_read_input_tokens` |
 
-**WARNING — LOW CONFIDENCE on msgpack:** The msgpack evidence comes from the Helix Stadium
-editor app's internal model definition file (`p35md-26002601-1_2_0_0.bin`), which is confirmed
-as msgpack format. Whether the `.hsp` preset file itself is also msgpack is INFERRED, not
-confirmed. The `.hsp` file must be opened and inspected before `@msgpack/msgpack` is added.
+No new libraries. All work is internal TypeScript.
 
-If `.hsp` is plain JSON (plausible — `.hlx` and `.pgp` are both plain JSON), then no new npm
-package is needed at all.
+### Development Tools — No Changes
 
-Source (MEDIUM confidence): [Reverse engineering the Helix Stadium XL editor protocol](https://ilikekillnerds.com/2025/12/21/reverse-engineering-the-helix-stadium-xl-editor-protocol/)
+| Tool | Purpose | Notes |
+|------|---------|-------|
+| Vitest | Unit tests for `param-engine.ts`, `chain-rules.ts` | Extend existing `*.test.ts` files with new param table coverage |
+
+---
+
+## AI Model Decision (HIGH confidence, verified against official docs)
+
+### Current Split
+
+| Role | Current Model | Cost (input/output per 1M tokens) |
+|------|-----------|---------------------------------|
+| Chat (tone interview) | Gemini 2.5 Flash | $0.30 / $2.50 |
+| Planner (preset generation) | Claude Sonnet 4.6 | $3.00 / $15.00 |
+
+This split is already correct. The chat model is cheap (Gemini 2.5 Flash); the expensive model is used only once per preset generation.
+
+### Model Upgrade Decision: Chat Model
+
+The chat is already on Gemini 2.5 Flash. The alternative models are:
+
+| Candidate | Cost | Tradeoff |
+|-----------|------|----------|
+| Gemini 2.5 Flash (current) | $0.30 / $2.50 | Guitar knowledge, Google Search grounding built-in — correct choice |
+| Claude Haiku 4.5 | $1.00 / $5.00 | 3.3× more expensive for chat; no Google Search grounding |
+| Gemini 2.5 Flash-Lite | $0.10 / $0.40 | 3× cheaper but 2.5 Flash is already within the free tier for current usage |
+
+**Recommendation: Keep Gemini 2.5 Flash for chat.** The Google Search grounding feature is architecturally essential — it allows the chat to look up artist rigs in real-time ("What gear did Mark Knopfler use on Alchemy?"). Haiku 4.5 lacks this native grounding capability. No model change.
+
+### Model Upgrade Decision: Planner Model
+
+| Candidate | Cost | Verdict |
+|-----------|------|---------|
+| Claude Sonnet 4.6 (current) | $3.00 / $15.00 | Correct model for structured output with complex ToneIntent schema |
+| Claude Haiku 4.5 | $1.00 / $5.00 | 3× cheaper input; supports structured output and extended thinking |
+| Claude Opus 4.6 | $5.00 / $25.00 | Overkill for ToneIntent (~15 fields); no quality benefit over Sonnet 4.6 |
+
+**Recommendation: Evaluate Haiku 4.5 for the planner via A/B quality test, but do NOT switch without validation.** The planner task is small-context and structured (select one amp name from a list, select 4 effects) — Haiku 4.5's capabilities may be sufficient. The savings are real ($3→$1 input, $15→$5 output). However, creative decisions (which amp matches a tone) are what determine preset quality — the core value proposition. This trade is not worth making unless quality is proven equivalent.
+
+**Implementation note if testing Haiku 4.5 for planner:**
+- Haiku 4.5 API ID: `claude-haiku-4-5-20251001` (or alias `claude-haiku-4-5`)
+- Haiku 4.5 supports Zod structured output via `zodOutputFormat` — same SDK call
+- Run 20+ preset generations side-by-side and evaluate: correct amp category, correct cab pairing, appropriate effect selection
+
+### Prompt Caching — Already Implemented, Tune It
+
+Prompt caching is live on the planner (`cache_control: { type: "ephemeral" }` on system prompt). Verify savings are hitting expected levels:
+
+| Metric | How to Check | Expected |
+|--------|-------------|---------|
+| Cache hit rate | `response.usage.cache_read_input_tokens > 0` | Should be >80% of calls |
+| Input token baseline | `response.usage.input_tokens` | System prompt is ~800 tokens |
+| Cache read savings | `response.usage.cache_read_input_tokens × 0.10` cost vs. full input | ~90% savings on cached tokens |
+
+The system prompt (`buildPlannerPrompt`) includes a ~3,000-token model list. This list changes only when `getModelListForPrompt()` arguments change (i.e., per device type). Cache hit rate should be very high because the model list is stable across generations for the same device.
+
+Source: [Anthropic prompt caching docs](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) — HIGH confidence (official)
+
+---
+
+## Preset Quality Leap — Implementation Approach (HIGH confidence)
+
+### What Community Research Found
+
+The Tonevault analysis of 250 top CustomTone presets found specific patterns that the current param tables do not fully capture. These are pure TypeScript changes to `param-engine.ts` — no new libraries.
+
+**Finding 1: Amp-specific Master Volume strategy**
+
+The current `AMP_DEFAULTS` table uses a single Master value per amp category. Top community presets differentiate by amp lineage:
+
+| Amp Style | Community Pattern | Current HelixTones Behavior |
+|-----------|-------------------|----------------------------|
+| Fender/AC30 (clean) | Master at 0.90–1.0, Channel Volume as level control | Master: 0.95 — correct |
+| Marshall JCM800 (crunch) | Master at 0.30–0.60, Presence cut to 0.20–0.40 | Master: 0.60, Presence: 0.45 — marginal |
+| 5150/Mesa (high gain) | Master at 0.40–0.55, Drive at 0.30–0.53 (low — amp is tight) | Master: 0.45, Drive: 0.40 — reasonable |
+| Plexi-style | Master at 1.0, Drive at 0.60–0.75, Bass high (0.70+), Presence CUT | Not modeled separately |
+
+**Implementation:** Add per-amp-model parameter overrides on top of the existing per-category defaults. The `findModel()` function already looks up the model — add a `modelSpecificOverrides` lookup table keyed by `ampName`.
+
+Source: [Tonevault 250-preset analysis](https://www.tonevault.io/blog/250-helix-amps-analyzed) — HIGH confidence (data-driven, primary source)
+
+**Finding 2: Scream 808 usage pattern is about level boost, not gain**
+
+The existing `SCREAM_808_PARAMS` has `Drive: 0.15, Level: 0.60`. The Tonevault data confirms: in 71% of high-gain presets, the 808 Drive is very low (0.10–0.20) and Level is the primary control. Current values are correct. No change needed.
+
+**Finding 3: Cab-amp affinity patterns**
+
+The `models.ts` `HelixModel` interface already has `cabAffinity?: string[]`. The community data confirms specific pairings:
+
+| Amp | Primary Cab | Secondary Cab |
+|-----|------------|---------------|
+| PV Panama (5150) | 4x12 Uber V30 (47% of presets) | 4x12 Cali V30 |
+| Jazz Rivet 120 (JC-120) | 2x12 Jazz Rivet (59%) | 1x12 Celest 12-65 |
+| Cali Rectifire (Dual Rectifier) | 4x12 Cali V30 (53%) | 4x12 Uber V30 |
+| Brit 2204 (JCM800) | 4x12 Greenback 25 | 4x12 Uber V30 |
+
+**Implementation:** Populate `cabAffinity[]` on high-use amp models in `models.ts`. The planner already uses cab selection — this teaches it correct pairings.
+
+**Finding 4: Drive/Presence correlation patterns**
+
+For Rectifier-style amps: as Drive increases, Presence should decrease (correlation r=−0.64 per Tonevault data). This prevents fizz. The current param engine sets Drive and Presence independently.
+
+**Implementation:** Add a `correlatedParams` object to the amp model spec, or handle in the param engine's `resolveAmpParameters()` function with conditional adjustments.
+
+Source: Tonevault blog — HIGH confidence
+
+### Advanced Signal Routing (Parallel Paths)
+
+**Current state:** HelixTones generates series-only presets (all blocks in series on dsp0 + dsp1). The `chain-rules.ts` "dual-amp" mode uses dsp0 and dsp1 but both are still in the primary serial path.
+
+**What top presets do differently:** True parallel routing for wet/dry separation. Community pattern: dry signal (amp + core effects) on Path A, 100% wet reverb/delay on Path B, merged at the end.
+
+The benefit is audible: the dry transient stays clean through the mix while reverb/delay swells sit in a separate bucket with their Mix at 100% (so no doubled dry signal).
+
+**Implementation approach for v4.0:**
+
+1. Add `parallelRouting?: "wet_dry" | "series"` to `ToneIntent` (optional field, defaults to "series")
+2. In `chain-rules.ts`, when `parallelRouting === "wet_dry"`: insert a Split block on dsp0 after cab, route delay/reverb blocks to dsp1 with their Mix at 1.0, close with a Merge/Mixer block
+3. The planner prompt instructs Claude to request `"wet_dry"` only for ambient/worship presets or when user explicitly wants lush reverb/delay separation
+
+**Device constraints:**
+- Helix LT/Floor: supported — 2 DSP paths available
+- Pod Go: NOT supported — single DSP, series-only
+- Helix Stadium: supported — 4 paths available
+- HX Stomp/StompXL: supported BUT tight block budget (6 blocks total, Split + Merge consume 2)
+
+No new npm packages. This is purely TypeScript chain-rules logic.
+
+Source: [Line 6 Helix Signal Path Routing manual](https://manuals.line6.com/en/helix-stadium/live/signal-path-routing) — HIGH confidence (official); Sweetwater WDW guide — MEDIUM confidence
+
+### Richer ToneIntent Prompting
+
+**Current planner prompt scope:** ~800 tokens of guidance, model list, device rules. Claude selects ~15 fields.
+
+**What to add for v4.0:**
+- Guitar-specific amp guidance: single-coil guitars benefit from slightly lower Presence on Marshall-style amps (prevents ice-pick highs); humbuckers can run Treble higher
+- Amp category tone shaping: Plexi-style amps want Master maxed + bass high; Rectifier-style want Drive modest + Scream 808 boosting
+- Parallel routing trigger: instruct Claude to set `parallelRouting: "wet_dry"` when building ambient, worship, or post-rock presets
+
+These additions go into `buildPlannerPrompt()` in `src/lib/planner.ts`. Token cost is negligible (adds ~200 tokens to system prompt, which is cached).
+
+---
+
+## API Cost Audit — Implementation Approach
+
+### Token Usage Logging
+
+**Current state:** No token logging. The codebase does not capture `response.usage` from Claude API calls.
+
+**What to add:** Log token usage after each Anthropic API call. The `response.usage` object from `@anthropic-ai/sdk` contains:
+
+```typescript
+// Available on every response from @anthropic-ai/sdk ^0.78.0
+response.usage = {
+  input_tokens: number,          // uncached input tokens
+  output_tokens: number,         // generated tokens
+  cache_creation_input_tokens: number,  // tokens written to cache (first call)
+  cache_read_input_tokens: number,      // tokens served from cache (subsequent calls)
+}
+```
+
+**Where to log:** After `client.messages.create()` in `src/lib/planner.ts`. Use `console.log` in a structured format for Vercel log aggregation. No external observability tool needed at this traffic level.
+
+```typescript
+// Minimal viable cost logging — zero new dependencies
+console.log(JSON.stringify({
+  event: "planner_call",
+  model: "claude-sonnet-4-6",
+  device,
+  input_tokens: response.usage.input_tokens,
+  output_tokens: response.usage.output_tokens,
+  cache_creation_input_tokens: response.usage.cache_creation_input_tokens ?? 0,
+  cache_read_input_tokens: response.usage.cache_read_input_tokens ?? 0,
+  estimated_cost_usd: (
+    (response.usage.input_tokens * 3.00 / 1_000_000) +
+    (response.usage.output_tokens * 15.00 / 1_000_000) +
+    ((response.usage.cache_read_input_tokens ?? 0) * 0.30 / 1_000_000)
+  ).toFixed(6),
+}));
+```
+
+Vercel log streaming makes these accessible in the Vercel dashboard without a third-party APM tool. This is appropriate for current traffic volume. If traffic grows to thousands of daily presets, adding Langfuse (open-source, self-hostable) becomes worthwhile.
+
+Source: [Anthropic SDK usage documentation](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) — HIGH confidence (official)
+
+### Gemini Chat Token Logging
+
+The Gemini `@google/genai` streaming chat API exposes usage metadata differently. For the streaming path in `src/app/api/chat/route.ts`, access usage from the final chunk:
+
+```typescript
+// After stream completes, the usageMetadata is on the last chunk
+// @google/genai SDK exposes it on the resolved stream result
+const result = await stream;
+console.log(JSON.stringify({
+  event: "chat_call",
+  model: modelId,
+  prompt_token_count: result.usageMetadata?.promptTokenCount ?? 0,
+  candidates_token_count: result.usageMetadata?.candidatesTokenCount ?? 0,
+}));
+```
+
+This is informational only — Gemini 2.5 Flash is cheap enough ($0.30/M input) that chat cost is not a meaningful optimization target compared to the Sonnet 4.6 generation cost.
+
+### Model List Token Audit
+
+The `getModelListForPrompt()` function generates a string injected into the planner system prompt. Check how large this string is:
+
+```typescript
+// Add to planner.ts for one-time audit:
+const modelList = getModelListForPrompt(device);
+console.log("Model list token estimate:", Math.round(modelList.length / 4), "tokens");
+```
+
+If the model list exceeds 2,000 tokens, consider filtering it more aggressively (e.g., include only amps with `ampCategory` matching the apparent genre, not the entire catalog). This reduces cache write cost on first call and shrinks the uncached prompt on cache miss.
 
 ---
 
 ## Installation
 
 ```bash
-# CONDITIONAL — only add after confirming .hsp is msgpack binary
-# If .hsp is plain JSON: add nothing
-npm install @msgpack/msgpack
+# No new packages needed for v4.0
+# All changes are TypeScript source modifications
 ```
-
----
-
-## Helix Stadium Architecture (HIGH confidence)
-
-Verified from official Line 6 documentation. These facts shape chain-rules.ts and
-stadium-builder.ts regardless of what the file format turns out to be.
-
-| Aspect | Helix LT/Floor | Pod Go | Helix Stadium |
-|--------|---------------|--------|---------------|
-| DSP paths | 2 (dsp0, dsp1) | 1 (dsp0) | 4 (Path 1A, 1B, 2A, 2B) |
-| Max blocks/path | ~8-10 (DSP-limited) | 4 user effects hard limit | 12 per path (48 total) |
-| Snapshots per preset | 8 | 4 | 8 |
-| File format | `.hlx` (JSON) | `.pgp` (JSON) | `.hsp` (binary, likely msgpack — unconfirmed) |
-| Editor connection | USB via HX Edit | USB via POD Go Edit | Wi-Fi via Helix Stadium app |
-| Model prefix (new) | N/A | N/A | `Agoura_*` (new Agoura engine models) |
-| Model prefix (legacy) | `HD2_*` | `P34_*` (I/O models) | `HD2_*` (legacy HX models still present) |
-| Amp engine | HX (component-level) | HX (component-level) | Agoura (sub-component) + HX legacy |
-| Footswitch mode | Snap/Stomp layout | FS A–F | Up to 10 stomps (FS1–5, FS7–11) |
-| Controller stomp FS indices | 7–10 (FS5–FS8) | 0–5 (FS A–F) | TBD — inspect .hsp |
-| Snapshot controller ID | 19 | 4 | TBD — inspect .hsp |
-
-Sources:
-- [Line 6 Manuals — Signal Path Routing](https://manuals.line6.com/en/helix-stadium/live/signal-path-routing) — 4-path × 12-block architecture, HIGH confidence
-- [Line 6 Manuals — Snapshots](https://manuals.line6.com/en/helix-stadium/live/snapshots) — 8 snapshots per preset, HIGH confidence
-- [Line 6 Manuals — Footswitches](https://manuals.line6.com/en/helix-stadium/rev-a-v1.1.0/top-panel-and-footswitches) — stomp layout, MEDIUM confidence
-
----
-
-## Builder Architecture Decision (HIGH confidence)
-
-The pattern established by Pod Go (`podgo-builder.ts`) is the correct model. Stadium gets
-its own builder file:
-
-```
-src/lib/helix/
-  preset-builder.ts     # Helix LT + Floor → .hlx (JSON)
-  podgo-builder.ts      # Pod Go → .pgp (JSON)
-  stadium-builder.ts    # NEW: Helix Stadium → .hsp (binary/JSON — TBD)
-```
-
-`stadium-builder.ts` responsibilities:
-1. Accept a `PresetSpec` (same interface — device-agnostic planner output)
-2. Map Stadium-specific block structure (4 paths, path keys TBD from .hsp inspection)
-3. Encode to `.hsp` format (JSON.stringify or msgpack encode, depending on format finding)
-4. Export `buildHspFile(spec: PresetSpec): Uint8Array | string`
-
-`preset-builder.ts` must NOT be touched for Stadium. It is Helix LT/Floor only.
-
----
-
-## types.ts Changes Required
-
-Add `"helix_stadium"` to `DeviceTarget`:
-
-```typescript
-// Before
-export type DeviceTarget = "helix_lt" | "helix_floor" | "pod_go";
-
-// After
-export type DeviceTarget = "helix_lt" | "helix_floor" | "pod_go" | "helix_stadium";
-
-export const DEVICE_IDS: Record<DeviceTarget, number> = {
-  helix_lt: 2162692,
-  helix_floor: 2162692,
-  pod_go: 2162695,
-  helix_stadium: ???,   // MUST be read from a real .hsp file — do NOT guess
-};
-
-export function isHelixStadium(device: DeviceTarget): boolean {
-  return device === "helix_stadium";
-}
-```
-
-### Why the Device ID Cannot Be Guessed
-
-The existing Helix LT/Floor device ID (`2162692` = `0x210004`) and Pod Go ID (`2162695` =
-`0x210007`) are in the same `0x21000x` range. Helix Stadium is a completely different hardware
-platform (different DSP chipset, GPU, FPGA, 64-bit architecture) and may use a different ID
-range entirely. Guessing a plausible value and shipping it risks producing .hsp files that the
-Stadium app rejects with a wrong-device error. Extract the correct value from a real .hsp file.
-
----
-
-## config.ts Changes Required
-
-Add a `STADIUM_FIRMWARE_CONFIG` block:
-
-```typescript
-// All ??? values must be read from a real .hsp file
-export const STADIUM_FIRMWARE_CONFIG = {
-  /** Schema version number in .hsp file */
-  HSP_VERSION: ???,
-  /** Application version integer (encodes firmware version) */
-  HSP_APP_VERSION: ???,
-  /** Device version integer */
-  HSP_DEVICE_VERSION: ???,
-  /** Build SHA string — use current stable firmware */
-  HSP_BUILD_SHA: "v1.2.1",    // confirmed from official release notes
-  /** Application name in meta */
-  HSP_APPLICATION: "Helix Stadium",  // likely value — verify from .hsp
-} as const;
-```
-
-Current stable firmware is **1.2.1** (released January 20, 2026).
-Source: [Helix Stadium 1.2.1 Release Notes](https://line6.com/support/page/kb/effects-controllers/helix_130/helix-stadium-121-release-notes-r1105)
-
----
-
-## Model Catalog (MEDIUM confidence)
-
-### Naming Convention
-
-The Helix Stadium editor app's internal model definitions file (`p35md-26002601-1_2_0_0.bin`)
-contains entries keyed by model names. Two naming conventions are confirmed:
-- `Agoura_AmpWhoWatt103` — new Agoura engine amps
-- `HD2_DistDerangedMasterMono` — legacy HX effects
-
-This means:
-- Existing `models.ts` `HD2_*` model IDs remain valid for Stadium presets using legacy models
-- New Agoura amp models need a new `STADIUM_AMP_MODELS` catalog (or `AGOURA_AMP_MODELS`) with `Agoura_*` IDs
-- The `HD2_*` prefix convention for effect blocks (delay, reverb, distortion, modulation, etc.) carries over to Stadium
-
-### Amp Catalog Size
-
-| Category | Count | Notes |
-|----------|-------|-------|
-| Agoura guitar amp channels | 43+ | 16 at launch + 7 in FW 1.2 + more planned |
-| Agoura bass amp channels | 6+ | 6 at launch |
-| HX legacy amp channels | 111 | Same as Helix LT/Floor |
-| Total | 161 | As of FW 1.2.1 |
-
-Source: [Helix Stadium 1.2.1 Release Notes](https://line6.com/support/page/kb/effects-controllers/helix_130/helix-stadium-121-release-notes-r1105)
-
-### Effect Model Availability
-
-The Helix Stadium effect model list is a superset of Helix LT/Floor:
-- All legacy `HD2_*` effects are available (under "Legacy" subcategory)
-- New Mono/Stereo versions of effects are added (similar to Pod Go's Mono/Stereo suffix convention)
-- Stadium-exclusive EQ: 7-band Parametric EQ replaces Simple EQ, Low/High Cut, Low/High Shelf, and 5-band Parametric
-- The four deprecated EQ types must NOT be used in Stadium presets
-
-Source: [Line 6 Helix/HX preset transfers to Helix Stadium](https://line6.com/support/announcement/118-helixhx-preset-transfers-to-helix-stadium/)
-
----
-
-## chain-rules.ts Changes Required
-
-A new device branch for `"helix_stadium"` with these constraints:
-
-| Rule | Value | Source |
-|------|-------|--------|
-| Max blocks per path | 12 | Official — Signal Path manual |
-| DSP path count | 4 | Official — Signal Path manual |
-| Snapshots | 8 | Official — Snapshots manual |
-| Dual amp topology | Supported (parallel paths) | Inferred from 4-path architecture |
-| Noise gate | TBD | Inspect .hsp |
-| Snapshot controller ID | TBD | Inspect .hsp |
-| Stomp FS indices | TBD | Inspect .hsp |
-
-For HelixAI's single-path presets (typical use case), Path 1A (dsp0-equivalent) is sufficient.
-Start with single-path generation and add multi-path only when needed for dual-amp.
-
----
-
-## Helix Floor Device ID Fix (Existing Bug)
-
-The `PROJECT.md` notes a regression: `types.ts` has `helix_floor: 2162692` but a test expects
-`2162691`. This is a separate issue from Stadium but should be resolved in the same milestone
-since both involve `DEVICE_IDS`. The correct value must be verified by inspecting a real Helix
-Floor `.hlx` file (look for the `"device"` field in the JSON).
 
 ---
 
@@ -258,10 +296,11 @@ Floor `.hlx` file (look for the `"device"` field in the JSON).
 
 | Recommended | Alternative | When to Use Alternative |
 |-------------|-------------|-------------------------|
-| New `stadium-builder.ts` | Extend `preset-builder.ts` | Never — formats are incompatible. preset-builder.ts outputs .hlx JSON. Stadium requires .hsp (different format entirely). |
-| `@msgpack/msgpack` | `msgpackr` | msgpackr is fastest but overkill for preset file generation. @msgpack/msgpack has native TypeScript types. Either works if msgpack is confirmed. |
-| `@msgpack/msgpack` | `msgpack-lite` | msgpack-lite is unmaintained and slower — do not use |
-| Separate Stadium model catalog | Merge Stadium + Helix into one catalog | Keep separate: Agoura models only work on Stadium, HD2 models work on both. A merged catalog would require device-filtering on every model lookup. |
+| Keep Claude Sonnet 4.6 for planner | Switch to Claude Haiku 4.5 | Only after A/B quality validation over 20+ presets proves equivalent creative output |
+| Keep Gemini 2.5 Flash for chat | Switch to Claude Haiku 4.5 for chat | Never — Haiku lacks Google Search grounding, which is required for artist rig research |
+| console.log token logging | Langfuse or LangSmith | When daily preset volume exceeds ~500 — full observability platforms become worth the setup cost |
+| Per-amp model overrides in param-engine | Let AI set Drive/Presence values directly | Not viable — the whole architecture is deterministic Knowledge Layer; AI setting numbers removes reproducibility |
+| Parallel routing as new ToneIntent field | Parallel routing as chain-rule heuristic (auto-detect from effects) | Heuristic approach is fragile (what if reverb is always-on but user wants series?); explicit intent field is cleaner |
 
 ---
 
@@ -269,55 +308,32 @@ Floor `.hlx` file (look for the `"device"` field in the JSON).
 
 | Avoid | Why | Use Instead |
 |-------|-----|-------------|
-| `preset-builder.ts` for Stadium output | Outputs `.hlx` JSON — Stadium requires `.hsp` (different format) | New `stadium-builder.ts` |
-| `msgpack-lite` | Unmaintained, no native TypeScript types, slower than alternatives | `@msgpack/msgpack` ^3.0.0 if msgpack is needed |
-| Guessed device ID | Wrong device ID causes Stadium app to reject presets | Extract from real .hsp file |
-| Deprecated EQ models (Simple EQ, Low/High Cut, Low/High Shelf, 5-band Parametric) in Stadium presets | Not present in Stadium — auto-converted but sound different | 7-band Parametric EQ (`HD2_EQ_Parametric7Band` or equivalent Stadium model ID) |
-| Using HD2_ snapshot controller ID (19) for Stadium without verification | Stadium may use a different controller ID — Pod Go changed from 19 to 4 | Inspect real .hsp file for correct ID |
+| Langfuse / LangSmith / Datadog at this stage | Overhead exceeds value at current traffic; adds external dependency and data egress | Structured `console.log` to Vercel logs — zero cost, already available |
+| Claude Haiku 4.5 for chat (instead of Gemini 2.5 Flash) | Haiku lacks native Google Search grounding; artist rig research would require separate search API integration; more expensive and worse outcome | Gemini 2.5 Flash with `tools: [{ googleSearch: {} }]` |
+| Claude Opus 4.6 for planner | $5/$25 per MTok — 1.67× more expensive than Sonnet 4.6 with no quality benefit for a 15-field structured output task | Claude Sonnet 4.6 |
+| Vercel AI SDK (`ai` package) | Adds an abstraction layer over the Anthropic and Google SDKs that are already used directly; no benefit for a non-streaming planner call | Direct `@anthropic-ai/sdk` and `@google/genai` calls |
+| Numeric parameters in ToneIntent | The Planner-Executor architecture relies on AI NOT setting numbers; adding numeric fields breaks determinism and reproducibility | Knowledge Layer param tables in `param-engine.ts` |
+| Auto-caching (Anthropic API Feb 2026) | Auto-caching is enabled by default for new workspaces but may cache at different boundaries than the manual `cache_control: ephemeral` markers already placed | Keep explicit `cache_control` markers on system prompt blocks |
 
 ---
 
 ## Stack Patterns by Variant
 
-**If `.hsp` is plain JSON (like `.hlx`):**
-- No new npm packages
-- `stadium-builder.ts` outputs `JSON.stringify(obj)` with `.hsp` extension
-- API route returns `application/json` (or `application/octet-stream` — check what Stadium app expects)
-- Same download handler pattern as `.hlx`
+**If Haiku 4.5 planner A/B test proves quality equivalent:**
+- Change `model: "claude-sonnet-4-6"` → `model: "claude-haiku-4-5-20251001"` in `planner.ts`
+- `max_tokens: 4096` stays unchanged — output is identical schema
+- Expect 3× lower cost per generation call
+- Re-validate prompt caching: cache write tokens cost 1.25× base, cache reads 0.10× — still worthwhile
 
-**If `.hsp` is msgpack binary:**
-- Add `@msgpack/msgpack` ^3.0.0
-- `stadium-builder.ts` uses `encode(obj)` from `@msgpack/msgpack` to produce `Uint8Array`
-- API route returns `application/octet-stream`
-- Download handler: `new Blob([uint8array], { type: 'application/octet-stream' })`
-- File extension: `.hsp`
+**If parallel routing causes DSP budget issues on Stomp/StompXL:**
+- Disable `parallelRouting: "wet_dry"` for `isStomp(device)` devices in chain-rules.ts
+- Stomp has 6 total blocks — Split + Merge + Amp + Cab + 1 effect leaves no room for the second path's effects
+- Instead, set delay/reverb Mix to 0.30 (wet enough without full separation)
 
-**If `.hsp` is a ZIP container (less likely but possible):**
-- Add `fflate` or `jszip`
-- Unlikely based on community reports — check first
-
----
-
-## Mandatory Pre-Implementation Checklist
-
-Before writing `stadium-builder.ts`, a developer must:
-
-1. Download a real `.hsp` preset file from [Fluid Solo](https://www.fluidsolo.com/) or the
-   Helix Stadium app
-2. Open it with `xxd file.hsp | head -20` to check the first bytes:
-   - `7b 22` = `{"` = JSON
-   - `82`, `83`, `84` etc. = msgpack fixmap header (binary)
-   - `50 4b 03 04` = ZIP header
-3. If JSON: decode normally, extract `device`, `version`, `data.device_version`, `schema` fields
-4. If msgpack: install `@msgpack/msgpack`, run `decode(fs.readFileSync('file.hsp'))`, extract same fields
-5. Confirm the `schema` field value (likely `"L6Preset"` but may differ from Stadium)
-6. Record the `device` integer — this is `DEVICE_IDS.helix_stadium`
-7. Record `version`, `data.device_version`, and `data.meta.appversion`
-8. Inspect block structure: confirm path keys (`path1a`? `dsp0`? `path0a`?), input/output model names
-9. Inspect snapshot structure: confirm `@controller` value for snapshot recall
-10. Inspect footswitch structure: confirm FS index range
-
-This checklist is the critical path for the entire Stadium implementation.
+**If model list token count exceeds 2,000 tokens:**
+- Filter `getModelListForPrompt()` by predicted genre category before planner call
+- Requires inferring genre from conversation in the generate route — low-confidence genre matching from keywords
+- Only implement if audit confirms the model list is meaningfully large (likely 2,500–4,000 tokens for all devices)
 
 ---
 
@@ -325,27 +341,26 @@ This checklist is the critical path for the entire Stadium implementation.
 
 | Package | Compatible With | Notes |
 |---------|-----------------|-------|
-| `@msgpack/msgpack` ^3.0.0 | Node.js 14+, modern browsers, Vercel serverless | Add only if .hsp confirmed as msgpack |
-| Existing `types.ts` | Stadium via union extension | Add `"helix_stadium"` to `DeviceTarget` |
-| `models.ts` HD2_ entries | Stadium legacy-model presets | Valid for HX models; Agoura models need new catalog entries |
-| `chain-rules.ts` | Stadium via new device branch | Do not modify existing Helix or Pod Go branches |
+| `@anthropic-ai/sdk` ^0.78.0 | `claude-sonnet-4-6`, `claude-haiku-4-5` | `zodOutputFormat` works on both models; `response.usage` present on both |
+| `@anthropic-ai/sdk` ^0.78.0 | Zod ^4.3.6 | `zodOutputFormat` helper compatible with Zod 4 |
+| `@google/genai` ^1.42.0 | `gemini-2.5-flash` | Streaming API + `tools: [{ googleSearch: {} }]` — no changes needed |
+| Next.js 16.1.6 | Vercel serverless | Token logging via console.log goes to Vercel log drain — compatible |
 
 ---
 
 ## Sources
 
-- [Line 6 Helix/HX preset transfers to Helix Stadium](https://line6.com/support/announcement/118-helixhx-preset-transfers-to-helix-stadium/) — .hsp format name, one-way conversion, HIGH confidence (official)
-- [Line 6 Manuals — Helix Stadium Presets](https://manuals.line6.com/en/helix-stadium/live/presets) — .hsp format, 512 preset locations, HIGH confidence (official)
-- [Line 6 Manuals — Signal Path Routing](https://manuals.line6.com/en/helix-stadium/live/signal-path-routing) — 4-path × 12-block architecture, HIGH confidence (official)
-- [Line 6 Manuals — Snapshots](https://manuals.line6.com/en/helix-stadium/live/snapshots) — 8 snapshots per preset, HIGH confidence (official)
-- [Helix Stadium 1.2.1 Release Notes](https://line6.com/support/page/kb/effects-controllers/helix_130/helix-stadium-121-release-notes-r1105) — firmware v1.2.1 (Jan 20 2026), 161 total amps, HIGH confidence (official)
-- [ilikekillnerds.com — Reverse engineering the Helix Stadium XL editor protocol](https://ilikekillnerds.com/2025/12/21/reverse-engineering-the-helix-stadium-xl-editor-protocol/) — p35 device prefix, Agoura_* model naming, msgpack model defs file, MEDIUM confidence (community reverse engineering)
-- [Line 6 Helix Stadium Models](https://line6.com/helix-stadium-models/) — amp/effect model catalog overview, HIGH confidence (official)
-- [Fluid Solo — Helix Stadium](https://www.fluidsolo.com/) — community source of real .hsp files for inspection, MEDIUM confidence
-- [Sweetwater — Line 6 Helix Stadium Editor/Librarian App Guide](https://www.sweetwater.com/sweetcare/articles/line-6-helix-stadium-editor-librarian-app-guide/) — Wi-Fi connection architecture, MEDIUM confidence
-- `@msgpack/msgpack` npm — [npmjs.com](https://www.npmjs.com/package/@msgpack/msgpack) — library details, HIGH confidence
+- [Anthropic Models Overview](https://platform.claude.com/docs/en/about-claude/models/overview) — Model IDs, pricing, capabilities — HIGH confidence (official)
+- [Anthropic Pricing](https://platform.claude.com/docs/en/about-claude/pricing) — $3/$15 Sonnet 4.6, $1/$5 Haiku 4.5 — HIGH confidence (official)
+- [Anthropic Prompt Caching Docs](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) — Cache token metrics, `response.usage` fields — HIGH confidence (official)
+- [Anthropic Structured Outputs Docs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs) — `zodOutputFormat`, schema caching, beta header — HIGH confidence (official)
+- [Gemini API Pricing](https://ai.google.dev/gemini-api/docs/pricing) — Gemini 2.5 Flash $0.30/$2.50 per MTok — HIGH confidence (official)
+- [Tonevault — Dialing in your Helix amps: what the top 250 presets teach us](https://www.tonevault.io/blog/250-helix-amps-analyzed) — Amp parameter ranges by model, correlation data, cab pairings — HIGH confidence (data-driven community analysis, primary source)
+- [Line 6 Signal Path Routing Manual](https://manuals.line6.com/en/helix-stadium/live/signal-path-routing) — Parallel path architecture, Split/Merge blocks — HIGH confidence (official)
+- [Sweetwater — Multiband Processing with Helix](https://www.sweetwater.com/insync/multiband-processing-technique-effects/) — Wet/dry path techniques — MEDIUM confidence (editorial)
+- [Anthropic Claude Haiku 4.5 Introduction](https://www.anthropic.com/news/claude-haiku-4-5) — Capabilities, structured output support — HIGH confidence (official)
 
 ---
 
-*Stack research for: HelixAI v3.0 — Helix Stadium device support*
+*Stack research for: HelixTones v4.0 — Preset Quality Leap + API Cost Optimization*
 *Researched: 2026-03-04*
