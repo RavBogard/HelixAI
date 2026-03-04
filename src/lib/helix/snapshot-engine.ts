@@ -179,7 +179,9 @@ function buildBlockKeys(chain: BlockSpec[]): BlockKeyEntry[] {
 // ---------------------------------------------------------------------------
 
 function detectAmpCategory(chain: BlockSpec[]): AmpCategory {
-  const ampBlock = chain.find((b) => b.type === "amp");
+  // For dual-amp, use the primary amp (path 0) for category detection (DUAL-05)
+  const ampBlock = chain.find((b) => b.type === "amp" && b.path === 0)
+    || chain.find((b) => b.type === "amp");
   if (!ampBlock) return "clean";
 
   const model = AMP_MODELS[ampBlock.modelName];
@@ -211,8 +213,11 @@ export function buildSnapshots(
   const ampCategory = detectAmpCategory(chain);
   const blockEntries = buildBlockKeys(chain);
 
-  // Identify amp and gain block keys for parameter overrides
-  const ampEntry = blockEntries.find((e) => e.block.type === "amp");
+  // Identify amp entries for parameter overrides (DUAL-05)
+  const ampEntries = blockEntries.filter((e) => e.block.type === "amp");
+  const primaryAmpEntry = ampEntries.find((e) => e.block.path === 0);
+  const secondaryAmpEntry = ampEntries.find((e) => e.block.path === 1);
+  const isDualAmp = ampEntries.length > 1 && !!primaryAmpEntry && !!secondaryAmpEntry;
   const gainEntry = blockEntries.find((e) => e.block.type === "volume");
 
   return intents.map((intent) => {
@@ -229,11 +234,35 @@ export function buildSnapshots(
       });
     }
 
+    // DUAL-AMP BYPASS TOGGLE (DUAL-05)
+    // Convention: clean/crunch use primary amp, lead/ambient use secondary amp
+    // Note: cabs are excluded from blockEntries (handled separately by preset-builder).
+    // Amp bypass is sufficient — when an amp is bypassed on its path, the cab on that
+    // same path naturally produces no amp signal.
+    if (isDualAmp && primaryAmpEntry && secondaryAmpEntry) {
+      const usePrimary = role === "clean" || role === "crunch";
+      blockStates[primaryAmpEntry.key] = usePrimary;
+      blockStates[secondaryAmpEntry.key] = !usePrimary;
+    }
+
     // Build parameter overrides
     const parameterOverrides: Record<string, Record<string, number>> = {};
 
-    if (ampEntry) {
-      parameterOverrides[ampEntry.key] = {
+    // ChVol overrides: dual-amp gets independent overrides on both amps (DUAL-05)
+    if (isDualAmp) {
+      if (primaryAmpEntry) {
+        parameterOverrides[primaryAmpEntry.key] = {
+          ChVol: ROLE_CHVOL[role] ?? 0.70,
+        };
+      }
+      if (secondaryAmpEntry) {
+        parameterOverrides[secondaryAmpEntry.key] = {
+          ChVol: ROLE_CHVOL[role] ?? 0.70,
+        };
+      }
+    } else if (primaryAmpEntry) {
+      // Single-amp (existing behavior)
+      parameterOverrides[primaryAmpEntry.key] = {
         ChVol: ROLE_CHVOL[role] ?? 0.70,
       };
     }

@@ -263,11 +263,21 @@ export function resolveParameters(
   const topology: TopologyTag = ampModel.topology ?? "not_applicable";
   const genreProfile = matchGenre(intent.genreHint);
 
+  // Dual-amp: resolve second amp's category and topology independently (DUAL-04)
+  const secondAmpModel = intent.secondAmpName ? AMP_MODELS[intent.secondAmpName] : undefined;
+  const secondAmpCategory: AmpCategory = secondAmpModel?.ampCategory ?? "clean";
+  const secondTopology: TopologyTag = secondAmpModel?.topology ?? "not_applicable";
+
   // Build new array — never mutate input
   return chain.map((block) => {
+    // For dual-amp: blocks on path 1 use second amp's category/topology (DUAL-04)
+    const isSecondaryPath = block.path === 1;
+    const effectiveCategory = isSecondaryPath ? secondAmpCategory : ampCategory;
+    const effectiveTopology = isSecondaryPath ? secondTopology : topology;
+
     const resolved: BlockSpec = {
       ...block,
-      parameters: resolveBlockParams(block, ampCategory, topology, genreProfile),
+      parameters: resolveBlockParams(block, effectiveCategory, effectiveTopology, genreProfile),
     };
     return resolved;
   });
