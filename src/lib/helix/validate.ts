@@ -1,7 +1,7 @@
 import { getAllModels } from "./models";
 import type { PresetSpec, DeviceTarget } from "./types";
-import { isPodGo, isStadium } from "./types";
-import { STADIUM_CONFIG } from "./config";
+import { isPodGo, isStadium, isStomp } from "./types";
+import { STADIUM_CONFIG, STOMP_CONFIG } from "./config";
 
 // Build a set of all valid model IDs from our database
 function getValidModelIds(): Set<string> {
@@ -22,6 +22,10 @@ function getValidModelIds(): Set<string> {
   // Stadium system models (P35_* prefix, Phase 35 will add more) (STAD-04)
   ids.add("P35_AppDSPFlowInput");
   ids.add("P35_AppDSPFlowOutput");
+  // Stomp system models (HelixStomp_* prefix — confirmed from Swell_Delay.hlx, 2026-03-04)
+  ids.add("HelixStomp_AppDSPFlowInput");
+  ids.add("HelixStomp_AppDSPFlowOutputMain");
+  ids.add("HelixStomp_AppDSPFlowOutputSend");
   return ids;
 }
 
@@ -53,6 +57,7 @@ const VALID_IDS_WITH_SUFFIXES = getValidModelIdsWithSuffixes();
 export function validatePresetSpec(spec: PresetSpec, device?: DeviceTarget): void {
   const podGo = device ? isPodGo(device) : false;
   const stadium = device ? isStadium(device) : false;
+  const stomp = device ? isStomp(device) : false;
   const validIds = podGo ? VALID_IDS_WITH_SUFFIXES : VALID_IDS;
 
   // 1. Signal chain not empty
@@ -146,6 +151,25 @@ export function validatePresetSpec(spec: PresetSpec, device?: DeviceTarget): voi
     // Stadium supports up to 8 snapshots (STAD-04)
     if (spec.snapshots.length > STADIUM_CONFIG.STADIUM_MAX_SNAPSHOTS) {
       throw new Error(`Stadium supports at most ${STADIUM_CONFIG.STADIUM_MAX_SNAPSHOTS} snapshots (got ${spec.snapshots.length})`);
+    }
+  } else if (stomp) {
+    // Stomp: single DSP — all blocks must be on dsp0 (STOMP-05)
+    const nonDsp0 = spec.signalChain.filter(b => b.dsp !== 0);
+    if (nonDsp0.length > 0) {
+      throw new Error(`Stomp preset has blocks on dsp1 — all blocks must be on dsp0`);
+    }
+    const maxBlocks = device === "helix_stomp_xl"
+      ? STOMP_CONFIG.STOMP_XL_MAX_BLOCKS
+      : STOMP_CONFIG.STOMP_MAX_BLOCKS;
+    const totalBlocks = spec.signalChain.length;
+    if (totalBlocks > maxBlocks) {
+      throw new Error(`Stomp block limit exceeded (${totalBlocks} blocks, max ${maxBlocks} for ${device})`);
+    }
+    const maxSnapshots = device === "helix_stomp_xl"
+      ? STOMP_CONFIG.STOMP_XL_MAX_SNAPSHOTS
+      : STOMP_CONFIG.STOMP_MAX_SNAPSHOTS;
+    if (spec.snapshots.length > maxSnapshots) {
+      throw new Error(`Stomp snapshot limit exceeded (${spec.snapshots.length}, max ${maxSnapshots} for ${device})`);
     }
   } else {
     // Helix: dual DSP, max 8 non-cab blocks per DSP

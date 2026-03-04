@@ -7,8 +7,8 @@
 
 import type { ToneIntent } from "./tone-intent";
 import type { BlockSpec, DeviceTarget } from "./types";
-import { isPodGo, isStadium, POD_GO_MAX_USER_EFFECTS } from "./types";
-import { STADIUM_CONFIG } from "./config";
+import { isPodGo, isStadium, isStomp, POD_GO_MAX_USER_EFFECTS } from "./types";
+import { STADIUM_CONFIG, STOMP_CONFIG } from "./config";
 import {
   AMP_MODELS,
   CAB_MODELS,
@@ -165,6 +165,8 @@ function classifyEffectSlot(resolved: ResolvedEffect, modelName: string): ChainS
 function getDspForSlot(slot: ChainSlot, device?: DeviceTarget): 0 | 1 {
   // Pod Go: single DSP — all blocks on dsp0 (PGCHAIN-03)
   if (device && isPodGo(device)) return 0;
+  // Stomp: single DSP — all blocks on dsp0 (STOMP-04)
+  if (device && isStomp(device)) return 0;
 
   switch (slot) {
     case "wah":
@@ -255,6 +257,7 @@ function buildBlockSpec(
 export function assembleSignalChain(intent: ToneIntent, device?: DeviceTarget): BlockSpec[] {
   const podGo = device ? isPodGo(device) : false;
   const stadium = device ? isStadium(device) : false;
+  const stomp = device ? isStomp(device) : false;
 
   // 1. Resolve amp model
   // Stadium: look up in STADIUM_AMPS first, then AMP_MODELS as fallback
@@ -277,7 +280,8 @@ export function assembleSignalChain(intent: ToneIntent, device?: DeviceTarget): 
 
   // 2b. Detect dual-amp intent (DUAL-03)
   // Stadium v3.0: single-path only — dual-amp not supported (STAD-04)
-  const isDualAmp = !!(intent.secondAmpName && intent.secondCabName && !podGo && !stadium);
+  // Stomp: single DSP — dual-amp not supported (STOMP-04)
+  const isDualAmp = !!(intent.secondAmpName && intent.secondCabName && !podGo && !stadium && !stomp);
 
   let secondAmpModel: HelixModel | undefined;
   let secondCabModel: HelixModel | undefined;
@@ -327,6 +331,16 @@ export function assembleSignalChain(intent: ToneIntent, device?: DeviceTarget): 
     userEffects.length = 4;
   }
 
+  // Stomp: enforce per-device block limit for user effects (STOMP-04)
+  // Stomp max 6 total: amp(1)+cab(1)+boost(1)+gate(0-1)+eq(1)+gain(1) = 5-6 mandatory
+  // Cap at 2 user effects (Stomp) or 5 (Stomp XL) to stay within total block limit
+  if (stomp) {
+    const stompMaxUserEffects = device === "helix_stomp_xl" ? 5 : 2;
+    if (userEffects.length > stompMaxUserEffects) {
+      userEffects.length = stompMaxUserEffects;
+    }
+  }
+
   // Dual-amp: enforce tighter pre-amp effect limit (DUAL-03)
   // split+amp1+cab1+amp2+cab2+join = 6 slots, leaves 4 for boost+gate+2 effects
   if (isDualAmp && userEffects.length > 2) {
@@ -373,7 +387,8 @@ export function assembleSignalChain(intent: ToneIntent, device?: DeviceTarget): 
 
   // 5c. Post-cab Parametric EQ — skip for Pod Go (PGCHAIN-02: DSP budget reserved)
   //     Stadium uses 7-band Parametric EQ (STAD-04)
-  if (!podGo) {
+  //     Stomp: skip for same reason as Pod Go (tight block budget, STOMP-04)
+  if (!podGo && !stomp) {
     const eqModel = stadium
       ? STADIUM_EQ_MODELS[STADIUM_PARAMETRIC_EQ]!
       : EQ_MODELS[PARAMETRIC_EQ]!;
@@ -386,7 +401,8 @@ export function assembleSignalChain(intent: ToneIntent, device?: DeviceTarget): 
   }
 
   // 5d. Gain Block as last block — skip for Pod Go (PGCHAIN-02: DSP budget reserved)
-  if (!podGo) {
+  //     Stomp: skip for same reason (STOMP-04)
+  if (!podGo && !stomp) {
     const gainModel = VOLUME_MODELS[GAIN_BLOCK]!;
     mandatoryBlocks.push({
       model: gainModel,
@@ -476,6 +492,18 @@ export function assembleSignalChain(intent: ToneIntent, device?: DeviceTarget): 
     if (totalBlocks > STADIUM_MAX_BLOCKS_PER_PATH) {
       throw new Error(
         `Stadium block limit exceeded: ${totalBlocks} blocks (max ${STADIUM_MAX_BLOCKS_PER_PATH} per path). ` +
+          `Reduce the number of effects.`
+      );
+    }
+  } else if (stomp) {
+    // Stomp: single path, per-device block limit (STOMP-04)
+    const maxBlocks = device === "helix_stomp_xl"
+      ? STOMP_CONFIG.STOMP_XL_MAX_BLOCKS
+      : STOMP_CONFIG.STOMP_MAX_BLOCKS;
+    const totalBlocks = allBlocks.length;
+    if (totalBlocks > maxBlocks) {
+      throw new Error(
+        `Stomp block limit exceeded: ${totalBlocks} blocks (max ${maxBlocks} for ${device}). ` +
           `Reduce the number of effects.`
       );
     }
