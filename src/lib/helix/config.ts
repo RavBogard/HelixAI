@@ -48,3 +48,28 @@ export const STADIUM_CONFIG = {
   /** Device version integer from real .hsp inspection */
   STADIUM_DEVICE_VERSION: 301990022,
 } as const;
+
+/**
+ * HX Stomp and HX Stomp XL file format constants.
+ * Source: Direct inspection of real .hlx files (2026-03-04)
+ *   - Swell_Delay.hlx: HX Stomp hardware export
+ *   - The_Kids_Are_D.hlx: HX Stomp XL hardware export
+ */
+export const STOMP_CONFIG = {
+  /** HX Stomp: max user-assignable effect blocks (hardware limit) */
+  STOMP_MAX_BLOCKS: 6,
+  /** HX Stomp XL: max user-assignable effect blocks (hardware limit) */
+  STOMP_XL_MAX_BLOCKS: 9,
+  /** HX Stomp: max snapshot count */
+  STOMP_MAX_SNAPSHOTS: 3,
+  /** HX Stomp XL: max snapshot count (confirmed from The_Kids_Are_D.hlx) */
+  STOMP_XL_MAX_SNAPSHOTS: 4,
+  /** I/O input model for both Stomp variants — HelixStomp_ prefix, NOT HD2_App* */
+  STOMP_INPUT_MODEL: "HelixStomp_AppDSPFlowInput",
+  /** I/O main output model */
+  STOMP_OUTPUT_MAIN_MODEL: "HelixStomp_AppDSPFlowOutputMain",
+  /** I/O send output model */
+  STOMP_OUTPUT_SEND_MODEL: "HelixStomp_AppDSPFlowOutputSend",
+  /** Device version — same as LT/Floor (FIRMWARE_CONFIG.HLX_APP_VERSION) */
+  STOMP_DEVICE_VERSION: 58720256,
+} as const;
