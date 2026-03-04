@@ -1365,8 +1365,8 @@ function HomeContent() {
             )}
 
             {/* --- Device Picker + Generate (Phase 23) --- */}
-            {/* Shown after interview completes. User picks their device → generate fires. */}
-            {messages.length >= 2 && !isStreaming && !generatedPreset && (
+            {/* Shown after AI signals readyToGenerate — not on raw message count. */}
+            {readyToGenerate && !isStreaming && !generatedPreset && (
               <div className="flex flex-col items-center gap-4 py-6">
                 <p className="text-[11px] text-[var(--hlx-text-muted)] uppercase tracking-widest font-semibold">
                   Which device are you building for?
@@ -1402,11 +1402,6 @@ function HomeContent() {
                     </button>
                   ))}
                 </div>
-                {!readyToGenerate && (
-                  <p className="text-[11px] text-[var(--hlx-text-muted)] text-center">
-                    Ready when you are &mdash; or keep chatting to refine the tone
-                  </p>
-                )}
               </div>
             )}
 
