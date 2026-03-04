@@ -113,12 +113,10 @@ See: .planning/PROJECT.md (updated 2026-03-03)
 
 ## Current Position
 
-Phase: 30 (Complete — 1 plan done)
-Plan: 01 (complete — chat auto-save: deferred sidebar refresh, generate-flow message persistence)
-Status: Phase 30 Chat Auto-Save complete; conversations appear in sidebar with real titles
-Last activity: 2026-03-04 — 30-01 executed; sidebar refresh deferred to after auto-title PATCH, generate flow now persists messages
-
-Progress: [----------] 6/6 phases complete (16 plans done in v2.0)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements for v3.0 Helix Stadium Support
+Last activity: 2026-03-04 — Milestone v3.0 started
 
 ## Performance Metrics
 
