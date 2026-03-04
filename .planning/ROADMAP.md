@@ -531,7 +531,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 36. Planner + API Route Integration | v3.0 | TBD | Not started | — |
 | 37. UI — Device Selector + Download | v3.0 | TBD | Not started | — |
 | 38. Rig Emulation for Stadium | v3.0 | TBD | Not started | — |
-| 39. HX Stomp & HX Stomp XL Support | 3/3 | Complete   | 2026-03-04 | — |
+| 39. HX Stomp & HX Stomp XL Support | — | 3/3 | Complete | 2026-03-04 |
+| 40. Rebrand HelixAI to HelixTones | — | 0/1 | Not started | — |
 
 ### Phase 39: HX Stomp & HX Stomp XL Support
 
@@ -548,19 +549,19 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 **Plans:** 3/3 plans complete
 
 Plans:
-- [ ] 39-01-PLAN.md — Type system + config constants + stomp-builder.ts + chain-rules + validate + models + index barrel + tests (STOMP-01, STOMP-02, STOMP-03, STOMP-04, STOMP-05, STOMP-10)
-- [ ] 39-02-PLAN.md — /api/generate Stomp routing + rig-mapping Stomp support + end-to-end pipeline tests (STOMP-06, STOMP-08, STOMP-09)
-- [ ] 39-03-PLAN.md — page.tsx: both device pickers + download suffix + badge + otherDevice chip (STOMP-07)
+- [x] 39-01-PLAN.md — Type system + config constants + stomp-builder.ts + chain-rules + validate + models + index barrel + tests (STOMP-01, STOMP-02, STOMP-03, STOMP-04, STOMP-05, STOMP-10)
+- [x] 39-02-PLAN.md — /api/generate Stomp routing + rig-mapping Stomp support + end-to-end pipeline tests (STOMP-06, STOMP-08, STOMP-09)
+- [x] 39-03-PLAN.md — page.tsx: both device pickers + download suffix + badge + otherDevice chip (STOMP-07)
 
 ### Phase 40: Rebrand HelixAI to HelixTones
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Rename all user-visible "HelixAI" strings and internal cross-file event/storage contracts to "HelixTones"/"helixtones" — browser title, logo alt text, wordmark, AI persona names, download filenames, DOM custom events, sessionStorage key, and package name
+**Requirements**: REBRAND-01, REBRAND-02, REBRAND-03, REBRAND-04
 **Depends on:** Phase 39
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 40 to break down)
+- [ ] 40-01-PLAN.md — All categories A–E: layout.tsx title, page.tsx UI strings + filenames + events + storage key, gemini.ts + planner.ts persona, package.json name, supabase/schema.sql comment (REBRAND-01, REBRAND-02, REBRAND-03, REBRAND-04)
 
 ### Phase 41: Chat UX — device selection timing and pre-preset conversation flow
 
@@ -574,4 +575,4 @@ Plans:
 
 ---
 *Roadmap created: 2026-03-01*
-*Last updated: 2026-03-04 — Phase 41 planned: 1 plan, 1 wave (41-01: page.tsx condition + gemini.ts prompt rewrite)*
+*Last updated: 2026-03-04 — Phase 40 planned: 1 plan, 1 wave (40-01: full rebrand — all A–E categories, atomic event/storage rename)*
