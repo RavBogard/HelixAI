@@ -9,8 +9,8 @@ Requirements for v4.0 Stadium Rebuild + Preset Quality Leap. Each maps to roadma
 
 ### Stadium Rebuild
 
-- [ ] **STAD-01**: Agoura amp catalog expanded with 6 missing amp IDs extracted from real .hsp files, with verified defaultParams
-- [ ] **STAD-02**: Stadium device version updated to 301990015 and HX2_*/VIC_* model IDs added to validate.ts
+- [x] **STAD-01**: Agoura amp catalog expanded with 6 missing amp IDs extracted from real .hsp files, with verified defaultParams
+- [x] **STAD-02**: Stadium device version updated to 301990015 and HX2_*/VIC_* model IDs added to validate.ts
 - [ ] **STAD-03**: Stadium builder param encoding fixed to `{ value: X }` format (no `access` field)
 - [ ] **STAD-04**: Stadium builder block keys use slot-grid allocation (b00=input, b05=amp, b06=cab, b13=output) instead of sequential numbering
 - [ ] **STAD-05**: Stadium builder effect blocks use `type: "fx"` for all effect categories
@@ -78,8 +78,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| STAD-01 | Phase 52 | Pending |
-| STAD-02 | Phase 52 | Pending |
+| STAD-01 | Phase 52 | Complete |
+| STAD-02 | Phase 52 | Complete |
 | STAD-03 | Phase 53 | Pending |
 | STAD-04 | Phase 53 | Pending |
 | STAD-05 | Phase 53 | Pending |

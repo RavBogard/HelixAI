@@ -2,6 +2,19 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Stadium Rebuild + Preset Quality Leap
+status: unknown
+last_updated: "2026-03-05T18:37:48.242Z"
+progress:
+  total_phases: 43
+  completed_phases: 27
+  total_plans: 63
+  completed_plans: 54
+---
+
+---
+gsd_state_version: 1.0
+milestone: v4.0
+milestone_name: Stadium Rebuild + Preset Quality Leap
 status: roadmap
 last_updated: "2026-03-05"
 progress:
@@ -39,6 +52,8 @@ Progress: [████████████████████░░░
 - [v4.0]: Effect combination logic (COMBO-01/02/03) deferred to v4.1 — requires context-passing architectural decision
 - [v4.0]: Cost-aware model routing (COST-01) deferred to v4.1 — requires 30-day baseline and A/B quality test with 20+ tone goals
 - [v4.0]: Phase ordering: 52, 55, 56 can start in parallel; 53 depends on 52; 54 depends on 53; 57 depends on 56; 58 runs last
+- [Phase 52-stadium-amp-catalog]: STADIUM_DEVICE_VERSION set to 301990015 — lowest common denominator from Agoura_Bassman.hsp and Agoura_Hiwatt.hsp; newer .hsp files use higher values but 301990015 is the dedicated single-amp baseline
+- [Phase 52-stadium-amp-catalog]: defaultParams keys always use standard names (Drive, Bass, Mid, Treble, Master, ChVol) regardless of actual .hsp param key name — builder handles translation (Treb->Treble, MasterVol->Master)
 
 ### Roadmap Evolution
 

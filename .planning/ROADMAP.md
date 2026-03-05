@@ -456,7 +456,7 @@ See: `.planning/milestones/v3.2-ROADMAP.md`
 **Milestone Goal:** Rebuild Stadium preset generation from real .hsp files and deliver a major quality improvement across all devices through enriched planner prompts, per-model amp parameters, intelligent effect parameters, and an architecture audit of the device/model abstraction layer.
 
 #### Phase 52: Stadium Amp Catalog + Device Constants
-- [ ] **Phase 52: Stadium Amp Catalog + Device Constants** - Expand the Agoura amp catalog from real .hsp files and correct all device-level constants
+- [x] **Phase 52: Stadium Amp Catalog + Device Constants** - Expand the Agoura amp catalog from real .hsp files and correct all device-level constants (completed 2026-03-05)
 
 #### Phase 53: Stadium Builder Rebuild
 - [ ] **Phase 53: Stadium Builder Rebuild** - Rewrite stadium-builder.ts to fix all 5 confirmed format bugs using real .hsp files as ground truth
@@ -616,7 +616,7 @@ Note: Phases 52, 55, and 56 can start in parallel. Phase 53 depends on 52. Phase
 | 49. Variax Guitar Support | v3.2 | 1/1 | Complete | 2026-03-05 |
 | 50. Donation/Support Integration | v3.2 | 1/1 | Complete | 2026-03-05 |
 | 51. Fix Stadium Agoura amp lookup | v3.2 | 2/2 | Complete | 2026-03-05 |
-| 52. Stadium Amp Catalog + Device Constants | v4.0 | 0/TBD | Not started | - |
+| 52. Stadium Amp Catalog + Device Constants | 1/1 | Complete   | 2026-03-05 | - |
 | 53. Stadium Builder Rebuild | v4.0 | 0/TBD | Not started | - |
 | 54. Stadium Device Unblock | v4.0 | 0/TBD | Not started | - |
 | 55. Planner Prompt Enrichment | v4.0 | 0/TBD | Not started | - |
@@ -629,7 +629,7 @@ Note: Phases 52, 55, and 56 can start in parallel. Phase 53 depends on 52. Phase
 **Goal:** Fix HX Edit error 8309 "Incompatible target device type" when importing generated .hlx presets on Helix Floor — reported by Paul Morgan and Tal Solomon Vardy
 **Requirements**: FLOOR-01
 **Depends on:** None (critical bug fix — can run in parallel with any phase)
-**Plans:** 2 plans
+**Plans:** 1/1 plans complete
 
 Plans:
 - [ ] 59-01-PLAN.md — Get confirmed Helix Floor device ID from real hardware export (human checkpoint)
