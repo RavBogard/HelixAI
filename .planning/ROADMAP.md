@@ -468,7 +468,7 @@ See: `.planning/milestones/v3.2-ROADMAP.md`
 - [x] **Phase 55: Planner Prompt Enrichment** - Add gain-staging intelligence, cab pairing guidance, and effect discipline to buildPlannerPrompt() (completed 2026-03-05)
 
 #### Phase 56: Per-Model Amp Parameter Overrides
-- [ ] **Phase 56: Per-Model Amp Parameter Overrides** - Establish Layer 4 paramOverrides mechanism and add verified per-model values for 15+ amps
+- [x] **Phase 56: Per-Model Amp Parameter Overrides** - Establish Layer 4 paramOverrides mechanism and add verified per-model values for 15+ amps (completed 2026-03-05)
 
 #### Phase 57: Effect Parameter Intelligence
 - [ ] **Phase 57: Effect Parameter Intelligence** - Wire guitarType, tempoHint, and toneRole into Knowledge Layer for guitar-type EQ, reverb PreDelay, tempo-scaled delay, and snapshot volume deltas
@@ -620,7 +620,7 @@ Note: Phases 52, 55, and 56 can start in parallel. Phase 53 depends on 52. Phase
 | 53. Stadium Builder Rebuild | 2/2 | Complete    | 2026-03-05 | - |
 | 54. Stadium Device Unblock | 1/2 | Complete    | 2026-03-05 | - |
 | 55. Planner Prompt Enrichment | 2/2 | Complete   | 2026-03-05 | - |
-| 56. Per-Model Amp Parameter Overrides | 1/2 | In Progress|  | - |
+| 56. Per-Model Amp Parameter Overrides | 2/2 | Complete   | 2026-03-05 | - |
 | 57. Effect Parameter Intelligence | v4.0 | 0/TBD | Not started | - |
 | 58. Architecture Audit | v4.0 | 0/TBD | Not started | - |
 
