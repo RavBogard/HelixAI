@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Stadium Rebuild + Preset Quality Leap
 status: unknown
-last_updated: "2026-03-05T19:39:13.153Z"
+last_updated: "2026-03-05T19:43:38.772Z"
 progress:
   total_phases: 43
   completed_phases: 30
   total_plans: 63
-  completed_plans: 61
+  completed_plans: 62
 ---
 
 ---
@@ -35,12 +35,12 @@ See: .planning/PROJECT.md (updated 2026-03-05)
 
 ## Current Position
 
-Phase: 56 of 59 (Per-Model Amp Overrides — COMPLETE: both plans done)
-Plan: 2 of 2 complete
-Status: In Progress (Phase 56 complete, Phase 57 next)
-Last activity: 2026-03-05 — Phase 56 Plan 02 complete — 18 amp model entries enriched with ampFamily and paramOverrides; 200/200 tests green; AMP-01/03/04/05 satisfied
+Phase: 57 of 59 (Effect Parameter Intelligence — Plan 01 complete)
+Plan: 1 of 3 complete
+Status: In Progress (Phase 57 Plan 01 done; Phase 57 Plan 02 next)
+Last activity: 2026-03-05 — Phase 57 Plan 01 complete — PreDelay added to all 9 genre reverb entries; tempoHint tempo-synced delay (30/BPM); 208/208 tests green; FX-02/FX-03 satisfied
 
-Progress: [████████████████████░░░░░░░░░] ~64% of v4.0 (5/8 phases complete)
+Progress: [████████████████████░░░░░░░░░] ~67% of v4.0 (5/8 phases complete, 57 in progress)
 
 ## Accumulated Context
 
@@ -64,6 +64,9 @@ Progress: [████████████████████░░░
 - [Phase 56-per-model-amp-overrides]: Test 1 replaced US Deluxe Nrm with Solo Lead Clean (Soldano SLO-100 clean) to avoid override conflict; AmpFamily added to types.ts per AmpCategory/TopologyTag convention
 - [Phase 55-planner-prompt-enrichment]: verify-prompt-enrichment.ts checks all 6 device variants for enrichment presence and shared-prefix ordering; exits 0/1 for CI use
 - [Phase 56-per-model-amp-overrides-plan02]: 18 amp entries updated with real paramOverrides values; US Deluxe Nrm canary Drive:0.99 replaced with Drive:0.60, Master:1.0; 11 non-MV amps get Master:1.0; 5 high-gain amps get Drive/Presence anti-correlation; AMP-05 verified by count and spot check
+- [Phase 57-01]: PreDelay values in normalized seconds (0.025 = 25ms) matching models.ts encoding
+- [Phase 57-01]: tempoHint passed as scalar not full ToneIntent to keep resolveDefaultParams signatures narrow
+- [Phase 57-01]: Override order: model defaults -> genre -> tempo (outermost, most intent-specific)
 
 ### Roadmap Evolution
 
@@ -92,6 +95,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-05
-Stopped at: Completed 56-02-PLAN.md — 18 amp model entries enriched with ampFamily and paramOverrides; 200/200 tests green; Phase 56 fully complete (AMP-01/03/04/05)
+Stopped at: Completed 57-01-PLAN.md — PreDelay in 9 genre reverb entries; tempoHint tempo-synced delay (30/BPM formula); 208/208 tests green; FX-02/FX-03 satisfied
 Resume file: None
-Next command: `/gsd:execute-phase 57` (Phase 57 depends on Phase 56 — per-model overrides now complete)
+Next command: Continue Phase 57 — run Plan 02 (guitar-type EQ, FX-01)
