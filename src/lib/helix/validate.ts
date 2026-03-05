@@ -27,6 +27,17 @@ function getValidModelIds(): Set<string> {
   ids.add("HelixStomp_AppDSPFlowInput");
   ids.add("HelixStomp_AppDSPFlowOutputMain");
   ids.add("HelixStomp_AppDSPFlowOutputSend");
+  // Stadium effect models (HX2_* prefix — Stadium-specific effect IDs confirmed from real .hsp files, 2026-03-05)
+  ids.add("HX2_CompressorDeluxeCompMono");
+  ids.add("HX2_CompressorLAStudioCompStereo");
+  ids.add("HX2_EQParametricStereo");
+  ids.add("HX2_GateHorizonGateMono");
+  ids.add("HX2_GateNoiseGateStereo");
+  // Stadium reverb/dynamics models (VIC_* prefix — confirmed from real .hsp files, 2026-03-05)
+  ids.add("VIC_DynPlateStereo");
+  ids.add("VIC_ReverbDynAmbienceStereo");
+  ids.add("VIC_ReverbDynRoomStereo");
+  ids.add("VIC_ReverbRotatingStereo");
   return ids;
 }
 
