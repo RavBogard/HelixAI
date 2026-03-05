@@ -8,7 +8,7 @@
 - [x] **v1.3 Rig Emulation** - Phases 17-21 (shipped 2026-03-02)
 - [x] **v2.0 Persistent Chat Platform** - Phases 24-30 (shipped 2026-03-04)
 - [x] **v3.0 Helix Stadium Support** - Phases 31-38 (shipped 2026-03-04)
-- [ ] **v4.0 Preset Quality Leap** - Phases 42-50
+- [ ] **v4.0 Preset Quality Leap** - Phases 42-51
 
 ## Phases
 
@@ -451,7 +451,7 @@ Plans:
 
 </details>
 
-### v4.0 Preset Quality Leap (Phases 42-47)
+### v4.0 Preset Quality Leap (Phases 42-51)
 
 **Milestone Goal:** Close the gap between HelixTones-generated presets and the best custom/commercial presets; audit and optimize API costs; restore footer, add Variax support, and integrate donation flow.
 
@@ -461,9 +461,10 @@ Plans:
 - [ ] **Phase 45: Knowledge Layer — Effects, EQ, Snapshots** - Guitar-type EQ, reverb PreDelay scaling, tempo-scaled delay, snapshot volume balancing
 - [ ] **Phase 46: Effect Combination Intelligence** - Effect interaction parameter adjustments, genre block substitution table, cross-device validation
 - [ ] **Phase 47: Model Routing Decision** - Evidence-based analysis of whether the current model split is optimal; no changes without quality evidence
-- [ ] **Phase 48: Footer Restoration & Fixed Positioning** - Pin footer to viewport bottom on all screens; "A Project of Daniel Bogard" linking to DanielBogard.com
-- [ ] **Phase 49: Variax Guitar Support** - Reactive Variax detection in chat, ToneIntent schema, .hlx block injection, device guard
-- [ ] **Phase 50: Donation/Support Integration** - Post-download donation card, PayPal/Venmo/CashApp buttons, footer Support link
+- [x] **Phase 48: Footer Restoration & Fixed Positioning** - Pin footer to viewport bottom on all screens; "A Project of Daniel Bogard" linking to DanielBogard.com (completed 2026-03-05)
+- [x] **Phase 49: Variax Guitar Support** - Reactive Variax detection in chat, ToneIntent schema, .hlx block injection, device guard (completed 2026-03-05)
+- [x] **Phase 50: Donation/Support Integration** - Post-download donation card, PayPal/Venmo/CashApp buttons, footer Support link (completed 2026-03-05)
+- [x] **Phase 51: Fix Stadium Agoura amp lookup** - assembleSignalChain Stadium amp resolution fix (completed 2026-03-05)
 
 ### Phase 42: Token Cost Audit + Quality Baseline
 **Goal**: Every subsequent v4.0 phase has measurable cost data and a reproducible quality baseline to validate changes against — no blind optimization, no untested prompt changes
@@ -628,9 +629,10 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 45. Knowledge Layer — Effects, EQ, Snapshots | v4.0 | 0/TBD | Not started | - |
 | 46. Effect Combination Intelligence | v4.0 | 0/TBD | Not started | - |
 | 47. Model Routing Decision | v4.0 | 0/TBD | Not started | - |
-| 48. Footer Restoration & Fixed Positioning | v4.0 | 0/TBD | Not started | - |
-| 49. Variax Guitar Support | v4.0 | 0/TBD | Not started | - |
-| 50. Donation/Support Integration | v4.0 | 0/TBD | Not started | - |
+| 48. Footer Restoration & Fixed Positioning | v4.0 | 1/1 | Complete | 2026-03-05 |
+| 49. Variax Guitar Support | v4.0 | 1/1 | Complete | 2026-03-05 |
+| 50. Donation/Support Integration | v4.0 | 1/1 | Complete | 2026-03-05 |
+| 51. Fix Stadium Agoura amp lookup | v4.0 | 2/2 | Complete | 2026-03-05 |
 
 ### Phase 51: Fix Stadium Agoura amp lookup in chain-rules — assembleSignalChain fails to find Stadium amps for Stadium device
 
@@ -642,16 +644,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 Plans:
 - [ ] TBD (run /gsd:plan-phase 51 to break down)
 
-### Phase 52: Stadium XL device support + device picker UI redesign
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 51
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd:plan-phase 52 to break down)
-
 ---
 *Roadmap created: 2026-03-01*
-*Last updated: 2026-03-04 — v4.0 phases 48-50 added: footer fix, Variax support, donation integration (10 new requirements)*
+*Last updated: 2026-03-05 — v4.0 phases 48-51 completed; Phase 52 (Stadium XL) deferred to next milestone*

@@ -16,7 +16,7 @@
  */
 
 import type { HlxFile, HlxDsp, HlxSnapshot, PresetSpec, BlockSpec, SnapshotSpec } from "./types";
-import { DEVICE_IDS } from "./types";
+import { DEVICE_IDS, isVariaxSupported } from "./types";
 import { FIRMWARE_CONFIG, STOMP_CONFIG } from "./config";
 import { CONTROLLERS } from "./models";
 
@@ -45,10 +45,10 @@ function getBlockType(type: string): number {
 // ---------------------------------------------------------------------------
 // DSP builder (dsp0 only for Stomp — uses HelixStomp_* I/O models)
 // ---------------------------------------------------------------------------
-function buildStompDsp(blocks: BlockSpec[]): HlxDsp {
+function buildStompDsp(blocks: BlockSpec[], useVariaxInput?: boolean): HlxDsp {
   const dsp: HlxDsp = {
     inputA: {
-      "@input": 1, // 1 = Guitar In
+      "@input": useVariaxInput ? 3 : 1, // 1 = Guitar In, 3 = Multi (Guitar + VDI for Variax)
       "@model": STOMP_CONFIG.STOMP_INPUT_MODEL,
       noiseGate: true,
       decay: 0.5,
@@ -299,8 +299,11 @@ export function buildStompFile(
   // Truncate snapshots to device limit (safety net — validate.ts should have already caught this)
   const snapshots = spec.snapshots.slice(0, maxSnapshots);
 
+  // Variax: use Multi input (@input=3) when variaxModel is set (VARIAX-06)
+  const useVariaxInput = !!(spec.variaxModel && isVariaxSupported(device));
+
   // Build dsp0 with all blocks (chain-rules ensures all on dsp0 for Stomp)
-  const dsp0 = buildStompDsp(spec.signalChain);
+  const dsp0 = buildStompDsp(spec.signalChain, useVariaxInput);
 
   // Build snapshot slots (8 total: fill first maxSnapshots, rest are empty)
   const snapshotEntries: Record<string, HlxSnapshot> = {};

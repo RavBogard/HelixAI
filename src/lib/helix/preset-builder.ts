@@ -1,10 +1,10 @@
 import type { HlxFile, HlxDsp, HlxSnapshot, HlxTone, PresetSpec, BlockSpec, SnapshotSpec } from "./types";
-import { DEVICE_IDS, type DeviceTarget } from "./types";
+import { DEVICE_IDS, isVariaxSupported, type DeviceTarget } from "./types";
 import { CONTROLLERS } from "./models";
 import { FIRMWARE_CONFIG } from "./config";
 
 export function buildHlxFile(spec: PresetSpec, device: DeviceTarget = "helix_lt"): HlxFile {
-  const tone = buildTone(spec);
+  const tone = buildTone(spec, device);
 
   // Detect dual-amp from spec (DUAL-09)
   const isDualAmp = spec.signalChain.filter(b => b.type === "amp" && b.dsp === 0).length > 1;
@@ -66,7 +66,7 @@ export function buildHlxFile(spec: PresetSpec, device: DeviceTarget = "helix_lt"
   return result;
 }
 
-function buildTone(spec: PresetSpec): HlxTone {
+function buildTone(spec: PresetSpec, device: DeviceTarget = "helix_lt"): HlxTone {
   const dsp0Blocks = spec.signalChain.filter(b => b.dsp === 0);
   const dsp1Blocks = spec.signalChain.filter(b => b.dsp === 1);
 
@@ -74,7 +74,10 @@ function buildTone(spec: PresetSpec): HlxTone {
   const dsp0Amps = dsp0Blocks.filter(b => b.type === "amp");
   const isDualAmp = dsp0Amps.length > 1 && dsp0Amps.some(a => a.path === 1);
 
-  const dsp0 = buildDsp(dsp0Blocks, 0, isDualAmp);
+  // Variax: use Multi input (@input=3) when variaxModel is set on a supported device (VARIAX-04)
+  const useVariaxInput = !!(spec.variaxModel && isVariaxSupported(device));
+
+  const dsp0 = buildDsp(dsp0Blocks, 0, isDualAmp, useVariaxInput);
   const dsp1 = buildDsp(dsp1Blocks, 1);
 
   // Build footswitch section FIRST — we need stomp assignments for @pedalstate
@@ -126,10 +129,10 @@ function buildTone(spec: PresetSpec): HlxTone {
   return tone;
 }
 
-function buildDsp(blocks: BlockSpec[], dspIndex: number, isDualAmp?: boolean): HlxDsp {
+function buildDsp(blocks: BlockSpec[], dspIndex: number, isDualAmp?: boolean, useVariaxInput?: boolean): HlxDsp {
   const dsp: HlxDsp = {
     inputA: {
-      "@input": 1, // 1 = Guitar In
+      "@input": (dspIndex === 0 && useVariaxInput) ? 3 : 1, // 1 = Guitar In, 3 = Multi (Guitar + VDI for Variax)
       "@model": dspIndex === 0 ? "HD2_AppDSPFlow1Input" : "HD2_AppDSPFlow2Input",
       noiseGate: dspIndex === 0,
       decay: dspIndex === 0 ? 0.5 : 0.1,
@@ -384,8 +387,11 @@ function buildBlockKeyMap(allBlocks: BlockSpec[]): Map<string, { dsp: number; pe
     const perDspIdx = dsp === 0 ? dsp0Idx : dsp1Idx;
     const perDspKey = `block${perDspIdx}`;
 
-    // Map the per-DSP key to itself
-    map.set(perDspKey, { dsp, perDspKey });
+    // Map the per-DSP key — only set if not already claimed by dsp0 (prevents dsp1
+    // block0 from overwriting dsp0 block0 in dual-DSP presets)
+    if (!map.has(perDspKey)) {
+      map.set(perDspKey, { dsp, perDspKey });
+    }
 
     // Also map global-index keys (block0, block1, block2... across both DSPs) to per-DSP keys
     // This handles the common AI mistake of using sequential numbering across DSPs

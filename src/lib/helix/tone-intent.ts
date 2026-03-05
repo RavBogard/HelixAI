@@ -6,7 +6,7 @@
 // Source: RESEARCH.md Architecture Pattern 1, CONTEXT.md decisions (2026-03-01)
 
 import { z } from "zod";
-import { AMP_NAMES, CAB_NAMES, EFFECT_NAMES } from "./models";
+import { AMP_NAMES, CAB_NAMES, EFFECT_NAMES, VARIAX_MODEL_NAMES } from "./models";
 
 // An effect block the AI has chosen to include
 export const EffectIntentSchema = z.object({
@@ -34,6 +34,7 @@ export const ToneIntentSchema = z.object({
   presetName: z.string().max(32).optional(),                         // Claude generates a creative preset name
   description: z.string().optional(),                                // Brief tone description
   guitarNotes: z.string().optional(),                                // Tips for the user (pickup position, tone knob)
+  variaxModel: z.enum(VARIAX_MODEL_NAMES).optional(),               // Variax guitar tone model — only populated when user proactively mentions a Variax guitar
 }).refine(
   (data) => !data.secondAmpName || data.secondCabName,
   { message: "secondCabName is required when secondAmpName is provided", path: ["secondCabName"] }

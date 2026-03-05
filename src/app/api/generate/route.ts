@@ -96,6 +96,7 @@ export async function POST(req: NextRequest) {
       description: toneIntent.description || `${toneIntent.genreHint || ""} preset using ${toneIntent.ampName}`.trim(),
       tempo: toneIntent.tempoHint ?? 120,
       guitarNotes: toneIntent.guitarNotes,
+      ...(toneIntent.variaxModel ? { variaxModel: toneIntent.variaxModel } : {}),
       signalChain: parameterized,
       snapshots,
     };
@@ -131,7 +132,10 @@ export async function POST(req: NextRequest) {
                   .from("conversations")
                   .update({ preset_url: storagePath, updated_at: new Date().toISOString() })
                   .eq("id", conversationId)
-                  .eq("user_id", user.id);
+                  .eq("user_id", user.id)
+                  .then(({ error: dbErr }) => {
+                    if (dbErr) console.error("Preset URL update failed (non-fatal):", dbErr.message);
+                  });
               }
               console.error("Preset storage upload failed (non-fatal):", uploadError.message);
             })
@@ -178,7 +182,10 @@ export async function POST(req: NextRequest) {
                   .from("conversations")
                   .update({ preset_url: storagePath, updated_at: new Date().toISOString() })
                   .eq("id", conversationId)
-                  .eq("user_id", user.id);
+                  .eq("user_id", user.id)
+                  .then(({ error: dbErr }) => {
+                    if (dbErr) console.error("Preset URL update failed (non-fatal):", dbErr.message);
+                  });
               }
               console.error("Preset storage upload failed (non-fatal):", uploadError.message);
             })
@@ -224,7 +231,10 @@ export async function POST(req: NextRequest) {
                   .from("conversations")
                   .update({ preset_url: storagePath, updated_at: new Date().toISOString() })
                   .eq("id", conversationId)
-                  .eq("user_id", user.id);
+                  .eq("user_id", user.id)
+                  .then(({ error: dbErr }) => {
+                    if (dbErr) console.error("Preset URL update failed (non-fatal):", dbErr.message);
+                  });
               }
               console.error("Preset storage upload failed (non-fatal):", uploadError.message);
             })
@@ -268,7 +278,10 @@ export async function POST(req: NextRequest) {
                   .from("conversations")
                   .update({ preset_url: storagePath, updated_at: new Date().toISOString() })
                   .eq("id", conversationId)
-                  .eq("user_id", user.id);
+                  .eq("user_id", user.id)
+                  .then(({ error: dbErr }) => {
+                    if (dbErr) console.error("Preset URL update failed (non-fatal):", dbErr.message);
+                  });
               }
               console.error("Preset storage upload failed (non-fatal):", uploadError.message);
             })

@@ -1224,6 +1224,20 @@ export const EFFECT_NAMES = [
   ...Object.keys(DYNAMICS_MODELS),
 ] as [string, ...string[]];
 
+// Variax tone model names — these are the guitar "models" built into Variax guitars (JTV-69, JTV-89, Standard, Shuriken).
+// Each represents a simulated guitar type. Only populated when the user proactively mentions a Variax guitar.
+export const VARIAX_MODEL_NAMES = [
+  "Spank",       // Stratocaster
+  "Lester",      // Les Paul
+  "T-Model",     // Telecaster
+  "Special",     // SG
+  "Jazzbox",     // ES-335 / semi-hollow
+  "Acoustic",    // Acoustic guitar simulations
+  "Reso",        // Resonator / Dobro
+  "Semi",        // Semi-hollow (335-style alternate)
+  "R-Billy",     // Gretsch / rockabilly
+] as [string, ...string[]];
+
 // Convenience lookup: all models by ID
 // Includes Stadium-specific catalogs so validate.ts VALID_IDS picks up Agoura_ and Stadium EQ IDs (STAD-04)
 export function getAllModels(): Record<string, HelixModel> {

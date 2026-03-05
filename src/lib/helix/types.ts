@@ -199,6 +199,11 @@ export function isStomp(device: DeviceTarget): boolean {
   return device === "helix_stomp" || device === "helix_stomp_xl";
 }
 
+/** Returns true if the device supports Variax (VDI input). Helix Floor, LT, Stomp, Stomp XL all have VDI. Pod Go and Stadium do not. */
+export function isVariaxSupported(device: DeviceTarget): boolean {
+  return isHelix(device) || isStomp(device);
+}
+
 // ---------------------------------------------------------------------------
 // Pod Go format constants
 // Source: Direct inspection of 18 real .pgp files (firmware v1.00–v2.00)
@@ -249,6 +254,7 @@ export interface PresetSpec {
   description: string;
   tempo: number;
   guitarNotes?: string;
+  variaxModel?: string;
   signalChain: BlockSpec[];
   snapshots: SnapshotSpec[];
 }

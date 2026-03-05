@@ -67,6 +67,7 @@ Generate a JSON object with these fields:
 - **presetName**: A creative, descriptive preset name (max 32 characters)
 - **description**: Brief tone description summarizing the preset character
 - **guitarNotes**: Tips for the user — pickup position, tone knob, volume knob suggestions
+- **variaxModel** (OPTIONAL): If and ONLY if the user mentioned a Variax guitar (JTV-69, JTV-89, Standard, Shuriken, etc.) in conversation, set this to their preferred Variax tone model: "Spank" (Strat), "Lester" (LP), "T-Model" (Tele), "Special" (SG), "Jazzbox" (ES-335), "Acoustic", "Reso" (Resonator), "Semi" (semi-hollow), or "R-Billy" (Gretsch). Choose the model that best matches the described tone goal. Leave EMPTY if no Variax was mentioned — NEVER ask about Variax unprompted.
 
 ## What You Do NOT Generate
 
