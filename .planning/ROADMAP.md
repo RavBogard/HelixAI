@@ -455,7 +455,7 @@ Plans:
 
 **Milestone Goal:** Close the gap between HelixTones-generated presets and the best custom/commercial presets; audit and optimize API costs; restore footer, add Variax support, and integrate donation flow.
 
-- [ ] **Phase 42: Token Cost Audit + Quality Baseline** - Instrument API usage, establish reproducible 36-preset baseline, measure cache effectiveness
+- [x] **Phase 42: Token Cost Audit + Quality Baseline** - Instrument API usage, establish reproducible 36-preset baseline, measure cache effectiveness (completed 2026-03-05)
 - [ ] **Phase 43: Planner Prompt Quality** - Add gain-staging, cab pairing, and effect discipline rules to the planner prompt; regression test against baseline
 - [ ] **Phase 44: Knowledge Layer — Amp Parameters** - ampFamily classification, per-model parameter overrides, Master Volume strategy, cab affinity data
 - [ ] **Phase 45: Knowledge Layer — Effects, EQ, Snapshots** - Guitar-type EQ, reverb PreDelay scaling, tempo-scaled delay, snapshot volume balancing
@@ -622,7 +622,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 39. HX Stomp & HX Stomp XL Support | — | 3/3 | Complete | 2026-03-04 |
 | 40. Rebrand HelixAI to HelixTones | — | 1/1 | Complete | 2026-03-04 |
 | 41. Chat UX | — | 1/1 | Complete | 2026-03-04 |
-| 42. Token Cost Audit + Quality Baseline | 1/2 | In Progress|  | - |
+| 42. Token Cost Audit + Quality Baseline | 2/2 | Complete   | 2026-03-05 | - |
 | 43. Planner Prompt Quality | v4.0 | 0/TBD | Not started | - |
 | 44. Knowledge Layer — Amp Parameters | v4.0 | 0/TBD | Not started | - |
 | 45. Knowledge Layer — Effects, EQ, Snapshots | v4.0 | 0/TBD | Not started | - |
@@ -637,7 +637,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 **Goal:** [To be planned]
 **Requirements**: TBD
 **Depends on:** Phase 50
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 51 to break down)

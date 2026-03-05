@@ -292,8 +292,8 @@ All donation UI (card, buttons, links) uses the `--hlx-*` CSS custom property pa
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | AUDIT-01 | Phase 42 | Complete |
-| AUDIT-02 | Phase 42 | Pending |
-| AUDIT-03 | Phase 42 | Pending |
+| AUDIT-02 | Phase 42 | Complete |
+| AUDIT-03 | Phase 42 | Complete |
 | PROMPT-01 | Phase 43 | Pending |
 | PROMPT-02 | Phase 43 | Pending |
 | PROMPT-03 | Phase 43 | Pending |

@@ -8,7 +8,7 @@ progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 2
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Project State
@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 ## Current Position
 
 Phase: 42 of 50 (Token Cost Audit + Quality Baseline)
-Plan: 42-02 (Wave 2) ready to execute
-Status: In progress — 1 of 2 plans complete
-Last activity: 2026-03-05 — Plan 42-01 complete (token logging infrastructure)
+Plan: 42-02 complete (2 of 2 plans)
+Status: Phase 42 complete — all plans executed
+Last activity: 2026-03-05 — Plan 42-02 complete (baseline generator + cache hit report)
 
-Progress: [█░░░░░░░░░] 10%
+Progress: [██░░░░░░░░] 20%
 
 ## Accumulated Context
 
@@ -40,6 +40,9 @@ Progress: [█░░░░░░░░░] 10%
 - [v4.0]: All prompt changes batched into single Phase 43 deployment to avoid repeated cache invalidation
 - [Phase 42]: logUsage() is a no-op (zero I/O) when LOG_USAGE !== true — no production performance impact
 - [Phase 42]: usage.jsonl JSON-lines format chosen for append-only, parse-friendly token log
+- [Phase 42]: Stadium dual-amp uses single-amp Agoura US Clean fallback (dual-amp unsupported)
+- [Phase 42]: Single-DSP devices use crunch scenario as dual_amp fallback
+- [Phase 42]: Cache report filters to generate-only records (Claude planner, not Gemini chat)
 
 ### Roadmap Evolution
 
@@ -58,6 +61,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-05
-Stopped at: Completed 42-01 — token logging infrastructure (usage-logger, planner.ts + chat route integration)
+Stopped at: Completed 42-02 — baseline generator + cache hit report (Phase 42 complete)
 Resume file: None
-Next command: `/gsd:execute-phase 42`
+Next command: `/gsd:execute-phase 43`
