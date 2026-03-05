@@ -1,5 +1,29 @@
 # Milestones: HelixAI
 
+## v4.0 — Stadium Rebuild + Preset Quality Leap (Complete)
+
+**Goal:** Rebuild Stadium preset generation from real .hsp files and deliver a major quality improvement across all devices through enriched planner prompts, per-model amp parameters, intelligent effect parameters, and an architecture review.
+
+**Shipped:**
+- Stadium .hsp builder rebuilt from 11 real preset corpus — fixed 5 structural format bugs (param encoding, slot-grid allocation, fx types, cab params, device version)
+- Planner prompt enriched with gain-staging intelligence, amp-to-cab pairing table, and genre effect discipline
+- Per-model amp parameter overrides — 18 amps with Layer 4 paramOverrides, AmpFamily classification, cabAffinity data
+- Effect parameter intelligence — genre PreDelay, tempo-synced delay (30/BPM), guitar-type EQ shaping
+- Architecture audit — device abstraction functional at 6 devices, refactor deferred until 7th device
+- Fixed Helix Floor error 8309 — corrected device ID from 2162691 to 2162689 (user-reported bug)
+- Tech debt cleanup — spring reverb PreDelay fix, cabAffinity wired into planner prompt, system model ID constants
+
+**Phases:** 52-60 (9 phases, 13 plans)
+**Files changed:** 39 files, +5,416 / -896 lines
+**Requirements:** 23/23 complete (STAD-01..08, PROMPT-01..04, AMP-01..05, FX-01..04, ARCH-01, FLOOR-01)
+**Completed:** 2026-03-05
+
+**Archives:**
+- `.planning/milestones/v4.0-ROADMAP.md`
+- `.planning/milestones/v4.0-REQUIREMENTS.md`
+- `.planning/milestones/v4.0-MILESTONE-AUDIT.md`
+
+
 ## v1.0 — Full Rebuild (Complete)
 
 **Goal:** Rebuild the preset engine from scratch to produce world-class, mix-ready tones.
@@ -122,4 +146,4 @@
 - `.planning/milestones/v3.2-MILESTONE-AUDIT.md`
 
 ---
-*Last updated: 2026-03-05*
+*Last updated: 2026-03-05 after v4.0 milestone*

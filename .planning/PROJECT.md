@@ -70,15 +70,19 @@ Generated presets must sound professional enough to compete with custom presets 
 - ✓ Post-download donation card with PayPal/Venmo/CashApp — v3.2
 - ✓ Bug fixes: dual-DSP key collision, fire-and-forget DB errors, Stadium amp lookup — v3.2
 
+- ✓ Stadium .hsp builder rebuilt from 11 real preset corpus (5 format bugs fixed) — v4.0
+- ✓ Stadium device selection unblocked in UI — v4.0
+- ✓ Planner prompt enrichment (gain-staging, cab pairing, effect discipline) — v4.0
+- ✓ Per-model amp parameter overrides (18 amps, AmpFamily, cabAffinity, Layer 4) — v4.0
+- ✓ Effect parameter intelligence (guitar-type EQ, reverb PreDelay, tempo-scaled delay) — v4.0
+- ✓ Architecture review: device/model abstraction (6 devices, refactor deferred) — v4.0
+- ✓ Helix Floor device ID fix (error 8309 corrected) — v4.0
+- ✓ Tech debt: spring reverb PreDelay, cabAffinity in planner prompt, system model constants — v4.0
+
 ### Active
 
-- [ ] Stadium preset rebuild from real .hsp files (reverse-engineer 11 real presets)
-- [ ] Planner prompt enrichment (gain-staging, cab pairing, effect discipline)
-- [ ] Per-model amp parameter overrides (family classification, master volume, cab affinity)
-- [ ] Effect parameter intelligence (guitar-type EQ, reverb PreDelay, tempo-scaled delay)
 - [ ] Effect combination logic (interaction params, genre substitution, cross-device validation)
 - [ ] Cost-aware model routing (evidence-based Haiku chat vs. Sonnet generation)
-- [x] Architecture review: device/model abstraction layer (6 devices, builders, catalogs, chain rules) — v4.0
 
 ### Out of Scope
 
@@ -87,24 +91,11 @@ Generated presets must sound professional enough to compete with custom presets 
 - Multi-provider comparison UI — going single provider for quality focus
 - Full pedalboard OCR (auto-detect all pedals from a single board photo) — too unreliable, per-pedal photos are the baseline
 - Parallel wet/dry routing (split/join paths) — deferred
-
-## Current Milestone: v4.0 Stadium Rebuild + Preset Quality Leap
-
-**Goal:** Rebuild Stadium preset generation from real .hsp files and deliver a major quality improvement across all devices through enriched planner prompts, per-model amp parameters, intelligent effect combinations, and an architecture review of the device/model abstraction layer.
-
-**Target features:**
-- Reverse-engineer 11 real Stadium .hsp presets to rebuild the builder from ground truth
-- Unblock Stadium device selection in UI after builder is verified
-- Planner prompt enrichment (gain-staging intelligence, cab pairing guidance, effect discipline)
-- Per-model amp parameter overrides (family classification, master volume strategy, cab affinity)
-- Effect parameter intelligence (guitar-type EQ, reverb PreDelay, tempo-scaled delay)
-- Effect combination logic (interaction params, genre block substitution, cross-device validation)
-- Cost-aware model routing (evidence-based model split: Haiku chat vs. Sonnet generation)
-- Architecture review: evaluate device/model abstraction layer across all 6 devices and model catalogs
+- Device abstraction rewrite — evolutionary approach, guard-based branching functional at 6 devices (v4.0 audit)
 
 ## Current State
 
-All device support complete except Stadium (temporarily blocked). The app is rebranded to **HelixTones** and supports 6 devices: Helix LT, Helix Floor, Pod Go, Helix Stadium, HX Stomp, and HX Stomp XL.
+All 6 devices fully supported and unblocked. The app is rebranded to **HelixTones** and supports: Helix LT, Helix Floor, Pod Go, Helix Stadium, HX Stomp, and HX Stomp XL. v4.0 delivered a major preset quality improvement through enriched prompts, per-model amp overrides, and effect intelligence.
 
 **Shipped milestones:**
 - v1.0: Full Rebuild — planner-executor engine, LT/Floor support
@@ -115,6 +106,7 @@ All device support complete except Stadium (temporarily blocked). The app is reb
 - v3.0: Helix Stadium Support — .hsp format, Stadium builder, model catalog, chain rules, rig emulation
 - v3.1: HX Stomp/XL, HelixTones rebrand, Chat UX polish (Phases 39-41)
 - v3.2: Infrastructure, Features & Audit Tooling — token logging, Variax, donation, footer, bug fixes
+- v4.0: Stadium Rebuild + Preset Quality Leap — Stadium .hsp rebuild, planner enrichment, amp overrides, effect intelligence, architecture audit
 
 ## Context
 
@@ -135,6 +127,8 @@ v3.0 added Helix Stadium support: .hsp format (JSON-encoded same as .hlx), Stadi
 Phases 39-41 (v3.1) added HX Stomp and HX Stomp XL support, rebranded the product to HelixTones, and improved the chat UX (device picker only appears after AI signals readiness).
 
 v3.2 added token usage audit tooling (usage-logger.ts, baseline generator, cache report), Variax guitar support (reactive detection, ToneIntent schema, .hlx block injection with device guard), post-download donation card (PayPal/Venmo/CashApp), fixed footer positioning, and critical bug fixes (dual-DSP key collision, fire-and-forget DB errors, Stadium amp lookup). Stadium device selection was temporarily blocked pending a builder rebuild from real .hsp files.
+
+v4.0 rebuilt the Stadium .hsp builder from real preset corpus (11 reference presets), fixing 5 structural format bugs (param encoding, slot-grid allocation, fx types, cab params, device version). Also delivered a major preset quality improvement: planner prompt enriched with gain-staging intelligence, amp-to-cab pairing, and genre effect discipline; per-model amp parameter overrides with AmpFamily classification and Layer 4 mechanism; effect intelligence with genre PreDelay, tempo-synced delay, and guitar-type EQ shaping. Architecture audit confirmed device abstraction is functional at 6 devices. Helix Floor error 8309 fixed (device ID corrected). Tech debt cleanup closed remaining integration gaps.
 
 ## Constraints
 
@@ -168,7 +162,12 @@ v3.2 added token usage audit tooling (usage-logger.ts, baseline generator, cache
 | Variax as input config, not signal chain block | Variax is @input:3 (Multi), not a separate block — matches real hardware behavior | ✓ Good |
 | Reactive-only Variax detection | Chat AI never asks about Variax unprompted — only responds when user mentions it | ✓ Good |
 | Rename shipped v4.0 to v3.2 | Core quality phases (43-47) weren't started; reserve v4.0 for the real quality leap + Stadium rebuild | ✓ Good |
-| **[v4.0] Architecture refactor: DEFERRED** | v4.0 architecture audit (Phase 58) found device/model abstraction layer is functional and maintainable at 6 devices. Guard-based branching in chain-rules.ts, param-engine.ts, and validate.ts has no compiler-enforced exhaustiveness (~17 guard sites), but sites are searchable and well-tested. Low-effort improvements (Stadium I/O model ID constants, hardcoded model ID cleanup) recommended for a future maintenance phase. Full capability registry refactor deferred until a 7th device is planned. See: `.planning/architecture-audit-v4.md` | ✓ Recorded |
+| **[v4.0] Architecture refactor: DEFERRED** | v4.0 architecture audit (Phase 58) found device/model abstraction layer is functional and maintainable at 6 devices. Guard-based branching in chain-rules.ts, param-engine.ts, and validate.ts has no compiler-enforced exhaustiveness (~17 guard sites), but sites are searchable and well-tested. Full capability registry refactor deferred until a 7th device is planned. See: `.planning/architecture-audit-v4.md` | ✓ Recorded |
+| **[v4.0] Stadium builder: rebuild from corpus** | Real .hsp files revealed 5 format bugs in original builder (wrong param encoding, sequential block keys, missing cab params). Corpus-driven development > implementation-by-analogy | ✓ Good |
+| **[v4.0] Per-model amp overrides: Layer 4 mechanism** | paramOverrides on HelixModel entries apply after category defaults — per-model values win unconditionally. 18 amps populated with verified values | ✓ Good |
+| **[v4.0] Effect combination logic: DEFERRED to v4.1** | Requires context-passing architectural decision (comp→drive, mod→reverb interactions). Core quality levers shipped first | — Pending |
+| **[v4.0] Cost-aware model routing: DEFERRED to v4.1** | Requires 30-day baseline and A/B quality comparison with 20+ diverse tone goals before switching any model | — Pending |
+| **[v4.0] Stadium I/O model constants: COMPLETED** | Phase 60 moved Stadium I/O model IDs from string literals to STADIUM_CONFIG constants and centralized Helix/PodGo system model IDs | ✓ Good |
 
 ---
-*Last updated: 2026-03-05 after Phase 58 architecture audit*
+*Last updated: 2026-03-05 after v4.0 milestone*
