@@ -424,6 +424,60 @@ describe("FX-02: reverb PreDelay by genre", () => {
 });
 
 // ============================================================
+// INT-02: Spring reverb models receive genre PreDelay
+// ============================================================
+// Spring reverb models ('63 Spring, Double Tank, Spring) previously lacked
+// a PreDelay key in defaultParams, so the `if (key in params)` guard in
+// resolveDefaultParams() silently dropped genre-based PreDelay values.
+// Fix: Add PreDelay: 0 to spring reverb defaultParams so genre overrides apply.
+
+describe("INT-02: spring reverb models receive genre PreDelay", () => {
+  it("INT-02-1: '63 Spring + blues genre produces PreDelay ~0.025 (25ms)", () => {
+    const chain: BlockSpec[] = [
+      makeBlock({ type: "amp", modelId: "HD2_AmpUSDeluxeNrm", modelName: "US Deluxe Nrm" }),
+      makeBlock({ type: "reverb", modelId: "HD2_Reverb63Spring", modelName: "'63 Spring" }),
+    ];
+    const intent = makeIntent({ genreHint: "blues" });
+    const result = resolveParameters(chain, intent);
+    const reverb = result[1];
+    expect(reverb.parameters.PreDelay).toBeCloseTo(0.025, 3);
+  });
+
+  it("INT-02-2: Double Tank + rock genre produces PreDelay ~0.020 (20ms)", () => {
+    const chain: BlockSpec[] = [
+      makeBlock({ type: "amp", modelId: "HD2_AmpUSDeluxeNrm", modelName: "US Deluxe Nrm" }),
+      makeBlock({ type: "reverb", modelId: "HD2_ReverbDoubleTank", modelName: "Double Tank" }),
+    ];
+    const intent = makeIntent({ genreHint: "rock" });
+    const result = resolveParameters(chain, intent);
+    const reverb = result[1];
+    expect(reverb.parameters.PreDelay).toBeCloseTo(0.020, 3);
+  });
+
+  it("INT-02-3: Spring + ambient genre produces PreDelay ~0.045 (45ms)", () => {
+    const chain: BlockSpec[] = [
+      makeBlock({ type: "amp", modelId: "HD2_AmpUSDeluxeNrm", modelName: "US Deluxe Nrm" }),
+      makeBlock({ type: "reverb", modelId: "HD2_ReverbSpring", modelName: "Spring" }),
+    ];
+    const intent = makeIntent({ genreHint: "ambient" });
+    const result = resolveParameters(chain, intent);
+    const reverb = result[1];
+    expect(reverb.parameters.PreDelay).toBeCloseTo(0.045, 3);
+  });
+
+  it("INT-02-4: '63 Spring without genre hint retains PreDelay: 0 (model default)", () => {
+    const chain: BlockSpec[] = [
+      makeBlock({ type: "amp", modelId: "HD2_AmpUSDeluxeNrm", modelName: "US Deluxe Nrm" }),
+      makeBlock({ type: "reverb", modelId: "HD2_Reverb63Spring", modelName: "'63 Spring" }),
+    ];
+    const intent = makeIntent({}); // no genreHint
+    const result = resolveParameters(chain, intent);
+    const reverb = result[1];
+    expect(reverb.parameters.PreDelay).toBe(0);
+  });
+});
+
+// ============================================================
 // FX-03: Tempo-synced delay Time
 // ============================================================
 // These tests verify that when tempoHint is present in ToneIntent, delay Time
