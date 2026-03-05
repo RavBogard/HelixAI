@@ -5,7 +5,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { ToneIntentSchema, getModelListForPrompt, isPodGo, isStadium, isStomp } from "@/lib/helix";
+import { ToneIntentSchema, getModelListForPrompt, isPodGo, isStadium, isStomp, AMP_MODELS } from "@/lib/helix";
 import { STOMP_CONFIG } from "@/lib/helix/config";
 import type { ToneIntent, DeviceTarget } from "@/lib/helix";
 import { logUsage, estimateClaudeCost } from "@/lib/usage-logger";
@@ -34,6 +34,37 @@ export function buildPlannerPrompt(modelList: string, device?: DeviceTarget): st
   const effectNote = podGo
     ? "- Keep effects to 2-4 maximum — Pod Go has a 4 user-effect limit and limited DSP"
     : "- Keep effects minimal: 2-4 is typical, 6 is the maximum";
+
+  // Build per-model cab affinity section grouped by ampFamily (INT-01)
+  // Only include amps with cabAffinity defined; group by ampFamily for readability.
+  // Generated at prompt build time — static text, no device interpolations, cache-safe.
+  const cabAffinityByFamily = new Map<string, string[]>();
+  for (const [ampName, model] of Object.entries(AMP_MODELS)) {
+    if (!model.cabAffinity || model.cabAffinity.length === 0) continue;
+    const family = model.ampFamily ?? "Other";
+    if (!cabAffinityByFamily.has(family)) {
+      cabAffinityByFamily.set(family, []);
+    }
+    cabAffinityByFamily.get(family)!.push(`- ${ampName} → ${model.cabAffinity.join(", ")}`);
+  }
+  // Sort families alphabetically, keep "Other" last
+  const sortedFamilies = Array.from(cabAffinityByFamily.keys()).sort((a, b) => {
+    if (a === "Other") return 1;
+    if (b === "Other") return -1;
+    return a.localeCompare(b);
+  });
+  const cabAffinitySection = [
+    "\n## Per-Model Cab Affinity",
+    "",
+    "When choosing a cab, prefer the model-specific recommendations below over the family-level table above.",
+    "These are the manufacturer-matched cab pairings verified for each amp:",
+    "",
+    ...sortedFamilies.flatMap(family => [
+      `**${family}**`,
+      ...cabAffinityByFamily.get(family)!,
+      "",
+    ]),
+  ].join("\n");
 
   return `You are HelixTones' Planner. You choose creative model selections for ${deviceName} presets.
 
@@ -120,7 +151,7 @@ Pair amps with historically correct cabs. Match the amp's era and speaker voicin
 | Matchless DC-30 | 2x12 Match H30 |
 
 If the requested tone doesn't fit a row above, choose a cab with matching era and speaker voicing.
-
+${cabAffinitySection}
 ## Effect Discipline by Genre
 
 Choose effects that serve the tone goal — do not fill slots for the sake of variety:
