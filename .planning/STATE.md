@@ -3,6 +3,19 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Stadium Rebuild + Preset Quality Leap
 status: unknown
+last_updated: "2026-03-05T19:17:31.612Z"
+progress:
+  total_phases: 43
+  completed_phases: 28
+  total_plans: 63
+  completed_plans: 59
+---
+
+---
+gsd_state_version: 1.0
+milestone: v4.0
+milestone_name: Stadium Rebuild + Preset Quality Leap
+status: unknown
 last_updated: "2026-03-05T19:07:03.261Z"
 progress:
   total_phases: 43
@@ -48,10 +61,10 @@ See: .planning/PROJECT.md (updated 2026-03-05)
 
 ## Current Position
 
-Phase: 55 of 59 (Planner Prompt Enrichment — Plan 01 complete)
-Plan: 1 of 1 complete
-Status: Phase complete
-Last activity: 2026-03-05 — Phase 55 Plan 01 complete — buildPlannerPrompt enriched with Gain-Staging Intelligence, Amp-to-Cab Pairing, Effect Discipline by Genre; 10 new tests, 195 total passing
+Phase: 56 of 59 (Per-Model Amp Overrides — Plan 01 complete, Plan 02 pending)
+Plan: 1 of 2 complete
+Status: In Progress
+Last activity: 2026-03-05 — Phase 56 Plan 01 complete — Layer 4 paramOverrides mechanism established in resolveAmpParams(); AmpFamily type added; HelixModel interface extended; 197 tests passing
 
 Progress: [████████████████████░░░░░░░░░] ~0% of v4.0 (0/7 phases complete)
 
@@ -73,6 +86,8 @@ Progress: [████████████████████░░░
 - [Phase 54-stadium-device-unblock]: Stadium format bugs (device version, slot params, grid positions) were already fixed by Phases 52 and 53 — no re-work needed in Phase 54
 - [Phase 55-planner-prompt-enrichment]: Enrichment sections are static text in shared prefix (after Dual-Amp Rules, before ${podGo ?}) — no device interpolations that would fragment the prompt cache into per-device buckets
 - [Phase 55-planner-prompt-enrichment]: Cab pairing table uses only canonical names from CAB_MODELS; plan's suggestions (4x12 1960 T75, 1x12 Cali IV, 2x12 Mandarin 30) were not in catalog and were corrected/omitted
+- [Phase 56-per-model-amp-overrides]: Canary value Drive:0.99 on US Deluxe Nrm proves Layer 4 mechanism; Plan 02 replaces with Drive:0.60, Master:1.0
+- [Phase 56-per-model-amp-overrides]: Test 1 replaced US Deluxe Nrm with Solo Lead Clean (Soldano SLO-100 clean) to avoid override conflict; AmpFamily added to types.ts per AmpCategory/TopologyTag convention
 
 ### Roadmap Evolution
 
@@ -96,13 +111,13 @@ None.
 
 ### Blockers/Concerns
 
-- **Phase 56 (Per-Model Overrides):** Layer 4 `paramOverrides` mechanism must be established with a unit test BEFORE individual model values are added, or overrides are silently discarded by category defaults.
+- **Phase 56 Plan 02 (Per-Model Override Values):** Layer 4 mechanism is established (Plan 01 complete). Plan 02 must replace the US Deluxe Nrm canary value (Drive:0.99) with real values (Drive:0.60, Master:1.0) and add paramOverrides + ampFamily to 15+ amps.
 - **Prompt cache integrity:** Enrichment in Phase 55 must go in the shared static prefix of `buildPlannerPrompt()` — conditional insertions fragment the cache into 6 device buckets.
 - **HX Edit verification pending:** Stadium code path is fully unblocked but HX Edit import verification (5-10 test generations with varied tone goals) has not been run — this is the hardware acceptance gate.
 
 ## Session Continuity
 
 Last session: 2026-03-05
-Stopped at: Completed 55-01-PLAN.md — buildPlannerPrompt enriched with gain-staging intelligence, amp-to-cab pairing, effect discipline by genre; 10 new tests, 195 total passing
+Stopped at: Completed 56-01-PLAN.md — Layer 4 paramOverrides mechanism established in resolveAmpParams(); AmpFamily type added; 197 tests passing
 Resume file: None
-Next command: `/gsd:execute-phase 56` (Per-Model Param Overrides — Quality track continues)
+Next command: `/gsd:execute-phase 56` (Per-Model Param Overrides — Plan 02: populate paramOverrides + ampFamily on 15+ amps)

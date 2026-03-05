@@ -28,7 +28,7 @@ Requirements for v4.0 Stadium Rebuild + Preset Quality Leap. Each maps to roadma
 ### Amp Parameters
 
 - [ ] **AMP-01**: Amps classified by family (Fender, Marshall, Vox, Mesa, etc.) in model metadata
-- [ ] **AMP-02**: Layer 4 `paramOverrides` mechanism established in resolveAmpParams() — applied after category defaults
+- [x] **AMP-02**: Layer 4 `paramOverrides` mechanism established in resolveAmpParams() — applied after category defaults
 - [ ] **AMP-03**: Per-model parameter overrides for 15+ amps with verified values
 - [ ] **AMP-04**: Non-master-volume amps get correct Drive=Volume, Master=1.0 strategy
 - [ ] **AMP-05**: Cab affinity data enriched on amp model metadata
@@ -91,7 +91,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PROMPT-03 | Phase 55 | Complete |
 | PROMPT-04 | Phase 55 | Complete |
 | AMP-01 | Phase 56 | Pending |
-| AMP-02 | Phase 56 | Pending |
+| AMP-02 | Phase 56 | Complete |
 | AMP-03 | Phase 56 | Pending |
 | AMP-04 | Phase 56 | Pending |
 | AMP-05 | Phase 56 | Pending |
