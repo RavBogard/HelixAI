@@ -158,28 +158,44 @@ describe("resolveParameters", () => {
     expect(hgResult[0].parameters.Mic).toBe(0);
   });
 
-  // Test 7: Parametric EQ block gets LowGain < 0.50 and HighGain > 0.50
-  // For crunch/high-gain, LowGain < 0.50 = cut (anti-mud). Clean = 0.50 (unity, no cut needed).
+  // Test 7: Parametric EQ block gets appropriate LowGain (cut or unity) and HighGain > 0.50.
+  // Tests use baseline category EQ without guitarType to isolate amp-category behavior.
+  // For crunch/high-gain, LowGain < 0.50 = cut (anti-mud). Clean baseline = 0.50 (unity).
   it("sets Parametric EQ with LowGain <= 0.50 (cut or unity) and HighGain > 0.50 (boost)", () => {
     const chain: BlockSpec[] = [
       makeBlock({ type: "eq", modelId: "HD2_EQParametric", modelName: "Parametric EQ" }),
     ];
 
-    // Clean: LowGain at unity (0.50), HighGain boost > 0.50
-    const cleanIntent = makeIntent({ ampName: "US Deluxe Nrm" });
-    const cleanResult = resolveParameters(chain, cleanIntent);
+    // Use intents without guitarType to test pure AmpCategory baseline EQ
+    // (guitarType adjustments are covered by FX-01 tests)
+    const baseCleanIntent = {
+      ampName: "US Deluxe Nrm",
+      cabName: "1x12 US Deluxe",
+      effects: [],
+      snapshots: [
+        { name: "Clean", toneRole: "clean" },
+        { name: "Rhythm", toneRole: "crunch" },
+        { name: "Lead", toneRole: "lead" },
+        { name: "Ambient", toneRole: "ambient" },
+      ],
+    } as unknown as ToneIntent;
+
+    // Clean baseline: LowGain at unity (0.50), HighGain boost > 0.50
+    const cleanResult = resolveParameters(chain, baseCleanIntent);
     expect(cleanResult[0].parameters.LowGain).toBeLessThanOrEqual(0.50);
     expect(cleanResult[0].parameters.HighGain).toBeGreaterThan(0.50);
 
     // Crunch: LowGain < 0.50 (actual mud cut), HighGain boost > 0.50
     const crunchIntent = makeIntent({ ampName: "Grammatico Nrm" });
     const crunchResult = resolveParameters(chain, crunchIntent);
+    // crunch single_coil: LowGain = 0.45 + 0.03 = 0.48 — still < 0.50
     expect(crunchResult[0].parameters.LowGain).toBeLessThan(0.50);
     expect(crunchResult[0].parameters.HighGain).toBeGreaterThan(0.50);
 
     // High-gain: LowGain < 0.50 (aggressive mud cut), HighGain boost > 0.50
     const hgIntent = makeIntent({ ampName: "Cali Rectifire" });
     const hgResult = resolveParameters(chain, hgIntent);
+    // high_gain single_coil: LowGain = 0.42 + 0.03 = 0.45 — still < 0.50
     expect(hgResult[0].parameters.LowGain).toBeLessThan(0.50);
     expect(hgResult[0].parameters.HighGain).toBeGreaterThan(0.50);
   });
@@ -555,10 +571,12 @@ describe("FX-01: guitar-type EQ shaping", () => {
   });
 
   // FX-01-5: no guitarType (undefined) produces exact baseline EQ_PARAMS values (regression)
+  // guitarType is required in ToneIntent but resolveEqParams accepts undefined gracefully.
+  // Cast to ToneIntent to simulate internal callers that may pass undefined.
   it("FX-01-5: no guitarType produces exact baseline EQ_PARAMS values (zero regression)", () => {
     const chain = makeEqChain();
-    // makeIntent sets guitarType: "single_coil" by default — override to undefined
-    const intent: ToneIntent = {
+    // Omit guitarType to test fallback path — cast to satisfy TypeScript
+    const intent = {
       ampName: "US Deluxe Nrm",
       cabName: "1x12 US Deluxe",
       effects: [],
@@ -569,7 +587,7 @@ describe("FX-01: guitar-type EQ shaping", () => {
         { name: "Ambient", toneRole: "ambient" },
       ],
       // guitarType deliberately omitted — should produce exact baseline
-    };
+    } as unknown as ToneIntent;
     const result = resolveParameters(chain, intent);
     const resolvedEq = result[1].parameters;
     // clean baseline EQ_PARAMS.clean values

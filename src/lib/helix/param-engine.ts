@@ -90,6 +90,26 @@ const EQ_PARAMS: Record<AmpCategory, Record<string, number>> = {
   },
 };
 
+// Guitar-type EQ deltas — applied on top of AmpCategory baseline (FX-01)
+// Small deltas (±0.02 to ±0.03) to avoid overcorrection.
+// Physical basis: single coils are bright/thin, humbuckers are warm/thick, p90 is mid-forward.
+const EQ_GUITAR_TYPE_ADJUST: Record<string, Partial<Record<string, number>>> = {
+  single_coil: {
+    LowGain: 0.03,    // Slight low-end fill for thin single coils
+    MidGain: 0.02,    // Slight mid fill
+    HighGain: -0.02,  // Tame harshness
+  },
+  humbucker: {
+    LowGain: -0.03,   // Cut low-mud from thick humbuckers
+    MidGain: -0.03,   // Cut low-mid mud
+    HighGain: 0.03,   // Recover presence lost to humbucker warmth
+  },
+  p90: {
+    MidGain: -0.01,   // Very slight mid tuck
+    HighGain: 0.01,   // Slight brightness
+  },
+};
+
 // ============================================================
 // BOOST PARAMETER TABLES (DYN-03)
 // ============================================================
@@ -270,6 +290,7 @@ export function resolveParameters(
   const topology: TopologyTag = ampModel.topology ?? "not_applicable";
   const genreProfile = matchGenre(intent.genreHint);
   const tempoHint = intent.tempoHint;
+  const guitarType = intent.guitarType;
 
   // Dual-amp: resolve second amp's category and topology independently (DUAL-04)
   // Dual-amp is only for Helix LT/Floor — Stadium/Stomp/PodGo are excluded upstream
@@ -288,8 +309,8 @@ export function resolveParameters(
 
     const resolved: BlockSpec = {
       ...block,
-      // Thread device and tempoHint through to resolveBlockParams
-      parameters: resolveBlockParams(block, effectiveCategory, effectiveTopology, genreProfile, device, tempoHint),
+      // Thread device, tempoHint, and guitarType through to resolveBlockParams
+      parameters: resolveBlockParams(block, effectiveCategory, effectiveTopology, genreProfile, device, tempoHint, guitarType),
     };
     return resolved;
   });
@@ -299,6 +320,7 @@ export function resolveParameters(
  * Resolve parameters for a single block based on its type and the amp context.
  * The device parameter enables Stadium-specific param extensions (e.g., 10 cab params).
  * The tempoHint parameter enables tempo-synced delay Time for delay blocks (FX-03).
+ * The guitarType parameter enables guitar-type EQ curve adjustments for HD2_EQParametric (FX-01).
  */
 function resolveBlockParams(
   block: BlockSpec,
@@ -307,6 +329,7 @@ function resolveBlockParams(
   genreProfile?: GenreEffectProfile,
   device?: DeviceTarget,
   tempoHint?: number,
+  guitarType?: string,
 ): Record<string, number> {
   switch (block.type) {
     case "amp":
@@ -317,7 +340,7 @@ function resolveBlockParams(
     case "distortion":
       return resolveDistortionParams(block, ampCategory);
     case "eq":
-      return resolveEqParams(block, ampCategory);
+      return resolveEqParams(block, ampCategory, guitarType);
     case "dynamics":
       return resolveDynamicsParams(block);
     case "volume":
@@ -434,17 +457,29 @@ function resolveDistortionParams(
 
 /**
  * EQ parameter resolution — category-specific mud cut and presence recovery.
+ * When guitarType is provided and the block is HD2_EQParametric, applies small
+ * deltas from EQ_GUITAR_TYPE_ADJUST on top of the AmpCategory baseline (FX-01).
  */
 function resolveEqParams(
   block: BlockSpec,
   ampCategory: AmpCategory,
+  guitarType?: string,
 ): Record<string, number> {
-  // Parametric EQ: use category-specific expert values
+  // Parametric EQ: use category-specific expert values with optional guitar-type adjustment
   if (block.modelId === "HD2_EQParametric") {
-    return { ...EQ_PARAMS[ampCategory] };
+    const base = { ...EQ_PARAMS[ampCategory] };
+    if (guitarType && EQ_GUITAR_TYPE_ADJUST[guitarType]) {
+      const adj = EQ_GUITAR_TYPE_ADJUST[guitarType];
+      for (const [key, delta] of Object.entries(adj)) {
+        if (key in base) {
+          base[key] = Math.max(0, Math.min(1, base[key] + (delta as number)));
+        }
+      }
+    }
+    return base;
   }
 
-  // Other EQ models: use model defaultParams
+  // Other EQ models: use model defaultParams (guitarType has no effect)
   return resolveDefaultParams(block);
 }
 
