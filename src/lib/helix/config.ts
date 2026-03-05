@@ -48,8 +48,8 @@ export const STADIUM_CONFIG = {
   STADIUM_MAX_SNAPSHOTS: 8,
   /** Maximum signal paths (1A, 1B, 2A, 2B — 2 flows × 2 paths each) */
   STADIUM_MAX_PATHS: 4,
-  /** Device version integer — verified from real .hsp files (Cranked_2203, Rev_120_Purple_Recto) */
-  STADIUM_DEVICE_VERSION: 285213946,
+  /** Device version integer — verified from Agoura_Bassman.hsp and Agoura_Hiwatt.hsp (2026-03-05) */
+  STADIUM_DEVICE_VERSION: 301990015,
 } as const;
 
 /**
