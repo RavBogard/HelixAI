@@ -314,7 +314,7 @@ describe("resolveParameters", () => {
 
   // Test: Layer 4 paramOverrides mechanism (AMP-02)
   it("paramOverrides survive category defaults (Layer 4 wins over Layer 2)", () => {
-    // US Deluxe Nrm has paramOverrides: { Drive: 0.99 } (canary value)
+    // US Deluxe Nrm has paramOverrides: { Drive: 0.60, Master: 1.0 }
     // AMP_DEFAULTS.clean.Drive = 0.25 — would win if there were no Layer 4
     const chain: BlockSpec[] = [
       makeBlock({ type: "amp", modelId: "HD2_AmpUSDeluxeNrm", modelName: "US Deluxe Nrm" }),
@@ -322,7 +322,40 @@ describe("resolveParameters", () => {
     const intent = makeIntent({ ampName: "US Deluxe Nrm" });
     const result = resolveParameters(chain, intent);
     // Layer 4 override must win over AMP_DEFAULTS.clean.Drive (0.25)
-    expect(result[0].parameters.Drive).toBe(0.99);
+    expect(result[0].parameters.Drive).toBe(0.60);
+    // Layer 4: paramOverrides.Master = 1.0 wins over AMP_DEFAULTS.clean.Master (0.95)
+    expect(result[0].parameters.Master).toBe(1.0);
+  });
+
+  // AMP-03: Per-model override verification (representative amps)
+  it("US Deluxe Nrm paramOverrides: Drive 0.60, Master 1.0 (non-MV Fender)", () => {
+    const chain: BlockSpec[] = [
+      makeBlock({ type: "amp", modelId: "HD2_AmpUSDeluxeNrm", modelName: "US Deluxe Nrm" }),
+    ];
+    const intent = makeIntent({ ampName: "US Deluxe Nrm" });
+    const result = resolveParameters(chain, intent);
+    expect(result[0].parameters.Drive).toBe(0.60);
+    expect(result[0].parameters.Master).toBe(1.0);
+  });
+
+  it("Essex A30 paramOverrides: Drive 0.60, Master 1.0 (non-MV Vox)", () => {
+    const chain: BlockSpec[] = [
+      makeBlock({ type: "amp", modelId: "HD2_AmpEssexA30", modelName: "Essex A30" }),
+    ];
+    const intent = makeIntent({ ampName: "Essex A30" });
+    const result = resolveParameters(chain, intent);
+    expect(result[0].parameters.Drive).toBe(0.60);
+    expect(result[0].parameters.Master).toBe(1.0);
+  });
+
+  it("Cali Rectifire paramOverrides: Drive 0.40, Presence 0.30 (high-gain Mesa)", () => {
+    const chain: BlockSpec[] = [
+      makeBlock({ type: "amp", modelId: "HD2_AmpCaliRectifire", modelName: "Cali Rectifire" }),
+    ];
+    const intent = makeIntent({ ampName: "Cali Rectifire" });
+    const result = resolveParameters(chain, intent);
+    expect(result[0].parameters.Drive).toBe(0.40);
+    expect(result[0].parameters.Presence).toBe(0.30);
   });
 
   it("amps without paramOverrides still use category defaults (no regression)", () => {
