@@ -2,52 +2,13 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Stadium Rebuild + Preset Quality Leap
-status: unknown
-last_updated: "2026-03-05T19:58:06.440Z"
-progress:
-  total_phases: 43
-  completed_phases: 32
-  total_plans: 63
-  completed_plans: 64
----
-
----
-gsd_state_version: 1.0
-milestone: v4.0
-milestone_name: Stadium Rebuild + Preset Quality Leap
-status: unknown
-last_updated: "2026-03-05T19:51:31.752Z"
-progress:
-  total_phases: 43
-  completed_phases: 31
-  total_plans: 63
-  completed_plans: 63
----
-
----
-gsd_state_version: 1.0
-milestone: v4.0
-milestone_name: Stadium Rebuild + Preset Quality Leap
-status: unknown
-last_updated: "2026-03-05T19:43:38.772Z"
-progress:
-  total_phases: 43
-  completed_phases: 30
-  total_plans: 63
-  completed_plans: 62
----
-
----
-gsd_state_version: 1.0
-milestone: v4.0
-milestone_name: Stadium Rebuild + Preset Quality Leap
-status: executing
-last_updated: "2026-03-05"
+status: complete
+last_updated: "2026-03-05T20:50:12Z"
 progress:
   total_phases: 8
-  completed_phases: 5
-  total_plans: 12
-  completed_plans: 9
+  completed_phases: 8
+  total_plans: 13
+  completed_plans: 13
 ---
 
 # Project State
@@ -57,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-05)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** Phase 58 complete — architecture audit done; v4.0 milestone complete; next is Phase 59
+**Current focus:** All v4.0 phases complete (52-59) — milestone audit pending
 
 ## Current Position
 
-Phase: 58 of 59 (Architecture Audit — Plan 01 complete)
-Plan: 1 of 1 complete
-Status: Complete (Phase 58 done; Phase 59 next — Helix Floor import error 8309 fix)
-Last activity: 2026-03-05 — Phase 58 Plan 01 complete — v4.0 architecture audit; ARCH-01 satisfied; refactor DEFERRED in PROJECT.md
+Phase: 60-tech-debt-cleanup (tech debt cleanup — in progress)
+Plan: 2 of 2 complete
+Status: In Progress — 60-02 (system model ID centralization) complete; 219/219 tests passing
+Last activity: 2026-03-05 — Tech debt plan 60-02 executed; Improvement A from v4.0 audit closed
 
-Progress: [████████████████████████████░] ~95% of v4.0 (8/8 phases complete, Phase 59 pending)
+Progress: [██████████████████████████████] 100% of v4.0 (8/8 phases complete) + tech debt cleanup in progress
 
 ## Accumulated Context
 
@@ -99,22 +60,26 @@ Progress: [███████████████████████
 - [Phase 57-02]: Test 7 updated to use baseline intent without guitarType for pure AmpCategory EQ isolation
 - [Phase 58-architecture-audit]: Architecture refactor DEFERRED — guard-based branching functional at 6 devices; ~17 guard sites in chain-rules.ts/param-engine.ts/validate.ts are searchable and well-tested; low-effort improvements A (Stadium I/O constants) and B (hardcoded model IDs) deferred to maintenance phase; capability registry deferred until 7th device planned
 - [Phase 58-architecture-audit]: Improvement A (HIGH priority, ~30min): move Stadium I/O model IDs (P35_InputInst1 etc.) from string literals in stadium-builder.ts + validate.ts to named constants in STADIUM_CONFIG — mirrors what STOMP_CONFIG already does correctly
+- [Phase 59-helix-floor-error-8309]: Device ID corrected from 2162691 to 2162689 based on analysis of 39 reference .hlx files (15 use 2162689, zero use 2162691)
+- [Phase 60-02-system-model-centralization]: Stadium I/O model IDs moved into STADIUM_CONFIG (STADIUM_INPUT_MODEL, STADIUM_INPUT_NONE_MODEL, STADIUM_OUTPUT_MODEL) — mirrors STOMP_CONFIG pattern
+- [Phase 60-02-system-model-centralization]: HD2_* and P34_* system IDs get separate named exports (HELIX_SYSTEM_MODELS, POD_GO_SYSTEM_MODELS) rather than embedding in existing configs — cleaner device-family separation
+- [Phase 60-02-system-model-centralization]: Improvement B (chain-rules.ts hardcoded model IDs) confirmed already complete at lines 37-43 — no changes needed
 
 ### Roadmap Evolution
 
 - v3.2 milestone: 5 phases (42, 48-51), 8 plans — all complete
 - v4.0 phases 52-58 derived from REQUIREMENTS.md (22 v4.0 requirements, 7 phases)
 - Phase 59 added: Fix Helix Floor preset import error 8309 incompatible device type (user report from Paul Morgan)
-- Stadium track (52→53→54) is sequential — catalog before builder, builder before unblock
-- Quality track (55, 56→57) is parallel with Stadium track
+- Stadium track (52->53->54) is sequential — catalog before builder, builder before unblock
+- Quality track (55, 56->57) is parallel with Stadium track
 - 11 real Stadium .hsp reference presets available at C:/Users/dsbog/Downloads/NH_STADIUM_AURA_REFLECTIONS/
 
 ### User Feedback (v4.0 context)
 
 - **Michael Weaver:** "Signal chain cannot reach the sound promised. How can there be an ambient snapshot without a single reverb or delay in the chain?" — Dual-amp preset generated with no time-based effects. Validates PROMPT-03 (effect discipline) and FX-01/FX-02/FX-03 (effect intelligence). Chain had: 2x12 Blue Bell, 2x12 Double C12N, Kinky Comp, Minotaur, Matchstick Ch1, US Double Nrm, Parametric EQ, Gain Block — zero reverb, zero delay.
 - **Glenn Sully:** "Output level too low. First DSP didn't connect to second line DSP. Answers were a bit long winded." — Validates FX-04 (snapshot volume balance), possible dual-DSP routing issue, chat verbosity. Also requested: effect explanations and recording context.
-- **Paul Morgan:** "Unfortunately can't get any to load on the Helix Floor. Keep getting this message." — HX Edit error 8309: Incompatible target device type. Generated .hlx presets fail to import on Helix Floor hardware. Critical user-facing bug → Phase 59.
-- **Tal Solomon Vardy:** "All my presets don't work yet via HX Edit, waiting for fixing" — Same error 8309: Incompatible target device type. Device unknown. Second report of same bug → confirms Phase 59 priority.
+- **Paul Morgan:** "Unfortunately can't get any to load on the Helix Floor. Keep getting this message." — HX Edit error 8309: Incompatible target device type. Generated .hlx presets fail to import on Helix Floor hardware. Critical user-facing bug -> Phase 59. FIXED.
+- **Tal Solomon Vardy:** "All my presets don't work yet via HX Edit, waiting for fixing" — Same error 8309: Incompatible target device type. Device unknown. Second report of same bug -> confirms Phase 59 priority. FIXED.
 
 ### Pending Todos
 
@@ -127,6 +92,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-05
-Stopped at: Completed 58-01-PLAN.md — v4.0 architecture audit; refactor decision DEFERRED recorded in PROJECT.md; ARCH-01 satisfied
+Stopped at: Completed 60-tech-debt-cleanup/60-02-PLAN.md (system model ID centralization)
 Resume file: None
-Next command: Phase 58 complete (1/1 plans done) — v4.0 milestone complete (Phase 58 is last before Phase 59)
+Next command: /gsd:audit-milestone then create PR to merge to main

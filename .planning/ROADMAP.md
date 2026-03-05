@@ -641,11 +641,12 @@ Plans:
 **Requirements**: FX-02 (partial — spring reverb PreDelay), AMP-01/AMP-05 (partial — wire orphaned data)
 **Depends on:** Phase 59 (all v4.0 core phases complete)
 **Gap Closure:** Closes gaps from v4.0-MILESTONE-AUDIT.md (INT-01, INT-02, Improvements A & B)
-**Plans:** 0 plans
+**Plans:** 1/2 plans complete
 
 Plans:
-- [ ] 60-01-PLAN.md — Spring reverb PreDelay fix + ampFamily/cabAffinity consumers + Stadium I/O constants + chain-rules model ID constants
+- [ ] 60-01-PLAN.md — Spring reverb PreDelay fix (INT-02) + ampFamily/cabAffinity planner prompt wiring (INT-01)
+- [x] 60-02-PLAN.md — Stadium I/O constants extraction (Improvement A) + chain-rules model ID verification (Improvement B)
 
 ---
 *Roadmap created: 2026-03-01*
-*Last updated: 2026-03-05 — Phase 60 added for v4.0 gap closure (INT-01, INT-02, Improvements A & B)
+*Last updated: 2026-03-05 — Phase 60 planned with 2 parallel plans for v4.0 gap closure (INT-01, INT-02, Improvements A & B)
