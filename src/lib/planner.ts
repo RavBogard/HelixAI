@@ -227,17 +227,29 @@ export async function callClaudePlanner(
 
   // Token usage logging (AUDIT-01)
   const { usage } = response;
+  const cacheRead = usage.cache_read_input_tokens ?? 0;
+  const cacheWrite = usage.cache_creation_input_tokens ?? 0;
+  const costUsd = estimateClaudeCost(usage);
+  const cacheHit = cacheRead > 0;
+
+  // Always log to console — Vercel captures this in function logs
+  console.log(
+    `[planner] tokens=${usage.input_tokens}in/${usage.output_tokens}out` +
+    ` cache=${cacheHit ? "HIT" : "MISS"}(read=${cacheRead},write=${cacheWrite})` +
+    ` cost=$${costUsd.toFixed(4)} device=${device ?? "helix_floor"}`
+  );
+
   logUsage({
     timestamp: new Date().toISOString(),
     endpoint: "generate",
     model: "claude-sonnet-4-6",
     input_tokens: usage.input_tokens,
     output_tokens: usage.output_tokens,
-    cache_creation_input_tokens: usage.cache_creation_input_tokens ?? null,
-    cache_read_input_tokens: usage.cache_read_input_tokens ?? null,
+    cache_creation_input_tokens: cacheWrite || null,
+    cache_read_input_tokens: cacheRead || null,
     total_tokens: usage.input_tokens + usage.output_tokens,
-    cost_usd: estimateClaudeCost(usage),
-    cache_hit: (usage.cache_read_input_tokens ?? 0) > 0,
+    cost_usd: costUsd,
+    cache_hit: cacheHit,
   });
 
   // Extract text from response content
