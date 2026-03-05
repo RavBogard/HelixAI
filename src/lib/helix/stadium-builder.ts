@@ -1,17 +1,14 @@
 // src/lib/helix/stadium-builder.ts
 // Helix Stadium preset builder — generates .hsp files for Line 6 Helix Stadium.
 //
-// Key differences from Helix (.hlx) builder:
-// - 8-byte magic header "rpshnosj" prepended to JSON
-// - Top-level structure: { meta: {...}, preset: {...} } — NOT { data: {...} }
-// - meta.device_id: 2490368 (not data.device)
-// - preset.flow: array of path objects (not dsp0/dsp1 keys)
-// - Block keys: b00, b01, ... (not block0, block1, ...)
-// - 8 snapshot slots (not keyed by name — array format)
-// - I/O model prefix: P35_* (not P34_* like Pod Go, not HD2_AppDSPFlow* like Helix)
-// - Single path (Path 1A) in v3.0 — multi-path deferred to future phases
+// Format verified against real .hsp files downloaded from The Gear Forum:
+//   - Cranked_2203.hsp (15.7 KB, uploaded by EOengineer, Dec 2025)
+//   - Rev_120_Purple_Recto.hsp (17 KB, uploaded by EOengineer, Dec 2025)
 //
-// Source: FluidSolo Stadium_Metal_Rhythm.hsp (inspected 2026-03-04, Phase 31)
+// .hsp format: 8-byte magic header "rpshnosj" + JSON.stringify({ meta, preset })
+// Block format: slot-based ({ slot: [{ model, params: { K: { access, value } } }] })
+//   NOT flat-style ({ @model, ParamKey: value }) like .hlx
+//
 // Public API: buildHspFile(spec) -> { magic, json, serialized }
 //             summarizeStadiumPreset(spec) -> string
 
@@ -23,65 +20,21 @@ import { STADIUM_CONFIG } from "./config";
 // Constants
 // ---------------------------------------------------------------------------
 
-// Stadium I/O model IDs (P35_* prefix — confirmed from real .hsp inspection)
 const STADIUM_INPUT_MODEL = "P35_InputInst1";
+const STADIUM_INPUT_NONE_MODEL = "P35_InputNone";
 const STADIUM_OUTPUT_MODEL = "P35_OutputMatrix";
 
-// Block @type mapping (same integer encoding as Helix .hlx format)
-const STADIUM_BLOCK_TYPE_MAP: Record<string, number> = {
-  amp: 1,
-  cab: 2,
-  distortion: 6,
-  dynamics: 7,
-  eq: 8,
-  modulation: 9,
-  delay: 10,
-  reverb: 11,
-  wah: 12,
-  volume: 15,
-};
+/** Position 0 = input, position 13 = output (fixed by firmware) */
+const INPUT_POSITION = 0;
+const OUTPUT_POSITION = 13;
+
+// Block types that need amp-style harness params
+const AMP_TYPES = new Set(["amp"]);
+const CAB_TYPES = new Set(["cab"]);
 
 // ---------------------------------------------------------------------------
-// Types
+// Exported types
 // ---------------------------------------------------------------------------
-
-interface StadiumMeta {
-  color: string;
-  device_id: number;
-  device_version: number;
-  info: string;
-  name: string;
-}
-
-interface StadiumSnapshotEntry {
-  color: string;
-  expsw: number;
-  name: string;
-  source: number;
-  tempo: number;
-  valid: boolean;
-}
-
-interface StadiumPreset {
-  clip: Record<string, unknown>;
-  cursor: Record<string, unknown>;
-  flow: Array<Record<string, unknown>>;
-  params: {
-    activeexpsw: number;
-    activesnapshot: number;
-    inst1Z: string;
-    inst2Z: string;
-    tempo: number;
-  };
-  snapshots: StadiumSnapshotEntry[];
-  sources: Record<string, unknown>;
-  xyctrl: Record<string, unknown>;
-}
-
-interface HspJson {
-  meta: StadiumMeta;
-  preset: StadiumPreset;
-}
 
 export interface HspFile {
   /** The 8-byte ASCII magic header ("rpshnosj") */
@@ -92,15 +45,47 @@ export interface HspFile {
   serialized: string;
 }
 
+interface HspJson {
+  meta: StadiumMeta;
+  preset: StadiumPreset;
+}
+
+interface StadiumMeta {
+  device_id: number;
+  device_version: number;
+  info: string;
+  name: string;
+}
+
+interface StadiumSnapshotEntry {
+  color?: string;
+  expsw: number;
+  name: string;
+  source: number;
+  tempo: number;
+  valid: boolean;
+}
+
+interface StadiumPreset {
+  clip: Record<string, unknown>;
+  flow: Array<Record<string, unknown>>;
+  params: {
+    activeexpsw: number;
+    activesnapshot: number;
+    inst1Z: string;
+    tempo: number;
+  };
+  snapshots: StadiumSnapshotEntry[];
+  sources: Record<string, unknown>;
+  xyctrl: Record<string, unknown>;
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
 /**
  * Build a Helix Stadium .hsp preset file from a PresetSpec.
- *
- * The PresetSpec must have all blocks on dsp0 (single-path).
- * The chain should have been assembled with device="helix_stadium".
  *
  * Returns an HspFile with:
  *   - magic: "rpshnosj" (the 8-byte header)
@@ -175,7 +160,6 @@ export function summarizeStadiumPreset(spec: PresetSpec): string {
 
 function buildStadiumMeta(spec: PresetSpec): StadiumMeta {
   return {
-    color: "auto",
     device_id: DEVICE_IDS.helix_stadium,
     device_version: STADIUM_CONFIG.STADIUM_DEVICE_VERSION,
     info: "",
@@ -190,21 +174,30 @@ function buildStadiumMeta(spec: PresetSpec): StadiumMeta {
 function buildStadiumPreset(spec: PresetSpec): StadiumPreset {
   const flow = buildStadiumFlow(spec);
   const snapshots = buildStadiumSnapshots(spec);
+  const sources = buildStadiumSources();
 
   return {
-    clip: {},
-    cursor: { block: "b00", path: 0 },
+    clip: {
+      end: 10.0,
+      filename: "<EMPTY>",
+      path: "USER CLIPS",
+      start: 0.0,
+    },
     flow,
     params: {
       activeexpsw: 1,
       activesnapshot: 0,
       inst1Z: "FirstEnabled",
-      inst2Z: "FirstEnabled",
       tempo: spec.tempo,
     },
     snapshots,
-    sources: {},
-    xyctrl: {},
+    sources,
+    xyctrl: {
+      rbtime: 0.5,
+      rubberband: 1,
+      x: 0,
+      y: 0,
+    },
   };
 }
 
@@ -213,101 +206,325 @@ function buildStadiumPreset(spec: PresetSpec): StadiumPreset {
 // ---------------------------------------------------------------------------
 
 /**
- * Build preset.flow — array of path objects.
- * v3.0: single path (Path 1A) at index 0.
- * Each path is a Record<string, unknown> with:
- *   - input block ("P35_InputInst1")
- *   - all non-cab blocks keyed as b00, b01, ...
- *   - cab block (if present)
- *   - output block ("P35_OutputMatrix")
+ * Build preset.flow — array of flow (path) objects.
+ *
+ * Flow 0: Active path with input, effect blocks, cab, and output.
+ * Flow 1: Empty path (InputNone → OutputMatrix) — required by firmware.
+ *
+ * Block layout:
+ *   b00 = input (P35_InputInst1), position 0
+ *   b01..b12 = effect/amp/cab blocks, positions 1-12
+ *   b13 = output (P35_OutputMatrix), position 13
+ *
+ * Amp and cab blocks are linked via `linkedblock`.
+ * Per-snapshot bypass states are stored in each block's @enabled.snapshots array.
  */
 function buildStadiumFlow(spec: PresetSpec): Array<Record<string, unknown>> {
-  const path: Record<string, unknown> = {};
+  // Order blocks: non-cab sorted by position, cab inserted after its amp
+  const orderedBlocks = orderBlocksForFlow(spec.signalChain);
 
-  // Input block
-  path["input"] = {
-    "@model": STADIUM_INPUT_MODEL,
-    "@position": 0,
-    "@enabled": true,
+  // Build Flow 0 (active path)
+  const flow0: Record<string, unknown> = {};
+  flow0["@enabled"] = { value: true };
+
+  // Input block at b00
+  flow0["b00"] = buildInputBlock();
+
+  // Track amp → cab linking
+  let ampFlowPosition: number | null = null;
+  let ampBlockKey: string | null = null;
+  let cabFlowPosition: number | null = null;
+  let cabBlockKey: string | null = null;
+
+  // Place effect blocks starting at position 1
+  let flowPos = 1;
+  const blockKeyMap: Map<number, string> = new Map(); // signalChain index → flow block key
+
+  for (const { block, originalIndex } of orderedBlocks) {
+    const blockKey = `b${String(flowPos).padStart(2, "0")}`;
+    blockKeyMap.set(originalIndex, blockKey);
+
+    if (AMP_TYPES.has(block.type)) {
+      ampFlowPosition = flowPos;
+      ampBlockKey = blockKey;
+    }
+    if (CAB_TYPES.has(block.type)) {
+      cabFlowPosition = flowPos;
+      cabBlockKey = blockKey;
+    }
+
+    flow0[blockKey] = buildFlowBlock(block, flowPos, spec, originalIndex, blockKeyMap);
+    flowPos++;
+  }
+
+  // Wire up amp ↔ cab linked blocks after all blocks are placed
+  if (ampBlockKey && cabBlockKey) {
+    const ampBlock = flow0[ampBlockKey] as Record<string, unknown>;
+    const cabBlock = flow0[cabBlockKey] as Record<string, unknown>;
+    ampBlock["linkedblock"] = { block: cabBlockKey, flow: 0 };
+    cabBlock["linkedblock"] = { block: ampBlockKey, flow: 0 };
+  }
+
+  // Output block at b13
+  flow0["b13"] = buildOutputBlock();
+
+  // Build Flow 1 (empty path — required by firmware)
+  const flow1: Record<string, unknown> = {};
+  flow1["@enabled"] = { value: true };
+  flow1["b00"] = buildEmptyInputBlock();
+  flow1["b13"] = buildOutputBlock();
+
+  return [flow0, flow1];
+}
+
+/**
+ * Order blocks for the flow: non-cab blocks sorted by position, cab inserted after amp.
+ */
+function orderBlocksForFlow(signalChain: BlockSpec[]): Array<{ block: BlockSpec; originalIndex: number }> {
+  const nonCabBlocks = signalChain
+    .map((block, i) => ({ block, originalIndex: i }))
+    .filter(({ block }) => block.type !== "cab")
+    .sort((a, b) => a.block.position - b.block.position);
+
+  const cabBlocks = signalChain
+    .map((block, i) => ({ block, originalIndex: i }))
+    .filter(({ block }) => block.type === "cab");
+
+  // Find the amp position in the sorted list, insert cab right after
+  const result: Array<{ block: BlockSpec; originalIndex: number }> = [];
+  for (const entry of nonCabBlocks) {
+    result.push(entry);
+    if (entry.block.type === "amp" && cabBlocks.length > 0) {
+      result.push(cabBlocks[0]);
+    }
+  }
+
+  // If no amp was found but we have cabs, append them at the end
+  if (!nonCabBlocks.some(e => e.block.type === "amp")) {
+    for (const cab of cabBlocks) {
+      result.push(cab);
+    }
+  }
+
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Block builders
+// ---------------------------------------------------------------------------
+
+/**
+ * Build a slot-based flow block matching the real .hsp format.
+ *
+ * Real format example:
+ * {
+ *   "@enabled": { "value": true, "snapshots": [true, null, ...] },
+ *   "favorite": 0,
+ *   "harness": { "@enabled": { "value": true }, "params": { ... } },
+ *   "path": 0,
+ *   "position": N,
+ *   "slot": [{ "@enabled": { "value": true }, "model": "...", "params": { "Bass": { "access": "enabled", "value": 0.5 } }, "version": 0 }],
+ *   "type": "amp"
+ * }
+ */
+function buildFlowBlock(
+  block: BlockSpec,
+  flowPosition: number,
+  spec: PresetSpec,
+  originalIndex: number,
+  blockKeyMap: Map<number, string>,
+): Record<string, unknown> {
+  // Build @enabled with optional per-snapshot bypass states
+  const enabledObj = buildBlockEnabled(block, spec, originalIndex);
+
+  // Build slot params in { ParamName: { access: "enabled", value: X } } format
+  const slotParams: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(block.parameters)) {
+    slotParams[key] = { access: "enabled", value };
+  }
+
+  const obj: Record<string, unknown> = {
+    "@enabled": enabledObj,
+    favorite: 0,
+    harness: buildHarness(block),
+    path: 0,
+    position: flowPosition,
+    slot: [
+      {
+        "@enabled": { value: true },
+        model: block.modelId,
+        params: slotParams,
+        version: 0,
+      },
+    ],
+    type: block.type,
   };
 
-  // Non-cab blocks: b00, b01, b02, ...
+  return obj;
+}
+
+/**
+ * Build the @enabled object for a block, including per-snapshot bypass states.
+ *
+ * Real format: { "value": true, "snapshots": [true, null, null, ...] }
+ * - snapshots[i] = true/false for valid snapshots, null for invalid ones
+ */
+function buildBlockEnabled(
+  block: BlockSpec,
+  spec: PresetSpec,
+  originalIndex: number,
+): Record<string, unknown> {
+  const enabledObj: Record<string, unknown> = {
+    value: block.enabled,
+  };
+
+  // Build per-snapshot bypass states from spec.snapshots[].blockStates
+  // The blockStates key format is "blockN" where N is the index among non-cab blocks
   const nonCabBlocks = spec.signalChain
     .filter(b => b.type !== "cab")
     .sort((a, b) => a.position - b.position);
 
-  for (let i = 0; i < nonCabBlocks.length; i++) {
-    const block = nonCabBlocks[i];
-    const blockKey = `b${String(i).padStart(2, "0")}`;
-    path[blockKey] = buildStadiumBlock(block, i);
+  // Find this block's index among non-cab blocks (for blockStates key lookup)
+  const blockIndex = nonCabBlocks.findIndex(b => b === block);
+  // For cab blocks, use the cab's own index in signalChain
+  const blockStateKey = block.type === "cab" ? null : (blockIndex >= 0 ? `block${blockIndex}` : null);
+
+  if (blockStateKey && spec.snapshots.length > 0) {
+    const snapshotStates: (boolean | null)[] = [];
+    let hasAnyState = false;
+
+    for (let i = 0; i < STADIUM_CONFIG.STADIUM_MAX_SNAPSHOTS; i++) {
+      const snap: SnapshotSpec | undefined = spec.snapshots[i];
+      if (snap && snap.blockStates && blockStateKey in snap.blockStates) {
+        snapshotStates.push(snap.blockStates[blockStateKey]);
+        hasAnyState = true;
+      } else {
+        snapshotStates.push(null);
+      }
+    }
+
+    if (hasAnyState) {
+      enabledObj.snapshots = snapshotStates;
+    }
   }
 
-  // Cab block (separate entry, after all non-cab blocks)
-  const cabBlocks = spec.signalChain.filter(b => b.type === "cab");
-  for (let i = 0; i < cabBlocks.length; i++) {
-    const cab = cabBlocks[i];
-    const cabKey = `cab${i}`;
-    path[cabKey] = buildStadiumCabBlock(cab);
-  }
-
-  // Output block
-  path["output"] = {
-    "@model": STADIUM_OUTPUT_MODEL,
-    "@position": 0,
-    "@enabled": true,
-  };
-
-  // v3.0: single path (Path 1A), array with one entry
-  return [path];
+  return enabledObj;
 }
 
-// ---------------------------------------------------------------------------
-// Block serializers
-// ---------------------------------------------------------------------------
-
-function buildStadiumBlock(block: BlockSpec, indexInPath: number): Record<string, unknown> {
-  const blockType = STADIUM_BLOCK_TYPE_MAP[block.type] ?? 6;
-
-  const obj: Record<string, unknown> = {
-    "@model": block.modelId,
-    "@position": indexInPath,
-    "@enabled": block.enabled,
-    "@type": blockType,
-    "@no_snapshot_bypass": false,
-  };
-
-  // Trails for delay/reverb
-  if (block.trails) {
-    obj["@trails"] = true;
+/**
+ * Build the harness object for a block.
+ * Amp blocks get additional params (EvtIdx, bypass, upper).
+ * Cab blocks get params (EvtIdx, bypass, dual, upper).
+ * Other blocks get a minimal harness.
+ */
+function buildHarness(block: BlockSpec): Record<string, unknown> {
+  if (AMP_TYPES.has(block.type)) {
+    return {
+      "@enabled": { value: true },
+      params: {
+        EvtIdx: { access: "enabled", value: -1 },
+        bypass: { access: "enabled", value: false },
+        upper: { access: "enabled", value: true },
+      },
+    };
   }
 
-  // Amp-specific
-  if (block.type === "amp") {
-    obj["@bypassvolume"] = 1;
-    obj["@stereo"] = false;
+  if (CAB_TYPES.has(block.type)) {
+    return {
+      "@enabled": { value: true },
+      params: {
+        EvtIdx: { access: "enabled", value: -1 },
+        bypass: { access: "enabled", value: false },
+        dual: { access: "enabled", value: true },
+        upper: { access: "enabled", value: true },
+      },
+    };
   }
 
-  // Add parameters
-  for (const [key, value] of Object.entries(block.parameters)) {
-    obj[key] = value;
-  }
-
-  return obj;
+  return { "@enabled": { value: true } };
 }
 
-function buildStadiumCabBlock(block: BlockSpec): Record<string, unknown> {
-  const obj: Record<string, unknown> = {
-    "@model": block.modelId,
-    "@enabled": true,
-    "@type": STADIUM_BLOCK_TYPE_MAP["cab"],
+/**
+ * Build the input block at position b00.
+ */
+function buildInputBlock(): Record<string, unknown> {
+  return {
+    "@enabled": { value: true },
+    endpoint: "b13",
+    favorite: 0,
+    harness: { "@enabled": { value: true } },
+    path: 0,
+    position: INPUT_POSITION,
+    slot: [
+      {
+        "@enabled": { value: true },
+        model: STADIUM_INPUT_MODEL,
+        params: {
+          Pad: { access: "enabled", value: 1 },
+          Trim: { access: "enabled", value: 0.0 },
+          decay: { access: "enabled", value: 0.1 },
+          noiseGate: { access: "enabled", value: false },
+          threshold: { access: "enabled", value: -48.0 },
+        },
+        version: 0,
+      },
+    ],
+    type: "input",
   };
+}
 
-  // Cab parameters
-  for (const [key, value] of Object.entries(block.parameters)) {
-    obj[key] = value;
-  }
+/**
+ * Build the output block at position b13.
+ */
+function buildOutputBlock(): Record<string, unknown> {
+  return {
+    "@enabled": { value: true },
+    endpoint: "b00",
+    favorite: 0,
+    harness: { "@enabled": { value: true } },
+    path: 0,
+    position: OUTPUT_POSITION,
+    slot: [
+      {
+        "@enabled": { value: true },
+        model: STADIUM_OUTPUT_MODEL,
+        params: {
+          gain: { access: "enabled", value: 0.0 },
+          pan: { access: "enabled", value: 0.5 },
+        },
+        version: 0,
+      },
+    ],
+    type: "output",
+  };
+}
 
-  return obj;
+/**
+ * Build the empty input block for Flow 1 (InputNone).
+ */
+function buildEmptyInputBlock(): Record<string, unknown> {
+  return {
+    "@enabled": { value: true },
+    endpoint: "b13",
+    favorite: 0,
+    harness: { "@enabled": { value: true } },
+    path: 0,
+    position: INPUT_POSITION,
+    slot: [
+      {
+        "@enabled": { value: true },
+        model: STADIUM_INPUT_NONE_MODEL,
+        params: {
+          Trim: { access: "enabled", value: 0.0 },
+          decay: { access: "enabled", value: 0.1 },
+          noiseGate: { access: "enabled", value: false },
+          threshold: { access: "enabled", value: -48.0 },
+        },
+        version: 0,
+      },
+    ],
+    type: "input",
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -316,10 +533,13 @@ function buildStadiumCabBlock(block: BlockSpec): Record<string, unknown> {
 
 /**
  * Build preset.snapshots — array of 8 snapshot entries.
- * Stadium format differs from .hlx format:
- *   - Array (not keyed object)
- *   - Each entry: { color, expsw, name, source, tempo, valid }
- *   - No block bypass state in snapshot array — bypasses tracked per-block in flow
+ *
+ * Real .hsp format:
+ *   Valid:   { "color": "auto", "expsw": 1, "name": "...", "source": 0, "tempo": 120.0, "valid": true }
+ *   Invalid: { "expsw": -1, "name": "SNAPSHOT N", "source": 0, "tempo": 120.0, "valid": false }
+ *
+ * Note: invalid snapshots do NOT have the "color" field (verified from real files).
+ * Per-snapshot block bypass states are stored on each block's @enabled.snapshots, NOT here.
  */
 function buildStadiumSnapshots(spec: PresetSpec): StadiumSnapshotEntry[] {
   const snapshots: StadiumSnapshotEntry[] = [];
@@ -336,9 +556,7 @@ function buildStadiumSnapshots(spec: PresetSpec): StadiumSnapshotEntry[] {
         valid: true,
       });
     } else {
-      // Unfilled slots match the real .hsp format (expsw: -1, valid: false)
       snapshots.push({
-        color: "auto",
         expsw: -1,
         name: `SNAPSHOT ${i + 1}`,
         source: 0,
@@ -349,4 +567,43 @@ function buildStadiumSnapshots(spec: PresetSpec): StadiumSnapshotEntry[] {
   }
 
   return snapshots;
+}
+
+// ---------------------------------------------------------------------------
+// Sources builder (footswitch defaults)
+// ---------------------------------------------------------------------------
+
+/**
+ * Build preset.sources — footswitch label/color defaults.
+ *
+ * Real .hsp format has 24 entries (12 per flow):
+ *   Flow 0: keys 16843008..16843019 (0x01010100..0x0101010B)
+ *   Flow 1: keys 16843264..16843275 (0x01010200..0x0101020B)
+ *
+ * Each entry: { "fs_color": "auto", "fs_label": "", "fs_topidx": 0 }
+ */
+function buildStadiumSources(): Record<string, unknown> {
+  const sources: Record<string, unknown> = {};
+
+  // Flow 0: 12 footswitch sources
+  const flow0Base = 0x01010100; // 16843008
+  for (let i = 0; i < 12; i++) {
+    sources[String(flow0Base + i)] = {
+      fs_color: "auto",
+      fs_label: "",
+      fs_topidx: 0,
+    };
+  }
+
+  // Flow 1: 12 footswitch sources
+  const flow1Base = 0x01010200; // 16843264
+  for (let i = 0; i < 12; i++) {
+    sources[String(flow1Base + i)] = {
+      fs_color: "auto",
+      fs_label: "",
+      fs_topidx: 0,
+    };
+  }
+
+  return sources;
 }
