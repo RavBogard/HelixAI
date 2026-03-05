@@ -11,6 +11,7 @@ import type { AmpCategory, BlockSpec, TopologyTag } from "./types";
 import type { ToneIntent } from "./tone-intent";
 import {
   AMP_MODELS,
+  STADIUM_AMPS,
   DISTORTION_MODELS,
   DELAY_MODELS,
   REVERB_MODELS,
@@ -254,9 +255,10 @@ export function resolveParameters(
   intent: ToneIntent,
 ): BlockSpec[] {
   // Look up the amp model to determine category and topology
-  const ampModel = AMP_MODELS[intent.ampName];
+  // Stadium amps live in STADIUM_AMPS, standard amps in AMP_MODELS — check both
+  const ampModel = STADIUM_AMPS[intent.ampName] ?? AMP_MODELS[intent.ampName];
   if (!ampModel) {
-    throw new Error(`Unknown amp model: "${intent.ampName}" — not found in AMP_MODELS`);
+    throw new Error(`Unknown amp model: "${intent.ampName}" — not found in AMP_MODELS or STADIUM_AMPS`);
   }
 
   const ampCategory: AmpCategory = ampModel.ampCategory ?? "clean";
@@ -264,7 +266,9 @@ export function resolveParameters(
   const genreProfile = matchGenre(intent.genreHint);
 
   // Dual-amp: resolve second amp's category and topology independently (DUAL-04)
-  const secondAmpModel = intent.secondAmpName ? AMP_MODELS[intent.secondAmpName] : undefined;
+  const secondAmpModel = intent.secondAmpName
+    ? (STADIUM_AMPS[intent.secondAmpName] ?? AMP_MODELS[intent.secondAmpName])
+    : undefined;
   const secondAmpCategory: AmpCategory = secondAmpModel?.ampCategory ?? "clean";
   const secondTopology: TopologyTag = secondAmpModel?.topology ?? "not_applicable";
 
@@ -324,7 +328,7 @@ function resolveAmpParams(
   topology: TopologyTag,
 ): Record<string, number> {
   // Layer 1: Start with the model's own defaults
-  const model = AMP_MODELS[block.modelName];
+  const model = STADIUM_AMPS[block.modelName] ?? AMP_MODELS[block.modelName];
   const params: Record<string, number> = model
     ? { ...model.defaultParams }
     : { ...block.parameters };

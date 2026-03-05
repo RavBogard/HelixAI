@@ -7,7 +7,7 @@
 
 import type { BlockSpec, SnapshotSpec, AmpCategory } from "./types";
 import type { SnapshotIntent } from "./tone-intent";
-import { AMP_MODELS, LED_COLORS } from "./models";
+import { AMP_MODELS, STADIUM_AMPS, LED_COLORS } from "./models";
 
 // ---------------------------------------------------------------------------
 // LED color mapping by tone role
@@ -184,7 +184,7 @@ function detectAmpCategory(chain: BlockSpec[]): AmpCategory {
     || chain.find((b) => b.type === "amp");
   if (!ampBlock) return "clean";
 
-  const model = AMP_MODELS[ampBlock.modelName];
+  const model = STADIUM_AMPS[ampBlock.modelName] ?? AMP_MODELS[ampBlock.modelName];
   return model?.ampCategory ?? "clean";
 }
 

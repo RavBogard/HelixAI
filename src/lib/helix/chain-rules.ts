@@ -288,10 +288,10 @@ export function assembleSignalChain(intent: ToneIntent, device?: DeviceTarget): 
   let secondAmpModel: HelixModel | undefined;
   let secondCabModel: HelixModel | undefined;
   if (isDualAmp) {
-    secondAmpModel = AMP_MODELS[intent.secondAmpName!];
+    secondAmpModel = STADIUM_AMPS[intent.secondAmpName!] ?? AMP_MODELS[intent.secondAmpName!];
     if (!secondAmpModel) {
       throw new Error(
-        `Unknown second amp model: "${intent.secondAmpName}". Model name must exactly match a key in AMP_MODELS.`
+        `Unknown second amp model: "${intent.secondAmpName}". Model name must exactly match a key in AMP_MODELS or STADIUM_AMPS.`
       );
     }
     secondCabModel = CAB_MODELS[intent.secondCabName!];
