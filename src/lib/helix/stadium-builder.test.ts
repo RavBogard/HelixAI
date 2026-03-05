@@ -74,8 +74,8 @@ function makeStadiumFixture(): PresetSpec {
       // Cab — type: "cab", follows amp immediately (maps to b06)
       {
         type: "cab",
-        modelId: "HD2_CabMicIr_4x10TweedP10RWithPan",
-        modelName: "HD2_CabMicIr_4x10TweedP10RWithPan",
+        modelId: "HD2_CabMicIr_4x10TweedP10R",
+        modelName: "HD2_CabMicIr_4x10TweedP10R",
         dsp: 0,
         position: 3,
         path: 0,
@@ -550,5 +550,60 @@ describe("structural comparison with real .hsp reference", () => {
     expect(typeof meta["info"]).toBe("string");
     expect(typeof meta["name"]).toBe("string");
     expect((meta["name"] as string).length).toBeLessThanOrEqual(32);
+  });
+
+  // Test 10: Cab model ID gets WithPan suffix — confirmed across all 11 real .hsp files
+  it("cab block model ID has WithPan suffix even when input uses standard HD2_CabMicIr_ ID", () => {
+    const fixture = makeStadiumFixture();
+    // Fixture uses "HD2_CabMicIr_4x10TweedP10R" (no WithPan) — builder must add it
+    const result = buildHspFile(fixture);
+    const flow0 = result.json.preset.flow[0] as Record<string, unknown>;
+    const b06 = flow0["b06"] as Record<string, unknown>;
+    const slot = b06["slot"] as Array<Record<string, unknown>>;
+    expect(slot[0]["model"]).toBe("HD2_CabMicIr_4x10TweedP10RWithPan");
+  });
+
+  // Test 11: Effect blocks have EvtIdx/bypass/upper in harness — confirmed from real .hsp files
+  it("effect blocks (gate, boost, delay, reverb) have EvtIdx/bypass/upper harness params", () => {
+    const fixture = makeStadiumFixture();
+    const result = buildHspFile(fixture);
+    const flow0 = result.json.preset.flow[0] as Record<string, unknown>;
+
+    // Gate at b01
+    const b01 = flow0["b01"] as Record<string, unknown>;
+    const gateHarness = b01["harness"] as Record<string, unknown>;
+    const gateParams = gateHarness["params"] as Record<string, unknown>;
+    expect(gateParams["EvtIdx"]).toEqual({ value: -1 });
+    expect(gateParams["bypass"]).toEqual({ value: false });
+    expect(gateParams["upper"]).toEqual({ value: true });
+
+    // Boost at b02
+    const b02 = flow0["b02"] as Record<string, unknown>;
+    const boostHarness = b02["harness"] as Record<string, unknown>;
+    const boostParams = boostHarness["params"] as Record<string, unknown>;
+    expect(boostParams["EvtIdx"]).toEqual({ value: -1 });
+    expect(boostParams["bypass"]).toEqual({ value: false });
+    expect(boostParams["upper"]).toEqual({ value: true });
+  });
+
+  // Test 12: Delay/reverb harness includes Trails param
+  it("delay and reverb blocks have Trails param in harness (in addition to EvtIdx/bypass/upper)", () => {
+    const fixture = makeStadiumFixture();
+    const result = buildHspFile(fixture);
+    const flow0 = result.json.preset.flow[0] as Record<string, unknown>;
+
+    // Delay at b07
+    const b07 = flow0["b07"] as Record<string, unknown>;
+    const delayHarness = b07["harness"] as Record<string, unknown>;
+    const delayParams = delayHarness["params"] as Record<string, unknown>;
+    expect(delayParams["Trails"]).toEqual({ value: true });
+    expect(delayParams["EvtIdx"]).toEqual({ value: -1 });
+
+    // Reverb at b08
+    const b08 = flow0["b08"] as Record<string, unknown>;
+    const reverbHarness = b08["harness"] as Record<string, unknown>;
+    const reverbParams = reverbHarness["params"] as Record<string, unknown>;
+    expect(reverbParams["Trails"]).toEqual({ value: true });
+    expect(reverbParams["EvtIdx"]).toEqual({ value: -1 });
   });
 });

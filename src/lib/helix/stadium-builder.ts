@@ -409,6 +409,12 @@ function buildFlowBlock(
     slotParams[key] = { value };
   }
 
+  // Stadium cabs require "WithPan" suffix on model ID — confirmed across all 11 real .hsp files
+  // e.g., "HD2_CabMicIr_4x10TweedP10R" → "HD2_CabMicIr_4x10TweedP10RWithPan"
+  const modelId = block.type === "cab" && block.modelId.startsWith("HD2_CabMicIr_") && !block.modelId.endsWith("WithPan")
+    ? block.modelId + "WithPan"
+    : block.modelId;
+
   const obj: Record<string, unknown> = {
     "@enabled": enabledObj,
     favorite: 0,
@@ -418,7 +424,7 @@ function buildFlowBlock(
     slot: [
       {
         "@enabled": { value: true },
-        model: block.modelId,
+        model: modelId,
         params: slotParams,
         version: 0,
       },
@@ -511,7 +517,18 @@ function buildHarness(block: BlockSpec): Record<string, unknown> {
     };
   }
 
-  return { "@enabled": { value: true } };
+  // All effect blocks require EvtIdx + bypass + upper in harness — confirmed from all 11 real .hsp files
+  // Delay/reverb also get Trails param in harness
+  const isDelayOrReverb = block.type === "delay" || block.type === "reverb";
+  return {
+    "@enabled": { value: true },
+    params: {
+      EvtIdx: { value: -1 },
+      ...(isDelayOrReverb ? { Trails: { value: true } } : {}),
+      bypass: { value: false },
+      upper: { value: true },
+    },
+  };
 }
 
 /**

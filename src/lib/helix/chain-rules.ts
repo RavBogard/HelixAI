@@ -304,6 +304,40 @@ export function assembleSignalChain(intent: ToneIntent, device?: DeviceTarget): 
     }
   }
 
+  if (!ampModel && !stadium) {
+    // Reverse fallback: planner returned an Agoura name for a non-Stadium device.
+    // The Zod schema allows all amp names (HD2 + Agoura) so constrained decoding
+    // can pick Agoura amps for Helix/Stomp/PodGo. Map back to closest HD2 equivalent.
+    const agModel = STADIUM_AMPS[intent.ampName];
+    if (agModel) {
+      // Strategy 1: Name word overlap — "Agoura Brit Plexi" → "Brit Plexi Brt" (2 word match)
+      const agWords = intent.ampName.toLowerCase().replace("agoura ", "").split(/\s+/);
+      let bestNameMatch: [string, HelixModel] | undefined;
+      let bestNameScore = 0;
+      for (const entry of Object.entries(AMP_MODELS)) {
+        const hd2Words = entry[0].toLowerCase().split(/\s+/);
+        const score = agWords.filter(w => hd2Words.includes(w)).length;
+        if (score > bestNameScore) {
+          bestNameScore = score;
+          bestNameMatch = entry;
+        }
+      }
+      if (bestNameMatch && bestNameScore >= 1) {
+        ampModel = bestNameMatch[1];
+        console.warn(`[chain-rules] Agoura→HD2 fallback: "${intent.ampName}" → "${bestNameMatch[0]}" (name match, score=${bestNameScore})`);
+      } else {
+        // Strategy 2: Match by ampCategory (clean/crunch/high_gain)
+        const byCat = Object.entries(AMP_MODELS).find(([, m]) =>
+          m.ampCategory === agModel.ampCategory
+        );
+        if (byCat) {
+          ampModel = byCat[1];
+          console.warn(`[chain-rules] Agoura→HD2 fallback: "${intent.ampName}" → "${byCat[0]}" (category match: ${agModel.ampCategory})`);
+        }
+      }
+    }
+  }
+
   if (!ampModel) {
     throw new Error(
       `Unknown amp model: "${intent.ampName}". Model name must exactly match a key in ${stadium ? "STADIUM_AMPS" : "AMP_MODELS"}.`

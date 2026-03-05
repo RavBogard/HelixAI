@@ -458,4 +458,27 @@ describe("assembleSignalChain", () => {
     expect(ampBlock).toBeDefined();
     expect(ampBlock!.modelId).toMatch(/^HD2_/);
   });
+
+  it("Non-Stadium device with Agoura amp name falls back to HD2 equivalent", () => {
+    // "Agoura Brit Plexi" is Stadium-only — should fallback to closest HD2 amp for Stomp XL
+    const chain = assembleSignalChain(
+      cleanIntent({ ampName: "Agoura Brit Plexi" }),
+      "helix_stomp_xl"
+    );
+    const ampBlock = chain.find((b) => b.type === "amp");
+    expect(ampBlock).toBeDefined();
+    expect(ampBlock!.modelId).toMatch(/^HD2_/); // Must be HD2, not Agoura
+    expect(ampBlock!.modelName).not.toMatch(/^Agoura/);
+  });
+
+  it("Helix Floor with Agoura amp name falls back to HD2 equivalent", () => {
+    // "Agoura US Clean" is Stadium-only — should map to a Fender clean HD2 amp
+    const chain = assembleSignalChain(
+      cleanIntent({ ampName: "Agoura US Clean" }),
+      "helix_floor"
+    );
+    const ampBlock = chain.find((b) => b.type === "amp");
+    expect(ampBlock).toBeDefined();
+    expect(ampBlock!.modelId).toMatch(/^HD2_/);
+  });
 });

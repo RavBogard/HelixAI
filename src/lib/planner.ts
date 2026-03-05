@@ -5,7 +5,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { ToneIntentSchema, getModelListForPrompt, isPodGo, isStadium, isStomp, AMP_MODELS } from "@/lib/helix";
+import { ToneIntentSchema, getModelListForPrompt, isPodGo, isStadium, isStomp, AMP_MODELS, VARIAX_MODEL_NAMES } from "@/lib/helix";
 import { STOMP_CONFIG } from "@/lib/helix/config";
 import type { ToneIntent, DeviceTarget } from "@/lib/helix";
 import { logUsage, estimateClaudeCost } from "@/lib/usage-logger";
@@ -98,7 +98,7 @@ Generate a JSON object with these fields:
 - **presetName**: A creative, descriptive preset name (max 32 characters)
 - **description**: Brief tone description summarizing the preset character
 - **guitarNotes**: Tips for the user — pickup position, tone knob, volume knob suggestions
-- **variaxModel** (OPTIONAL): If and ONLY if the user mentioned a Variax guitar (JTV-69, JTV-89, Standard, Shuriken, etc.) in conversation, set this to their preferred Variax tone model: "Spank" (Strat), "Lester" (LP), "T-Model" (Tele), "Special" (SG), "Jazzbox" (ES-335), "Acoustic", "Reso" (Resonator), "Semi" (semi-hollow), or "R-Billy" (Gretsch). Choose the model that best matches the described tone goal. Leave EMPTY if no Variax was mentioned — NEVER ask about Variax unprompted.
+- **variaxModel** (OPTIONAL): If and ONLY if the user mentioned a Variax guitar (JTV-69, JTV-89, Standard, Shuriken, etc.) in conversation, set this to their preferred Variax tone model. Valid values: ${VARIAX_MODEL_NAMES.map(n => `"${n}"`).join(", ")}. Choose the model that best matches the described tone goal. Leave EMPTY if no Variax was mentioned — NEVER ask about Variax unprompted.
 
 ## What You Do NOT Generate
 
@@ -269,6 +269,12 @@ export async function callClaudePlanner(
       ...s,
       name: typeof s.name === "string" ? s.name.slice(0, 10) : s.name,
     }));
+  }
+
+  // Strip invalid variaxModel before Zod validation — Claude occasionally
+  // hallucinates model names (e.g., "Strat" instead of "Spank")
+  if (raw.variaxModel && !VARIAX_MODEL_NAMES.includes(raw.variaxModel)) {
+    delete raw.variaxModel;
   }
 
   // Belt-and-suspenders: Zod validates all remaining constraints
