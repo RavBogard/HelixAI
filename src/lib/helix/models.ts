@@ -190,6 +190,8 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     ampCategory: "crunch" as const,
     topology: "plate_fed" as const,
     cabAffinity: ["1x12 Grammatico","4x12 Greenback25"],
+    ampFamily: "Grammatico",
+    paramOverrides: { Drive: 0.40, Master: 0.90 },  // LaGrange's MV dimed shapes power-section compression
     blockType: BLOCK_TYPES.AMP,
     defaultParams: { Drive: 0.40, Bass: 0.30, Mid: 0.55, Treble: 0.60, ChVol: 0.7, Master: 0.90, Presence: 0.50, Sag: 0.65, Hum: 0.1, Ripple: 0.1, Bias: 0.65, BiasX: 0.50 },
   },
@@ -242,6 +244,8 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     ampCategory: "crunch" as const,
     topology: "plate_fed" as const,
     cabAffinity: ["4x12 Greenback25","4x12 Greenback20","4x12 Brit V30"],
+    ampFamily: "Marshall",
+    paramOverrides: { Drive: 0.55, Master: 1.0 },  // AMP-04: Jumped channel non-MV; same as Nrm/Brt siblings
     blockType: BLOCK_TYPES.AMP,
     defaultParams: { Drive: 0.55, Bass: 0.20, Mid: 0.80, Treble: 0.70, ChVol: 0.7, Master: 1.0, Presence: 0.40, Sag: 0.60, Hum: 0.20, Ripple: 0.15, Bias: 0.70, BiasX: 0.50 },
   },
@@ -612,6 +616,8 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     ampCategory: "crunch" as const,
     topology: "plate_fed" as const,
     cabAffinity: ["1x12 Grammatico","4x12 Greenback25"],
+    ampFamily: "Grammatico",
+    paramOverrides: { Drive: 0.50, Master: 0.85 },  // Bright channel needs more input; MV slightly backed off
     blockType: BLOCK_TYPES.AMP,
     defaultParams: { Drive: 0.50, Bass: 0.30, Mid: 0.55, Treble: 0.65, ChVol: 0.7, Master: 0.85, Presence: 0.50, Sag: 0.60, Hum: 0.1, Ripple: 0.1, Bias: 0.65, BiasX: 0.50 },
   },
@@ -623,6 +629,8 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     ampCategory: "crunch" as const,
     topology: "plate_fed" as const,
     cabAffinity: ["1x12 Grammatico","4x12 Greenback25"],
+    ampFamily: "Grammatico",
+    paramOverrides: { Drive: 0.50, Master: 0.85 },  // Jumped channel; matches Brt input/MV balance
     blockType: BLOCK_TYPES.AMP,
     defaultParams: { Drive: 0.50, Bass: 0.30, Mid: 0.55, Treble: 0.62, ChVol: 0.7, Master: 0.85, Presence: 0.50, Sag: 0.60, Hum: 0.1, Ripple: 0.1, Bias: 0.65, BiasX: 0.50 },
   },

@@ -36,8 +36,8 @@ const LED_CSS: Record<number, string> = {
   4: "#22c55e",   // Green
   5: "#06b6d4",   // Turquoise
   6: "#3b82f6",   // Blue
-  7: "#e5e7eb",   // White
-  8: "#a855f7",   // Purple
+  7: "#a855f7",   // Purple
+  8: "#e5e7eb",   // White
 };
 
 // Block type → display label

@@ -307,7 +307,7 @@ function buildStadiumFlow(spec: PresetSpec): Array<Record<string, unknown>> {
     .map((block, i) => ({
       block,
       originalIndex: spec.signalChain.indexOf(block),
-      slotName: i === 0 ? "post_effect_1" : i === 1 ? "post_effect_2" : i === 2 ? "post_effect_3" : "post_gain",
+      slotName: i === 0 ? "post_gate" : i === 1 ? "post_eq" : i === 2 ? "post_effect_1" : i === 3 ? "post_effect_2" : i === 4 ? "post_effect_3" : "post_gain",
     }));
 
   // Build Flow 0 (active path)
@@ -327,7 +327,7 @@ function buildStadiumFlow(spec: PresetSpec): Array<Record<string, unknown>> {
     if (slotPos !== undefined) {
       const blockKey = makeBlockKey(slotPos);
       blockKeyMap.set(originalIndex, blockKey);
-      flow0[blockKey] = buildFlowBlock(block, slotPos, spec, originalIndex, blockKeyMap);
+      flow0[blockKey] = buildFlowBlock(block, slotPos, spec, originalIndex);
     }
   }
 
@@ -337,7 +337,7 @@ function buildStadiumFlow(spec: PresetSpec): Array<Record<string, unknown>> {
     const ampSlotPos = STADIUM_SLOT_ALLOCATION["amp"]!;
     ampBlockKey = makeBlockKey(ampSlotPos);
     blockKeyMap.set(ampOriginalIndex, ampBlockKey);
-    flow0[ampBlockKey] = buildFlowBlock(ampBlock, ampSlotPos, spec, ampOriginalIndex, blockKeyMap);
+    flow0[ampBlockKey] = buildFlowBlock(ampBlock, ampSlotPos, spec, ampOriginalIndex);
   }
 
   // Cab at b06 (fixed canonical position — always follows amp)
@@ -346,7 +346,7 @@ function buildStadiumFlow(spec: PresetSpec): Array<Record<string, unknown>> {
     const cabSlotPos = STADIUM_SLOT_ALLOCATION["cab"]!;
     cabBlockKey = makeBlockKey(cabSlotPos);
     blockKeyMap.set(cabOriginalIndex, cabBlockKey);
-    flow0[cabBlockKey] = buildFlowBlock(cabBlock, cabSlotPos, spec, cabOriginalIndex, blockKeyMap);
+    flow0[cabBlockKey] = buildFlowBlock(cabBlock, cabSlotPos, spec, cabOriginalIndex);
   }
 
   // Post-amp effect blocks at b07-b12
@@ -355,7 +355,7 @@ function buildStadiumFlow(spec: PresetSpec): Array<Record<string, unknown>> {
     if (slotPos !== undefined) {
       const blockKey = makeBlockKey(slotPos);
       blockKeyMap.set(originalIndex, blockKey);
-      flow0[blockKey] = buildFlowBlock(block, slotPos, spec, originalIndex, blockKeyMap);
+      flow0[blockKey] = buildFlowBlock(block, slotPos, spec, originalIndex);
     }
   }
 
@@ -402,7 +402,6 @@ function buildFlowBlock(
   flowPosition: number,
   spec: PresetSpec,
   originalIndex: number,
-  blockKeyMap: Map<number, string>,
 ): Record<string, unknown> {
   // Build @enabled with optional per-snapshot bypass states
   const enabledObj = buildBlockEnabled(block, spec, originalIndex);

@@ -58,8 +58,8 @@ describe("resolveParameters", () => {
     expect(amp.parameters.ChVol).toBe(0.70);
   });
 
-  // Test 2: Crunch amp parameters
-  it("sets crunch amp Drive 0.40-0.60, Master 0.50-0.70, SAG 0.40-0.50", () => {
+  // Test 2: Crunch amp parameters — Grammatico Nrm has paramOverrides (Drive:0.40, Master:0.90)
+  it("sets crunch amp with paramOverrides to expert-tuned values", () => {
     const chain: BlockSpec[] = [
       makeBlock({ type: "amp", modelId: "HD2_AmpGrammaticoNrm", modelName: "Grammatico Nrm" }),
     ];
@@ -67,10 +67,8 @@ describe("resolveParameters", () => {
     const result = resolveParameters(chain, intent);
     const amp = result[0];
 
-    expect(amp.parameters.Drive).toBeGreaterThanOrEqual(0.40);
-    expect(amp.parameters.Drive).toBeLessThanOrEqual(0.60);
-    expect(amp.parameters.Master).toBeGreaterThanOrEqual(0.50);
-    expect(amp.parameters.Master).toBeLessThanOrEqual(0.70);
+    expect(amp.parameters.Drive).toBe(0.40);    // Layer 4 override from paramOverrides
+    expect(amp.parameters.Master).toBe(0.90);   // Layer 4 override — LaGrange MV dimed for power-section compression
     expect(amp.parameters.Sag).toBeGreaterThanOrEqual(0.40);
     expect(amp.parameters.Sag).toBeLessThanOrEqual(0.50);
   });
@@ -375,11 +373,11 @@ describe("resolveParameters", () => {
   });
 
   it("amps without paramOverrides still use category defaults (no regression)", () => {
-    // Grammatico Nrm is crunch, has no paramOverrides
+    // Line 6 2204 Mod is crunch, has no paramOverrides
     const chain: BlockSpec[] = [
-      makeBlock({ type: "amp", modelId: "HD2_AmpGrammaticoNrm", modelName: "Grammatico Nrm" }),
+      makeBlock({ type: "amp", modelId: "HD2_AmpLine62204Mod", modelName: "Line 6 2204 Mod" }),
     ];
-    const intent = makeIntent({ ampName: "Grammatico Nrm" });
+    const intent = makeIntent({ ampName: "Line 6 2204 Mod" });
     const result = resolveParameters(chain, intent);
     // AMP_DEFAULTS.crunch.Drive = 0.50 — no override, category default wins
     expect(result[0].parameters.Drive).toBe(0.50);
