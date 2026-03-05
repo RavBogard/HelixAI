@@ -1,349 +1,390 @@
 # Pitfalls Research
 
-**Domain:** Adding preset quality leap and API cost optimization to existing HelixTones planner-executor app
-**Researched:** 2026-03-04
-**Confidence:** HIGH for prompt engineering pitfalls (multiple studies, Anthropic docs); HIGH for parallel routing pitfalls (official Line 6 community + Helix manuals); MEDIUM for model-split routing risks (community reports, pricing docs, no HelixTones-specific data); HIGH for param engine over-engineering patterns (codebase analysis + software engineering research)
+**Domain:** HelixTones v4.0 — Stadium .hsp rebuild, preset quality improvements, per-model param overrides, device abstraction refactor, AI model routing split, shared Knowledge Layer modification
+**Researched:** 2026-03-05
+**Confidence:** HIGH — based on direct codebase inspection (stadium-builder.ts, param-engine.ts, chain-rules.ts, planner.ts, config.ts, tone-intent.ts, models.ts), real .hsp reference files (Cranked_2203.hsp, Rev_120_Purple_Recto.hsp), existing bug history (dual-DSP key collision, Stadium amp lookup failure documented in PROJECT.md), architectural CONCERNS audit (2026-03-02), and official Anthropic prompt caching documentation.
 
-> This document supersedes the v3.0 pitfalls document (Stadium device addition). The focus here is the risks of improving preset quality and optimizing API costs in an app that already has a working Planner-Executor architecture. Previous pitfalls (device ID, file format, model catalog naming) are not repeated.
+> This document covers v4.0 pitfalls across two dimensions: (A) codebase-specific pitfalls discovered from direct source inspection and real .hsp file analysis, and (B) architectural pitfalls from prompt engineering research, community analysis, and routing patterns. Both dimensions are required for safe v4.0 execution.
 
 ---
 
 ## Critical Pitfalls
 
-These cause silent quality regressions, broken generation, or increased cost without benefit.
+### Pitfall 1: Stadium Agoura Amps Use Non-Standard Parameter Keys That the Category Overlay Ignores
+
+**What goes wrong:**
+The Agoura amp models (Stadium-exclusive) contain parameters absent from all standard Helix amps: `ZPrePost`, `Jack`, `Hype`, `Level`, `AmpCabPeak2Fc`, `AmpCabPeak2G`, `AmpCabPeak2Q`, `AmpCabPeakFc`, `AmpCabPeakG`, `AmpCabPeakQ`, `AmpCabShelfF`, `AmpCabShelfG`, `AmpCabZFir`, `AmpCabZUpdate`. The `AMP_DEFAULTS` category tables in `param-engine.ts` cover only the standard Helix set (Drive, Master, Bass, Mid, Treble, Presence, Sag, Hum, Ripple, BiasX). When `resolveAmpParams()` applies the category overlay to an Agoura amp, those extra parameters receive no category-level value — they rely entirely on `model.defaultParams` in `STADIUM_AMPS`.
+
+Confirmed from `real-cranked-2203-pretty.json`: `Agoura_AmpBrit2203MV` requires `ZPrePost: 0.81`, `Jack: 1` (integer enum, not float), `Hype: 0.26`, `Level: -10.0`, `Sag: 0.0`, `Ripple: 0.0`. The standard high_gain category defaults are `Sag: 0.25`, `Ripple: 0.05`, `Master: 0.45` — all wrong for this amp. If `STADIUM_AMPS` entries were estimated rather than extracted from real .hsp files, every generated Stadium preset has systematically wrong amp parameters on hardware.
+
+**Why it happens:**
+`resolveAmpParams()` applies `AMP_DEFAULTS[ampCategory]` unconditionally over model defaults. For Agoura amps, this overwrites the correct Sag/Ripple values with category values that were derived from HD2_* model analysis. There is no guard that says "for Stadium amps, preserve model defaults for keys not in the shared param set."
+
+**How to avoid:**
+For every Agoura amp in `STADIUM_AMPS`, extract `defaultParams` directly from real .hsp files — not by estimation. `Level` is in dB (not normalized 0-1). `Jack` is an integer. `AmpCab*` keys are EQ parameters baked into the amp model. Create a separate `STADIUM_AMP_DEFAULTS` table covering only the keys verified to be shared between Agoura and HD2_* amp models, or gate the category overlay with a `model.stadiumOnly` flag check to skip incompatible keys.
+
+**Warning signs:**
+- Stadium preset sounds muddy or over-compressed (Level param at 0 instead of -10 dB shifts output level by 10 dB)
+- Stadium preset loads but amp sounds thin (AmpCab* EQ params absent, defaulting to firmware zero values)
+- `Jack: 0.0` in generated output instead of `Jack: 1` (integer) — firmware may reject non-integer enum
+
+**Phase to address:**
+Stadium builder rebuild phase — validate every Agoura amp's `defaultParams` against real .hsp files before any generation attempt.
 
 ---
 
-### Pitfall 1: Planner Prompt Bloat Degrades Structured Output Quality
+### Pitfall 2: Stadium Cab Params Are a Partial Schema — Missing Delay, IrData, Level, Pan, Position
 
 **What goes wrong:**
+Real .hsp inspection of `Cranked_2203.hsp` shows the Stadium cab block (`HD2_CabMicIr_4x121960AT75WithPan`) includes `Delay`, `IrData`, `Level`, `Pan`, `Position` — not present in the current `resolveCabParams()` implementation. The current code only emits `LowCut`, `HighCut`, `Mic`, `Distance`, `Angle`. The builder wraps whatever `resolveCabParams()` returns in the `{ access, value }` slot format, so the generated .hsp cab block will be missing required firmware params.
 
-The quality improvement goal involves enriching the ToneIntent prompting — adding richer creative guidelines, signal chain intelligence rules, effect interaction patterns, and advanced routing instructions to the planner system prompt. The trap is that adding more instructions to the planner prompt can degrade structured output compliance, not improve it.
-
-Research from 2025/2026 (arxiv.org) shows that a "generic improved" prompt can cause extraction pass rate to drop from 100% to 90% and RAG compliance from 93.3% to 80% for structured output tasks. This is the "lost in the middle" effect: LLMs give less weight to information in the middle of long contexts compared to beginning and end. A planner prompt that was tuned to produce reliable ToneIntent JSON may start producing schema validation failures or low-quality creative selections when bloated with additional guidance.
-
-The current planner prompt already works well. Adding 500+ tokens of additional creative guidelines without testing is gambling with structured output reliability.
+More critically: the real .hsp shows Stadium cabs with `LowCut: 19.9 Hz` (near-zero — cab model handles its own filtering). The current `CAB_PARAMS` table sets `LowCut: 100 Hz` for high_gain cabs. Generated Stadium presets will over-filter low end, causing thin bass response that conflicts with the Stadium hardware's actual behavior.
 
 **Why it happens:**
-
-The instinct is "more context = better output." This is usually correct for conversational tasks but frequently wrong for structured output tasks where the model must adhere to a narrow schema. Instruction competition degrades compliance with format rules.
+`resolveCabParams()` was built from Helix LT/Floor format knowledge. Stadium cabs use the same `HD2_CabMicIr_*WithPan` model family but in .hsp slot-based format, and those models have additional params not exposed in the .hlx format. The cab schema difference was not discovered during v3.0 development because only 2 real .hsp files were used for reference, and the param comparison was focused on structure, not completeness.
 
 **How to avoid:**
-
-- Benchmark the current planner prompt's quality baseline before changing anything (number of valid ToneIntent outputs, schema compliance rate, creative diversity across 10-20 test conversations)
-- When adding new guidance, add one section at a time and retest — never batch multiple prompt changes
-- Keep the prompt under 2,000 tokens total; if it exceeds this, prune lower-value sections
-- If adding creative guidelines, put them BEFORE the schema field definitions, not after — the model weights instructions near the beginning more heavily
-- Use the Anthropic structured output (`zodOutputFormat`) that already constrains decoding — this mitigates but does not eliminate the degradation risk
+Read the full param set for a Stadium cab block from a real .hsp file and update `CAB_MODELS` defaultParams for `HD2_CabMicIr_*WithPan` models to include all six params: `LowCut`, `HighCut`, `Mic`, `Distance`, `Angle`, `Delay`, `IrData`, `Level`, `Pan`, `Position`. Add a Stadium-specific cab param resolver path in `resolveCabParams()` gated on `isStadium(device)` if Stadium needs different default LowCut/HighCut values than Helix.
 
 **Warning signs:**
+- Generated .hsp cab block has 5 params; reference .hsp has 10 params — field count mismatch visible in diff
+- Stadium preset loads but bass sounds filtered or thin relative to factory presets
+- Preset validator passes (cab param completeness is not validated) but hardware behavior differs from expected
 
-- Schema validation failures start appearing in logs after a prompt update
-- Generated ToneIntent objects are syntactically valid but creatively flat (same amp choices, same 3 effects every time)
-- Effect role distribution skews — everything becomes "always_on", no "toggleable" or "ambient" choices
-- `ampName` selections become repetitive (model falls back to "safe" choices it's seen often)
-
-**Phase to address:** Quality research phase — establish a quality baseline and a prompt change protocol before any planner prompt modifications
+**Phase to address:**
+Stadium builder rebuild phase — do a field-by-field param comparison between generated and reference .hsp for every block type before marking Stadium unblocked.
 
 ---
 
-### Pitfall 2: Parallel Path Generation Without Phase-Awareness Creates Unusable Presets
+### Pitfall 3: Prompt Enrichment Invalidates the Prompt Cache Token Boundary
 
 **What goes wrong:**
+The planner system prompt is cached via `cache_control: { type: "ephemeral" }`. Any character-level change to the system prompt text — including appending gain-staging rules, cab pairing heuristics, or effect discipline guidance — creates a new cache bucket and invalidates the existing one. The first request after a deploy pays full input token cost (`cache_creation_input_tokens`), and the cache only repopulates after sufficient reuse.
 
-Advanced signal routing is one of the three quality dimensions for v4.0 — the goal is adding parallel paths and creative splits where appropriate. The trap is generating parallel path presets without encoding phase awareness into the chain rules. Helix parallel paths are notorious in the community for phase cancellation: when two amp paths are summed at the merge block, comb filtering and phase-induced frequency cancellations cause the combined tone to sound "hollow", "thin", or "back of the throat."
-
-This happens systematically, not as a rare edge case. The Line 6 community (line6.com support forum) documents this as a recurring problem in dual-amp setups. When Path A has one amp and Path B has another, summing them at a merge block creates a phase conflict because the two amp models process the signal differently in time. The merged result sounds worse than either path alone.
-
-The current chain rules generate clean series-path presets that work. Adding parallel paths without a phase inversion strategy ships broken presets.
+The more serious failure mode: enrichment that inserts device-specific text inside the existing `if (stadium)` / `if (podGo)` conditional blocks in `buildPlannerPrompt()` means every device variant now has a larger, different prompt. If the shared static prefix (the first 90% of the prompt that was previously identical across all devices) gains conditionally-inserted content that varies by device, there are now 6 separate cache buckets — each with lower hit frequency — potentially eliminating cache savings entirely.
 
 **Why it happens:**
-
-Parallel routing looks straightforward in the Helix block diagram — split, process, join. The phase behavior is invisible at the chain-rules level because it is a firmware/hardware artifact of how the DSP sums the two paths. The Knowledge Layer currently has no concept of phase.
+`buildPlannerPrompt(modelList, device)` builds the prompt string at call time. The cache key is the full content. Developers adding enrichment naturally reach for the section they're modifying (e.g., the stadium block) without modeling the cache fragmentation impact. Prompt caching ROI analysis typically looks at per-call token costs, not at the interaction between content placement and cache bucket multiplicity.
 
 **How to avoid:**
+Treat the system prompt like a compiled binary with a stable shared prefix. New enrichment content (gain-staging rules, cab affinity guidance, effect discipline) belongs in the shared static section that is identical across all devices — generic enough to apply everywhere. Device-specific text must remain in the `if (device)` blocks that are already at the end of the prompt. Rule: the first ~70% of the prompt must be character-for-character identical for all 6 device calls.
 
-- Any parallel path in generated presets must include a Poly Capo or 6-tap Trem block set to 0 shift (used as a phase inverter), OR the chain rules must use the Split block's `Pan` parameter to offset the two paths and rely on user adjustment
-- The safest approach is a wet/dry split pattern where Path B carries effects-only (delay, reverb, modulation at 100% wet mix) and Path A carries the dry amp signal — this avoids the dual-amp phase problem entirely
-- Do NOT generate dual-amp parallel paths (two amp blocks, one per path) without explicit phase inversion logic in the chain rules
-- For dual-amp presets (already supported in v2.0), verify that the existing split/join implementation does not produce phase cancellation before extending it to new routing patterns
+Before any prompt change: use the existing token usage logger (`usage-logger.ts`) to measure current cache hit rate as baseline. After deploy, verify cache hit rate is within 5% of baseline. Any drop larger than that indicates cache fragmentation.
 
 **Warning signs:**
+- `cache_read_input_tokens` drops to zero after a deploy (cache miss)
+- `cache_creation_input_tokens` spikes in the usage log after any prompt change
+- Cost per generation doubles unexpectedly post-deploy
 
-- Generated presets with two amp blocks on parallel paths and no explicit phase correction block
-- Any `Split` block followed by two `amp` blocks (one each on Path A and B) without a `Phase Inverter` or equivalent in the chain spec
-- Community reports that AI-generated parallel presets sound thin or hollow compared to the single-amp version of the same preset
-
-**Phase to address:** Advanced routing phase — before implementing any parallel path generation, the chain rules must encode a phase-safe parallel routing pattern
+**Phase to address:**
+Planner prompt enrichment phase — restructure `buildPlannerPrompt` so new content can be appended to stable sections before adding any enrichment text.
 
 ---
 
-### Pitfall 3: Model Split (Haiku Chat / Sonnet Generation) Breaks Prompt Cache Architecture
+### Pitfall 4: Per-Model Amp Overrides Are Silently Discarded by Category Defaults
 
 **What goes wrong:**
+`resolveAmpParams()` applies a 3-layer strategy: (1) model `defaultParams`, (2) `AMP_DEFAULTS[ampCategory]` category overlay, (3) topology mid override. Layer 2 iterates `AMP_DEFAULTS[category]` and unconditionally writes each key into `params`. If a per-model override is added at Layer 1 (model `defaultParams`) for a value that is also in Layer 2 (`AMP_DEFAULTS`), the override is silently discarded — the category default wins.
 
-The cost optimization plan includes routing chat responses to Claude Haiku (cheap) and reserving Sonnet only for preset generation (expensive). This creates a subtle architectural problem: the current app uses prompt caching on the planner system prompt (buildPlannerPrompt) to achieve ~50% cost reduction. Introducing Haiku for chat means two separate API clients, two separate cache namespaces, and two separate billing streams — and the cached tokens for Sonnet generation no longer benefit from the conversational warm-up that was previously part of a single Sonnet session.
-
-More critically: Anthropic changed prompt caching to workspace-level isolation (February 5, 2026). If the chat (Haiku) and generation (Sonnet) calls are made under different conditions, the Sonnet generation call may not benefit from a warm cache on the planner prompt the way it did when all calls used the same model.
-
-The practical result: model split could increase Sonnet generation costs rather than reduce them, because the prompt cache hit rate for generation drops when chat no longer "primes" the same model's context.
+Example: the Litigator (`HD2_AmpIndyHardCorePre`) is a crunch amp that sounds best with `Drive: 0.35-0.40`. The crunch category default is `Drive: 0.50`. If a per-model override for Drive is added to `defaultParams`, it is overwritten back to 0.50 by Layer 2. The override exists in the code but has no effect on output. Developers investigating why the override doesn't work will waste time before discovering the layer ordering.
 
 **Why it happens:**
-
-The prompt caching analysis typically looks at per-call token costs but doesn't model the interaction between cache warm-up patterns and model routing. When chat and generation both used Sonnet, the planner prompt cache was reliably warm by the time generation was called. With Haiku handling chat, the Sonnet planner prompt may start cold for every generation call.
+The 3-layer resolution strategy was designed to enable category consistency, not per-model precision. Developers adding per-model quality improvements naturally reach for `model.defaultParams`, not realizing that Layer 2 clobbers any key present in both. There is no TypeScript error, no warning, no unit test failure — the override silently loses.
 
 **How to avoid:**
+Introduce a fourth layer: `model.paramOverrides` field on `HelixModel`, applied AFTER category defaults. Resolution order: (1) model defaultParams, (2) category defaults, (3) topology mid, (4) model paramOverrides. Layer 4 wins over all shared layers. This makes the override mechanism explicit and visible in the model definition.
 
-- Before implementing model split, run a cost audit that separates chat token costs from generation token costs — the audit may show that chat is already cheap enough that the savings from Haiku routing don't justify the complexity
-- Measure actual Sonnet planner prompt cache hit rate using `cache_read_input_tokens` in the API response — if it is already >80%, the cache is working well and splitting to Haiku does not improve it
-- If model split is implemented: verify the planner system prompt cache warms correctly on the first Sonnet call each session regardless of how many Haiku chat calls preceded it
-- Introduce model split behind a feature flag that defaults to OFF — measure quality and cost impact for 7 days before making it the default
+Alternatively, add a `lockedParams` set to each model listing param keys that the category overlay must not touch. But the separate `paramOverrides` field is cleaner.
 
 **Warning signs:**
+- A `HelixModel.defaultParams` entry has a Drive/Master/Bias value that differs from the category default, but resolved presets always show the category default value
+- Unit test for a per-model override passes in isolation (calling model lookup directly) but the integration output shows the category value
+- Reviewing the generated preset file shows the amp block using category default values despite model-specific intent
 
-- Chat response quality degrades (Haiku is noticeably less nuanced in tone interview questions)
-- `cache_read_input_tokens` in Sonnet generation responses drops after the model split is deployed
-- API cost per generation increases rather than decreases after model split (indicates cache miss rate increased)
-- Errors in model selection logic cause Sonnet to be called for chat or Haiku to be called for generation
-
-**Phase to address:** API cost audit phase (assess before implementing) and model split implementation phase (validate with live metrics after)
+**Phase to address:**
+Per-model amp parameter overrides phase — establish the 4-layer override mechanism BEFORE adding individual model-specific values, to prevent silent-discard bugs.
 
 ---
 
-### Pitfall 4: Param Engine Category Defaults Override Model-Specific Nuance
+### Pitfall 5: Device Abstraction Refactor Breaks Exclusion Guards Via Silent Capability Gaps
 
 **What goes wrong:**
+The codebase has 14+ explicit `isStadium(device)`, `isStomp(device)`, `isPodGo(device)` guards in `chain-rules.ts`, `param-engine.ts`, `planner.ts`, and the generate route. A device abstraction refactor that introduces a capability object or strategy pattern risks breaking these guards if: (a) the capability object is opt-in (new capabilities default to `true`) rather than explicit (each device declares every capability), or (b) the refactor converts some guards to capability checks but leaves others as `is*()` calls, creating inconsistency.
 
-The param engine uses a 3-layer strategy: model defaults → category overrides → topology override. The quality improvement goal includes more nuanced parameter resolution — "surgical knob values" that reflect what specific amps actually need. The trap is adding more aggressive category overrides that stomp on model-specific defaults, producing presets that are technically correct for the category but not voiced correctly for the specific amp.
-
-For example: the current `high_gain` category default sets `Drive: 0.40`. A Mesa Mark IV (Placater Dirty) runs best at `Drive: 0.55-0.65` — the lower drive loses the characteristic chewy midrange. If the category override applies `0.40` unconditionally, every high-gain amp sounds under-driven regardless of its actual character.
-
-The current Layer 2 comment says "Only override keys that exist in category defaults / preserves model-specific params like Cut, Deep, Resonance, BrightSwitch" — but it still overwrites Drive, Master, ChVol, Sag, Bias for every amp in the category. Any quality improvement that adds more category-level overrides deepens this problem.
+The failure mode is silent: TypeScript does not complain if a capability flag is missing from a new device's config — it just returns `undefined` (falsy), which could accidentally allow or block the wrong behavior. For example, if `capabilities.postCabEq` is missing from a device config, `if (capabilities.postCabEq)` evaluates false, silently skipping the mandatory Parametric EQ insertion for that device.
 
 **Why it happens:**
-
-Category defaults are easy to tune in aggregate (tune once, apply to all). Per-model defaults require per-model knowledge. The quality gap between HelixTones presets and professional presets is not primarily in the category layer — it is in the model-specific calibration that professional preset makers apply per-amp. Improving the category layer is faster but does not close the gap.
+Refactors that convert boolean-function guards to object properties often use "present = enabled" semantics. If a device config object is created by adding known capabilities, any capability not explicitly set is implicitly absent (disabled). For capabilities that should be ENABLED by default (e.g., all Helix devices support dsp1), this "false by default" inversion causes bugs that only manifest when generating presets for specific devices.
 
 **How to avoid:**
+Define `DeviceCapabilities` as a fully required interface — no optional fields. Every device must declare every capability explicitly. TypeScript enforces completeness: adding a new capability to the interface makes every device config a compile error until updated. Use an "opt-in" pattern: all capabilities are `false` unless explicitly set `true`. Only devices that have been verified to support a capability get it enabled.
 
-- Add a Layer 1.5: per-model overrides that sit between model defaults and category defaults, containing amp-specific calibrations that the category should not overwrite (e.g., `Drive` and `Sag` per-amp, not per-category)
-- Research the Tonevault 250-preset analysis and identify which amp-specific param ranges deviate from the current category defaults — these deviations ARE the quality improvement
-- Never change a category default without checking how many amp models the change affects and whether each amp benefits from the change
-- Test with at least 3 amps per category (clean/crunch/high_gain) when changing any category-level parameter
+Do this refactor in a dedicated architecture phase, not combined with any feature work. The refactor must not change behavior — only the mechanism for expressing it.
 
 **Warning signs:**
+- A new device passes all existing tests but generates presets that fail hardware import
+- `chain-rules.ts` or `param-engine.ts` tests pass for 5 devices but the 6th device was not added to the test matrix
+- Stomp preset generates 7 blocks (one over the 6-block limit) without a validation error
 
-- All amps in a category produce similar Drive/Sag settings regardless of the amp model's character
-- High-gain amps that naturally want more Drive (Rectifier, Mark series) are being under-driven by the category default
-- Clean amps that want high Master (Fender Blackface) are being pushed to moderate Master by category override
-
-**Phase to address:** Param engine improvement phase — per-model calibration research should precede any param engine changes
+**Phase to address:**
+Architecture review / device abstraction phase — must be a standalone phase before any feature changes to chain rules or param engine.
 
 ---
 
-### Pitfall 5: Community Preset Reverse-Engineering Without Hardware Validation
+### Pitfall 6: AI Chat Model Split Degrades Tone Interview Quality Without Measurable Warning
 
 **What goes wrong:**
+Routing chat to Haiku (cheaper/faster) and generation to Sonnet splits the conversation pipeline. The risk is that Haiku gathers less specific tone information during the interview — shorter follow-up questions, less artist/rig detail, more generic responses — and the Planner receives a lower-quality conversation to translate into ToneIntent. Users experience this as "the AI understood me less" even though the generation step itself is unchanged.
 
-The quality research plan involves studying top community presets to reverse-engineer what premium preset makers do differently. The trap is extracting patterns from community preset files, encoding them into the Knowledge Layer, and deploying without hardware validation. Community presets (from CustomTone, ToneFactor, etc.) are optimized for specific output scenarios: studio monitors (FRFR), headphones, or live PA. Parameters that make a preset sound great through FRFR often sound terrible through a regular guitar cab, and vice versa.
+The quality degradation is not immediately measurable: it shows up as slightly more generic `ampName` choices, vaguer `genreHint` strings, or less useful `guitarNotes`. These metrics require deliberate benchmarking to detect — a simple cost measurement will show savings without revealing the quality cost.
 
-Additionally, community presets frequently include output-level calibration (Gain Block, post-EQ) specific to the preset creator's monitoring setup. Copying these levels without testing on representative outputs produces presets that are too loud, too quiet, or incorrectly EQ'd for the user's context.
+Additionally: the Sonnet planner prompt cache is warm when Sonnet handles both chat and generation (prior conversation calls prime the context). With Haiku handling chat, the first Sonnet generation call in each session starts cold, potentially increasing `cache_creation_input_tokens` per generation.
 
 **Why it happens:**
-
-Pattern extraction from data (preset files) is seductive because it looks scientific. But the preset parameters encode not just tonal intention but also the output chain correction for a specific monitoring setup. The "pattern" mixes tonal choice with output compensation in a way that is not visible from the file alone.
+Model routing decisions are made on latency and cost metrics, both of which improve with Haiku. Quality metrics (interview specificity, ToneIntent diversity) require subjective evaluation and deliberate A/B testing — work that is easy to skip when cost savings are obvious and immediate.
 
 **How to avoid:**
+Before deploying Haiku for chat, run 15 parallel tone interviews with identical conversation starters using both Haiku and the current model. Evaluate the ToneIntents produced: are `ampName` choices as specific? Are `guitarNotes` as useful? Are `genreHint` values as concrete? Only ship if ToneIntent quality is within acceptable thresholds. Use the existing 36-preset deterministic baseline generator (v3.2) as a quality floor.
 
-- When extracting patterns from community presets, focus on mid-chain parameters (amp Drive, Sag, Bias, eq bands) and ignore post-cab parameters (Gain Block level, master output) unless there is a consistent pattern with a clear tonal rationale
-- Any pattern extracted from community presets must be validated on hardware (Helix LT or Pod Go) before encoding into the Knowledge Layer — not just confirmed in the code
-- Specifically test: does the extracted pattern produce better results than the current defaults when played through FRFR, when going direct to DAW, and when used with headphones?
-- Mark extracted patterns with their source confidence: "pattern from 50+ presets" vs "pattern from 3 presets" — only encode the former into defaults
+Separately: measure current Sonnet `cache_read_input_tokens` hit rate before any model split. If hit rate drops after splitting, route only initial greeting turns to Haiku and hand off to Sonnet when the conversation becomes gear-specific.
 
 **Warning signs:**
+- ToneIntent `ampName` selections cluster toward 3-4 common amps in Haiku-interviewed sessions but show wider distribution in Sonnet sessions
+- `guitarNotes` field is often empty or formulaic ("Use neck pickup for warm tone")
+- `cache_read_input_tokens` in Sonnet generation responses drops to zero after model split
+- Session-level API cost increases (Sonnet generation cache misses offset Haiku chat savings)
 
-- Post-cab Gain Block levels imported from community presets without normalization
-- CAB_PARAMS LowCut/HighCut values that deviate significantly from the current 80-100Hz / 5-8kHz range without a tested rationale
-- Output levels in generated presets that require significant adjustment before the preset is usable
-- No hardware testing step in the quality improvement plan before shipping
-
-**Phase to address:** Quality research phase — establish validation protocol before extracting patterns from community presets
+**Phase to address:**
+Cost-aware model routing phase — requires a side-by-side quality comparison gate before shipping; cost measurement alone is insufficient.
 
 ---
 
-### Pitfall 6: Effect Combination Rules That Conflict With Block Budget
+### Pitfall 7: Shared Knowledge Layer Changes Regress Working Devices
 
 **What goes wrong:**
+`chain-rules.ts` and `param-engine.ts` are shared across all 6 devices. Any change to these files — adding a new chain slot, changing a category default, modifying a DSP assignment — affects all devices simultaneously. A change that improves Stadium preset quality can silently regress Helix LT presets if the change touches code paths exercised by both.
 
-The quality improvement goal includes "smarter effect combinations and interactions" — effects that work together tonally rather than just being individually good. A risk is encoding effect combination rules (e.g., "always pair pitch shift with reverb for shimmer", "use compressor before delay for tighter echoes") that exceed the block budget on constrained devices.
-
-HX Stomp/XL has a 6-block limit. If the chain rules generate a "quality" effect combination pattern that uses 5 blocks, there is no room left for the amp, cab, or other mandatory blocks. The chain rules currently enforce block limits per device, but effect combination rules that assume a generous block budget (Helix LT/Floor) will silently produce valid-looking chains that overflow on Stomp/XL.
-
-The mandatory blocks already consume 3-4 slots (amp, cab, gate, boost, EQ). On HX Stomp/XL that leaves 2-3 user effect slots. Any "smarter effect combination" pattern that assumes 4+ user effect slots is Stomp-incompatible.
+The specific risk for v4.0: adding per-model param overrides to `param-engine.ts` changes the resolution path for `resolveAmpParams()`. A bug in the new override logic (e.g., it looks up by `block.modelName` but the amp block has `modelId` not `modelName`) will cause every amp's parameter resolution to throw, breaking all 6 devices simultaneously on production.
 
 **Why it happens:**
-
-Quality research focuses on what sounds best without always modeling device constraints. A "shimmer reverb + pitch + delay + modulation" combination that sounds great on Helix LT (plenty of blocks) breaks on HX Stomp (block budget exhausted).
+Shared code is fast to change but high-impact to break. The 6-device test matrix is large and easy to partially test (developers test the device they're working on and forget to verify the others). Changes that add new code paths feel safe because they don't touch existing paths — but a new code path with an uncaught exception in the shared resolver kills the shared function for all devices.
 
 **How to avoid:**
+For any change to `chain-rules.ts` or `param-engine.ts`:
+1. Run the full device test matrix (all 6 devices, not just the target device) before merging
+2. Any new code path (e.g., `if (model.paramOverrides)`) must be guarded against missing data: `model.paramOverrides ?? {}` not bare access
+3. Architectural changes (new layers, new resolution strategies) must be added as NEW code paths that fall through to the existing behavior when not configured — never modify the existing path
 
-- All new effect combination patterns must be classified by minimum block budget required
-- Chain rules must check device block budget BEFORE inserting optional combination patterns — if the combination won't fit, fall back to the simpler single-effect choice
-- Test every new effect combination pattern on all 6 supported devices (Helix LT, Helix Floor, Pod Go, Helix Stadium, HX Stomp, HX Stomp XL) in a single validation pass
-- Encode effect combination patterns as optional suggestions, not mandatory insertions — mandatory insertions cannot be suppressed when block budget is tight
+When modifying `AMP_DEFAULTS`, verify the change with 3 amps per category (clean/crunch/high_gain) for at least Helix LT and Stomp (the two devices with the most different block budgets).
 
 **Warning signs:**
+- A PR to `param-engine.ts` that only includes tests for one device
+- An exception thrown in `resolveAmpParams()` for a specific amp that had no previous issues
+- `chain-rules.ts` tests pass for Helix LT but no tests cover Pod Go or Stomp
+- A new field added to `HelixModel` that is accessed without null checking in the shared resolution path
 
-- Generated HX Stomp presets with more than 6 blocks total (impossible to load on hardware)
-- Chain rules that reference maximum block counts from Helix LT constants when building Stomp presets
-- Effect combination patterns that include 3+ user effects without a device-specific block budget check
+**Phase to address:**
+Every phase that touches `chain-rules.ts` or `param-engine.ts` — establish the 6-device test matrix rule as a hard gate before any shared Knowledge Layer change ships.
 
-**Phase to address:** Chain rules improvement phase — block budget checks must be in place before new combination patterns are added
+---
+
+### Pitfall 8: Planner Prompt Bloat Degrades Structured Output Compliance
+
+**What goes wrong:**
+Adding richer creative guidelines, signal chain intelligence rules, and effect interaction patterns to the planner system prompt can degrade structured output compliance, not improve it. Research shows that "generic improved" prompts can cause extraction pass rates to drop from 100% to 90% and RAG compliance from 93.3% to 80% for structured output tasks (arxiv 2025, "When Better Prompts Hurt"). This is the "lost in the middle" effect: LLMs give less weight to information in the middle of long contexts. A planner prompt tuned for reliable ToneIntent JSON may start producing schema validation failures when bloated with additional guidance.
+
+The current `buildPlannerPrompt()` already works well. Adding 500+ tokens of creative guidelines without testing is gambling with structured output reliability on every generation.
+
+**Why it happens:**
+The instinct is "more context = better output." This holds for conversational tasks but frequently fails for structured output tasks where the model must adhere to a narrow schema. Instruction competition degrades format compliance.
+
+**How to avoid:**
+- Benchmark the current planner prompt's compliance rate before changing anything (run 20 test generations, count schema failures and creative diversity)
+- Add one section at a time, retest after each addition — never batch multiple prompt changes
+- Keep prompt under 2,000 tokens total; prune lower-value sections if it exceeds this
+- Put new creative guidelines BEFORE the schema field definitions, not after — instructions near the beginning receive more weight
+- `zodOutputFormat` constrains decoding but does not eliminate compliance degradation — test, don't assume
+
+**Warning signs:**
+- Schema validation failures appear in logs after a prompt update
+- Generated ToneIntents are valid JSON but creatively flat (same 3 amps, same effects)
+- `ampName` selections become repetitive; model reverts to "safe" common choices
+- Effect `role` distribution skews — everything becomes `always_on`
+
+**Phase to address:**
+Planner prompt enrichment phase — establish a quality baseline and a one-change-at-a-time protocol before any planner prompt modifications.
+
+---
+
+### Pitfall 9: Stadium Agoura Amp Params Added to Global AMP_DEFAULTS Corrupt Non-Stadium Presets
+
+**What goes wrong:**
+If Stadium-specific Agoura amp params (`Jack`, `ZPrePost`, `Level`, `Hype`, `AmpCab*`) are added to the global `AMP_DEFAULTS` table to reuse the existing 3-layer strategy, those params get emitted into every non-Stadium preset (Helix LT, Floor, Stomp, Pod Go). HD2_* amp models do not have these params. The .hlx builder will emit them as orphan keys in the amp block's param object — a behavior that may cause HX Edit import warnings or corrupt presets with a future firmware update that validates param schemas strictly.
+
+**Why it happens:**
+It is tempting to extend `AMP_DEFAULTS` rather than write a Stadium-specific resolver. The cost (extra keys in non-Stadium presets) seems harmless because Helix firmware currently ignores unknown params. But this is an unverified assumption about firmware tolerance and will fail silently.
+
+**How to avoid:**
+Any param added to `AMP_DEFAULTS` requires verification that it exists on HD2_* amp models for ALL 6 supported devices. Stadium-specific params belong in a `STADIUM_AMP_DEFAULTS` table only, applied inside an `isStadium(device)` guard. Never add a param to the shared table without checking it against the non-Stadium model catalog.
+
+**Warning signs:**
+- A non-Stadium preset's amp block params include `Jack` or `ZPrePost` keys when inspected
+- HX Edit logs an import warning about unexpected parameters
+- The shared `AMP_DEFAULTS` table gains a key that does not appear in any HD2_* model's `defaultParams`
+
+**Phase to address:**
+Per-model amp parameter overrides phase — define the scope rules for shared vs. device-specific param tables before any Stadium amp param work.
+
+---
+
+### Pitfall 10: Effect Combination Rules Overflow Block Budget on Constrained Devices
+
+**What goes wrong:**
+New effect combination logic (e.g., "always pair pitch shift with reverb for shimmer", "compressor before delay for tighter echoes") that was designed and tested on Helix LT (generous block budget) will silently overflow HX Stomp's 6-block limit. Mandatory blocks already consume 3-4 slots (amp, cab, boost, gate). On HX Stomp that leaves 2 user effect slots. Any "quality" effect combination pattern that assumes 4+ user slots is Stomp-incompatible and will generate presets that cannot load on hardware.
+
+**Why it happens:**
+Quality research focuses on what sounds best without always modeling device constraints. Helix LT has 16 total block slots; HX Stomp has 6. Combination patterns designed on the generous device silently break the constrained one.
+
+**How to avoid:**
+Every new effect combination pattern must declare its minimum block budget requirement. Chain rules must check the device's available user slots BEFORE inserting optional combination patterns — if the combination won't fit, fall back to the simpler single-effect choice. Test every new pattern against all 6 supported devices in a single validation pass.
+
+**Warning signs:**
+- Generated HX Stomp presets have 7+ blocks (impossible to load on hardware)
+- Chain rules tests pass for Helix LT but no test covers the combination pattern on Stomp
+- `userEffects.length` truncation (already in chain-rules.ts) silently drops the secondary effect in the pair
+
+**Phase to address:**
+Effect combination / chain rules improvement phase — block budget checks must be in place for all 6 devices before new combination patterns are added.
 
 ---
 
 ## Technical Debt Patterns
 
-Shortcuts that seem reasonable but create long-term problems.
-
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| Add all creative guidelines to the planner prompt in one update | Faster iteration | Structured output compliance degrades unpredictably; hard to isolate which change caused regression | Never — one change at a time, with testing |
-| Copy community preset param values directly into `AMP_DEFAULTS` without per-amp research | Quick quality improvements | Category defaults override model-specific nuance; all amps in category drift to copied values | Never — research per-amp calibration, not category averages |
-| Route chat to Haiku without measuring Sonnet planner cache hit rate first | Immediate cost reduction | Sonnet generation cache goes cold; generation cost increases; net cost may increase | Never without pre-measuring cache hit rate |
-| Implement parallel routing for all applicable presets simultaneously | Comprehensive routing improvement | Phase cancellation on dual-amp presets; no easy rollback path | Never — implement one routing pattern at a time, with hardware test |
-| Add effect combination rules only for Helix LT (has generous block budget) | Simple to implement | Combination rules silently break Stomp presets; generates presets that can't load | Never — all combination rules must be device-aware |
-| Use the same genreHint parsing for advanced routing decisions | Reuses existing infrastructure | Genre hint is a freeform string with no guaranteed tokens; routing decisions need more structured input | Acceptable for simple routing guidance; not acceptable for block count decisions |
+| Add Stadium amp params to global `AMP_DEFAULTS` | No new code paths needed | Orphan params in all non-Stadium presets; firmware tolerance is unverified assumption | Never |
+| Estimate Agoura `defaultParams` without reading real .hsp files | Faster implementation | Wrong amp character on hardware; silent quality failure impossible to detect in code review | Never |
+| Add enrichment content inside existing `if (stadium)` prompt blocks | Stays near existing device code | Fragments cache into 6 buckets; eliminates cache savings | Never for content applicable to all devices |
+| Skip `DeviceCapabilities` interface and add more `isPodGo()` guards | Faster than refactoring | Guards accumulate; new devices require grep-scanning all guard sites | Only if deferring refactor to a dedicated architecture phase |
+| Use Haiku for chat without quality comparison gate | Immediate cost savings | Lower interview quality → generic presets → user dissatisfaction | Never without evidence-based quality gate first |
+| Apply `AMP_DEFAULTS` category overlay to Agoura amps without key compatibility check | Reuse existing layers | Agoura-specific params get wrong values or are overwritten | Never |
+| Add per-model overrides to `model.defaultParams` without Layer 4 mechanism | Simple, no new structures | Overrides silently discarded by category defaults; developer time wasted debugging | Never |
+| Batch multiple prompt enrichment additions in one PR | Faster iteration | Cannot isolate which change caused compliance regression | Never — one change at a time |
 
 ---
 
 ## Integration Gotchas
 
-Common mistakes when modifying the existing planner-executor integration.
-
 | Integration | Common Mistake | Correct Approach |
 |-------------|----------------|------------------|
-| Prompt caching (planner system prompt) | Adding a rig context string to the system prompt breaks caching | Rig context already appended to user message only (not system prompt) — maintain this pattern for any new dynamic content |
-| Haiku model routing | Using different model for chat and generation with a single API client instance | Two separate client instances or a routing wrapper that selects model per call type; verify cache hit metrics after deployment |
-| ToneIntent schema expansion | Adding new optional fields to ToneIntentSchema invalidates prompt caching if the schema enum appears in the system prompt model list | The planner prompt includes `getModelListForPrompt()` output — any change to model list breaks the cache; benchmark cache hit rate before and after |
-| Effect combination rules in chain-rules.ts | Combination rules that call `isStadium()` for Stadium-specific patterns but forget to also check `isStomp()` | All device predicates must be checked when adding device-specific logic — add `isStomp()` alongside `isStadium()` checks |
-| Per-model param calibration in param-engine.ts | New per-model overrides in `resolveAmpParams()` that use model name strings instead of model IDs | The function currently dispatches on `block.modelId` for distortion and dynamics; amp resolution uses `AMP_MODELS[intent.ampName]` — use the same consistent key strategy |
-| Haiku for chat quality check | Assuming Haiku will produce the same tone interview quality as Sonnet without testing | Run 10-20 full tone interview conversations using Haiku before committing to the split; check for follow-up question quality, contextual awareness, and rig description handling |
+| Stadium .hsp builder — amp-cab linking | Wiring `linkedblock` before block positions are finalized, then overwriting when blocks shift | Place all blocks first, then wire `linkedblock` by resolved block key in a post-pass (current stadium-builder.ts does this correctly — do not regress it) |
+| Stadium .hsp builder — cab harness `dual` param | Omitting `dual: true` in cab harness params | Real .hsp always has `dual: true` in cab harness; confirmed in Cranked_2203.hsp b07 |
+| Stadium .hsp builder — device_id | Using wrong `device_id` (2162696 was the pre-fix value; 2490368 is correct) | config.ts uses 2490368 — this was fixed in v3.2; do not change it |
+| Anthropic prompt caching — cache boundary | Adding variable content (device name, model list) to the shared static prefix | Static prefix must be character-for-character identical across all device calls sharing a bucket; variable content goes at end or in user message |
+| Zod structured output — `zodOutputFormat` constraint stripping | Assuming `max()` / `min()` schema constraints are enforced during Claude's constrained decoding | `zodOutputFormat` strips min/max from JSON Schema; validate and truncate post-parse (planner.ts snapshot name truncation is the correct pattern) |
+| Per-model param overrides — category default conflict | Adding overrides to `model.defaultParams` expecting them to survive the category overlay | Use a separate `model.paramOverrides` field applied after category defaults (Layer 4) |
+| Stadium cab params — LowCut/HighCut range | Applying Helix category values (80-100 Hz) to Stadium cabs | Real .hsp Stadium cabs use LowCut: 19.9 Hz; cab model handles its own filtering; do not apply Helix cab filter values to Stadium |
+| Haiku model routing — cache warm-up | Assuming Sonnet planner cache remains warm during sessions where Haiku handles chat | Measure Sonnet `cache_read_input_tokens` in the first generation of each session post-split to verify cache is still warm |
 
 ---
 
 ## Performance Traps
 
-Patterns that work at small scale but fail as usage grows.
-
 | Trap | Symptoms | Prevention | When It Breaks |
 |------|----------|------------|----------------|
-| Planner prompt exceeds cache prefix size | Cache hit rate drops; token costs rise; `cache_read_input_tokens` goes to 0 | Keep static planner system prompt under 2,000 tokens; move dynamic content to user message | When prompt grows past ~4,096 tokens (rough threshold for cache prefix efficiency) |
-| Effect combination research causes param-engine.ts to grow unbounded | Resolving parameters takes longer; file becomes hard to maintain | Separate combination research findings into a dedicated `effect-combinations.ts` module; keep param-engine.ts focused on parameter values only | As soon as combination logic and parameter logic share one file — maintenance cost compounds |
-| Community preset analysis adds too many model-specific overrides | `AMP_DEFAULTS` table becomes unmaintainable; edge cases conflict | Limit per-model overrides to amps that appear in >5% of community presets; ignore outliers | When the override table exceeds 20-30 entries without a clear ownership/testing protocol |
-| Model split creates two billing streams with no unified cost monitoring | Can't tell if the split is saving or costing money | Add per-call logging of `input_tokens`, `output_tokens`, `cache_read_input_tokens`, `cache_creation_input_tokens` for both Haiku and Sonnet calls | Immediately after model split is deployed — without logging, ROI is unknown |
+| Prompt cache invalidation on every deploy | Cost spikes after deploy while cache repopulates across sessions | Measure cache hit rate before and after every `planner.ts` change; require cache hit rate to be within 5% of baseline | Breaks immediately after any deploy touching `buildPlannerPrompt` |
+| `buildPlannerPrompt` called fresh per request without memoization | Same prompt rebuilt for every request | Memoize per device target at module init (if prompt is stable during a server lifetime) | Breaks at moderate concurrency — repeated computation, not a correctness issue |
+| Large prompt from full model list injection | As model catalog grows (new firmware = 50+ new models), injected model list grows, pushing prompt past cache prefix limit | Prune model list to active/recommended models only; Stadium has fewer amps than Helix LT | Breaks if total prompt exceeds ~32K tokens (Anthropic cache prefix limit) |
+| Model split creates two billing streams with no unified cost monitoring | Cannot determine if split is net positive | Add per-call logging of all 4 token fields (`input_tokens`, `output_tokens`, `cache_creation_input_tokens`, `cache_read_input_tokens`) for both Haiku and Sonnet calls | Immediately after model split — without logging, ROI is unknown |
 
 ---
 
 ## Security Mistakes
 
-Domain-specific security issues for this milestone.
-
 | Mistake | Risk | Prevention |
 |---------|------|------------|
-| Sending model name as a user-controlled parameter for model split | User crafts a request that forces Sonnet for all chat calls, eliminating the cost benefit | Model selection must be server-side only, not derived from any request parameter |
-| Logging full ToneIntent responses for quality analysis | Logs contain user conversation content (rig descriptions, tone preferences); privacy risk | Log ToneIntent schema compliance and metadata (ampName, effect count, snapshot count) but not the full conversation content |
+| Exposing model routing config as a user-queryable API param | User forces Sonnet for all calls, eliminating cost savings | Model selection must be server-side only; never derived from request params |
+| Logging full ToneIntent for quality analysis | Logs contain user conversation content (rig descriptions, tone preferences) | Log schema compliance metadata only (ampName, effect count, snapshot count) — not conversation content |
+| Adding Stadium device_id / device_version to public API response | Reveals firmware version enabling targeted firmware exploits | Keep device config internal; API returns only file content and display strings |
 
 ---
 
 ## UX Pitfalls
 
-Common user experience mistakes specific to quality improvement and cost optimization.
-
 | Pitfall | User Impact | Better Approach |
 |---------|-------------|-----------------|
-| Quality improvement makes presets more complex but less playable | Presets with parallel paths, more effects, and advanced routing are harder to understand and tweak | Every quality improvement must maintain or improve the "first-sound experience" — the preset must sound good the moment it loads, without any user adjustment |
-| Haiku chat asks fewer clarifying questions than Sonnet | Users get less personalized presets because the tone interview is shorter/shallower | If Haiku is adopted for chat, extend the system prompt to compensate for the quality delta; add explicit instructions about follow-up question depth |
-| Preset names become generic after quality improvements | When focusing on signal chain quality, preset naming creativity often degrades | Preset name is a ToneIntent field — include it in quality benchmarking alongside signal chain metrics |
-| Advanced routing presets confuse users who want simple patches | A parallel-path dual-amp preset with 12 blocks is intimidating to a player who just wants "classic rock tone" | Gate advanced routing behind explicit user signals (user asks for "complex tone" or "studio sound") — do not add routing complexity unless the conversation warrants it |
+| Unblocking Stadium without hardware verification | Users generate Stadium presets that sound wrong or fail to load, eroding trust in all generated presets | Block Stadium in UI until a generated preset passes HX Edit import AND sounds correct on hardware; not just code compilation |
+| Overly specific planner prompt guidance ignoring user input | AI always orders delay before reverb even when user requested reverb-heavy ambient tone | Prompt enrichment should add constraints for edge cases (e.g., "do not stack 3 drives") not override natural signal chain ordering; test with 5 diverse tone interviews after each enrichment addition |
+| Per-model overrides making presets inconsistent across amp families | User requests "similar tone but different amp" and gets dramatically different results | Apply per-model overrides only for documented sonic character differences; category defaults should remain the stable cross-amp baseline |
+| Haiku chat produces shorter follow-up questions | Less personalized presets because tone interview is shallower | If Haiku chat is adopted, compensate in system prompt to maintain follow-up question depth |
 
 ---
 
 ## "Looks Done But Isn't" Checklist
 
-Things that appear complete but are missing critical pieces.
-
-- [ ] **Quality improvement shipped:** Verify it was tested on actual hardware (Helix LT or Pod Go), not just confirmed that the JSON file structure looks correct
-- [ ] **Planner prompt changes:** Verify the planner prompt change did not increase schema validation failure rate — run 20 test generations and count failures
-- [ ] **Parallel routing:** Verify no generated preset has two amp blocks on parallel paths without a phase-aware merge pattern — run chain-rules.test.ts
-- [ ] **Model split deployed:** Verify `cache_read_input_tokens` in Sonnet generation calls is non-zero — if it's zero, the cache is cold and costs are rising
-- [ ] **Block budget on Stomp:** Verify any new effect combination pattern passes block budget validation for HX Stomp (6 blocks max) and HX Stomp XL — not just for Helix LT
-- [ ] **Per-model param calibration:** Verify at least 3 amps per category (clean, crunch, high_gain) were tested with the new defaults before shipping
-- [ ] **Cost audit complete:** Verify the audit distinguishes chat token costs from generation token costs — a blended average obscures where the money actually goes
-- [ ] **Community preset research:** Verify extracted patterns were tested on hardware before being encoded into the Knowledge Layer
+- [ ] **Stadium builder verified**: Generated .hsp loads in HX Edit without errors AND parameters match reference .hsp field-by-field (not just structurally valid — param values must be correct). TypeScript compilation passing is NOT sufficient.
+- [ ] **Agoura amp defaultParams complete**: Every amp in `STADIUM_AMPS` has `defaultParams` sourced from real .hsp files. `Jack` is integer, `Level` is dB, `ZPrePost` present. No estimated values.
+- [ ] **Stadium cab defaultParams complete**: `HD2_CabMicIr_*WithPan` entries in `CAB_MODELS` include `Delay`, `IrData`, `Level`, `Pan`, `Position` in addition to the 5 existing params.
+- [ ] **Per-model overrides survive category defaults**: Unit test confirms that a model-level paramOverride for Drive is present in the resolved param output — not overwritten by `AMP_DEFAULTS`.
+- [ ] **Prompt cache hit rate unchanged after enrichment**: Post-deploy cache hit rate is within 5% of pre-enrichment baseline (verified via `usage-logger.ts` cache report).
+- [ ] **Model routing quality gate passed**: Side-by-side ToneIntent comparison shows no statistically significant difference in ampName specificity or genreHint quality between Haiku and current model.
+- [ ] **6-device test matrix for Knowledge Layer changes**: Any change to `chain-rules.ts` or `param-engine.ts` includes tests covering all 6 device targets — not just the target device.
+- [ ] **Stadium UI unblocked only after hardware verification**: The Stadium `blocked` flag in the device picker is removed only after a generated preset passes hardware import — not just after builder code compiles.
+- [ ] **Effect combinations verified on Stomp**: Any new effect combination pattern is tested against HX Stomp (6 blocks max) and confirmed to fall back gracefully when block budget is exceeded.
+- [ ] **Non-Stadium presets unaffected by Stadium param changes**: LT/Floor amp block does not contain `Jack`, `ZPrePost`, or any other Agoura-specific key after Stadium param work is merged.
 
 ---
 
 ## Recovery Strategies
 
-When pitfalls occur despite prevention, how to recover.
-
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| Planner prompt bloat causes schema validation failures | LOW | Roll back the prompt to the last working version; add guidance incrementally with testing |
-| Parallel routing causes phase cancellation in shipped presets | MEDIUM | Add a phase-invert block to the affected routing patterns; redeploy; existing broken presets cannot be auto-corrected but new generations will be correct |
-| Model split increases Sonnet generation costs | LOW | Disable model split; return to all-Sonnet; analyze cache hit rate data to understand why |
-| Category defaults override model-specific nuance across many amps | MEDIUM | Add per-model override layer to param-engine.ts; requires per-amp research; no quick fix |
-| Effect combination rules overflow block budget on Stomp | LOW | Make combination rule optional and add device check; generated Stomp presets fall back to simpler chain automatically |
-| Community preset params produce output-level mismatches for users | MEDIUM | Normalize post-cab Gain Block values to 0.0dB (unity); ship EQ params only; never include preset-specific level corrections |
+| Agoura amp defaultParams are estimated, not from real files | MEDIUM | Re-read all 11 reference .hsp files, extract per-amp param tables, update `STADIUM_AMPS` entries, regenerate baseline presets, re-verify against reference |
+| Stadium cab partial param schema | LOW | Add missing 5 params to `CAB_MODELS` defaultParams for `HD2_CabMicIr_*WithPan` from real .hsp reference, add Stadium cab param completeness test |
+| Category defaults clobber per-model overrides | LOW | Add `paramOverrides` field to `HelixModel` type, move intended overrides from `defaultParams` to `paramOverrides`, update `resolveAmpParams()` to apply as Layer 4 |
+| Prompt enrichment breaks cache | LOW | Revert to previous prompt text, measure baseline cache rate, add enrichment incrementally with cache rate check after each addition |
+| Device abstraction refactor breaks Stadium or Stomp exclusion guards | HIGH | Revert refactor entirely, add comprehensive device capability tests first (6 devices x all guarded paths), redo refactor test-first |
+| Haiku chat routing degrades preset quality | MEDIUM | Revert to previous model for chat, collect ToneIntent quality samples from both models over 2 weeks, rerun comparison before re-shipping |
+| Shared Knowledge Layer change regresses working devices | MEDIUM | Identify which device(s) regressed from test failure, isolate change, add guard condition, run full 6-device test suite before re-merging |
 
 ---
 
 ## Pitfall-to-Phase Mapping
 
-How roadmap phases should address these pitfalls.
-
 | Pitfall | Prevention Phase | Verification |
 |---------|------------------|--------------|
-| Planner prompt bloat degrades structured output | Quality research / baseline establishment phase | 20-generation test suite run before and after any prompt change; schema failure rate must not increase |
-| Parallel routing creates phase cancellation | Advanced routing design phase | chain-rules.test.ts includes test for dual-path parallel preset: assert no dual-amp parallel without phase correction |
-| Model split breaks prompt cache architecture | API cost audit phase (analyze before implementing) | `cache_read_input_tokens` logged and non-zero for Sonnet generation calls post-split |
-| Category defaults override model-specific nuance | Param engine calibration phase | 3 amps per category tested on hardware before param change ships |
-| Community preset research without hardware validation | Quality research protocol phase | Validation step required for each new default: "tested on Helix LT on DATE" comment in param-engine.ts |
-| Effect combinations overflow block budget on Stomp | Chain rules improvement phase | New combination patterns tested against all 6 device types in chain-rules.test.ts |
-| Haiku chat quality degradation | Model split evaluation phase | 10-conversation blind quality comparison between Haiku and Sonnet chat before committing to split |
+| Stadium Agoura amp non-standard param keys | Stadium builder rebuild | Field-by-field param comparison of generated .hsp vs real-cranked-2203-pretty.json for every amp block |
+| Stadium cab partial param schema | Stadium builder rebuild | Generated cab block has 10 params (not 5); LowCut matches reference value |
+| Prompt enrichment breaks cache boundary | Planner prompt enrichment (restructure before adding content) | Cache hit rate post-deploy within 5% of baseline via usage-logger.ts report |
+| Per-model overrides clobbered by category defaults | Per-model amp parameter overrides (establish Layer 4 first) | Unit test: model with paramOverride for Drive resolves to override value, not AMP_DEFAULTS value |
+| Device abstraction refactor breaks exclusion guards | Architecture review phase (standalone phase, not combined) | 6 devices x all guarded paths test matrix; no device allows disallowed capability |
+| AI model routing quality degradation | Cost-aware model routing (quality gate before shipping) | 15 interview pairs; ampName distribution and genreHint specificity not regressed vs. Sonnet baseline |
+| Stadium params polluting global AMP_DEFAULTS | Per-model amp parameter overrides (scope rules defined first) | Non-Stadium integration test: LT/Floor amp block contains no Agoura-specific keys |
+| Planner prompt bloat degrades compliance | Planner prompt enrichment (baseline first, one change at a time) | Schema failure rate not increased after enrichment; run 20 test generations before/after |
+| Shared Knowledge Layer change regresses devices | Every phase touching chain-rules.ts or param-engine.ts | Full 6-device test matrix passes before merge |
+| Stadium UI unblocked prematurely | Stadium builder rebuild | Hardware or HX Edit import verification sign-off required before UI `blocked` flag is removed |
 
 ---
 
-## The Quality Research Protocol
+## The Quality Research Protocol (for Community Preset Pattern Extraction)
 
-The community preset reverse-engineering goal requires a disciplined research process to avoid encoding bad data.
+Pattern extraction from community preset files requires discipline to avoid encoding output-chain corrections as tonal defaults.
 
-### Step 1: Identify Source Presets
-Use presets that are explicitly marked as professional/commercial (ToneFactor, Glenn DeLaune, M. Britt, Alex Price) — not arbitrary community uploads. These represent deliberate quality engineering, not casual experiments.
+**Step 1 — Source selection:** Use only presets explicitly marked as professional or commercial (ToneFactor, Glenn DeLaune, M. Britt, Alex Price). Arbitrary community uploads mix quality with idiosyncratic output chain corrections.
 
-### Step 2: Extract Mid-Chain Parameters Only
-From each preset, extract amp Drive, Sag, Bias, Bass, Mid, Treble, Presence, Master, and cab LowCut/HighCut. Do NOT extract Gain Block levels, output levels, or global EQ — these are output-chain corrections, not tonal choices.
+**Step 2 — Extract mid-chain params only:** From each preset, extract amp Drive, Sag, Bias, Bass, Mid, Treble, Presence, Master, and cab LowCut/HighCut. Do NOT extract Gain Block levels, output levels, or global EQ — these are output-chain corrections, not tonal choices.
 
-### Step 3: Group by Amp Model
-Group extracted parameters by the exact amp model name. Patterns that only appear for one amp model may be idiosyncratic to that preset maker's setup, not a universal quality insight.
+**Step 3 — Group by amp model, calculate deviation from current defaults:** `actual_value - AMP_DEFAULTS[category][param]`. A deviation larger than 0.15 represents a meaningful pattern worth investigating.
 
-### Step 4: Calculate the Deviation From Current Defaults
-For each parameter, calculate: `actual_value - current_AMP_DEFAULT[category][param]`. A deviation larger than 0.15 (on the 0-1 scale) represents a meaningful pattern worth investigating.
+**Step 4 — Hardware validate before encoding:** Before adding any extracted value to `AMP_DEFAULTS` or a new per-model override, play the modified preset through Helix LT and confirm the change sounds better. Do not ship any param change that was only verified in code review.
 
-### Step 5: Hardware Validate Before Encoding
-Before adding any extracted value to `AMP_DEFAULTS` or a new per-model override, play the modified preset through Helix LT and confirm the change sounds better. Do not ship any param change that was only verified in code review.
-
-### Step 6: Comment the Source in Code
-
+**Step 5 — Comment the source in code:**
 ```typescript
 // CORRECT — cite source
 high_gain: {
   Drive: 0.52, // Range 0.40-0.65 from ToneFactor/M.Britt analysis (35 presets); tested LT 2026-03-XX
-  ...
 }
-
-// WRONG — cite nothing
+// WRONG — no source
 high_gain: {
   Drive: 0.52, // feels better
 }
@@ -353,28 +394,28 @@ high_gain: {
 
 ## Sources
 
+### HIGH confidence (direct codebase and reference file inspection)
+- `src/lib/helix/stadium-builder.ts` — builder implementation, block format, harness structure (2026-03-05)
+- `src/lib/helix/param-engine.ts` — 3-layer resolution strategy, AMP_DEFAULTS table, category overlay logic (2026-03-05)
+- `src/lib/helix/chain-rules.ts` — device guards, block budget enforcement, DSP assignment (2026-03-05)
+- `src/lib/planner.ts` — prompt caching pattern, buildPlannerPrompt structure, model routing (2026-03-05)
+- `tmp-stadium-research/real-cranked-2203-pretty.json` — real .hsp reference: Agoura amp params, cab params, block structure (EOengineer, Dec 2025)
+- `tmp-stadium-research/real-recto-pretty.json` — corroborating real .hsp reference (EOengineer, Dec 2025)
+- `.planning/PROJECT.md` — known bugs: dual-DSP key collision, Stadium amp lookup failure (v3.2 history)
+- `.planning/codebase/CONCERNS.md` — fragile areas, tech debt, test coverage gaps (2026-03-02)
+- `.planning/codebase/ARCHITECTURE.md` — layer contracts, device polymorphism (2026-03-02)
+
 ### HIGH confidence (official documentation)
 - Anthropic prompt caching docs (2026): https://platform.claude.com/docs/en/build-with-claude/prompt-caching — cache structure, workspace isolation, pricing multipliers
-- Anthropic token-saving updates: https://claude.com/blog/token-saving-updates — batch API, prompt caching mechanics
-- Line 6 Helix Parallel Split/Summing issues (community support forum): https://line6.com/support/topic/56905-parallel-splitsumming-wetdry-issues/ — phase cancellation documented
-- Line 6 Phase issue with two amp blocks: https://line6.com/support/topic/58405-phase-issue-with-two-amp-blocks-one-path-each/ — dual-amp phase conflict
+- Line 6 Helix Parallel Split/Summing phase cancellation issue: https://line6.com/support/topic/56905-parallel-splitsumming-wetdry-issues/
+- Line 6 phase issue with two amp blocks on parallel paths: https://line6.com/support/topic/58405-phase-issue-with-two-amp-blocks-one-path-each/
 
-### HIGH confidence (research/empirical studies)
-- "When Better Prompts Hurt: Evaluation-Driven Iteration" (arxiv 2025): https://arxiv.org/html/2601.22025v1 — structured output regression from prompt changes
-- MLOps Community — Prompt Bloat impact on LLM output quality: https://mlops.community/the-impact-of-prompt-bloat-on-llm-output-quality/ — "lost in the middle" effect
-
-### MEDIUM confidence (community analysis, verified against multiple sources)
-- Tonevault "Dialing in your Helix amps: what the top 250 presets teach us": https://www.tonevault.io/blog/250-helix-amps-analyzed — Scream 808 in 71% of presets, amp param ranges
-- Sweetwater "Creating Studio-quality Guitar Modeler Patches": https://www.sweetwater.com/insync/creating-studio-quality-guitar-modeler-patches-and-presets/ — signal chain design principles
-- Claude API pricing guide (2026): https://devtk.ai/en/blog/claude-api-pricing-guide-2026/ — Haiku vs Sonnet pricing, quality tradeoffs
-- Claude Haiku 4.5 vs Sonnet 4.5 comparison: https://chatlyai.app/blog/claude-haiku-4-5-vs-claude-sonnet-4-5 — performance within 5 percentage points on many benchmarks
-- Parallel routing (cosmicloopfx.com): https://www.cosmicloopfx.com/post/unlocking-new-sounds-creative-ways-to-use-parallel-routing — practical parallel routing patterns
-- Helix wet/dry/wet setup guide: https://l6c-acdn2.line6.net/data/6/0a020a3e512958ffc36d4aa36/application/pdf/helix-blog-wet-dry-wet.pdf — official Line 6 parallel path design
-
-### LOW confidence (single source, unverified)
-- LLM2Fx framework for audio effect parameter prediction from natural language (arxiv 2025): https://arxiv.org/html/2505.20770v1 — research on LLMs predicting audio effect params; not directly applicable but confirms the problem space is active
+### MEDIUM confidence (research and community analysis, verified against multiple sources)
+- "When Better Prompts Hurt: Evaluation-Driven Iteration" (arxiv 2025): https://arxiv.org/html/2601.22025v1 — structured output regression from prompt changes, lost-in-the-middle effect
+- Tonevault "250 Helix amp analysis": https://www.tonevault.io/blog/250-helix-amps-analyzed — Scream 808 prevalence, amp param ranges
+- Claude API pricing guide (2026): https://devtk.ai/en/blog/claude-api-pricing-guide-2026/ — Haiku vs Sonnet quality/cost tradeoffs
 
 ---
 
-*Pitfalls research for: HelixTones v4.0 — Preset Quality Leap and API Cost Optimization*
-*Researched: 2026-03-04*
+*Pitfalls research for: HelixTones v4.0 — Stadium Rebuild + Preset Quality Leap*
+*Researched: 2026-03-05*
