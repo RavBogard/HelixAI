@@ -5,6 +5,8 @@ import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { Footer } from "@/components/Footer";
+import { DonationCard } from "@/components/DonationCard";
 
 interface Message {
   role: "user" | "assistant";
@@ -353,6 +355,8 @@ function HomeContent() {
   const [isResumingConversation, setIsResumingConversation] = useState(false)
   // Phase 28: UXP-01 — sign-in banner state
   const [showSignInBanner, setShowSignInBanner] = useState(false)
+  const [showDonation, setShowDonation] = useState(false)
+  const [donationDismissed, setDonationDismissed] = useState(false)
   // Phase 28: UXP-02 — loading state during conversation resume
   const [isLoadingConversation, setIsLoadingConversation] = useState(false);
 
@@ -789,6 +793,11 @@ function HomeContent() {
     if (!conversationId) {
       setShowSignInBanner(true)
     }
+
+    // Phase 50: show donation card after first download (once per session)
+    if (!donationDismissed) {
+      setShowDonation(true)
+    }
   }
 
   // Phase 27: re-download stored preset from Supabase Storage (STORE-02)
@@ -1068,7 +1077,7 @@ function HomeContent() {
       <div className="hlx-rack" />
 
       {/* --- Messages --- */}
-      <div className="flex-1 overflow-y-auto px-6 py-6">
+      <div className="flex-1 overflow-y-auto px-6 py-6 pb-12">
         {isLoadingConversation ? (
           /* Phase 28: UXP-02 — conversation resume loading state */
           <div className="flex flex-col items-center justify-center flex-1 gap-3 py-16">
@@ -1534,6 +1543,12 @@ function HomeContent() {
               </div>
             )}
 
+            {/* Phase 50: Donation card — appears after first download */}
+            <DonationCard
+              visible={showDonation && !donationDismissed}
+              onDismiss={() => { setShowDonation(false); setDonationDismissed(true); }}
+            />
+
             <div ref={messagesEndRef} />
           </div>
         )}
@@ -1658,20 +1673,9 @@ function HomeContent() {
             </svg>
           </button>
         </form>
-        <p className="text-[11px] text-[var(--hlx-text-muted)] mt-3 text-center tracking-wide" style={{ fontFamily: "var(--font-mono), monospace" }}>
-          A project of{" "}
-          <a
-            href="https://danielbogard.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[var(--hlx-text-sub)] hover:text-[var(--hlx-amber)] transition-colors"
-          >
-            Daniel Bogard
-          </a>
-          {" "}&middot; Powered by Gemini &middot; Claude &middot; Line 6 Helix
-        </p>
       </div>
       )}
+      <Footer onSupportClick={() => setShowDonation(true)} />
     </div>
   );
 }
