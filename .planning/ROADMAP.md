@@ -619,8 +619,8 @@ Note: Phases 52, 55, and 56 can start in parallel. Phase 53 depends on 52. Phase
 | 52. Stadium Amp Catalog + Device Constants | 1/1 | Complete    | 2026-03-05 | - |
 | 53. Stadium Builder Rebuild | 2/2 | Complete    | 2026-03-05 | - |
 | 54. Stadium Device Unblock | 1/2 | Complete    | 2026-03-05 | - |
-| 55. Planner Prompt Enrichment | 2/2 | Complete   | 2026-03-05 | - |
-| 56. Per-Model Amp Parameter Overrides | 2/2 | Complete   | 2026-03-05 | - |
+| 55. Planner Prompt Enrichment | 2/2 | Complete    | 2026-03-05 | - |
+| 56. Per-Model Amp Parameter Overrides | 2/2 | Complete    | 2026-03-05 | - |
 | 57. Effect Parameter Intelligence | v4.0 | 0/TBD | Not started | - |
 | 58. Architecture Audit | v4.0 | 0/TBD | Not started | - |
 
