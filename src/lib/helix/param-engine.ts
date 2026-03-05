@@ -141,47 +141,47 @@ interface GenreEffectProfile {
 const GENRE_EFFECT_DEFAULTS: Record<string, GenreEffectProfile> = {
   blues: {
     delay: { Time: 0.15, Feedback: 0.20, Mix: 0.20 },
-    reverb: { Mix: 0.20, DecayTime: 0.4 },
+    reverb: { Mix: 0.20, DecayTime: 0.4, PreDelay: 0.025 },   // 25ms — preserves pick attack on clean/crunch
     modulation: { Speed: 0.3, Depth: 0.4 },
   },
   rock: {
     delay: { Time: 0.30, Feedback: 0.25, Mix: 0.20 },
-    reverb: { Mix: 0.20, DecayTime: 0.45 },
+    reverb: { Mix: 0.20, DecayTime: 0.45, PreDelay: 0.020 },  // 20ms — tight, punchy
     modulation: { Speed: 0.35, Depth: 0.45 },
   },
   metal: {
     delay: { Time: 0.375, Feedback: 0.20, Mix: 0.12 },
-    reverb: { Mix: 0.12, DecayTime: 0.35 },
+    reverb: { Mix: 0.12, DecayTime: 0.35, PreDelay: 0.010 },  // 10ms — reverb as ambience only
     modulation: { Speed: 0.3, Depth: 0.3 },
   },
   jazz: {
     delay: { Time: 0.30, Feedback: 0.20, Mix: 0.15 },
-    reverb: { Mix: 0.22, DecayTime: 0.5 },
+    reverb: { Mix: 0.22, DecayTime: 0.5, PreDelay: 0.030 },   // 30ms — room character with clear note definition
     modulation: { Speed: 0.35, Depth: 0.45 },
   },
   country: {
     delay: { Time: 0.15, Feedback: 0.25, Mix: 0.25 },
-    reverb: { Mix: 0.20, DecayTime: 0.4 },
+    reverb: { Mix: 0.20, DecayTime: 0.4, PreDelay: 0.020 },   // 20ms — tight spring-style, clear twang attack
     modulation: { Speed: 0.3, Depth: 0.4 },
   },
   ambient: {
     delay: { Time: 0.50, Feedback: 0.50, Mix: 0.40 },
-    reverb: { Mix: 0.50, DecayTime: 0.8 },
+    reverb: { Mix: 0.50, DecayTime: 0.8, PreDelay: 0.045 },   // 45ms — dramatic separation from reverb tail
     modulation: { Speed: 0.25, Depth: 0.6 },
   },
   worship: {
     delay: { Time: 0.45, Feedback: 0.40, Mix: 0.35 },
-    reverb: { Mix: 0.40, DecayTime: 0.7 },
+    reverb: { Mix: 0.40, DecayTime: 0.7, PreDelay: 0.035 },   // 35ms — swells into reverb tail
     modulation: { Speed: 0.25, Depth: 0.5 },
   },
   funk: {
     delay: { Time: 0.20, Feedback: 0.15, Mix: 0.15 },
-    reverb: { Mix: 0.15, DecayTime: 0.3 },
+    reverb: { Mix: 0.15, DecayTime: 0.3, PreDelay: 0.015 },   // 15ms — tight, clean articulation for choppiness
     modulation: { Speed: 0.5, Depth: 0.5 },
   },
   pop: {
     delay: { Time: 0.375, Feedback: 0.30, Mix: 0.25 },
-    reverb: { Mix: 0.25, DecayTime: 0.5 },
+    reverb: { Mix: 0.25, DecayTime: 0.5, PreDelay: 0.025 },   // 25ms — commercial radio standard
     modulation: { Speed: 0.4, Depth: 0.5 },
   },
 };
@@ -269,6 +269,7 @@ export function resolveParameters(
   const ampCategory: AmpCategory = ampModel.ampCategory ?? "clean";
   const topology: TopologyTag = ampModel.topology ?? "not_applicable";
   const genreProfile = matchGenre(intent.genreHint);
+  const tempoHint = intent.tempoHint;
 
   // Dual-amp: resolve second amp's category and topology independently (DUAL-04)
   // Dual-amp is only for Helix LT/Floor — Stadium/Stomp/PodGo are excluded upstream
@@ -287,8 +288,8 @@ export function resolveParameters(
 
     const resolved: BlockSpec = {
       ...block,
-      // Thread device through to resolveBlockParams for Stadium-specific extensions (STAD-06)
-      parameters: resolveBlockParams(block, effectiveCategory, effectiveTopology, genreProfile, device),
+      // Thread device and tempoHint through to resolveBlockParams
+      parameters: resolveBlockParams(block, effectiveCategory, effectiveTopology, genreProfile, device, tempoHint),
     };
     return resolved;
   });
@@ -297,6 +298,7 @@ export function resolveParameters(
 /**
  * Resolve parameters for a single block based on its type and the amp context.
  * The device parameter enables Stadium-specific param extensions (e.g., 10 cab params).
+ * The tempoHint parameter enables tempo-synced delay Time for delay blocks (FX-03).
  */
 function resolveBlockParams(
   block: BlockSpec,
@@ -304,6 +306,7 @@ function resolveBlockParams(
   topology: TopologyTag,
   genreProfile?: GenreEffectProfile,
   device?: DeviceTarget,
+  tempoHint?: number,
 ): Record<string, number> {
   switch (block.type) {
     case "amp":
@@ -321,8 +324,8 @@ function resolveBlockParams(
       return resolveVolumeParams(block);
     default:
       // delay, reverb, modulation, wah, pitch, send_return:
-      // Use model defaults, then apply genre overrides as outermost layer
-      return resolveDefaultParams(block, genreProfile);
+      // Use model defaults, then apply genre overrides, then tempo override for delay (FX-03)
+      return resolveDefaultParams(block, genreProfile, tempoHint);
   }
 }
 
@@ -473,12 +476,17 @@ function resolveVolumeParams(block: BlockSpec): Record<string, number> {
 
 /**
  * Default parameter resolution — look up model's defaultParams from the database,
- * then apply genre-specific overrides as outermost layer (INTL-01).
+ * then apply genre-specific overrides, then tempo-synced delay override (FX-03).
  *
- * Resolution order: model defaults -> genre overrides
+ * Resolution order: model defaults -> genre overrides -> tempo override (delay only)
  * Genre overrides only apply to matching block types (delay/reverb/modulation).
+ * Tempo override only applies to delay blocks when tempoHint is present.
  */
-function resolveDefaultParams(block: BlockSpec, genreProfile?: GenreEffectProfile): Record<string, number> {
+function resolveDefaultParams(
+  block: BlockSpec,
+  genreProfile?: GenreEffectProfile,
+  tempoHint?: number,
+): Record<string, number> {
   const model = findModel(block.modelName, block.type);
   const params = model ? { ...model.defaultParams } : { ...block.parameters };
 
@@ -492,6 +500,22 @@ function resolveDefaultParams(block: BlockSpec, genreProfile?: GenreEffectProfil
           params[key] = value;
         }
       }
+    }
+  }
+
+  // Apply tempo-synced delay override (FX-03) — outermost layer, overrides genre Time
+  // Only fires for delay blocks when tempoHint is present; reverb/modulation unaffected.
+  if (tempoHint && block.type === "delay") {
+    const quarterNoteTime = 30 / tempoHint; // 60000/BPM/2000 simplified
+    const clamped = Math.max(0.01, Math.min(1.0, quarterNoteTime));
+    // Standard delay: "Time" key
+    if ("Time" in params) {
+      params.Time = clamped;
+    }
+    // Dual Delay uses "Left Time" / "Right Time" keys (space in key name)
+    if ("Left Time" in params) {
+      params["Left Time"] = clamped;
+      params["Right Time"] = Math.min(1.0, clamped * 0.75); // dotted-eighth offset
     }
   }
 
