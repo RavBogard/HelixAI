@@ -67,6 +67,33 @@ describe("buildPlannerPrompt", () => {
     });
   });
 
+  describe("INT-01: per-model cab affinity section", () => {
+    // INT-01: cabAffinity and ampFamily fields consumed by buildPlannerPrompt()
+    // Previously orphaned data — now surfaced as a runtime-consumed section.
+
+    it("Test 11: buildPlannerPrompt output contains 'Per-Model Cab Affinity' section heading", () => {
+      expect(prompt).toContain("Per-Model Cab Affinity");
+    });
+
+    it("Test 12: prompt contains cabAffinity data for US Deluxe Nrm (Fender amp with known cabs)", () => {
+      // US Deluxe Nrm has cabAffinity: ["1x12 US Deluxe","2x12 Double C12N"]
+      expect(prompt).toContain("US Deluxe Nrm");
+      expect(prompt).toContain("1x12 US Deluxe");
+    });
+
+    it("Test 13: prompt contains at least 10 amp entries with cab affinity data (count arrow occurrences)", () => {
+      // Each amp entry uses → separator: "AmpName → cab1, cab2"
+      const arrowCount = (prompt.match(/→/g) || []).length;
+      expect(arrowCount).toBeGreaterThanOrEqual(10);
+    });
+
+    it("Test 14: prompt contains ampFamily groupings Fender and Marshall", () => {
+      // Groups are formatted as **FamilyName** markdown bold headings
+      expect(prompt).toContain("**Fender**");
+      expect(prompt).toContain("**Marshall**");
+    });
+  });
+
   describe("cache safety", () => {
     it("Test 9: all three enrichment sections appear BEFORE device-conditional DEVICE RESTRICTION text", () => {
       const gainIdx = prompt.indexOf("## Gain-Staging Intelligence");
