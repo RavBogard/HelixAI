@@ -369,3 +369,114 @@ describe("resolveParameters", () => {
     expect(result[0].parameters.Drive).toBe(0.50);
   });
 });
+
+// ============================================================
+// FX-02: Reverb PreDelay by genre
+// ============================================================
+// These tests verify that GENRE_EFFECT_DEFAULTS reverb entries include PreDelay
+// values appropriate to each genre's musical context.
+
+describe("FX-02: reverb PreDelay by genre", () => {
+  function makeReverbChain(): BlockSpec[] {
+    return [
+      makeBlock({ type: "amp", modelId: "HD2_AmpUSDeluxeNrm", modelName: "US Deluxe Nrm" }),
+      makeBlock({ type: "reverb", modelId: "HD2_ReverbPlate", modelName: "Plate" }),
+    ];
+  }
+
+  it("FX-02-1: blues genre reverb block produces PreDelay ~0.025 (25ms)", () => {
+    const chain = makeReverbChain();
+    const intent = makeIntent({ genreHint: "blues" });
+    const result = resolveParameters(chain, intent);
+    const reverb = result[1];
+    expect(reverb.parameters.PreDelay).toBeCloseTo(0.025, 3);
+  });
+
+  it("FX-02-2: ambient genre reverb block produces PreDelay ~0.045 (45ms)", () => {
+    const chain = makeReverbChain();
+    const intent = makeIntent({ genreHint: "ambient" });
+    const result = resolveParameters(chain, intent);
+    const reverb = result[1];
+    expect(reverb.parameters.PreDelay).toBeCloseTo(0.045, 3);
+  });
+
+  it("FX-02-3: metal genre reverb block produces PreDelay ~0.010 (10ms)", () => {
+    const chain = makeReverbChain();
+    const intent = makeIntent({ ampName: "Cali Rectifire", genreHint: "metal" });
+    const result = resolveParameters(chain, intent);
+    const reverb = result[1];
+    expect(reverb.parameters.PreDelay).toBeCloseTo(0.010, 3);
+  });
+});
+
+// ============================================================
+// FX-03: Tempo-synced delay Time
+// ============================================================
+// These tests verify that when tempoHint is present in ToneIntent, delay Time
+// is calculated as 30/BPM (quarter note at Helix's 2000ms normalization).
+// Formula: normalizedTime = 60000 / BPM / 2000 = 30 / BPM
+
+describe("FX-03: tempo-synced delay Time", () => {
+  function makeDelayChain(modelName = "Simple Delay", modelId = "HD2_DelaySimpleDelay"): BlockSpec[] {
+    return [
+      makeBlock({ type: "amp", modelId: "HD2_AmpUSDeluxeNrm", modelName: "US Deluxe Nrm" }),
+      makeBlock({ type: "delay", modelId, modelName }),
+    ];
+  }
+
+  it("FX-03-1: tempoHint=120 produces delay Time=0.25 (quarter note at 120 BPM)", () => {
+    const chain = makeDelayChain();
+    const intent = makeIntent({ tempoHint: 120 });
+    const result = resolveParameters(chain, intent);
+    const delay = result[1];
+    // 30 / 120 = 0.25
+    expect(delay.parameters.Time).toBeCloseTo(0.25, 3);
+  });
+
+  it("FX-03-2: tempoHint=80 produces delay Time=0.375 (quarter note at 80 BPM)", () => {
+    const chain = makeDelayChain();
+    const intent = makeIntent({ tempoHint: 80 });
+    const result = resolveParameters(chain, intent);
+    const delay = result[1];
+    // 30 / 80 = 0.375
+    expect(delay.parameters.Time).toBeCloseTo(0.375, 3);
+  });
+
+  it("FX-03-3: tempoHint=120 with Dual Delay produces Left Time=0.25, Right Time=0.1875", () => {
+    const chain = makeDelayChain("Dual Delay", "HD2_DelayDualDelay");
+    const intent = makeIntent({ tempoHint: 120 });
+    const result = resolveParameters(chain, intent);
+    const delay = result[1];
+    // Left Time = 30/120 = 0.25
+    // Right Time = 0.25 * 0.75 = 0.1875 (dotted-eighth offset)
+    expect(delay.parameters["Left Time"]).toBeCloseTo(0.25, 3);
+    expect(delay.parameters["Right Time"]).toBeCloseTo(0.1875, 3);
+  });
+
+  it("FX-03-4: no tempoHint leaves delay Time at genre default (unchanged)", () => {
+    const chain = makeDelayChain();
+    // blues genre default Time = 0.15
+    const intent = makeIntent({ genreHint: "blues" });
+    const result = resolveParameters(chain, intent);
+    const delay = result[1];
+    // Without tempoHint, delay Time should be the blues genre default (0.15)
+    expect(delay.parameters.Time).toBeCloseTo(0.15, 3);
+  });
+
+  it("FX-03-5: tempoHint does NOT affect reverb DecayTime (guard test)", () => {
+    const chain: BlockSpec[] = [
+      makeBlock({ type: "amp", modelId: "HD2_AmpUSDeluxeNrm", modelName: "US Deluxe Nrm" }),
+      makeBlock({ type: "delay", modelId: "HD2_DelaySimpleDelay", modelName: "Simple Delay" }),
+      makeBlock({ type: "reverb", modelId: "HD2_ReverbPlate", modelName: "Plate" }),
+    ];
+    // blues genre with tempo — delay should sync, reverb DecayTime should stay at genre default
+    const intent = makeIntent({ genreHint: "blues", tempoHint: 120 });
+    const result = resolveParameters(chain, intent);
+    const delay = result[1];
+    const reverb = result[2];
+    // Delay Time must be tempo-synced to 0.25
+    expect(delay.parameters.Time).toBeCloseTo(0.25, 3);
+    // Reverb DecayTime must remain at blues genre default (0.4) — NOT affected by tempoHint
+    expect(reverb.parameters.DecayTime).toBeCloseTo(0.4, 3);
+  });
+});
