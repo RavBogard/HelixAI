@@ -622,14 +622,14 @@ Note: Phases 52, 55, and 56 can start in parallel. Phase 53 depends on 52. Phase
 | 55. Planner Prompt Enrichment | 2/2 | Complete    | 2026-03-05 | - |
 | 56. Per-Model Amp Parameter Overrides | 2/2 | Complete    | 2026-03-05 | - |
 | 57. Effect Parameter Intelligence | 2/2 | Complete    | 2026-03-05 | - |
-| 58. Architecture Audit | 1/1 | Complete   | 2026-03-05 | - |
+| 58. Architecture Audit | 1/1 | Complete    | 2026-03-05 | - |
 
 ### Phase 59: Fix Helix Floor preset import error 8309 incompatible device type
 
 **Goal:** Fix HX Edit error 8309 "Incompatible target device type" when importing generated .hlx presets on Helix Floor — reported by Paul Morgan and Tal Solomon Vardy
 **Requirements**: FLOOR-01
 **Depends on:** None (critical bug fix — can run in parallel with any phase)
-**Plans:** 1/1 plans complete
+**Plans:** 0/2 plans complete
 
 Plans:
 - [ ] 59-01-PLAN.md — Get confirmed Helix Floor device ID from real hardware export (human checkpoint)
