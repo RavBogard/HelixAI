@@ -8,6 +8,7 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { ToneIntentSchema, getModelListForPrompt, isPodGo, isStadium, isStomp } from "@/lib/helix";
 import { STOMP_CONFIG } from "@/lib/helix/config";
 import type { ToneIntent, DeviceTarget } from "@/lib/helix";
+import { logUsage, estimateClaudeCost } from "@/lib/usage-logger";
 
 /**
  * Build the Planner system prompt.
@@ -144,6 +145,21 @@ export async function callClaudePlanner(
     output_config: {
       format: zodOutputFormat(ToneIntentSchema),
     },
+  });
+
+  // Token usage logging (AUDIT-01)
+  const { usage } = response;
+  logUsage({
+    timestamp: new Date().toISOString(),
+    endpoint: "generate",
+    model: "claude-sonnet-4-6",
+    input_tokens: usage.input_tokens,
+    output_tokens: usage.output_tokens,
+    cache_creation_input_tokens: usage.cache_creation_input_tokens ?? null,
+    cache_read_input_tokens: usage.cache_read_input_tokens ?? null,
+    total_tokens: usage.input_tokens + usage.output_tokens,
+    cost_usd: estimateClaudeCost(usage),
+    cache_hit: (usage.cache_read_input_tokens ?? 0) > 0,
   });
 
   // Extract text from response content

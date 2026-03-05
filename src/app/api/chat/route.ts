@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { createGeminiClient, getSystemPrompt, getModelId, isPremiumKey } from "@/lib/gemini";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { logUsage, estimateGeminiCost } from "@/lib/usage-logger";
 
 export async function POST(req: NextRequest) {
   const { messages, premiumKey, conversationId } = await req.json();
@@ -86,6 +87,7 @@ export async function POST(req: NextRequest) {
   const readable = new ReadableStream({
     async start(controller) {
       let fullContent = "";
+      let finalUsage: { promptTokenCount?: number; candidatesTokenCount?: number; cachedContentTokenCount?: number; totalTokenCount?: number } | undefined;
       try {
         for await (const chunk of stream) {
           const text = chunk.text;
@@ -93,9 +95,26 @@ export async function POST(req: NextRequest) {
             fullContent += text;
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text })}\n\n`));
           }
+          if (chunk.usageMetadata) { finalUsage = chunk.usageMetadata; }
         }
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         controller.close();
+
+        // Token usage logging (AUDIT-01)
+        if (finalUsage) {
+          logUsage({
+            timestamp: new Date().toISOString(),
+            endpoint: "chat",
+            model: modelId,
+            input_tokens: finalUsage.promptTokenCount ?? 0,
+            output_tokens: finalUsage.candidatesTokenCount ?? 0,
+            cache_creation_input_tokens: null,
+            cache_read_input_tokens: finalUsage.cachedContentTokenCount ?? null,
+            total_tokens: finalUsage.totalTokenCount ?? 0,
+            cost_usd: estimateGeminiCost(finalUsage, modelId),
+            cache_hit: (finalUsage.cachedContentTokenCount ?? 0) > 0,
+          });
+        }
 
         // --- Persistence: save assistant message AFTER stream closes ---
         if (conversationId && userId && supabase && fullContent) {
