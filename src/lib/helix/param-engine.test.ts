@@ -480,3 +480,116 @@ describe("FX-03: tempo-synced delay Time", () => {
     expect(reverb.parameters.DecayTime).toBeCloseTo(0.4, 3);
   });
 });
+
+// ============================================================
+// FX-01: Guitar-type EQ shaping
+// ============================================================
+// These tests verify that the guitarType field in ToneIntent adjusts
+// the post-cab parametric EQ (HD2_EQParametric) output relative to the
+// AmpCategory baseline. Single-coil and humbucker guitars have fundamentally
+// different frequency profiles requiring different EQ compensation.
+//
+// Baselines from EQ_PARAMS:
+//   clean: LowGain=0.50, MidGain=0.48, HighGain=0.55
+//   crunch: LowGain=0.45, MidGain=0.45, HighGain=0.56
+//   high_gain: LowGain=0.42, MidGain=0.40, HighGain=0.54
+
+describe("FX-01: guitar-type EQ shaping", () => {
+  // Standard parametric EQ chain with clean amp
+  function makeEqChain(): BlockSpec[] {
+    return [
+      makeBlock({ type: "amp", modelId: "HD2_AmpUSDeluxeNrm", modelName: "US Deluxe Nrm" }),
+      makeBlock({ type: "eq", modelId: "HD2_EQParametric", modelName: "Parametric EQ" }),
+    ];
+  }
+
+  // FX-01-1: single_coil produces HighGain LOWER than baseline (cut harshness)
+  // clean baseline HighGain = 0.55; single_coil delta = -0.02 → expect 0.53
+  it("FX-01-1: single_coil guitarType produces HighGain lower than clean baseline (cut harshness)", () => {
+    const chain = makeEqChain();
+    const intent = makeIntent({ ampName: "US Deluxe Nrm", guitarType: "single_coil" });
+    const result = resolveParameters(chain, intent);
+    const resolvedEq = result[1];
+    // single_coil EQ_GUITAR_TYPE_ADJUST.HighGain = -0.02 → 0.55 - 0.02 = 0.53
+    expect(resolvedEq.parameters.HighGain).toBeLessThan(0.55); // below clean baseline
+  });
+
+  // FX-01-2: humbucker produces HighGain HIGHER than baseline (recover presence)
+  // clean baseline HighGain = 0.55; humbucker delta = +0.03 → expect 0.58
+  it("FX-01-2: humbucker guitarType produces HighGain higher than clean baseline (recover presence)", () => {
+    const chain = makeEqChain();
+    const intent = makeIntent({ ampName: "US Deluxe Nrm", guitarType: "humbucker" });
+    const result = resolveParameters(chain, intent);
+    const resolvedEq = result[1];
+    // humbucker EQ_GUITAR_TYPE_ADJUST.HighGain = +0.03 → 0.55 + 0.03 = 0.58
+    expect(resolvedEq.parameters.HighGain).toBeGreaterThan(0.55); // above clean baseline
+  });
+
+  // FX-01-3: single_coil and humbucker produce measurably different EQ values
+  it("FX-01-3: single_coil and humbucker produce different LowGain, MidGain, HighGain values", () => {
+    const chain1 = makeEqChain();
+    const chain2 = makeEqChain();
+    const singleCoilIntent = makeIntent({ ampName: "US Deluxe Nrm", guitarType: "single_coil" });
+    const humbuckerIntent = makeIntent({ ampName: "US Deluxe Nrm", guitarType: "humbucker" });
+    const scResult = resolveParameters(chain1, singleCoilIntent);
+    const hbResult = resolveParameters(chain2, humbuckerIntent);
+    const scEq = scResult[1].parameters;
+    const hbEq = hbResult[1].parameters;
+    // Single-coil vs humbucker must differ on all three gain parameters
+    expect(scEq.HighGain).not.toEqual(hbEq.HighGain);
+    expect(scEq.LowGain).not.toEqual(hbEq.LowGain);
+    expect(scEq.MidGain).not.toEqual(hbEq.MidGain);
+  });
+
+  // FX-01-4: p90 produces HighGain between single_coil and humbucker extremes
+  it("FX-01-4: p90 guitarType produces HighGain between single_coil and humbucker", () => {
+    const sc = resolveParameters(makeEqChain(), makeIntent({ ampName: "US Deluxe Nrm", guitarType: "single_coil" }));
+    const hb = resolveParameters(makeEqChain(), makeIntent({ ampName: "US Deluxe Nrm", guitarType: "humbucker" }));
+    const p9 = resolveParameters(makeEqChain(), makeIntent({ ampName: "US Deluxe Nrm", guitarType: "p90" }));
+    const scHighGain = sc[1].parameters.HighGain;
+    const hbHighGain = hb[1].parameters.HighGain;
+    const p90HighGain = p9[1].parameters.HighGain;
+    // p90 must be strictly between single_coil (lower) and humbucker (higher)
+    expect(p90HighGain).toBeGreaterThan(scHighGain);
+    expect(p90HighGain).toBeLessThan(hbHighGain);
+  });
+
+  // FX-01-5: no guitarType (undefined) produces exact baseline EQ_PARAMS values (regression)
+  it("FX-01-5: no guitarType produces exact baseline EQ_PARAMS values (zero regression)", () => {
+    const chain = makeEqChain();
+    // makeIntent sets guitarType: "single_coil" by default — override to undefined
+    const intent: ToneIntent = {
+      ampName: "US Deluxe Nrm",
+      cabName: "1x12 US Deluxe",
+      effects: [],
+      snapshots: [
+        { name: "Clean", toneRole: "clean" },
+        { name: "Rhythm", toneRole: "crunch" },
+        { name: "Lead", toneRole: "lead" },
+        { name: "Ambient", toneRole: "ambient" },
+      ],
+      // guitarType deliberately omitted — should produce exact baseline
+    };
+    const result = resolveParameters(chain, intent);
+    const resolvedEq = result[1].parameters;
+    // clean baseline EQ_PARAMS.clean values
+    expect(resolvedEq.LowGain).toBeCloseTo(0.50, 5);
+    expect(resolvedEq.MidGain).toBeCloseTo(0.48, 5);
+    expect(resolvedEq.HighGain).toBeCloseTo(0.55, 5);
+  });
+
+  // FX-01-6: guitarType only affects HD2_EQParametric — non-parametric EQ uses model defaults
+  it("FX-01-6: guitarType does NOT affect non-parametric EQ blocks (model defaults unchanged)", () => {
+    // Use a non-parametric EQ model — model defaults apply, guitarType has no effect
+    const chainSimple: BlockSpec[] = [
+      makeBlock({ type: "amp", modelId: "HD2_AmpUSDeluxeNrm", modelName: "US Deluxe Nrm" }),
+      makeBlock({ type: "eq", modelId: "HD2_EQSimple", modelName: "Simple EQ" }),
+    ];
+    const scIntent = makeIntent({ ampName: "US Deluxe Nrm", guitarType: "single_coil" });
+    const hbIntent = makeIntent({ ampName: "US Deluxe Nrm", guitarType: "humbucker" });
+    const scResult = resolveParameters(chainSimple, scIntent);
+    const hbResult = resolveParameters(chainSimple, hbIntent);
+    // Non-parametric EQ should produce identical output regardless of guitarType
+    expect(scResult[1].parameters).toEqual(hbResult[1].parameters);
+  });
+});

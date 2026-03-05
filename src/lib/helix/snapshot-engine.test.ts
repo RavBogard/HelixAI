@@ -313,6 +313,35 @@ describe("buildSnapshots", () => {
   });
 });
 
+// ============================================================
+// FX-04: Snapshot ChVol balance regression lock
+// ============================================================
+// This test explicitly names the FX-04 requirement to provide an audit trail
+// and regression protection for the already-implemented ROLE_CHVOL behavior
+// in snapshot-engine.ts. Lead snapshots must always be louder than clean
+// snapshots by default (FX-04 success criterion).
+
+describe("FX-04: snapshot ChVol balance", () => {
+  it("FX-04: lead snapshot ChVol is higher than clean snapshot ChVol by default", () => {
+    const intent = cleanIntent();
+    const chain = buildChain(intent);
+    const result = buildSnapshots(chain, standardSnapshots());
+
+    const ampBlock = chain.find((b) => b.type === "amp");
+    expect(ampBlock).toBeDefined();
+    const ampKey = findBlockKey(chain, ampBlock!);
+
+    const leadChVol = result[2].parameterOverrides[ampKey].ChVol;  // lead
+    const cleanChVol = result[0].parameterOverrides[ampKey].ChVol; // clean
+
+    // FX-04 core assertion: lead must be louder than clean
+    expect(leadChVol).toBeGreaterThan(cleanChVol);
+    // FX-04 exact values from ROLE_CHVOL table: lead=0.80, clean=0.68
+    expect(leadChVol).toBeCloseTo(0.80, 5);
+    expect(cleanChVol).toBeCloseTo(0.68, 5);
+  });
+});
+
 // Helper: compute the block key for a given block in the chain,
 // using global sequential numbering (excluding cabs).
 // Matches the snapshot-engine's buildBlockKeys() which uses global indices.
