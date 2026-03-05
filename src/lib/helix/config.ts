@@ -50,6 +50,12 @@ export const STADIUM_CONFIG = {
   STADIUM_MAX_PATHS: 4,
   /** Device version integer — verified from Agoura_Bassman.hsp and Agoura_Hiwatt.hsp (2026-03-05) */
   STADIUM_DEVICE_VERSION: 301990015,
+  /** Input model for path 1A (instrument input) */
+  STADIUM_INPUT_MODEL: "P35_InputInst1",
+  /** Input model for unused paths (no input) */
+  STADIUM_INPUT_NONE_MODEL: "P35_InputNone",
+  /** Output model (matrix output) */
+  STADIUM_OUTPUT_MODEL: "P35_OutputMatrix",
 } as const;
 
 /**
@@ -75,4 +81,33 @@ export const STOMP_CONFIG = {
   STOMP_OUTPUT_SEND_MODEL: "HelixStomp_AppDSPFlowOutputSend",
   /** Device version — same as LT/Floor (FIRMWARE_CONFIG.HLX_APP_VERSION) */
   STOMP_DEVICE_VERSION: 58720256,
+} as const;
+
+/**
+ * Helix Floor/Rack/LT system model IDs.
+ * These are I/O and routing models used in .hlx file format.
+ * Source: Direct inspection of real .hlx files (HD2_* prefix).
+ */
+export const HELIX_SYSTEM_MODELS = {
+  /** DSP Flow 1 input */
+  FLOW1_INPUT: "HD2_AppDSPFlow1Input",
+  /** DSP Flow 2 input */
+  FLOW2_INPUT: "HD2_AppDSPFlow2Input",
+  /** DSP output (shared) */
+  FLOW_OUTPUT: "HD2_AppDSPFlowOutput",
+  /** Split A/B routing block */
+  SPLIT_AB: "HD2_SplitAB",
+  /** Merger/mixer routing block */
+  MERGER_MIXER: "HD2_MergerMixer",
+} as const;
+
+/**
+ * Pod Go system model IDs.
+ * Source: Direct inspection of real Pod Go .pgp files (P34_* prefix).
+ */
+export const POD_GO_SYSTEM_MODELS = {
+  /** Input model */
+  INPUT: "P34_AppDSPFlowInput",
+  /** Output model */
+  OUTPUT: "P34_AppDSPFlowOutput",
 } as const;
