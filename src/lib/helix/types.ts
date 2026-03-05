@@ -163,6 +163,25 @@ export type TopologyTag =
   | "solid_state"        // JC-120 (no tube power amp characteristics)
   | "not_applicable";    // for non-amp models (cabs, effects)
 
+/** Amp manufacturer family — used for per-model parameter override grouping (AMP-01). */
+export type AmpFamily =
+  | "Fender"
+  | "Marshall"
+  | "Vox"
+  | "Mesa"
+  | "Matchless"
+  | "Hiwatt"
+  | "Soldano"
+  | "Friedman"
+  | "Diezel"
+  | "Bogner"
+  | "EVH"
+  | "PRS"
+  | "ENGL"
+  | "Revv"
+  | "Grammatico"
+  | "Line6";
+
 export type CabSize = "small" | "medium" | "large";
 
 // Device target for .hlx / .pgp / .hsp file generation

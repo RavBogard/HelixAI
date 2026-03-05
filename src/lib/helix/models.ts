@@ -1,7 +1,7 @@
 // Comprehensive database of Helix LT amp, cab, and effect models
 // Model IDs match the HD2_* naming convention used in .hlx files
 
-import type { AmpCategory, TopologyTag, DeviceTarget } from "./types";
+import type { AmpCategory, AmpFamily, TopologyTag, DeviceTarget } from "./types";
 import { BLOCK_TYPES_PODGO, isPodGo, isStadium } from "./types";
 
 export interface HelixModel {
@@ -12,6 +12,8 @@ export interface HelixModel {
   ampCategory?: AmpCategory;  // "clean" | "crunch" | "high_gain" — amp models only
   topology?: TopologyTag;     // cathode_follower | plate_fed | solid_state | not_applicable — amp models only
   cabAffinity?: string[];     // preferred cab names (keys in CAB_MODELS) — amp models only
+  ampFamily?: AmpFamily;                      // Manufacturer family for per-model grouping (AMP-01)
+  paramOverrides?: Record<string, number>;     // Layer 4: per-model overrides applied after category defaults (AMP-02)
   defaultParams: Record<string, number>;
   blockType: number; // @type value in .hlx
   stadiumOnly?: boolean;      // true for Agoura_* models — excluded from Helix LT/Floor/Pod Go catalogs (STAD-03)
