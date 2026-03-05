@@ -523,7 +523,11 @@ See: `.planning/milestones/v3.2-ROADMAP.md`
   2. A Vox-style amp selection in ToneIntent correlates with an open-back 2x12 cab in the generated preset — the cab pairing guidance is reflected in AI output
   3. A metal tone request produces ToneIntent with no more than 3 effect blocks; an ambient request produces 4-5 appropriate time-based effects — genre effect discipline is observable in the output
   4. Cache hit rate measured via usage-logger.ts is not degraded after enrichment is added — the shared static prefix did not fragment into device-conditional buckets
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 55-01-PLAN.md — TDD: Create planner.test.ts + add gain-staging, cab pairing, and effect discipline enrichment sections to buildPlannerPrompt() (PROMPT-01, PROMPT-02, PROMPT-03, PROMPT-04)
+- [ ] 55-02-PLAN.md — Regression verification: generate-baseline test + cross-device enrichment verification script (PROMPT-04)
 
 ### Phase 56: Per-Model Amp Parameter Overrides
 **Goal**: The Knowledge Layer applies per-model amp parameter corrections after category defaults — non-master-volume amps and high-gain amps receive historically accurate Drive/Master values that are not silently discarded
