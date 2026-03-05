@@ -71,6 +71,11 @@ export const LED_COLORS = {
 // ============================================================
 // AMP MODELS
 // ============================================================
+// Per-model paramOverrides (Phase 56 — AMP-02, AMP-03, AMP-04)
+// Sources: HelixHelp common-amp-settings, Tonevault 250-preset analysis,
+// Line 6 community gain-staging guides. MEDIUM confidence — community-verified.
+// Non-MV amps: Drive = volume knob, Master must be 1.0 (no master volume circuit)
+// High-gain amps: Drive/Presence anti-correlation from Tonevault analysis
 export const AMP_MODELS: Record<string, HelixModel> = {
   // --- Clean / Chime ---
   "US Deluxe Nrm": {
@@ -81,7 +86,8 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     ampCategory: "clean" as const,
     topology: "plate_fed" as const,
     cabAffinity: ["1x12 US Deluxe","2x12 Double C12N"],
-    paramOverrides: { Drive: 0.99 }, // canary — proves Layer 4 mechanism; Plan 02 will replace with Drive: 0.60, Master: 1.0
+    ampFamily: "Fender",                           // AMP-01: manufacturer family
+    paramOverrides: { Drive: 0.60, Master: 1.0 },  // AMP-02/04: non-MV — Drive=Volume, Master open
     blockType: BLOCK_TYPES.AMP,
     defaultParams: { Drive: 0.45, Bass: 0.35, Mid: 0.60, Treble: 0.55, ChVol: 0.7, Master: 1.0, Presence: 0.35, Sag: 0.7, Hum: 0.1, Ripple: 0.1, Bias: 0.65, BiasX: 0.5 },
   },
@@ -93,6 +99,8 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     ampCategory: "clean" as const,
     topology: "plate_fed" as const,
     cabAffinity: ["1x12 US Deluxe","2x12 Double C12N"],
+    ampFamily: "Fender",
+    paramOverrides: { Drive: 0.60, Master: 1.0 },  // AMP-04: non-MV same family/topology as Nrm
     blockType: BLOCK_TYPES.AMP,
     defaultParams: { Drive: 0.45, Bass: 0.35, Mid: 0.60, Treble: 0.55, ChVol: 0.7, Master: 1.0, Presence: 0.35, Sag: 0.7, Hum: 0.1, Ripple: 0.1, Bias: 0.65, BiasX: 0.5 },
   },
@@ -104,6 +112,8 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     ampCategory: "clean" as const,
     topology: "plate_fed" as const,
     cabAffinity: ["1x12 US Deluxe","2x12 Double C12N"],
+    ampFamily: "Fender",
+    paramOverrides: { Drive: 0.55, Master: 1.0 },  // AMP-04: non-MV Twin — more headroom than Deluxe
     blockType: BLOCK_TYPES.AMP,
     defaultParams: { Drive: 0.50, Bass: 0.50, Mid: 0.55, Treble: 0.55, ChVol: 0.7, Master: 1.0, Presence: 0.35, Sag: 0.65, Hum: 0.05, Ripple: 0.05, Bias: 0.65, BiasX: 0.5 },
   },
@@ -115,6 +125,8 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     ampCategory: "clean" as const,
     topology: "plate_fed" as const,
     cabAffinity: ["1x12 Fullerton","4x10 Tweed P10R"],
+    ampFamily: "Fender",
+    paramOverrides: { Drive: 0.60, Master: 1.0 },  // AMP-04: non-MV Champ — single-ended, Drive=Volume
     blockType: BLOCK_TYPES.AMP,
     defaultParams: { Drive: 0.50, Bass: 0.50, Mid: 0.50, Treble: 0.55, ChVol: 0.7, Master: 1.0, Presence: 0.40, Sag: 0.75, Hum: 0.15, Ripple: 0.15, Bias: 0.70, BiasX: 0.5 },
   },
@@ -126,6 +138,8 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     ampCategory: "clean" as const,
     topology: "cathode_follower" as const,
     cabAffinity: ["2x12 Blue Bell","1x12 Blue Bell"],
+    ampFamily: "Vox",
+    paramOverrides: { Drive: 0.60, Master: 1.0 },  // AMP-04: non-MV AC30; Cut knob handles treble
     blockType: BLOCK_TYPES.AMP,
     defaultParams: { Drive: 0.40, Bass: 0.50, Mid: 0.50, Treble: 0.55, ChVol: 0.7, Master: 1.0, Presence: 0.0, Cut: 0.50, Sag: 0.65, Hum: 0.15, Ripple: 0.1, Bias: 0.70, BiasX: 0.70 },
   },
@@ -137,6 +151,8 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     ampCategory: "clean" as const,
     topology: "cathode_follower" as const,
     cabAffinity: ["2x12 Blue Bell","1x12 Blue Bell"],
+    ampFamily: "Vox",
+    paramOverrides: { Drive: 0.60, Master: 1.0 },  // AMP-04: non-MV, same family as A30
     blockType: BLOCK_TYPES.AMP,
     defaultParams: { Drive: 0.40, Bass: 0.50, Mid: 0.50, Treble: 0.55, ChVol: 0.7, Master: 1.0, Presence: 0.0, Cut: 0.50, Sag: 0.70, Hum: 0.15, Ripple: 0.1, Bias: 0.70, BiasX: 0.70 },
   },
@@ -148,6 +164,8 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     ampCategory: "clean" as const,
     topology: "cathode_follower" as const,
     cabAffinity: ["2x12 Match H30","1x12 Blue Bell"],
+    ampFamily: "Matchless",
+    paramOverrides: { Drive: 0.55, Master: 1.0 },  // AMP-04: DC-30 Class A non-MV
     blockType: BLOCK_TYPES.AMP,
     defaultParams: { Drive: 0.40, Bass: 0.50, Mid: 0.55, Treble: 0.55, ChVol: 0.7, Master: 0.90, Sag: 0.65, Hum: 0.1, Ripple: 0.1, Bias: 0.70, BiasX: 0.60 },
   },
@@ -159,6 +177,8 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     ampCategory: "clean" as const,
     topology: "plate_fed" as const,
     cabAffinity: ["4x12 WhoWatt 100"],
+    ampFamily: "Hiwatt",
+    paramOverrides: { Drive: 0.40, Master: 1.0 },  // AMP-04: extreme headroom non-MV; lower Drive
     blockType: BLOCK_TYPES.AMP,
     defaultParams: { Drive: 0.40, Bass: 0.50, Mid: 0.55, Treble: 0.55, ChVol: 0.7, Master: 0.90, Presence: 0.50, Sag: 0.60, Hum: 0.05, Ripple: 0.05, Bias: 0.60, BiasX: 0.50 },
   },
@@ -181,6 +201,8 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     ampCategory: "clean" as const,
     topology: "plate_fed" as const,
     cabAffinity: ["1x12 Fullerton","4x10 Tweed P10R"],
+    ampFamily: "Fender",
+    paramOverrides: { Drive: 0.55, Master: 1.0 },  // AMP-04: non-MV Bassman — more headroom than Deluxe
     blockType: BLOCK_TYPES.AMP,
     defaultParams: { Drive: 0.45, Bass: 0.40, Mid: 0.55, Treble: 0.55, ChVol: 0.7, Master: 1.0, Presence: 0.40, Sag: 0.70, Hum: 0.15, Ripple: 0.15, Bias: 0.70, BiasX: 0.50 },
   },
@@ -194,6 +216,8 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     ampCategory: "crunch" as const,
     topology: "plate_fed" as const,
     cabAffinity: ["4x12 Greenback25","4x12 Greenback20","4x12 Brit V30"],
+    ampFamily: "Marshall",
+    paramOverrides: { Drive: 0.55, Master: 1.0 },  // AMP-04: early Plexi non-MV; Master must be open
     blockType: BLOCK_TYPES.AMP,
     defaultParams: { Drive: 0.55, Bass: 0.20, Mid: 0.80, Treble: 0.75, ChVol: 0.7, Master: 1.0, Presence: 0.40, Sag: 0.60, Hum: 0.20, Ripple: 0.15, Bias: 0.70, BiasX: 0.50 },
   },
@@ -205,6 +229,8 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     ampCategory: "crunch" as const,
     topology: "plate_fed" as const,
     cabAffinity: ["4x12 Greenback25","4x12 Greenback20","4x12 Brit V30"],
+    ampFamily: "Marshall",
+    paramOverrides: { Drive: 0.60, Master: 1.0 },  // AMP-04: Bright channel non-MV; needs more input
     blockType: BLOCK_TYPES.AMP,
     defaultParams: { Drive: 0.60, Bass: 0.20, Mid: 0.80, Treble: 0.60, ChVol: 0.7, Master: 1.0, Presence: 0.35, Sag: 0.60, Hum: 0.20, Ripple: 0.15, Bias: 0.70, BiasX: 0.50 },
   },
@@ -260,6 +286,8 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     ampCategory: "high_gain" as const,
     topology: "plate_fed" as const,
     cabAffinity: ["4x12 Brit V30","4x12 Greenback25"],
+    ampFamily: "Friedman",
+    paramOverrides: { Drive: 0.35, Presence: 0.50 },  // AMP-03: BE-100 tight; lower Drive than category default
     blockType: BLOCK_TYPES.AMP,
     defaultParams: { Drive: 0.30, Bass: 0.40, Mid: 0.65, Treble: 0.63, ChVol: 0.7, Master: 0.36, Presence: 0.55, Sag: 0.35, Hum: 0.1, Ripple: 0.05, Bias: 0.75, BiasX: 0.50 },
   },
@@ -273,6 +301,8 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     ampCategory: "high_gain" as const,
     topology: "plate_fed" as const,
     cabAffinity: ["4x12 Cali V30","4x12 XXL V30"],
+    ampFamily: "Mesa",
+    paramOverrides: { Drive: 0.40, Presence: 0.30 },  // AMP-03: Rectifier anti-mud; Presence anti-correlated with Drive
     blockType: BLOCK_TYPES.AMP,
     defaultParams: { Drive: 0.53, Bass: 0.46, Mid: 0.62, Treble: 0.55, ChVol: 0.7, Master: 0.45, Presence: 0.33, Sag: 0.25, Hum: 0.1, Ripple: 0.05, Bias: 0.60, BiasX: 0.45 },
   },
@@ -284,6 +314,8 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     ampCategory: "high_gain" as const,
     topology: "plate_fed" as const,
     cabAffinity: ["4x12 Cali V30","4x12 Greenback25"],
+    ampFamily: "Mesa",
+    paramOverrides: { Drive: 0.50, Presence: 0.35 },  // AMP-03: Mark IV tighter EQ than Rectifier
     blockType: BLOCK_TYPES.AMP,
     defaultParams: { Drive: 0.70, Bass: 0.25, Mid: 0.45, Treble: 0.55, ChVol: 0.7, Master: 0.45, Presence: 0.55, Sag: 0.25, Hum: 0.1, Ripple: 0.05, Bias: 0.60, BiasX: 0.45 },
   },
@@ -317,6 +349,8 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     ampCategory: "high_gain" as const,
     topology: "plate_fed" as const,
     cabAffinity: ["4x12 XXL V30","4x12 Uber V30"],
+    ampFamily: "Diezel",
+    paramOverrides: { Drive: 0.45, Presence: 0.45 },  // AMP-03: VH4 Mega — slightly tighter than category default
     blockType: BLOCK_TYPES.AMP,
     defaultParams: { Drive: 0.60, Bass: 0.50, Mid: 0.50, Treble: 0.45, ChVol: 0.7, Master: 0.45, Presence: 0.45, Deep: 0.55, Sag: 0.20, Hum: 0.05, Ripple: 0.05, Bias: 0.60, BiasX: 0.45 },
   },
@@ -372,6 +406,8 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     ampCategory: "high_gain" as const,
     topology: "plate_fed" as const,
     cabAffinity: ["4x12 Solo Lead EM","4x12 Greenback25"],
+    ampFamily: "Soldano",
+    paramOverrides: { Drive: 0.50, Presence: 0.30 },  // AMP-03: SLO tight; low Presence avoids harshness
     blockType: BLOCK_TYPES.AMP,
     defaultParams: { Drive: 0.50, Bass: 0.50, Mid: 0.57, Treble: 0.48, ChVol: 0.7, Master: 0.80, Presence: 0.30, Sag: 0.40, Hum: 0.1, Ripple: 0.05, Bias: 0.65, BiasX: 0.50 },
   },
@@ -418,6 +454,8 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     ampCategory: "clean" as const,
     topology: "plate_fed" as const,
     cabAffinity: ["1x12 US Deluxe","2x12 Double C12N"],
+    ampFamily: "Fender",
+    paramOverrides: { Drive: 0.55, Master: 1.0 },  // AMP-04: non-MV Twin Vibrato — same as Nrm channel
     blockType: BLOCK_TYPES.AMP,
     defaultParams: { Drive: 0.50, Bass: 0.50, Mid: 0.55, Treble: 0.55, ChVol: 0.7, Master: 1.0, Presence: 0.35, Sag: 0.65, Hum: 0.05, Ripple: 0.05, Bias: 0.65, BiasX: 0.50 },
   },
@@ -429,6 +467,8 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     ampCategory: "clean" as const,
     topology: "plate_fed" as const,
     cabAffinity: ["1x12 US Deluxe","2x12 Double C12N"],
+    ampFamily: "Fender",
+    paramOverrides: { Drive: 0.60, Master: 1.0 },  // AMP-04: non-MV Princeton — same strategy as Deluxe
     blockType: BLOCK_TYPES.AMP,
     defaultParams: { Drive: 0.45, Bass: 0.40, Mid: 0.60, Treble: 0.55, ChVol: 0.7, Master: 1.0, Presence: 0.35, Sag: 0.75, Hum: 0.10, Ripple: 0.10, Bias: 0.65, BiasX: 0.50 },
   },
