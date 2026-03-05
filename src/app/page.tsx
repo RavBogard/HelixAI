@@ -760,7 +760,12 @@ function HomeContent() {
     if (!generatedPreset?.preset) return;
 
     const json = JSON.stringify(generatedPreset.preset, null, 2);
-    const blob = new Blob([json], { type: "application/json" });
+    // Stadium .hsp files require an 8-byte ASCII magic header ("rpshnosj") before JSON content.
+    // Without it, Helix Stadium rejects the file with "Failed to import preset".
+    const isStadiumFile = generatedPreset.fileExtension === ".hsp";
+    const blob = isStadiumFile
+      ? new Blob(["rpshnosj", json], { type: "application/octet-stream" })
+      : new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     const baseName = generatedPreset.spec?.name || "HelixTones_Preset";
