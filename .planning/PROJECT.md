@@ -72,11 +72,13 @@ Generated presets must sound professional enough to compete with custom presets 
 
 ### Active
 
-- [ ] Stadium preset rebuild from real .hsp files (reverse-engineer 12+ real presets)
-- [ ] Preset quality leap: smarter effect combinations and interactions
-- [ ] Preset quality leap: more nuanced parameter resolution (surgical knob values)
-- [ ] Preset quality leap: improved AI creative decisions (richer ToneIntent prompting)
-- [ ] API cost optimization: evaluate model split (Haiku chat vs. Sonnet generation)
+- [ ] Stadium preset rebuild from real .hsp files (reverse-engineer 11 real presets)
+- [ ] Planner prompt enrichment (gain-staging, cab pairing, effect discipline)
+- [ ] Per-model amp parameter overrides (family classification, master volume, cab affinity)
+- [ ] Effect parameter intelligence (guitar-type EQ, reverb PreDelay, tempo-scaled delay)
+- [ ] Effect combination logic (interaction params, genre substitution, cross-device validation)
+- [ ] Cost-aware model routing (evidence-based Haiku chat vs. Sonnet generation)
+- [ ] Architecture review: device/model abstraction layer (6 devices, builders, catalogs, chain rules)
 
 ### Out of Scope
 
@@ -86,14 +88,19 @@ Generated presets must sound professional enough to compete with custom presets 
 - Full pedalboard OCR (auto-detect all pedals from a single board photo) — too unreliable, per-pedal photos are the baseline
 - Parallel wet/dry routing (split/join paths) — deferred
 
-## Current Milestone: v4.0 (planned — not yet started)
+## Current Milestone: v4.0 Stadium Rebuild + Preset Quality Leap
 
-**Goal:** Rebuild Stadium preset generation from real .hsp files and close the quality gap for all devices.
+**Goal:** Rebuild Stadium preset generation from real .hsp files and deliver a major quality improvement across all devices through enriched planner prompts, per-model amp parameters, intelligent effect combinations, and an architecture review of the device/model abstraction layer.
 
 **Target features:**
-- Reverse-engineer 12+ real Stadium/Stadium XL .hsp presets to rebuild the builder from ground truth
-- Carry forward quality phases from original v4.0 scope (planner prompt, amp params, effects, combos, cost routing)
+- Reverse-engineer 11 real Stadium .hsp presets to rebuild the builder from ground truth
 - Unblock Stadium device selection in UI after builder is verified
+- Planner prompt enrichment (gain-staging intelligence, cab pairing guidance, effect discipline)
+- Per-model amp parameter overrides (family classification, master volume strategy, cab affinity)
+- Effect parameter intelligence (guitar-type EQ, reverb PreDelay, tempo-scaled delay)
+- Effect combination logic (interaction params, genre block substitution, cross-device validation)
+- Cost-aware model routing (evidence-based model split: Haiku chat vs. Sonnet generation)
+- Architecture review: evaluate device/model abstraction layer across all 6 devices and model catalogs
 
 ## Current State
 
@@ -163,4 +170,4 @@ v3.2 added token usage audit tooling (usage-logger.ts, baseline generator, cache
 | Rename shipped v4.0 to v3.2 | Core quality phases (43-47) weren't started; reserve v4.0 for the real quality leap + Stadium rebuild | ✓ Good |
 
 ---
-*Last updated: 2026-03-05 after v3.2 milestone completion*
+*Last updated: 2026-03-05 after v4.0 milestone start*
