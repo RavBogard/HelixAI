@@ -622,7 +622,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 39. HX Stomp & HX Stomp XL Support | — | 3/3 | Complete | 2026-03-04 |
 | 40. Rebrand HelixAI to HelixTones | — | 1/1 | Complete | 2026-03-04 |
 | 41. Chat UX | — | 1/1 | Complete | 2026-03-04 |
-| 42. Token Cost Audit + Quality Baseline | v4.0 | 0/TBD | Not started | - |
+| 42. Token Cost Audit + Quality Baseline | 1/2 | In Progress|  | - |
 | 43. Planner Prompt Quality | v4.0 | 0/TBD | Not started | - |
 | 44. Knowledge Layer — Amp Parameters | v4.0 | 0/TBD | Not started | - |
 | 45. Knowledge Layer — Effects, EQ, Snapshots | v4.0 | 0/TBD | Not started | - |
@@ -637,7 +637,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 **Goal:** [To be planned]
 **Requirements**: TBD
 **Depends on:** Phase 50
-**Plans:** 0 plans
+**Plans:** 1/2 plans executed
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 51 to break down)

@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Preset Quality Leap
-status: phase_planned
-last_updated: "2026-03-04"
+status: in_progress
+last_updated: "2026-03-05"
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 2
-  completed_plans: 0
+  completed_plans: 1
 ---
 
 # Project State
@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 ## Current Position
 
 Phase: 42 of 50 (Token Cost Audit + Quality Baseline)
-Plan: 42-01 (Wave 1) ready to execute
-Status: Phase planned — 2 plans, 2 waves
-Last activity: 2026-03-04 — Phase 42 planned (2 plans: token logging + baseline/cache report)
+Plan: 42-02 (Wave 2) ready to execute
+Status: In progress — 1 of 2 plans complete
+Last activity: 2026-03-05 — Plan 42-01 complete (token logging infrastructure)
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 10%
 
 ## Accumulated Context
 
@@ -38,6 +38,8 @@ Progress: [░░░░░░░░░░] 0%
 - [v4.0]: COST-01 is evidence-based — "no changes needed" is a valid outcome
 - [v4.0]: Phases 44+45 can be developed in parallel but should deploy together (prompt cache preservation)
 - [v4.0]: All prompt changes batched into single Phase 43 deployment to avoid repeated cache invalidation
+- [Phase 42]: logUsage() is a no-op (zero I/O) when LOG_USAGE !== true — no production performance impact
+- [Phase 42]: usage.jsonl JSON-lines format chosen for append-only, parse-friendly token log
 
 ### Roadmap Evolution
 
@@ -55,7 +57,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-04
-Stopped at: Phase 42 planned — ready to execute Plan 42-01
+Last session: 2026-03-05
+Stopped at: Completed 42-01 — token logging infrastructure (usage-logger, planner.ts + chat route integration)
 Resume file: None
 Next command: `/gsd:execute-phase 42`
