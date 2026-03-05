@@ -7,7 +7,8 @@
 //
 // Usage: resolveParameters(chain, intent) -> BlockSpec[] with all parameters filled.
 
-import type { AmpCategory, BlockSpec, TopologyTag } from "./types";
+import type { AmpCategory, BlockSpec, DeviceTarget, TopologyTag } from "./types";
+import { isStadium } from "./types";
 import type { ToneIntent } from "./tone-intent";
 import {
   AMP_MODELS,
@@ -253,12 +254,15 @@ function findModel(modelName: string, blockType: string): HelixModel | undefined
 export function resolveParameters(
   chain: BlockSpec[],
   intent: ToneIntent,
+  device?: DeviceTarget,
 ): BlockSpec[] {
-  // Look up the amp model to determine category and topology
-  // Stadium amps live in STADIUM_AMPS, standard amps in AMP_MODELS — check both
-  const ampModel = STADIUM_AMPS[intent.ampName] ?? AMP_MODELS[intent.ampName];
+  // Strict device-aware amp lookup — no cross-device fallback.
+  const stadium = device ? isStadium(device) : false;
+  const ampModel = stadium
+    ? STADIUM_AMPS[intent.ampName]
+    : AMP_MODELS[intent.ampName];
   if (!ampModel) {
-    throw new Error(`Unknown amp model: "${intent.ampName}" — not found in AMP_MODELS or STADIUM_AMPS`);
+    throw new Error(`Unknown amp model: "${intent.ampName}" — not found in ${stadium ? "STADIUM_AMPS" : "AMP_MODELS"}`);
   }
 
   const ampCategory: AmpCategory = ampModel.ampCategory ?? "clean";
@@ -266,8 +270,9 @@ export function resolveParameters(
   const genreProfile = matchGenre(intent.genreHint);
 
   // Dual-amp: resolve second amp's category and topology independently (DUAL-04)
+  // Dual-amp is only for Helix LT/Floor — Stadium/Stomp/PodGo are excluded upstream
   const secondAmpModel = intent.secondAmpName
-    ? (STADIUM_AMPS[intent.secondAmpName] ?? AMP_MODELS[intent.secondAmpName])
+    ? AMP_MODELS[intent.secondAmpName]
     : undefined;
   const secondAmpCategory: AmpCategory = secondAmpModel?.ampCategory ?? "clean";
   const secondTopology: TopologyTag = secondAmpModel?.topology ?? "not_applicable";

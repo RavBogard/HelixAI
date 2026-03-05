@@ -409,4 +409,41 @@ describe("assembleSignalChain", () => {
       )
     ).toThrow(/DSP0 block limit exceeded.*non-cab blocks.*max 8/);
   });
+
+  // --- Cross-device model contamination tests ---
+
+  it("Stadium preset with valid Agoura amp produces Agoura_* model IDs", () => {
+    const chain = assembleSignalChain(
+      cleanIntent({
+        ampName: "Agoura German Xtra Red",
+        cabName: "4x12 Cali V30",
+        snapshots: [
+          { name: "Clean", toneRole: "clean" },
+          { name: "Rhythm", toneRole: "crunch" },
+          { name: "Lead", toneRole: "lead" },
+          { name: "Ambient", toneRole: "ambient" },
+        ],
+      }),
+      "helix_stadium"
+    );
+    const ampBlock = chain.find((b) => b.type === "amp");
+    expect(ampBlock).toBeDefined();
+    expect(ampBlock!.modelId).toMatch(/^Agoura_/);
+  });
+
+  it("Stadium preset with HD2-only amp name throws (no fallback to AMP_MODELS)", () => {
+    expect(() =>
+      assembleSignalChain(
+        cleanIntent({ ampName: "US Double Nrm" }),
+        "helix_stadium"
+      )
+    ).toThrow(/Unknown amp model.*US Double Nrm.*STADIUM_AMPS/);
+  });
+
+  it("Helix LT preset with valid HD2 amp produces HD2_* model IDs", () => {
+    const chain = assembleSignalChain(cleanIntent(), "helix_lt");
+    const ampBlock = chain.find((b) => b.type === "amp");
+    expect(ampBlock).toBeDefined();
+    expect(ampBlock!.modelId).toMatch(/^HD2_/);
+  });
 });

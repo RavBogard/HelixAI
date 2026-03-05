@@ -19,9 +19,9 @@ function getValidModelIds(): Set<string> {
   // Pod Go system models
   ids.add("P34_AppDSPFlowInput");
   ids.add("P34_AppDSPFlowOutput");
-  // Stadium system models (P35_* prefix, Phase 35 will add more) (STAD-04)
-  ids.add("P35_AppDSPFlowInput");
-  ids.add("P35_AppDSPFlowOutput");
+  // Stadium system models (P35_* prefix — confirmed from real .hsp inspection)
+  ids.add("P35_InputInst1");
+  ids.add("P35_OutputMatrix");
   // Stomp system models (HelixStomp_* prefix — confirmed from Swell_Delay.hlx, 2026-03-04)
   ids.add("HelixStomp_AppDSPFlowInput");
   ids.add("HelixStomp_AppDSPFlowOutputMain");

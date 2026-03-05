@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
     // Step 2: Knowledge Layer pipeline (deterministic)
     // Pass device target so chain rules apply Pod Go constraints (PGCHAIN-01-03)
     const chain = assembleSignalChain(toneIntent, deviceTarget);
-    const parameterized = resolveParameters(chain, toneIntent);
+    const parameterized = resolveParameters(chain, toneIntent, deviceTarget);
     const snapshots = buildSnapshots(parameterized, toneIntent.snapshots);
 
     // Step 3: Build PresetSpec

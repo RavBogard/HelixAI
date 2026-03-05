@@ -262,9 +262,10 @@ export function assembleSignalChain(intent: ToneIntent, device?: DeviceTarget): 
   const stomp = device ? isStomp(device) : false;
 
   // 1. Resolve amp model
-  // Stadium: look up in STADIUM_AMPS first, then AMP_MODELS as fallback
+  // Strict device-aware lookup — no cross-device fallback.
+  // Stadium uses STADIUM_AMPS (Agoura_* IDs), all others use AMP_MODELS (HD2_* IDs).
   const ampModel = stadium
-    ? (STADIUM_AMPS[intent.ampName] ?? AMP_MODELS[intent.ampName])
+    ? STADIUM_AMPS[intent.ampName]
     : AMP_MODELS[intent.ampName];
   if (!ampModel) {
     throw new Error(
@@ -288,10 +289,11 @@ export function assembleSignalChain(intent: ToneIntent, device?: DeviceTarget): 
   let secondAmpModel: HelixModel | undefined;
   let secondCabModel: HelixModel | undefined;
   if (isDualAmp) {
-    secondAmpModel = STADIUM_AMPS[intent.secondAmpName!] ?? AMP_MODELS[intent.secondAmpName!];
+    // Dual-amp is only for Helix LT/Floor (isDualAmp guard excludes Stadium/Stomp/PodGo)
+    secondAmpModel = AMP_MODELS[intent.secondAmpName!];
     if (!secondAmpModel) {
       throw new Error(
-        `Unknown second amp model: "${intent.secondAmpName}". Model name must exactly match a key in AMP_MODELS or STADIUM_AMPS.`
+        `Unknown second amp model: "${intent.secondAmpName}". Model name must exactly match a key in AMP_MODELS.`
       );
     }
     secondCabModel = CAB_MODELS[intent.secondCabName!];
