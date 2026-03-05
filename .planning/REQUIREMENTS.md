@@ -20,10 +20,10 @@ Requirements for v4.0 Stadium Rebuild + Preset Quality Leap. Each maps to roadma
 
 ### Planner Prompt Enrichment
 
-- [ ] **PROMPT-01**: Planner prompt includes gain-staging intelligence section (Drive/Master/ChVol relationships per amp type)
-- [ ] **PROMPT-02**: Planner prompt includes amp-to-cab pairing guidance table
-- [ ] **PROMPT-03**: Planner prompt includes genre-appropriate effect discipline (counts and types)
-- [ ] **PROMPT-04**: Planner regression test baseline confirms no quality degradation from prompt changes
+- [x] **PROMPT-01**: Planner prompt includes gain-staging intelligence section (Drive/Master/ChVol relationships per amp type)
+- [x] **PROMPT-02**: Planner prompt includes amp-to-cab pairing guidance table
+- [x] **PROMPT-03**: Planner prompt includes genre-appropriate effect discipline (counts and types)
+- [x] **PROMPT-04**: Planner regression test baseline confirms no quality degradation from prompt changes
 
 ### Amp Parameters
 
@@ -86,10 +86,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | STAD-06 | Phase 53 | Complete |
 | STAD-07 | Phase 53 | Complete |
 | STAD-08 | Phase 54 | Complete |
-| PROMPT-01 | Phase 55 | Pending |
-| PROMPT-02 | Phase 55 | Pending |
-| PROMPT-03 | Phase 55 | Pending |
-| PROMPT-04 | Phase 55 | Pending |
+| PROMPT-01 | Phase 55 | Complete |
+| PROMPT-02 | Phase 55 | Complete |
+| PROMPT-03 | Phase 55 | Complete |
+| PROMPT-04 | Phase 55 | Complete |
 | AMP-01 | Phase 56 | Pending |
 | AMP-02 | Phase 56 | Pending |
 | AMP-03 | Phase 56 | Pending |

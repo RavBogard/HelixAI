@@ -44,14 +44,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-05)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** Phase 55 — next phase (Stadium track complete through Phase 54)
+**Current focus:** Phase 56 — next phase in quality track (Phase 55 Plan 01 complete)
 
 ## Current Position
 
-Phase: 54 of 59 (Stadium Device Unblock — complete)
+Phase: 55 of 59 (Planner Prompt Enrichment — Plan 01 complete)
 Plan: 1 of 1 complete
 Status: Phase complete
-Last activity: 2026-03-05 — Phase 54 Plan 01 complete — Stadium fully unblocked (API guard removed, STADIUM in both device pickers)
+Last activity: 2026-03-05 — Phase 55 Plan 01 complete — buildPlannerPrompt enriched with Gain-Staging Intelligence, Amp-to-Cab Pairing, Effect Discipline by Genre; 10 new tests, 195 total passing
 
 Progress: [████████████████████░░░░░░░░░] ~0% of v4.0 (0/7 phases complete)
 
@@ -71,6 +71,8 @@ Progress: [████████████████████░░░
 - [Phase 53-01]: STADIUM_SLOT_ALLOCATION constant replaces sequential flowPos — amp always at b05/pos:5, cab at b06/pos:6, matching Agoura_Bassman.hsp reference corpus
 - [Phase 53-02]: 9 structural comparison tests added using same fixture as Plan 01 — strict key-count assertion on flow 1, per-key sources verification, harness access-field absence check
 - [Phase 54-stadium-device-unblock]: Stadium format bugs (device version, slot params, grid positions) were already fixed by Phases 52 and 53 — no re-work needed in Phase 54
+- [Phase 55-planner-prompt-enrichment]: Enrichment sections are static text in shared prefix (after Dual-Amp Rules, before ${podGo ?}) — no device interpolations that would fragment the prompt cache into per-device buckets
+- [Phase 55-planner-prompt-enrichment]: Cab pairing table uses only canonical names from CAB_MODELS; plan's suggestions (4x12 1960 T75, 1x12 Cali IV, 2x12 Mandarin 30) were not in catalog and were corrected/omitted
 
 ### Roadmap Evolution
 
@@ -101,6 +103,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-05
-Stopped at: Completed 54-01-PLAN.md — Stadium device unblocked (API guard removed, STADIUM added to both device pickers, TypeScript fixed, 185 tests passing)
+Stopped at: Completed 55-01-PLAN.md — buildPlannerPrompt enriched with gain-staging intelligence, amp-to-cab pairing, effect discipline by genre; 10 new tests, 195 total passing
 Resume file: None
-Next command: `/gsd:plan-phase 55` (or whichever is next in parallel — quality track phases 55, 56, 57)
+Next command: `/gsd:execute-phase 56` (Per-Model Param Overrides — Quality track continues)
