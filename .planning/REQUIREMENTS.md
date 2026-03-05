@@ -42,7 +42,7 @@ Requirements for v4.0 Stadium Rebuild + Preset Quality Leap. Each maps to roadma
 
 ### Architecture
 
-- [ ] **ARCH-01**: Device/model abstraction audit completed with documented findings and recommendations
+- [x] **ARCH-01**: Device/model abstraction audit completed with documented findings and recommendations
 
 ## v4.1 Requirements
 
@@ -99,7 +99,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FX-02 | Phase 57 | Complete |
 | FX-03 | Phase 57 | Complete |
 | FX-04 | Phase 57 | Complete |
-| ARCH-01 | Phase 58 | Pending |
+| ARCH-01 | Phase 58 | Complete |
 | FLOOR-01 | Phase 59 | Pending |
 
 **Coverage:**

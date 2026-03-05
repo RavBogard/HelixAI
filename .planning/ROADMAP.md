@@ -474,7 +474,7 @@ See: `.planning/milestones/v3.2-ROADMAP.md`
 - [x] **Phase 57: Effect Parameter Intelligence** - Wire guitarType, tempoHint, and toneRole into Knowledge Layer for guitar-type EQ, reverb PreDelay, tempo-scaled delay, and snapshot volume deltas (completed 2026-03-05)
 
 #### Phase 58: Architecture Audit
-- [ ] **Phase 58: Architecture Audit** - Review the device/model abstraction layer across all 6 devices and document findings with recommendations
+- [x] **Phase 58: Architecture Audit** - Review the device/model abstraction layer across all 6 devices and document findings with recommendations (completed 2026-03-05)
 
 ## Phase Details
 
@@ -622,14 +622,14 @@ Note: Phases 52, 55, and 56 can start in parallel. Phase 53 depends on 52. Phase
 | 55. Planner Prompt Enrichment | 2/2 | Complete    | 2026-03-05 | - |
 | 56. Per-Model Amp Parameter Overrides | 2/2 | Complete    | 2026-03-05 | - |
 | 57. Effect Parameter Intelligence | 2/2 | Complete    | 2026-03-05 | - |
-| 58. Architecture Audit | v4.0 | 0/TBD | Not started | - |
+| 58. Architecture Audit | 1/1 | Complete   | 2026-03-05 | - |
 
 ### Phase 59: Fix Helix Floor preset import error 8309 incompatible device type
 
 **Goal:** Fix HX Edit error 8309 "Incompatible target device type" when importing generated .hlx presets on Helix Floor — reported by Paul Morgan and Tal Solomon Vardy
 **Requirements**: FLOOR-01
 **Depends on:** None (critical bug fix — can run in parallel with any phase)
-**Plans:** 2/2 plans complete
+**Plans:** 1/1 plans complete
 
 Plans:
 - [ ] 59-01-PLAN.md — Get confirmed Helix Floor device ID from real hardware export (human checkpoint)

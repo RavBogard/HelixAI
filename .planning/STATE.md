@@ -44,16 +44,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-05)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** Phase 56 complete — both plans done; next is Phase 57
+**Current focus:** Phase 58 complete — architecture audit done; v4.0 milestone complete; next is Phase 59
 
 ## Current Position
 
-Phase: 57 of 59 (Effect Parameter Intelligence — Plans 01 and 02 complete)
-Plan: 2 of 3 complete
-Status: In Progress (Phase 57 Plan 02 done; Phase 57 Plan 03 next)
-Last activity: 2026-03-05 — Phase 57 Plan 02 complete — EQ_GUITAR_TYPE_ADJUST for single_coil/humbucker/p90; FX-04 regression lock; 215/215 tests green; FX-01/FX-04 satisfied
+Phase: 58 of 59 (Architecture Audit — Plan 01 complete)
+Plan: 1 of 1 complete
+Status: Complete (Phase 58 done; Phase 59 next — Helix Floor import error 8309 fix)
+Last activity: 2026-03-05 — Phase 58 Plan 01 complete — v4.0 architecture audit; ARCH-01 satisfied; refactor DEFERRED in PROJECT.md
 
-Progress: [████████████████████░░░░░░░░░] ~67% of v4.0 (5/8 phases complete, 57 in progress)
+Progress: [████████████████████████████░] ~95% of v4.0 (8/8 phases complete, Phase 59 pending)
 
 ## Accumulated Context
 
@@ -84,6 +84,8 @@ Progress: [████████████████████░░░
 - [Phase 57-02]: guitarType threaded as scalar string through resolveBlockParams to resolveEqParams
 - [Phase 57-02]: FX-04 needs zero new implementation — ROLE_CHVOL already in snapshot-engine.ts; test is regression lock only
 - [Phase 57-02]: Test 7 updated to use baseline intent without guitarType for pure AmpCategory EQ isolation
+- [Phase 58-architecture-audit]: Architecture refactor DEFERRED — guard-based branching functional at 6 devices; ~17 guard sites in chain-rules.ts/param-engine.ts/validate.ts are searchable and well-tested; low-effort improvements A (Stadium I/O constants) and B (hardcoded model IDs) deferred to maintenance phase; capability registry deferred until 7th device planned
+- [Phase 58-architecture-audit]: Improvement A (HIGH priority, ~30min): move Stadium I/O model IDs (P35_InputInst1 etc.) from string literals in stadium-builder.ts + validate.ts to named constants in STADIUM_CONFIG — mirrors what STOMP_CONFIG already does correctly
 
 ### Roadmap Evolution
 
@@ -112,6 +114,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-05
-Stopped at: Completed 57-02-PLAN.md — EQ_GUITAR_TYPE_ADJUST for single_coil/humbucker/p90; FX-04 regression lock; 215/215 tests green; FX-01/FX-04 satisfied
+Stopped at: Completed 58-01-PLAN.md — v4.0 architecture audit; refactor decision DEFERRED recorded in PROJECT.md; ARCH-01 satisfied
 Resume file: None
-Next command: Continue Phase 57 — run Plan 03 (remaining requirements)
+Next command: Phase 58 complete (1/1 plans done) — v4.0 milestone complete (Phase 58 is last before Phase 59)
