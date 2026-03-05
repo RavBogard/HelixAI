@@ -216,7 +216,7 @@ export async function callClaudePlanner(
       {
         type: "text" as const,
         text: systemPrompt,
-        cache_control: { type: "ephemeral" as const },
+        cache_control: { type: "ephemeral" as const, ttl: "1h" },
       },
     ],
     messages: [{ role: "user", content: userContent }],

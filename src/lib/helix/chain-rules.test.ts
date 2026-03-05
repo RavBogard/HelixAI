@@ -431,13 +431,25 @@ describe("assembleSignalChain", () => {
     expect(ampBlock!.modelId).toMatch(/^Agoura_/);
   });
 
-  it("Stadium preset with HD2-only amp name throws (no fallback to AMP_MODELS)", () => {
-    expect(() =>
-      assembleSignalChain(
-        cleanIntent({ ampName: "US Double Nrm" }),
-        "helix_stadium"
-      )
-    ).toThrow(/Unknown amp model.*US Double Nrm.*STADIUM_AMPS/);
+  it("Stadium preset with HD2-only amp name falls back to Agoura equivalent", () => {
+    // "US Double Nrm" is an HD2 clean amp — should fallback to an Agoura clean amp
+    const chain = assembleSignalChain(
+      cleanIntent({ ampName: "US Double Nrm" }),
+      "helix_stadium"
+    );
+    const ampBlock = chain.find((b) => b.type === "amp");
+    expect(ampBlock).toBeDefined();
+    expect(ampBlock!.modelId).toMatch(/^Agoura_/); // Mapped to an Agoura amp
+  });
+
+  it("Stadium preset with HD2 Plexi falls back to Agoura Brit Plexi (basedOn match)", () => {
+    const chain = assembleSignalChain(
+      cleanIntent({ ampName: "Brit Plexi Jump" }),
+      "helix_stadium"
+    );
+    const ampBlock = chain.find((b) => b.type === "amp");
+    expect(ampBlock).toBeDefined();
+    expect(ampBlock!.modelId).toBe("Agoura_AmpBritPlexi");
   });
 
   it("Helix LT preset with valid HD2 amp produces HD2_* model IDs", () => {

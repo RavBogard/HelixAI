@@ -277,11 +277,36 @@ export function resolveParameters(
   intent: ToneIntent,
   device?: DeviceTarget,
 ): BlockSpec[] {
-  // Strict device-aware amp lookup — no cross-device fallback.
+  // Device-aware amp lookup with Stadium HD2→Agoura fallback (mirrors chain-rules.ts).
   const stadium = device ? isStadium(device) : false;
-  const ampModel = stadium
+  let ampModel: HelixModel | undefined = stadium
     ? STADIUM_AMPS[intent.ampName]
     : AMP_MODELS[intent.ampName];
+
+  if (!ampModel && stadium) {
+    const hd2Model = AMP_MODELS[intent.ampName];
+    if (hd2Model) {
+      // Strategy 1: Name word overlap (mirrors chain-rules.ts fallback)
+      const hd2Words = intent.ampName.toLowerCase().split(/\s+/);
+      let bestMatch: [string, HelixModel] | undefined;
+      let bestScore = 0;
+      for (const entry of Object.entries(STADIUM_AMPS)) {
+        const agWords = entry[0].toLowerCase().replace("agoura ", "").split(/\s+/);
+        const score = hd2Words.filter(w => agWords.includes(w)).length;
+        if (score > bestScore) { bestScore = score; bestMatch = entry; }
+      }
+      if (bestMatch && bestScore >= 1) {
+        ampModel = bestMatch[1];
+      } else {
+        // Strategy 2: ampCategory fallback
+        const byCat = Object.entries(STADIUM_AMPS).find(([, m]) =>
+          m.ampCategory === hd2Model.ampCategory
+        );
+        if (byCat) ampModel = byCat[1];
+      }
+    }
+  }
+
   if (!ampModel) {
     throw new Error(`Unknown amp model: "${intent.ampName}" — not found in ${stadium ? "STADIUM_AMPS" : "AMP_MODELS"}`);
   }

@@ -262,11 +262,48 @@ export function assembleSignalChain(intent: ToneIntent, device?: DeviceTarget): 
   const stomp = device ? isStomp(device) : false;
 
   // 1. Resolve amp model
-  // Strict device-aware lookup — no cross-device fallback.
   // Stadium uses STADIUM_AMPS (Agoura_* IDs), all others use AMP_MODELS (HD2_* IDs).
-  const ampModel = stadium
+  // Fallback: if the planner returns an HD2 amp name for a Stadium request, find the
+  // closest Agoura equivalent by matching basedOn or ampCategory. This handles LLM
+  // hallucinations where the planner picks from training data rather than the provided list.
+  let ampModel: HelixModel | undefined = stadium
     ? STADIUM_AMPS[intent.ampName]
     : AMP_MODELS[intent.ampName];
+
+  if (!ampModel && stadium) {
+    // Planner returned an HD2 name for Stadium — attempt cross-catalog fallback.
+    // The Zod schema allows all amp names (HD2 + Agoura) so constrained decoding
+    // can't prevent this. Map to closest Agoura equivalent instead of crashing.
+    const hd2Model = AMP_MODELS[intent.ampName];
+    if (hd2Model) {
+      // Strategy 1: Name word overlap — "Brit Plexi Jump" → "Agoura Brit Plexi" (2 word match)
+      const hd2Words = intent.ampName.toLowerCase().split(/\s+/);
+      let bestNameMatch: [string, HelixModel] | undefined;
+      let bestNameScore = 0;
+      for (const entry of Object.entries(STADIUM_AMPS)) {
+        const agWords = entry[0].toLowerCase().replace("agoura ", "").split(/\s+/);
+        const score = hd2Words.filter(w => agWords.includes(w)).length;
+        if (score > bestNameScore) {
+          bestNameScore = score;
+          bestNameMatch = entry;
+        }
+      }
+      if (bestNameMatch && bestNameScore >= 1) {
+        ampModel = bestNameMatch[1];
+        console.warn(`[chain-rules] Stadium fallback: "${intent.ampName}" → "${bestNameMatch[0]}" (name match, score=${bestNameScore})`);
+      } else {
+        // Strategy 2: Match by ampCategory (clean/crunch/high_gain)
+        const byCat = Object.entries(STADIUM_AMPS).find(([, m]) =>
+          m.ampCategory === hd2Model.ampCategory
+        );
+        if (byCat) {
+          ampModel = byCat[1];
+          console.warn(`[chain-rules] Stadium fallback: "${intent.ampName}" → "${byCat[0]}" (category match: ${hd2Model.ampCategory})`);
+        }
+      }
+    }
+  }
+
   if (!ampModel) {
     throw new Error(
       `Unknown amp model: "${intent.ampName}". Model name must exactly match a key in ${stadium ? "STADIUM_AMPS" : "AMP_MODELS"}.`
