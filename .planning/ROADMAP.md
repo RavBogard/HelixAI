@@ -474,7 +474,11 @@ Plans:
   2. Running the baseline suite produces 36 preset files (6 tones x 6 devices) with deterministic ToneIntent snapshots that can be diffed against future v4.0 changes
   3. A cache hit rate report across 20+ generations shows what percentage of planner calls hit the prompt cache vs. cold starts, with specific optimization recommendations if the rate is below 50%
   4. The token logging is behind a `LOG_USAGE` environment flag and does not affect production performance when disabled
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 42-01-PLAN.md — usage-logger.ts utility + planner.ts/chat route integration + summary script (AUDIT-01)
+- [ ] 42-02-PLAN.md — 36-preset deterministic baseline generator + cache hit rate report (AUDIT-02, AUDIT-03)
 
 ### Phase 43: Planner Prompt Quality
 **Goal**: The planner makes smarter creative decisions about gain staging, amp/cab pairing, and effect selection — without any Knowledge Layer or schema changes
@@ -627,6 +631,26 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 48. Footer Restoration & Fixed Positioning | v4.0 | 0/TBD | Not started | - |
 | 49. Variax Guitar Support | v4.0 | 0/TBD | Not started | - |
 | 50. Donation/Support Integration | v4.0 | 0/TBD | Not started | - |
+
+### Phase 51: Fix Stadium Agoura amp lookup in chain-rules — assembleSignalChain fails to find Stadium amps for Stadium device
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 50
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 51 to break down)
+
+### Phase 52: Stadium XL device support + device picker UI redesign
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 51
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 52 to break down)
 
 ---
 *Roadmap created: 2026-03-01*
