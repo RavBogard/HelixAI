@@ -1,7 +1,7 @@
 import { getAllModels } from "./models";
 import type { PresetSpec, DeviceTarget } from "./types";
 import { isPodGo, isStadium, isStomp } from "./types";
-import { STADIUM_CONFIG, STOMP_CONFIG } from "./config";
+import { STADIUM_CONFIG, STOMP_CONFIG, HELIX_SYSTEM_MODELS, POD_GO_SYSTEM_MODELS } from "./config";
 
 // Build a set of all valid model IDs from our database
 function getValidModelIds(): Set<string> {
@@ -11,22 +11,23 @@ function getValidModelIds(): Set<string> {
     ids.add(model.id);
   }
   // Also add system models that are always valid
-  ids.add("HD2_AppDSPFlow1Input");
-  ids.add("HD2_AppDSPFlow2Input");
-  ids.add("HD2_AppDSPFlowOutput");
-  ids.add("HD2_SplitAB");
-  ids.add("HD2_MergerMixer");
+  // Helix Floor/Rack/LT system models
+  ids.add(HELIX_SYSTEM_MODELS.FLOW1_INPUT);
+  ids.add(HELIX_SYSTEM_MODELS.FLOW2_INPUT);
+  ids.add(HELIX_SYSTEM_MODELS.FLOW_OUTPUT);
+  ids.add(HELIX_SYSTEM_MODELS.SPLIT_AB);
+  ids.add(HELIX_SYSTEM_MODELS.MERGER_MIXER);
   // Pod Go system models
-  ids.add("P34_AppDSPFlowInput");
-  ids.add("P34_AppDSPFlowOutput");
+  ids.add(POD_GO_SYSTEM_MODELS.INPUT);
+  ids.add(POD_GO_SYSTEM_MODELS.OUTPUT);
   // Stadium system models (P35_* prefix — verified from real .hsp files)
-  ids.add("P35_InputInst1");
-  ids.add("P35_InputNone");
-  ids.add("P35_OutputMatrix");
+  ids.add(STADIUM_CONFIG.STADIUM_INPUT_MODEL);
+  ids.add(STADIUM_CONFIG.STADIUM_INPUT_NONE_MODEL);
+  ids.add(STADIUM_CONFIG.STADIUM_OUTPUT_MODEL);
   // Stomp system models (HelixStomp_* prefix — confirmed from Swell_Delay.hlx, 2026-03-04)
-  ids.add("HelixStomp_AppDSPFlowInput");
-  ids.add("HelixStomp_AppDSPFlowOutputMain");
-  ids.add("HelixStomp_AppDSPFlowOutputSend");
+  ids.add(STOMP_CONFIG.STOMP_INPUT_MODEL);
+  ids.add(STOMP_CONFIG.STOMP_OUTPUT_MAIN_MODEL);
+  ids.add(STOMP_CONFIG.STOMP_OUTPUT_SEND_MODEL);
   // Stadium effect models (HX2_* prefix — Stadium-specific effect IDs confirmed from real .hsp files, 2026-03-05)
   ids.add("HX2_CompressorDeluxeCompMono");
   ids.add("HX2_CompressorLAStudioCompStereo");

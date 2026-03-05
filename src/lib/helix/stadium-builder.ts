@@ -20,10 +20,6 @@ import { STADIUM_CONFIG } from "./config";
 // Constants
 // ---------------------------------------------------------------------------
 
-const STADIUM_INPUT_MODEL = "P35_InputInst1";
-const STADIUM_INPUT_NONE_MODEL = "P35_InputNone";
-const STADIUM_OUTPUT_MODEL = "P35_OutputMatrix";
-
 /** Position 0 = input, position 13 = output (fixed by firmware) */
 const INPUT_POSITION = 0;
 const OUTPUT_POSITION = 13;
@@ -533,7 +529,7 @@ function buildInputBlock(): Record<string, unknown> {
     slot: [
       {
         "@enabled": { value: true },
-        model: STADIUM_INPUT_MODEL,
+        model: STADIUM_CONFIG.STADIUM_INPUT_MODEL,
         params: {
           Pad: { value: 1 },
           Trim: { value: 0.0 },
@@ -563,7 +559,7 @@ function buildOutputBlock(): Record<string, unknown> {
     slot: [
       {
         "@enabled": { value: true },
-        model: STADIUM_OUTPUT_MODEL,
+        model: STADIUM_CONFIG.STADIUM_OUTPUT_MODEL,
         params: {
           gain: { value: 0.0 },
           pan: { value: 0.5 },
@@ -590,7 +586,7 @@ function buildEmptyInputBlock(): Record<string, unknown> {
     slot: [
       {
         "@enabled": { value: true },
-        model: STADIUM_INPUT_NONE_MODEL,
+        model: STADIUM_CONFIG.STADIUM_INPUT_NONE_MODEL,
         params: {
           Trim: { value: 0.0 },
           decay: { value: 0.1 },

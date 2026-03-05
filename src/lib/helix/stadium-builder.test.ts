@@ -8,6 +8,7 @@
 
 import { describe, it, expect } from "vitest";
 import { buildHspFile } from "./stadium-builder";
+import { STADIUM_CONFIG } from "./config";
 import type { PresetSpec } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -388,7 +389,7 @@ describe("structural comparison with real .hsp reference", () => {
     const flow1b00 = flow1["b00"] as Record<string, unknown>;
     expect(flow1b00).toBeDefined();
     const flow1b00Slot = flow1b00["slot"] as Array<Record<string, unknown>>;
-    expect(flow1b00Slot[0]?.["model"]).toBe("P35_InputNone");
+    expect(flow1b00Slot[0]?.["model"]).toBe(STADIUM_CONFIG.STADIUM_INPUT_NONE_MODEL);
 
     // Flow 1 b13 must exist (OutputMatrix)
     const flow1b13 = flow1["b13"] as Record<string, unknown>;
