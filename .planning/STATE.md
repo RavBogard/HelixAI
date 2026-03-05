@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Stadium Rebuild + Preset Quality Leap
 status: unknown
-last_updated: "2026-03-05T18:49:23.680Z"
+last_updated: "2026-03-05T18:53:44.827Z"
 progress:
   total_phases: 43
-  completed_phases: 27
+  completed_phases: 28
   total_plans: 63
-  completed_plans: 55
+  completed_plans: 56
 ---
 
 ---
@@ -56,6 +56,7 @@ Progress: [████████████████████░░░
 - [Phase 52-stadium-amp-catalog]: defaultParams keys always use standard names (Drive, Bass, Mid, Treble, Master, ChVol) regardless of actual .hsp param key name — builder handles translation (Treb->Treble, MasterVol->Master)
 - [Phase 53-01]: Stadium cab params (Delay, IrData, Level, Pan, Position) added conditionally via device guard in resolveCabParams() — non-Stadium devices unaffected
 - [Phase 53-01]: STADIUM_SLOT_ALLOCATION constant replaces sequential flowPos — amp always at b05/pos:5, cab at b06/pos:6, matching Agoura_Bassman.hsp reference corpus
+- [Phase 53-02]: 9 structural comparison tests added using same fixture as Plan 01 — strict key-count assertion on flow 1, per-key sources verification, harness access-field absence check
 
 ### Roadmap Evolution
 
