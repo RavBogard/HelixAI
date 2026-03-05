@@ -641,7 +641,7 @@ Plans:
 **Requirements**: FX-02 (partial — spring reverb PreDelay), AMP-01/AMP-05 (partial — wire orphaned data)
 **Depends on:** Phase 59 (all v4.0 core phases complete)
 **Gap Closure:** Closes gaps from v4.0-MILESTONE-AUDIT.md (INT-01, INT-02, Improvements A & B)
-**Plans:** 1/2 plans complete
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] 60-01-PLAN.md — Spring reverb PreDelay fix (INT-02) + ampFamily/cabAffinity planner prompt wiring (INT-01)

@@ -2,6 +2,19 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Stadium Rebuild + Preset Quality Leap
+status: unknown
+last_updated: "2026-03-05T20:53:42.697Z"
+progress:
+  total_phases: 44
+  completed_phases: 33
+  total_plans: 65
+  completed_plans: 66
+---
+
+---
+gsd_state_version: 1.0
+milestone: v4.0
+milestone_name: Stadium Rebuild + Preset Quality Leap
 status: complete
 last_updated: "2026-03-05T20:50:12Z"
 progress:
@@ -22,10 +35,10 @@ See: .planning/PROJECT.md (updated 2026-03-05)
 
 ## Current Position
 
-Phase: 60-tech-debt-cleanup (tech debt cleanup — in progress)
-Plan: 2 of 2 complete
-Status: In Progress — 60-02 (system model ID centralization) complete; 219/219 tests passing
-Last activity: 2026-03-05 — Tech debt plan 60-02 executed; Improvement A from v4.0 audit closed
+Phase: 60-tech-debt-cleanup (tech debt cleanup — complete)
+Plan: 2 of 2 complete (60-01 + 60-02 both executed)
+Status: Complete — 60-01 (spring reverb PreDelay + cab affinity) and 60-02 (system model ID centralization) both executed; 223/223 tests passing
+Last activity: 2026-03-05 — All Phase 60 tech debt plans executed; INT-01, INT-02, Improvement A all closed
 
 Progress: [██████████████████████████████] 100% of v4.0 (8/8 phases complete) + tech debt cleanup in progress
 
@@ -64,6 +77,8 @@ Progress: [███████████████████████
 - [Phase 60-02-system-model-centralization]: Stadium I/O model IDs moved into STADIUM_CONFIG (STADIUM_INPUT_MODEL, STADIUM_INPUT_NONE_MODEL, STADIUM_OUTPUT_MODEL) — mirrors STOMP_CONFIG pattern
 - [Phase 60-02-system-model-centralization]: HD2_* and P34_* system IDs get separate named exports (HELIX_SYSTEM_MODELS, POD_GO_SYSTEM_MODELS) rather than embedding in existing configs — cleaner device-family separation
 - [Phase 60-02-system-model-centralization]: Improvement B (chain-rules.ts hardcoded model IDs) confirmed already complete at lines 37-43 — no changes needed
+- [Phase 60-tech-debt-cleanup]: spring reverb PreDelay: 0 as default — key must exist for if(key in params) guard to allow genre override
+- [Phase 60-tech-debt-cleanup]: cabAffinity section in buildPlannerPrompt() generated at build time as static text — cache-safe, no device interpolations
 
 ### Roadmap Evolution
 
@@ -92,6 +107,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-05
-Stopped at: Completed 60-tech-debt-cleanup/60-02-PLAN.md (system model ID centralization)
+Stopped at: Completed 60-01-PLAN.md (spring reverb PreDelay + cab affinity in planner prompt)
 Resume file: None
 Next command: /gsd:audit-milestone then create PR to merge to main
