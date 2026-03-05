@@ -60,7 +60,7 @@ Deferred to future release. Tracked but not in current roadmap.
 
 ### Bug Fixes
 
-- [ ] **FLOOR-01**: Helix Floor device ID (`DEVICE_IDS.helix_floor`) corrected to match real hardware export — fixes HX Edit error 8309 "Incompatible target device type" for Helix Floor users
+- [x] **FLOOR-01**: Helix Floor device ID (`DEVICE_IDS.helix_floor`) corrected to match real hardware export — fixes HX Edit error 8309 "Incompatible target device type" for Helix Floor users
 
 ## Out of Scope
 
@@ -100,7 +100,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FX-03 | Phase 57 | Complete |
 | FX-04 | Phase 57 | Complete |
 | ARCH-01 | Phase 58 | Complete |
-| FLOOR-01 | Phase 59 | Pending |
+| FLOOR-01 | Phase 59 | Complete |
 
 **Coverage:**
 - v4.0 requirements: 23 total (22 features + 1 bug fix)
