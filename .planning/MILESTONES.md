@@ -81,5 +81,45 @@
 - `.planning/milestones/v2.0-REQUIREMENTS.md`
 - `.planning/milestones/v2.0-MILESTONE-AUDIT.md`
 
+## v3.0 — Helix Stadium Support (Complete)
+
+**Goal:** Add full Helix Stadium preset generation — .hsp format, Stadium-specific model catalog (Agoura amps, 7-band Parametric EQ), chain rules, preset builder, and rig emulation.
+
+**Shipped:**
+- Stadium .hsp file format (JSON-encoded, device 2162696)
+- Agoura amp catalog and 7-band Parametric EQ models
+- Stadium-specific chain rules (dual DSP, extended block limits)
+- Stadium preset builder with correct file structure
+- Rig emulation support for Stadium
+- HX Stomp & HX Stomp XL support (.hlx format, 6-block budget)
+- HelixTones rebrand (HelixAI -> HelixTones)
+- Chat UX polish (device picker timing, conversational arc)
+
+**Phases:** 31-41 (11 phases)
+**Completed:** 2026-03-04
+
+## v3.2 — Infrastructure, Features & Audit Tooling (Complete)
+
+**Goal:** Token usage audit tooling, Variax guitar support, donation integration, fixed footer, and bug fixes. Originally scoped as part of v4.0 Preset Quality Leap — quality improvement phases deferred to the real v4.0.
+
+**Shipped:**
+- Token usage logging with env-flag guard and cost estimation (usage-logger.ts)
+- 36-preset deterministic baseline generator across all 6 devices
+- Cache hit rate report script for prompt caching analysis
+- Fixed footer component pinned to viewport bottom on all screens
+- Variax guitar support: reactive chat detection, ToneIntent schema, .hlx block injection, device guard
+- Post-download donation card with PayPal/Venmo/CashApp buttons
+- Footer "Support" link for donation card re-display
+- Bug fixes: dual-DSP key collision, fire-and-forget DB errors, Stadium amp lookup
+
+**Phases:** 42, 48-51 (5 phases, 8 plans)
+**Files changed:** 48 files, +5,858 / -1,968 lines
+**Completed:** 2026-03-05
+
+**Archives:**
+- `.planning/milestones/v3.2-ROADMAP.md`
+- `.planning/milestones/v3.2-REQUIREMENTS.md`
+- `.planning/milestones/v3.2-MILESTONE-AUDIT.md`
+
 ---
-*Last updated: 2026-03-04*
+*Last updated: 2026-03-05*

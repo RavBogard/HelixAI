@@ -62,15 +62,20 @@ Generated presets must sound professional enough to compete with custom presets 
 - ✓ HX Stomp & HX Stomp XL support (.hlx format, 6-block budget) — v3.1
 - ✓ HelixTones rebrand (HelixAI → HelixTones) — v3.1
 - ✓ Chat UX polish (device picker timing, conversational arc) — v3.1
+- ✓ Token usage logging with cost estimation (usage-logger.ts) — v3.2
+- ✓ 36-preset deterministic baseline generator — v3.2
+- ✓ Cache hit rate report for prompt caching analysis — v3.2
+- ✓ Fixed footer pinned to viewport bottom — v3.2
+- ✓ Variax guitar support (reactive chat, ToneIntent, .hlx injection, device guard) — v3.2
+- ✓ Post-download donation card with PayPal/Venmo/CashApp — v3.2
+- ✓ Bug fixes: dual-DSP key collision, fire-and-forget DB errors, Stadium amp lookup — v3.2
 
 ### Active
 
+- [ ] Stadium preset rebuild from real .hsp files (reverse-engineer 12+ real presets)
 - [ ] Preset quality leap: smarter effect combinations and interactions
 - [ ] Preset quality leap: more nuanced parameter resolution (surgical knob values)
-- [ ] Preset quality leap: advanced signal routing (parallel paths, creative splits)
-- [ ] Preset quality leap: study top community presets to reverse-engineer quality patterns
 - [ ] Preset quality leap: improved AI creative decisions (richer ToneIntent prompting)
-- [ ] API cost audit: analyze token usage across chat and generation flows
 - [ ] API cost optimization: evaluate model split (Haiku chat vs. Sonnet generation)
 
 ### Out of Scope
@@ -79,22 +84,20 @@ Generated presets must sound professional enough to compete with custom presets 
 - IR (impulse response) loading — stick with stock cabs
 - Multi-provider comparison UI — going single provider for quality focus
 - Full pedalboard OCR (auto-detect all pedals from a single board photo) — too unreliable, per-pedal photos are the baseline
+- Parallel wet/dry routing (split/join paths) — deferred
 
-## Current Milestone: v4.0 Preset Quality Leap
+## Current Milestone: v4.0 (planned — not yet started)
 
-**Goal:** Close the gap between HelixTones-generated presets and the best custom/commercial presets used by professionals, while auditing and optimizing API costs.
+**Goal:** Rebuild Stadium preset generation from real .hsp files and close the quality gap for all devices.
 
 **Target features:**
-- Study top community presets to reverse-engineer what premium preset makers do differently
-- Smarter effect combinations and interactions (not just "add delay + reverb")
-- More nuanced parameter resolution (surgical knob values, context-sensitive defaults)
-- Advanced signal routing (parallel paths, creative splits where appropriate)
-- Improved AI creative decisions (richer ToneIntent prompting based on research)
-- API cost audit and optimization (token analysis, model split evaluation)
+- Reverse-engineer 12+ real Stadium/Stadium XL .hsp presets to rebuild the builder from ground truth
+- Carry forward quality phases from original v4.0 scope (planner prompt, amp params, effects, combos, cost routing)
+- Unblock Stadium device selection in UI after builder is verified
 
 ## Current State
 
-All device support complete. The app is rebranded to **HelixTones** and supports 6 devices: Helix LT, Helix Floor, Pod Go, Helix Stadium, HX Stomp, and HX Stomp XL.
+All device support complete except Stadium (temporarily blocked). The app is rebranded to **HelixTones** and supports 6 devices: Helix LT, Helix Floor, Pod Go, Helix Stadium, HX Stomp, and HX Stomp XL.
 
 **Shipped milestones:**
 - v1.0: Full Rebuild — planner-executor engine, LT/Floor support
@@ -104,6 +107,7 @@ All device support complete. The app is rebranded to **HelixTones** and supports
 - v2.0: Persistent Chat Platform — Supabase auth/DB/storage, chat sidebar, dual-amp, auto-save
 - v3.0: Helix Stadium Support — .hsp format, Stadium builder, model catalog, chain rules, rig emulation
 - v3.1: HX Stomp/XL, HelixTones rebrand, Chat UX polish (Phases 39-41)
+- v3.2: Infrastructure, Features & Audit Tooling — token logging, Variax, donation, footer, bug fixes
 
 ## Context
 
@@ -121,7 +125,9 @@ v2.0 added the full persistence layer: Google auth (anonymous-first), Supabase d
 
 v3.0 added Helix Stadium support: .hsp format (JSON-encoded same as .hlx), Stadium-specific model catalog (Agoura amps, 7-band Parametric EQ), chain rules, preset builder, planner integration, UI device picker, and rig emulation. Stadium uses the same Planner-Executor pattern — research confirmed the file format, then the Knowledge Layer was extended.
 
-Phases 39-41 (not yet in a milestone) added HX Stomp and HX Stomp XL support, rebranded the product to HelixTones, and improved the chat UX (device picker only appears after AI signals readiness).
+Phases 39-41 (v3.1) added HX Stomp and HX Stomp XL support, rebranded the product to HelixTones, and improved the chat UX (device picker only appears after AI signals readiness).
+
+v3.2 added token usage audit tooling (usage-logger.ts, baseline generator, cache report), Variax guitar support (reactive detection, ToneIntent schema, .hlx block injection with device guard), post-download donation card (PayPal/Venmo/CashApp), fixed footer positioning, and critical bug fixes (dual-DSP key collision, fire-and-forget DB errors, Stadium amp lookup). Stadium device selection was temporarily blocked pending a builder rebuild from real .hsp files.
 
 ## Constraints
 
@@ -152,6 +158,9 @@ Phases 39-41 (not yet in a milestone) added HX Stomp and HX Stomp XL support, re
 | HX Stomp/StompXL as Phase 39 | Same .hlx format as LT/Floor — additive extension, no milestone boundary needed | ✓ Good |
 | Rebrand to HelixTones | Brand name better reflects scope beyond just "Helix AI" — also covers Pod Go, Stadium, Stomp | ✓ Good |
 | Device picker after AI readiness signal | AI asks at least one follow-up before [READY_TO_GENERATE] — richer conversation before preset | ✓ Good |
+| Variax as input config, not signal chain block | Variax is @input:3 (Multi), not a separate block — matches real hardware behavior | ✓ Good |
+| Reactive-only Variax detection | Chat AI never asks about Variax unprompted — only responds when user mentions it | ✓ Good |
+| Rename shipped v4.0 to v3.2 | Core quality phases (43-47) weren't started; reserve v4.0 for the real quality leap + Stadium rebuild | ✓ Good |
 
 ---
-*Last updated: 2026-03-04 after v4.0 milestone start*
+*Last updated: 2026-03-05 after v3.2 milestone completion*
