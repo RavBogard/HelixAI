@@ -58,6 +58,10 @@ Deferred to future release. Tracked but not in current roadmap.
 
 - **COST-01**: Evidence-based model routing (Haiku 4.5 for chat, Sonnet for generation) after 30-day baseline and A/B quality comparison
 
+### Bug Fixes
+
+- [ ] **FLOOR-01**: Helix Floor device ID (`DEVICE_IDS.helix_floor`) corrected to match real hardware export — fixes HX Edit error 8309 "Incompatible target device type" for Helix Floor users
+
 ## Out of Scope
 
 | Feature | Reason |
@@ -96,12 +100,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FX-03 | Phase 57 | Pending |
 | FX-04 | Phase 57 | Pending |
 | ARCH-01 | Phase 58 | Pending |
+| FLOOR-01 | Phase 59 | Pending |
 
 **Coverage:**
-- v4.0 requirements: 22 total
-- Mapped to phases: 22
+- v4.0 requirements: 23 total (22 features + 1 bug fix)
+- Mapped to phases: 23
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-05*
-*Last updated: 2026-03-05 — traceability complete, all 22 requirements mapped to phases 52-58*
+*Last updated: 2026-03-05 — FLOOR-01 added for Phase 59 bug fix, all 23 requirements mapped*
