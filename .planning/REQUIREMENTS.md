@@ -178,11 +178,92 @@ Planner prompt additions (PROMPT-01 through PROMPT-03) must not increase prompt 
 
 ---
 
+## UI Track: Footer & Donation
+
+### FOOTER-01: Fixed Footer Positioning
+
+Footer displays "A Project of Daniel Bogard" linking to DanielBogard.com. Must remain pinned to the viewport bottom at all times — visible on welcome screen, during chat, and after generation. Never floats mid-page during long conversations. Retains existing 11px mono styling with amber hover link.
+
+**Acceptance:** Footer is visible at viewport bottom on welcome screen, after 20+ chat messages, and after preset generation. Scrolling the chat does not move the footer.
+
+---
+
+### VARIAX-01: Chat Detects Variax Mentions
+
+Chat AI reactively detects when a user mentions a Variax guitar (e.g., "JTV-69", "Variax Standard", "James Tyler Variax") and asks follow-up questions about guitar model, guitar type selection, and alternate tuning. The AI never proactively asks about Variax — only responds when the user brings it up.
+
+**Acceptance:** Mentioning "I play a JTV-69" triggers a follow-up about guitar model selection and tuning. A conversation that never mentions Variax has zero Variax-related questions.
+
+---
+
+### VARIAX-02: ToneIntent Variax Field
+
+Add optional `variaxModel` field to ToneIntent schema: `"Spank"`, `"Lester"`, `"T-Model"`, `"Chime"`, `"Special"`, `"Acoustic"`, or a custom string. Set only when VARIAX-01 detects a Variax guitar in the conversation.
+
+**Acceptance:** ToneIntentSchema accepts `variaxModel: "Spank"` and validates. Field is optional — existing non-Variax presets are unaffected.
+
+---
+
+### VARIAX-03: Variax Block Research
+
+Research the Variax block structure in real .hlx files exported from HX Edit with Variax enabled. Document the JSON block structure, parameter names, model IDs, and placement conventions (which DSP, which slot position).
+
+**Acceptance:** A research document describes the exact JSON structure of a Variax block in .hlx, with at least 2 real-world examples.
+
+---
+
+### VARIAX-04: Variax Block Injection
+
+When `variaxModel` is set on ToneIntent, the preset builder injects a Variax block into the .hlx output at the correct position with the correct model ID and parameters.
+
+**Acceptance:** A preset generated with `variaxModel: "Spank"` contains a Variax block in the .hlx JSON. A preset without `variaxModel` has no Variax block.
+
+---
+
+### VARIAX-05: Variax Device Guard
+
+Variax blocks are only supported on .hlx devices (Helix LT, Helix Floor, HX Stomp, HX Stomp XL). Pod Go and Helix Stadium silently omit Variax data — no error, no warning, the field is simply ignored during preset building.
+
+**Acceptance:** Generating a Pod Go preset with `variaxModel: "Spank"` produces a valid .pgp with no Variax block and no error. Same for Stadium .hsp.
+
+---
+
+### DONATE-01: Post-Download Donation Card
+
+After the user's first preset download in a session, an inline donation card appears in the conversation flow (not a modal or popup). The card is dismissible and appears at most once per session.
+
+**Acceptance:** First download shows donation card inline. Second download does not. Refreshing the page resets the counter. Card has a dismiss button that removes it.
+
+---
+
+### DONATE-02: Payment Buttons
+
+The donation card includes three payment buttons: PayPal (`paypal.me/dsbogard`), Venmo (`venmo.com/Daniel-Bogard-1`), CashApp (`cash.app/$ravbogard`). Each opens in a new tab.
+
+**Acceptance:** All three buttons render, each opens the correct URL in a new tab. No broken links.
+
+---
+
+### DONATE-03: Footer Support Link
+
+A persistent "Support" link in the footer scrolls to or reveals the donation card. If the card has been dismissed, clicking "Support" re-shows it.
+
+**Acceptance:** "Support" link is visible in the footer at all times. Clicking it shows the donation card even if previously dismissed.
+
+---
+
+### DONATE-04: Donation UI Styling
+
+All donation UI (card, buttons, links) uses the `--hlx-*` CSS custom property palette. No external brand colors (PayPal blue, Venmo teal, CashApp green) — buttons are styled to match the Warm Analog Studio aesthetic.
+
+**Acceptance:** Visual inspection confirms donation card and buttons use only `--hlx-*` colors. No brand-colored buttons.
+
+---
+
 ## Out of Scope (v4.0)
 
 - Parallel wet/dry routing (split/join paths) — deferred to future milestone
 - New device support — all 6 devices already supported
-- UI changes — this is a backend/engine quality milestone
 - IR (impulse response) loading — stick with stock cabs
 - Multi-provider comparison — single provider focus
 
@@ -200,6 +281,9 @@ Planner prompt additions (PROMPT-01 through PROMPT-03) must not increase prompt 
 | AMP-04 | AMP-01 (need ampFamily for cab affinity grouping) |
 | COMBO-03 | All quality requirements (validation after changes) |
 | COST-01 | AUDIT-01, AUDIT-03 (need usage data before decisions) |
+| VARIAX-04 | VARIAX-03 (research block structure before building) |
+| VARIAX-05 | VARIAX-04 (device guard requires builder implementation) |
+| DONATE-03 | FOOTER-01 (footer must be fixed before adding Support link) |
 
 ---
 
@@ -226,6 +310,16 @@ Planner prompt additions (PROMPT-01 through PROMPT-03) must not increase prompt 
 | COMBO-02 | Phase 46 | Pending |
 | COMBO-03 | Phase 46 | Pending |
 | COST-01 | Phase 47 | Pending |
+| FOOTER-01 | Phase 48 | Pending |
+| VARIAX-01 | Phase 49 | Pending |
+| VARIAX-02 | Phase 49 | Pending |
+| VARIAX-03 | Phase 49 | Pending |
+| VARIAX-04 | Phase 49 | Pending |
+| VARIAX-05 | Phase 49 | Pending |
+| DONATE-01 | Phase 50 | Pending |
+| DONATE-02 | Phase 50 | Pending |
+| DONATE-03 | Phase 50 | Pending |
+| DONATE-04 | Phase 50 | Pending |
 
 ---
 

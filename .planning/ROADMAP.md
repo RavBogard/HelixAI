@@ -8,7 +8,7 @@
 - [x] **v1.3 Rig Emulation** - Phases 17-21 (shipped 2026-03-02)
 - [x] **v2.0 Persistent Chat Platform** - Phases 24-30 (shipped 2026-03-04)
 - [x] **v3.0 Helix Stadium Support** - Phases 31-38 (shipped 2026-03-04)
-- [ ] **v4.0 Preset Quality Leap** - Phases 42-47
+- [ ] **v4.0 Preset Quality Leap** - Phases 42-50
 
 ## Phases
 
@@ -453,7 +453,7 @@ Plans:
 
 ### v4.0 Preset Quality Leap (Phases 42-47)
 
-**Milestone Goal:** Close the gap between HelixTones-generated presets and the best custom/commercial presets; audit and optimize API costs. All 19 v4.0 requirements are backend/engine changes — zero UI work. Phases 44 and 45 can be developed in parallel but should deploy together to minimize prompt cache invalidation.
+**Milestone Goal:** Close the gap between HelixTones-generated presets and the best custom/commercial presets; audit and optimize API costs; restore footer, add Variax support, and integrate donation flow.
 
 - [ ] **Phase 42: Token Cost Audit + Quality Baseline** - Instrument API usage, establish reproducible 36-preset baseline, measure cache effectiveness
 - [ ] **Phase 43: Planner Prompt Quality** - Add gain-staging, cab pairing, and effect discipline rules to the planner prompt; regression test against baseline
@@ -461,6 +461,9 @@ Plans:
 - [ ] **Phase 45: Knowledge Layer — Effects, EQ, Snapshots** - Guitar-type EQ, reverb PreDelay scaling, tempo-scaled delay, snapshot volume balancing
 - [ ] **Phase 46: Effect Combination Intelligence** - Effect interaction parameter adjustments, genre block substitution table, cross-device validation
 - [ ] **Phase 47: Model Routing Decision** - Evidence-based analysis of whether the current model split is optimal; no changes without quality evidence
+- [ ] **Phase 48: Footer Restoration & Fixed Positioning** - Pin footer to viewport bottom on all screens; "A Project of Daniel Bogard" linking to DanielBogard.com
+- [ ] **Phase 49: Variax Guitar Support** - Reactive Variax detection in chat, ToneIntent schema, .hlx block injection, device guard
+- [ ] **Phase 50: Donation/Support Integration** - Post-download donation card, PayPal/Venmo/CashApp buttons, footer Support link
 
 ### Phase 42: Token Cost Audit + Quality Baseline
 **Goal**: Every subsequent v4.0 phase has measurable cost data and a reproducible quality baseline to validate changes against — no blind optimization, no untested prompt changes
@@ -532,10 +535,47 @@ Plans:
   3. If no model change is implemented, the document explains why with data (e.g., "Sonnet cache hit rate is 85%, switching to Haiku would save $X/month but risk Y quality regression")
 **Plans**: TBD
 
+### Phase 48: Footer Restoration & Fixed Positioning
+**Goal**: Footer always visible and pinned to viewport bottom — on the welcome screen, during chat, and after generation. Displays "A Project of Daniel Bogard" linking to DanielBogard.com. Never floats mid-page during long conversations.
+**Depends on**: Phase 47
+**Requirements**: FOOTER-01
+**Success Criteria** (what must be TRUE):
+  1. Footer is visible at the viewport bottom on the welcome screen before any chat interaction
+  2. After 20+ chat messages, footer remains at viewport bottom — it does not float mid-conversation
+  3. After preset generation and download, footer is still visible at viewport bottom
+  4. "Daniel Bogard" links to DanielBogard.com and opens in a new tab
+  5. Footer retains 11px mono styling with amber hover effect matching the existing design system
+**Plans**: TBD
+
+### Phase 49: Variax Guitar Support
+**Goal**: When users proactively mention a Variax guitar, the system captures the guitar model and embeds a Variax block in .hlx presets for compatible devices — no Variax questions unless the user brings it up first
+**Depends on**: Phase 47; internal: research (VARIAX-03) blocks builder (VARIAX-04)
+**Requirements**: VARIAX-01, VARIAX-02, VARIAX-03, VARIAX-04, VARIAX-05
+**Success Criteria** (what must be TRUE):
+  1. Mentioning "I play a JTV-69" in chat triggers a Variax follow-up question about guitar model and tuning — the AI never asks about Variax unprompted
+  2. ToneIntentSchema accepts `variaxModel: "Spank"` as optional field — existing presets without Variax are unaffected
+  3. A research document describes the exact Variax block JSON structure from real .hlx exports, with at least 2 real-world examples
+  4. A Helix LT preset generated with `variaxModel: "Spank"` contains a correctly structured Variax block in the .hlx JSON output
+  5. A Pod Go preset generated with `variaxModel: "Spank"` produces a valid .pgp with no Variax block and no error — same for Stadium .hsp
+  6. HX Stomp and HX Stomp XL presets correctly include Variax blocks (they have VDI input like LT/Floor)
+**Plans**: TBD
+
+### Phase 50: Donation/Support Integration
+**Goal**: Tasteful post-download donation card with PayPal, Venmo, and CashApp buttons, plus a persistent "Support" link in the footer — designed to actually get used without being annoying
+**Depends on**: Phase 48 (footer must be fixed before adding Support link)
+**Requirements**: DONATE-01, DONATE-02, DONATE-03, DONATE-04
+**Success Criteria** (what must be TRUE):
+  1. After the user's first preset download, an inline donation card appears in the conversation flow — not a modal or popup
+  2. The card is dismissible with a button and does not re-appear after dismissal (once per session)
+  3. PayPal (`paypal.me/dsbogard`), Venmo (`venmo.com/Daniel-Bogard-1`), and CashApp (`cash.app/$ravbogard`) buttons each open the correct URL in a new tab
+  4. A "Support" link in the footer is always visible and re-shows the donation card if it was dismissed
+  5. All donation UI uses `--hlx-*` CSS custom properties — no PayPal blue, Venmo teal, or CashApp green brand colors
+**Plans**: TBD
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → 13 → 14 → 15 → 16 → 17 → 18 → 19 → 20 → 21 → 24 → 25 → 26 → 27 → 28 → 29 → 30 → 31 → 32 → 33 → 34 → 35 → 36 → 37 → 38 → 39 → 40 → 41 → 42 → 43 → 44 → 45 → 46 → 47
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → 13 → 14 → 15 → 16 → 17 → 18 → 19 → 20 → 21 → 24 → 25 → 26 → 27 → 28 → 29 → 30 → 31 → 32 → 33 → 34 → 35 → 36 → 37 → 38 → 39 → 40 → 41 → 42 → 43 → 44 → 45 → 46 → 47 → 48 → 49 → 50
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -584,7 +624,10 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 45. Knowledge Layer — Effects, EQ, Snapshots | v4.0 | 0/TBD | Not started | - |
 | 46. Effect Combination Intelligence | v4.0 | 0/TBD | Not started | - |
 | 47. Model Routing Decision | v4.0 | 0/TBD | Not started | - |
+| 48. Footer Restoration & Fixed Positioning | v4.0 | 0/TBD | Not started | - |
+| 49. Variax Guitar Support | v4.0 | 0/TBD | Not started | - |
+| 50. Donation/Support Integration | v4.0 | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-03-01*
-*Last updated: 2026-03-04 — v4.0 Preset Quality Leap roadmap: 6 phases (42-47), 19 requirements mapped*
+*Last updated: 2026-03-04 — v4.0 phases 48-50 added: footer fix, Variax support, donation integration (10 new requirements)*
