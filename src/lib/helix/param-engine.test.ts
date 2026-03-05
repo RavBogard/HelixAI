@@ -40,12 +40,12 @@ function makeBlock(overrides: Partial<BlockSpec>): BlockSpec {
 }
 
 describe("resolveParameters", () => {
-  // Test 1: Clean amp parameters
+  // Test 1: Clean amp parameters (Solo Lead Clean — Soldano SLO-100 clean; no paramOverrides planned)
   it("sets clean amp Drive 0.20-0.30, Master 0.90-1.00, SAG 0.50-0.70, ChVol 0.70", () => {
     const chain: BlockSpec[] = [
-      makeBlock({ type: "amp", modelId: "HD2_AmpUSDeluxeNrm", modelName: "US Deluxe Nrm" }),
+      makeBlock({ type: "amp", modelId: "HD2_AmpSoloLeadClean", modelName: "Solo Lead Clean" }),
     ];
-    const intent = makeIntent({ ampName: "US Deluxe Nrm" });
+    const intent = makeIntent({ ampName: "Solo Lead Clean" });
     const result = resolveParameters(chain, intent);
     const amp = result[0];
 
@@ -310,5 +310,29 @@ describe("resolveParameters", () => {
 
     // High-gain should have lower LowGain (more cut) than clean
     expect(hgResult[0].parameters.LowGain).toBeLessThan(cleanResult[0].parameters.LowGain);
+  });
+
+  // Test: Layer 4 paramOverrides mechanism (AMP-02)
+  it("paramOverrides survive category defaults (Layer 4 wins over Layer 2)", () => {
+    // US Deluxe Nrm has paramOverrides: { Drive: 0.99 } (canary value)
+    // AMP_DEFAULTS.clean.Drive = 0.25 — would win if there were no Layer 4
+    const chain: BlockSpec[] = [
+      makeBlock({ type: "amp", modelId: "HD2_AmpUSDeluxeNrm", modelName: "US Deluxe Nrm" }),
+    ];
+    const intent = makeIntent({ ampName: "US Deluxe Nrm" });
+    const result = resolveParameters(chain, intent);
+    // Layer 4 override must win over AMP_DEFAULTS.clean.Drive (0.25)
+    expect(result[0].parameters.Drive).toBe(0.99);
+  });
+
+  it("amps without paramOverrides still use category defaults (no regression)", () => {
+    // Grammatico Nrm is crunch, has no paramOverrides
+    const chain: BlockSpec[] = [
+      makeBlock({ type: "amp", modelId: "HD2_AmpGrammaticoNrm", modelName: "Grammatico Nrm" }),
+    ];
+    const intent = makeIntent({ ampName: "Grammatico Nrm" });
+    const result = resolveParameters(chain, intent);
+    // AMP_DEFAULTS.crunch.Drive = 0.50 — no override, category default wins
+    expect(result[0].parameters.Drive).toBe(0.50);
   });
 });

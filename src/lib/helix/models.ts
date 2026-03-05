@@ -81,6 +81,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     ampCategory: "clean" as const,
     topology: "plate_fed" as const,
     cabAffinity: ["1x12 US Deluxe","2x12 Double C12N"],
+    paramOverrides: { Drive: 0.99 }, // canary — proves Layer 4 mechanism; Plan 02 will replace with Drive: 0.60, Master: 1.0
     blockType: BLOCK_TYPES.AMP,
     defaultParams: { Drive: 0.45, Bass: 0.35, Mid: 0.60, Treble: 0.55, ChVol: 0.7, Master: 1.0, Presence: 0.35, Sag: 0.7, Hum: 0.1, Ripple: 0.1, Bias: 0.65, BiasX: 0.5 },
   },

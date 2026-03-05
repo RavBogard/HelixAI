@@ -327,10 +327,11 @@ function resolveBlockParams(
 }
 
 /**
- * Amp parameter resolution — 3-layer strategy:
+ * Amp parameter resolution — 4-layer strategy:
  * 1. Start with model's own defaultParams
  * 2. Apply category-level overrides
  * 3. Apply topology-specific mid override (high-gain only)
+ * 4. Apply per-model paramOverrides — wins over all shared layers (AMP-02)
  */
 function resolveAmpParams(
   block: BlockSpec,
@@ -356,6 +357,14 @@ function resolveAmpParams(
     const midOverride = TOPOLOGY_MID[topology];
     if (midOverride !== undefined) {
       params.Mid = midOverride;
+    }
+  }
+
+  // Layer 4: per-model overrides — wins over all shared layers (AMP-02)
+  // Null-safe: model may be undefined when amp not found in catalog
+  if (model?.paramOverrides) {
+    for (const [key, value] of Object.entries(model.paramOverrides)) {
+      params[key] = value;
     }
   }
 
