@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Stadium Rebuild + Preset Quality Leap
 status: unknown
-last_updated: "2026-03-05T18:41:34.438Z"
+last_updated: "2026-03-05T18:49:23.680Z"
 progress:
   total_phases: 43
   completed_phases: 27
   total_plans: 63
-  completed_plans: 54
+  completed_plans: 55
 ---
 
 ---
@@ -54,6 +54,8 @@ Progress: [████████████████████░░░
 - [v4.0]: Phase ordering: 52, 55, 56 can start in parallel; 53 depends on 52; 54 depends on 53; 57 depends on 56; 58 runs last
 - [Phase 52-stadium-amp-catalog]: STADIUM_DEVICE_VERSION set to 301990015 — lowest common denominator from Agoura_Bassman.hsp and Agoura_Hiwatt.hsp; newer .hsp files use higher values but 301990015 is the dedicated single-amp baseline
 - [Phase 52-stadium-amp-catalog]: defaultParams keys always use standard names (Drive, Bass, Mid, Treble, Master, ChVol) regardless of actual .hsp param key name — builder handles translation (Treb->Treble, MasterVol->Master)
+- [Phase 53-01]: Stadium cab params (Delay, IrData, Level, Pan, Position) added conditionally via device guard in resolveCabParams() — non-Stadium devices unaffected
+- [Phase 53-01]: STADIUM_SLOT_ALLOCATION constant replaces sequential flowPos — amp always at b05/pos:5, cab at b06/pos:6, matching Agoura_Bassman.hsp reference corpus
 
 ### Roadmap Evolution
 

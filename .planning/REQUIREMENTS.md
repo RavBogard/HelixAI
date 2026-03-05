@@ -11,10 +11,10 @@ Requirements for v4.0 Stadium Rebuild + Preset Quality Leap. Each maps to roadma
 
 - [x] **STAD-01**: Agoura amp catalog expanded with 6 missing amp IDs extracted from real .hsp files, with verified defaultParams
 - [x] **STAD-02**: Stadium device version updated to 301990015 and HX2_*/VIC_* model IDs added to validate.ts
-- [ ] **STAD-03**: Stadium builder param encoding fixed to `{ value: X }` format (no `access` field)
-- [ ] **STAD-04**: Stadium builder block keys use slot-grid allocation (b00=input, b05=amp, b06=cab, b13=output) instead of sequential numbering
-- [ ] **STAD-05**: Stadium builder effect blocks use `type: "fx"` for all effect categories
-- [ ] **STAD-06**: Stadium cab blocks emit all 10 parameters (adding Delay, IrData, Level, Pan, Position)
+- [x] **STAD-03**: Stadium builder param encoding fixed to `{ value: X }` format (no `access` field)
+- [x] **STAD-04**: Stadium builder block keys use slot-grid allocation (b00=input, b05=amp, b06=cab, b13=output) instead of sequential numbering
+- [x] **STAD-05**: Stadium builder effect blocks use `type: "fx"` for all effect categories
+- [x] **STAD-06**: Stadium cab blocks emit all 10 parameters (adding Delay, IrData, Level, Pan, Position)
 - [ ] **STAD-07**: Generated .hsp file loads in HX Edit without errors — verified against real .hsp reference
 - [ ] **STAD-08**: Stadium device selection unblocked in UI after hardware verification passes
 
@@ -80,10 +80,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | STAD-01 | Phase 52 | Complete |
 | STAD-02 | Phase 52 | Complete |
-| STAD-03 | Phase 53 | Pending |
-| STAD-04 | Phase 53 | Pending |
-| STAD-05 | Phase 53 | Pending |
-| STAD-06 | Phase 53 | Pending |
+| STAD-03 | Phase 53 | Complete |
+| STAD-04 | Phase 53 | Complete |
+| STAD-05 | Phase 53 | Complete |
+| STAD-06 | Phase 53 | Complete |
 | STAD-07 | Phase 53 | Pending |
 | STAD-08 | Phase 54 | Pending |
 | PROMPT-01 | Phase 55 | Pending |
