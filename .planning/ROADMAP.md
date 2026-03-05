@@ -9,6 +9,7 @@
 - [x] **v2.0 Persistent Chat Platform** - Phases 24-30 (shipped 2026-03-04)
 - [x] **v3.0 Helix Stadium Support** - Phases 31-38 (shipped 2026-03-04)
 - [x] **v3.2 Infrastructure, Features & Audit Tooling** - Phases 42, 48-51 (shipped 2026-03-05)
+- [ ] **v4.0 Stadium Rebuild + Preset Quality Leap** - Phases 52-58 (in progress)
 
 ## Phases
 
@@ -226,13 +227,6 @@ Plans:
 **Goal**: All new type contracts for v1.3 are defined and exported — downstream phases build on verified, compiled schemas with no guesswork on data shapes
 **Depends on**: Phase 16
 **Requirements**: RIG-06
-**Success Criteria** (what must be TRUE):
-  1. `PhysicalPedalSchema` compiles with Zod and includes: `brand`, `model`, `fullName`, `knobPositions` (as a `Record<string, "low" | "medium-low" | "medium-high" | "high">` or clock-position description), `imageIndex`, and `confidence: "high" | "medium" | "low"`
-  2. `RigIntentSchema` compiles and wraps an array of `PhysicalPedal` entries plus optional `rigDescription` (plain text) and `extractionNotes` fields — the schema can represent both photo-extracted and text-described rigs
-  3. `SubstitutionEntrySchema` compiles with: `physicalPedal` (string), `helixModel` (internal ID), `helixModelDisplayName` (human-readable name from models.ts), `substitutionReason` (plain English rationale), `parameterMapping` (optional knob zone overrides), and `confidence: "direct" | "close" | "approximate"`
-  4. `SubstitutionMapSchema` compiles as a wrapper around an array of `SubstitutionEntry` entries — represents the full pedal → Helix mapping result for a rig
-  5. All new schemas are exported from `src/lib/helix/index.ts` — downstream phases import types from the existing barrel without new import paths
-  6. TypeScript compiler produces zero errors after schema additions — no conflicts with existing ToneIntent, PresetSpec, or DeviceTarget types
 **Plans**: 1 plan
 
 Plans:
@@ -242,13 +236,6 @@ Plans:
 **Goal**: The deterministic rig mapping layer converts physical pedal names to Helix equivalents with three match tiers and coarse knob zone translation — no AI guessing in the mapping logic
 **Depends on**: Phase 17
 **Requirements**: MAP-01, MAP-02, MAP-03, MAP-04, MAP-05
-**Success Criteria** (what must be TRUE):
-  1. `PEDAL_HELIX_MAP` in `src/lib/rig-mapping.ts` contains at least 40 entries covering the most common pedal categories
-  2. `lookupPedal(pedalName: string, device: DeviceTarget)` returns a `SubstitutionEntry` with the correct `confidence` tier
-  3. For an unknown boutique pedal not in the table, `lookupPedal()` returns `confidence: "approximate"` — never `confidence: "direct"` for a pedal that required fuzzy/category fallback
-  4. The mapping table stores both `helixModel` (internal ID) and `helixModelDisplayName` (human-readable name) — no internal IDs leak to the display layer
-  5. `mapRigToSubstitutions(rigIntent, device)` returns a `SubstitutionMap` with device-appropriate model IDs
-  6. Unit tests confirm exact-table-match pedals return `"direct"` and unknown pedals do not
 **Plans**: 1 plan
 
 Plans:
@@ -464,10 +451,120 @@ See: `.planning/milestones/v3.2-ROADMAP.md`
 
 </details>
 
+### v4.0 Stadium Rebuild + Preset Quality Leap (In Progress)
+
+**Milestone Goal:** Rebuild Stadium preset generation from real .hsp files and deliver a major quality improvement across all devices through enriched planner prompts, per-model amp parameters, intelligent effect parameters, and an architecture audit of the device/model abstraction layer.
+
+#### Phase 52: Stadium Amp Catalog + Device Constants
+- [ ] **Phase 52: Stadium Amp Catalog + Device Constants** - Expand the Agoura amp catalog from real .hsp files and correct all device-level constants
+
+#### Phase 53: Stadium Builder Rebuild
+- [ ] **Phase 53: Stadium Builder Rebuild** - Rewrite stadium-builder.ts to fix all 5 confirmed format bugs using real .hsp files as ground truth
+
+#### Phase 54: Stadium Device Unblock
+- [ ] **Phase 54: Stadium Device Unblock** - Remove the production 400 guard after hardware verification of generated .hsp files
+
+#### Phase 55: Planner Prompt Enrichment
+- [ ] **Phase 55: Planner Prompt Enrichment** - Add gain-staging intelligence, cab pairing guidance, and effect discipline to buildPlannerPrompt()
+
+#### Phase 56: Per-Model Amp Parameter Overrides
+- [ ] **Phase 56: Per-Model Amp Parameter Overrides** - Establish Layer 4 paramOverrides mechanism and add verified per-model values for 15+ amps
+
+#### Phase 57: Effect Parameter Intelligence
+- [ ] **Phase 57: Effect Parameter Intelligence** - Wire guitarType, tempoHint, and toneRole into Knowledge Layer for guitar-type EQ, reverb PreDelay, tempo-scaled delay, and snapshot volume deltas
+
+#### Phase 58: Architecture Audit
+- [ ] **Phase 58: Architecture Audit** - Review the device/model abstraction layer across all 6 devices and document findings with recommendations
+
+## Phase Details
+
+> v2.0 phase details (Phases 24-30) archived to `.planning/milestones/v2.0-ROADMAP.md`
+
+### Phase 52: Stadium Amp Catalog + Device Constants
+**Goal**: The Stadium model catalog and device constants reflect ground truth from real .hsp files — the builder rebuild phase has accurate amp IDs and defaultParams to test against
+**Depends on**: Phase 51
+**Requirements**: STAD-01, STAD-02
+**Success Criteria** (what must be TRUE):
+  1. `STADIUM_AMPS` in `models.ts` contains all 18 Agoura amp entries — 6 previously missing IDs added with defaultParams extracted field-by-field from real .hsp files, never estimated
+  2. `STADIUM_DEVICE_VERSION` in `config.ts` is updated to 301990015 with a source comment referencing the real .hsp file it was read from
+  3. `validate.ts` accepts `HX2_*` and `VIC_*` model ID prefixes for Stadium — generation no longer fails validation for any model ID present in real Stadium presets
+  4. TypeScript compilation passes with zero errors after all catalog changes
+**Plans**: TBD
+
+### Phase 53: Stadium Builder Rebuild
+**Goal**: `stadium-builder.ts` produces .hsp files that are structurally identical to real Line 6 Stadium presets — all 5 confirmed format bugs are fixed and the generated file passes HX Edit import without errors
+**Depends on**: Phase 52
+**Requirements**: STAD-03, STAD-04, STAD-05, STAD-06, STAD-07
+**Success Criteria** (what must be TRUE):
+  1. Parameter encoding uses `{ value: X }` format with no `access` field — a field-by-field diff against `Agoura_Bassman.hsp` shows no extraneous fields in any block
+  2. Block keys use slot-grid allocation (b00=input, b05=amp, b06=cab, b13=output) — no sequential flowPos counter anywhere in `stadium-builder.ts`
+  3. All effect blocks emit `type: "fx"` regardless of effect category — no other type string appears in effect blocks
+  4. Cab blocks emit all 10 parameters including `Delay`, `IrData`, `Level`, `Pan`, and `Position` — the generated cab block matches the reference file parameter count exactly
+  5. A generated .hsp file opens in HX Edit without import errors — verified by loading the file, not just by TypeScript compilation passing
+**Plans**: TBD
+
+### Phase 54: Stadium Device Unblock
+**Goal**: Stadium device selection is live in production — users can select Helix Stadium, generate presets, and download .hsp files that load on real hardware with musically sensible parameters
+**Depends on**: Phase 53
+**Requirements**: STAD-08
+**Success Criteria** (what must be TRUE):
+  1. Selecting "STADIUM" in the device picker generates a valid .hsp file — no 400 error is returned from `/api/generate`
+  2. Five to ten generation requests with different tone goals all produce .hsp files that open in HX Edit without errors
+  3. Amp parameters in generated Stadium presets are musically sensible — not clipping, not silent, and audibly distinguishable between clean and high-gain requests
+  4. Snapshot names and block enabled states in generated .hsp files match what is visible in HX Edit's snapshot panel
+**Plans**: TBD
+
+### Phase 55: Planner Prompt Enrichment
+**Goal**: The planner prompt guides the AI toward expert-level creative choices — gain-staging intelligence, amp-to-cab pairing, and genre effect discipline improve ToneIntent quality for all devices simultaneously
+**Depends on**: Phase 51 (independent of Stadium track — can start alongside Phase 52)
+**Requirements**: PROMPT-01, PROMPT-02, PROMPT-03, PROMPT-04
+**Success Criteria** (what must be TRUE):
+  1. A clean-tone request no longer receives Scream 808 boost guidance from the prompt, and a high-gain request no longer receives Minotaur guidance — the gain-staging section steers AI away from mismatched boost choices
+  2. A Vox-style amp selection in ToneIntent correlates with an open-back 2x12 cab in the generated preset — the cab pairing guidance is reflected in AI output
+  3. A metal tone request produces ToneIntent with no more than 3 effect blocks; an ambient request produces 4-5 appropriate time-based effects — genre effect discipline is observable in the output
+  4. Cache hit rate measured via usage-logger.ts is not degraded after enrichment is added — the shared static prefix did not fragment into device-conditional buckets
+**Plans**: TBD
+
+### Phase 56: Per-Model Amp Parameter Overrides
+**Goal**: The Knowledge Layer applies per-model amp parameter corrections after category defaults — non-master-volume amps and high-gain amps receive historically accurate Drive/Master values that are not silently discarded
+**Depends on**: Phase 51 (independent — can start alongside Phase 52)
+**Requirements**: AMP-01, AMP-02, AMP-03, AMP-04, AMP-05
+**Success Criteria** (what must be TRUE):
+  1. `HelixModel` has a `paramOverrides` field in `models.ts` and `resolveAmpParams()` applies it as Layer 4 after category defaults — a unit test explicitly confirms an override value survives category default application
+  2. A Fender-style amp (US Deluxe) receives Drive 0.60 and Master 1.0 in the generated preset — not the category default Master value
+  3. An AC30-style amp receives Drive 0.60 and Master 1.0; a Rectifier-style high-gain amp receives Drive 0.40 and Presence 0.30 — values observable by inspecting the generated .hlx file
+  4. Amps are classified by family (Fender, Marshall, Vox, Mesa, etc.) in model metadata — the classification field is present and non-empty for all overridden amps
+  5. Cab affinity data is present on amp model metadata — at least the 15 overridden amps have cab affinity populated
+**Plans**: TBD
+
+### Phase 57: Effect Parameter Intelligence
+**Goal**: ToneIntent fields that were captured but never used — guitarType, tempoHint, toneRole — are wired into the Knowledge Layer to produce guitar-type-aware EQ, tempo-synced delay, genre-calibrated reverb PreDelay, and volume-balanced snapshots
+**Depends on**: Phase 56 (needs Layer 4 mechanism established for snapshot ChVol delta application)
+**Requirements**: FX-01, FX-02, FX-03, FX-04
+**Success Criteria** (what must be TRUE):
+  1. A single-coil guitar type request produces measurably different post-cab EQ curve values than a humbucker request — the difference is visible in the generated .hlx file parameters
+  2. A tone request with a tempo hint of 120 BPM produces a delay time value of approximately 0.25 (derived from 60000/120 formula normalized to Helix range) — not the static genre default
+  3. A blues preset has reverb PreDelay in the 20-30ms range; an ambient preset has PreDelay in the 40-60ms range — the difference is audible and reflects note attack preservation intent
+  4. The Lead snapshot has a ChVol value higher than the Clean snapshot by default — leads are louder than cleans without the user having to request it
+**Plans**: TBD
+
+### Phase 58: Architecture Audit
+**Goal**: The device/model abstraction layer across all 6 devices is documented with an honest assessment of what works well, what is fragile, and what structural improvements would reduce maintenance burden for future device additions
+**Depends on**: Phase 57 (runs last — benefits from seeing all v4.0 changes in place)
+**Requirements**: ARCH-01
+**Success Criteria** (what must be TRUE):
+  1. A written audit document exists at `.planning/architecture-audit-v4.md` covering all 6 devices, their builder files, model catalogs, chain rules, and validation paths
+  2. The audit identifies at least one concrete structural improvement with a specific file target and estimated scope — not just observations, but actionable recommendations
+  3. Any Stadium rebuild discoveries that revealed structural issues in shared Knowledge Layer files are documented with the exact files and line numbers affected
+  4. The audit explicitly states whether a device abstraction refactor is warranted now or should remain deferred — the decision is recorded with rationale in PROJECT.md Key Decisions
+**Plans**: TBD
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → 13 → 14 → 15 → 16 → 17 → 18 → 19 → 20 → 21 → 24 → 25 → 26 → 27 → 28 → 29 → 30 → 31 → 32 → 33 → 34 → 35 → 36 → 37 → 38 → 39 → 40 → 41 → 42 → 48 → 49 → 50 → 51
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → 13 → 14 → 15 → 16 → 17 → 18 → 19 → 20 → 21 → 24 → 25 → 26 → 27 → 28 → 29 → 30 → 31 → 32 → 33 → 34 → 35 → 36 → 37 → 38 → 39 → 40 → 41 → 42 → 48 → 49 → 50 → 51 → 52 → 53 → 54 → 55 → 56 → 57 → 58
+
+Note: Phases 52, 55, and 56 can start in parallel. Phase 53 depends on 52. Phase 54 depends on 53. Phase 57 depends on 56. Phase 58 depends on 57.
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -515,7 +612,14 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 49. Variax Guitar Support | v3.2 | 1/1 | Complete | 2026-03-05 |
 | 50. Donation/Support Integration | v3.2 | 1/1 | Complete | 2026-03-05 |
 | 51. Fix Stadium Agoura amp lookup | v3.2 | 2/2 | Complete | 2026-03-05 |
+| 52. Stadium Amp Catalog + Device Constants | v4.0 | 0/TBD | Not started | - |
+| 53. Stadium Builder Rebuild | v4.0 | 0/TBD | Not started | - |
+| 54. Stadium Device Unblock | v4.0 | 0/TBD | Not started | - |
+| 55. Planner Prompt Enrichment | v4.0 | 0/TBD | Not started | - |
+| 56. Per-Model Amp Parameter Overrides | v4.0 | 0/TBD | Not started | - |
+| 57. Effect Parameter Intelligence | v4.0 | 0/TBD | Not started | - |
+| 58. Architecture Audit | v4.0 | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-03-01*
-*Last updated: 2026-03-05 — v3.2 milestone archived*
+*Last updated: 2026-03-05 — v4.0 phases 52-58 added*

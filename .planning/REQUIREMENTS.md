@@ -74,34 +74,34 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| STAD-01 | — | Pending |
-| STAD-02 | — | Pending |
-| STAD-03 | — | Pending |
-| STAD-04 | — | Pending |
-| STAD-05 | — | Pending |
-| STAD-06 | — | Pending |
-| STAD-07 | — | Pending |
-| STAD-08 | — | Pending |
-| PROMPT-01 | — | Pending |
-| PROMPT-02 | — | Pending |
-| PROMPT-03 | — | Pending |
-| PROMPT-04 | — | Pending |
-| AMP-01 | — | Pending |
-| AMP-02 | — | Pending |
-| AMP-03 | — | Pending |
-| AMP-04 | — | Pending |
-| AMP-05 | — | Pending |
-| FX-01 | — | Pending |
-| FX-02 | — | Pending |
-| FX-03 | — | Pending |
-| FX-04 | — | Pending |
-| ARCH-01 | — | Pending |
+| STAD-01 | Phase 52 | Pending |
+| STAD-02 | Phase 52 | Pending |
+| STAD-03 | Phase 53 | Pending |
+| STAD-04 | Phase 53 | Pending |
+| STAD-05 | Phase 53 | Pending |
+| STAD-06 | Phase 53 | Pending |
+| STAD-07 | Phase 53 | Pending |
+| STAD-08 | Phase 54 | Pending |
+| PROMPT-01 | Phase 55 | Pending |
+| PROMPT-02 | Phase 55 | Pending |
+| PROMPT-03 | Phase 55 | Pending |
+| PROMPT-04 | Phase 55 | Pending |
+| AMP-01 | Phase 56 | Pending |
+| AMP-02 | Phase 56 | Pending |
+| AMP-03 | Phase 56 | Pending |
+| AMP-04 | Phase 56 | Pending |
+| AMP-05 | Phase 56 | Pending |
+| FX-01 | Phase 57 | Pending |
+| FX-02 | Phase 57 | Pending |
+| FX-03 | Phase 57 | Pending |
+| FX-04 | Phase 57 | Pending |
+| ARCH-01 | Phase 58 | Pending |
 
 **Coverage:**
 - v4.0 requirements: 22 total
-- Mapped to phases: 0
-- Unmapped: 22
+- Mapped to phases: 22
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-05*
-*Last updated: 2026-03-05 after initial definition*
+*Last updated: 2026-03-05 — traceability complete, all 22 requirements mapped to phases 52-58*
