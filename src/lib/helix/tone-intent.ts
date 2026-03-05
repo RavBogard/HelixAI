@@ -29,7 +29,7 @@ export const ToneIntentSchema = z.object({
   guitarType: z.enum(["single_coil", "humbucker", "p90"]),          // Pickup type influences amp param defaults in Knowledge Layer
   genreHint: z.string().optional(),                                  // e.g., "blues rock", "metal", "jazz" — informational only
   effects: z.array(EffectIntentSchema).max(6),                      // Additional effects beyond mandatory boost (Knowledge Layer inserts boost)
-  snapshots: z.array(SnapshotIntentSchema).min(4).max(4),           // Exactly 4 snapshots required (Clean, Rhythm, Lead, Ambient pattern)
+  snapshots: z.array(SnapshotIntentSchema).min(3).max(8),           // 3-8 snapshots: Stomp=3, StompXL/LT/Floor=4, Stadium=up to 8
   tempoHint: z.number().int().min(60).max(200).optional(),          // BPM hint for delay sync — integer only
   presetName: z.string().max(32).optional(),                         // Claude generates a creative preset name
   description: z.string().optional(),                                // Brief tone description
