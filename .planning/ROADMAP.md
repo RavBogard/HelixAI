@@ -462,7 +462,7 @@ See: `.planning/milestones/v3.2-ROADMAP.md`
 - [x] **Phase 53: Stadium Builder Rebuild** - Rewrite stadium-builder.ts to fix all 5 confirmed format bugs using real .hsp files as ground truth (completed 2026-03-05)
 
 #### Phase 54: Stadium Device Unblock
-- [ ] **Phase 54: Stadium Device Unblock** - Remove the production 400 guard after hardware verification of generated .hsp files
+- [x] **Phase 54: Stadium Device Unblock** - Remove the production 400 guard after hardware verification of generated .hsp files (completed 2026-03-05)
 
 #### Phase 55: Planner Prompt Enrichment
 - [ ] **Phase 55: Planner Prompt Enrichment** - Add gain-staging intelligence, cab pairing guidance, and effect discipline to buildPlannerPrompt()
@@ -618,7 +618,7 @@ Note: Phases 52, 55, and 56 can start in parallel. Phase 53 depends on 52. Phase
 | 51. Fix Stadium Agoura amp lookup | v3.2 | 2/2 | Complete | 2026-03-05 |
 | 52. Stadium Amp Catalog + Device Constants | 1/1 | Complete    | 2026-03-05 | - |
 | 53. Stadium Builder Rebuild | 2/2 | Complete    | 2026-03-05 | - |
-| 54. Stadium Device Unblock | 1/2 | In Progress|  | - |
+| 54. Stadium Device Unblock | 1/2 | Complete    | 2026-03-05 | - |
 | 55. Planner Prompt Enrichment | v4.0 | 0/TBD | Not started | - |
 | 56. Per-Model Amp Parameter Overrides | v4.0 | 0/TBD | Not started | - |
 | 57. Effect Parameter Intelligence | v4.0 | 0/TBD | Not started | - |
@@ -629,7 +629,7 @@ Note: Phases 52, 55, and 56 can start in parallel. Phase 53 depends on 52. Phase
 **Goal:** Fix HX Edit error 8309 "Incompatible target device type" when importing generated .hlx presets on Helix Floor — reported by Paul Morgan and Tal Solomon Vardy
 **Requirements**: FLOOR-01
 **Depends on:** None (critical bug fix — can run in parallel with any phase)
-**Plans:** 1/2 plans executed
+**Plans:** 1/2 plans complete
 
 Plans:
 - [ ] 59-01-PLAN.md — Get confirmed Helix Floor device ID from real hardware export (human checkpoint)
