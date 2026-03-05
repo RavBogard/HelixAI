@@ -91,6 +91,52 @@ ${effectNote}
 - ampName handles clean/crunch snapshots; secondAmpName handles lead/ambient snapshots
 - NEVER use secondAmpName for Pod Go — Pod Go is single-DSP, series-only hardware
 - NEVER use secondAmpName for HX Stomp or HX Stomp XL — they are single-DSP, series-only devices
+
+## Gain-Staging Intelligence
+
+Three parameters serve different roles — do not confuse them:
+
+- **Drive**: On non-master-volume amps (Fender Deluxe, Vox AC30, Hiwatt), Drive IS the volume
+  knob — it controls output level and breakup character simultaneously. On master-volume amps
+  (Marshall JCM, Mesa Rectifier), Drive controls preamp saturation only.
+- **Boost pedal selection**: Use Minotaur (transparent, Klon-style) for clean and crunch tones.
+  Use Scream 808 (TS-style mid-hump) for high-gain tones. Do not pair Minotaur with high-gain
+  amps or Scream 808 with clean amps — the character clash undermines the tone goal.
+- **Channel Volume**: Pure output level — no tonal effect. The Knowledge Layer handles this.
+
+## Amp-to-Cab Pairing
+
+Pair amps with historically correct cabs. Match the amp's era and speaker voicing:
+
+| Amp Family | Recommended Cabs |
+|------------|-----------------|
+| Fender Deluxe / Vibrolux / Twin | 1x12 US Deluxe, 2x12 Double C12N |
+| Fender Bassman / Tweed | 4x10 Tweed P10R, 1x12 Fullerton |
+| Vox AC30 / AC15 | 2x12 Blue Bell, 1x12 Blue Bell |
+| Marshall Plexi | 4x12 Greenback25, 4x12 Greenback20 |
+| Marshall JCM800 / JVM | 4x12 Brit V30, 4x12 Greenback25 |
+| Mesa Boogie Mark / Rectifier | 4x12 Cali V30, 4x12 XXL V30 |
+| Bogner / Friedman / Diezel / 5150 | 4x12 XXL V30, 4x12 Uber V30 |
+| Matchless DC-30 | 2x12 Match H30 |
+
+If the requested tone doesn't fit a row above, choose a cab with matching era and speaker voicing.
+
+## Effect Discipline by Genre
+
+Choose effects that serve the tone goal — do not fill slots for the sake of variety:
+
+- **Metal / hard rock**: Maximum 3 effects. Optional delay at low mix. Do NOT include reverb
+  or modulation on metal tones.
+- **Blues / classic rock / country**: 2-3 effects. Delay and reverb are typical; optional
+  vibrato or light chorus.
+- **Jazz / fusion**: 1-2 effects maximum. Light reverb only; no delay unless requested.
+- **Ambient / worship**: 4-5 effects expected. MUST include at least one reverb AND one delay.
+  Modulation (shimmer, chorus, vibrato) is appropriate. Avoid heavy drive/distortion.
+- **Pop / funk**: 2-3 effects. Chorus or phaser is appropriate; keep delay mix low.
+
+For ambient and worship tones: if no reverb or delay is in the effects list, the preset will
+fail its tone goal — always include time-based effects for these genres.
+
 ${podGo ? "\n**DEVICE RESTRICTION: This is a Pod Go preset. Pod Go does NOT support dual-amp. Do NOT populate secondAmpName or secondCabName.**\n" : ""}${stadium ? "\n**DEVICE RESTRICTION: This is a Helix Stadium preset. Use only Stadium-compatible model names (Agoura_* amps, P35_* I/O). Stadium preset generation is in preview — keep the signal chain simple (single amp, 4 effects maximum).**\n" : ""}${stomp ? `\n**DEVICE RESTRICTION: This is an ${deviceName} preset. ${deviceName} is a single-DSP, series-only device. Do NOT populate secondAmpName or secondCabName. Generate exactly ${snapshotCount} snapshots (not 4).${!isStompXL ? " Keep effects to 2-4 maximum — HX Stomp has limited DSP and only 6 block slots total (including amp + cab)." : " Keep effects to 4-6 maximum — HX Stomp XL has 9 block slots total."}\n` : ""}
 Based on the conversation below, generate a ToneIntent:`;
 }
