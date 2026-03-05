@@ -5,7 +5,7 @@ milestone_name: Stadium Rebuild + Preset Quality Leap
 status: roadmap
 last_updated: "2026-03-05"
 progress:
-  total_phases: 7
+  total_phases: 8
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -22,7 +22,7 @@ See: .planning/PROJECT.md (updated 2026-03-05)
 
 ## Current Position
 
-Phase: 52 of 58 (Stadium Amp Catalog + Device Constants)
+Phase: 52 of 59 (Stadium Amp Catalog + Device Constants)
 Plan: 0 of TBD in current phase
 Status: Ready to plan
 Last activity: 2026-03-05 — v4.0 roadmap created (phases 52-58)
@@ -44,6 +44,7 @@ Progress: [████████████████████░░░
 
 - v3.2 milestone: 5 phases (42, 48-51), 8 plans — all complete
 - v4.0 phases 52-58 derived from REQUIREMENTS.md (22 v4.0 requirements, 7 phases)
+- Phase 59 added: Fix Helix Floor preset import error 8309 incompatible device type (user report from Paul Morgan)
 - Stadium track (52→53→54) is sequential — catalog before builder, builder before unblock
 - Quality track (55, 56→57) is parallel with Stadium track
 - 11 real Stadium .hsp reference presets available at C:/Users/dsbog/Downloads/NH_STADIUM_AURA_REFLECTIONS/
@@ -52,6 +53,8 @@ Progress: [████████████████████░░░
 
 - **Michael Weaver:** "Signal chain cannot reach the sound promised. How can there be an ambient snapshot without a single reverb or delay in the chain?" — Dual-amp preset generated with no time-based effects. Validates PROMPT-03 (effect discipline) and FX-01/FX-02/FX-03 (effect intelligence). Chain had: 2x12 Blue Bell, 2x12 Double C12N, Kinky Comp, Minotaur, Matchstick Ch1, US Double Nrm, Parametric EQ, Gain Block — zero reverb, zero delay.
 - **Glenn Sully:** "Output level too low. First DSP didn't connect to second line DSP. Answers were a bit long winded." — Validates FX-04 (snapshot volume balance), possible dual-DSP routing issue, chat verbosity. Also requested: effect explanations and recording context.
+- **Paul Morgan:** "Unfortunately can't get any to load on the Helix Floor. Keep getting this message." — HX Edit error 8309: Incompatible target device type. Generated .hlx presets fail to import on Helix Floor hardware. Critical user-facing bug → Phase 59.
+- **Tal Solomon Vardy:** "All my presets don't work yet via HX Edit, waiting for fixing" — Same error 8309: Incompatible target device type. Device unknown. Second report of same bug → confirms Phase 59 priority.
 
 ### Pending Todos
 

@@ -9,7 +9,7 @@
 - [x] **v2.0 Persistent Chat Platform** - Phases 24-30 (shipped 2026-03-04)
 - [x] **v3.0 Helix Stadium Support** - Phases 31-38 (shipped 2026-03-04)
 - [x] **v3.2 Infrastructure, Features & Audit Tooling** - Phases 42, 48-51 (shipped 2026-03-05)
-- [ ] **v4.0 Stadium Rebuild + Preset Quality Leap** - Phases 52-58 (in progress)
+- [ ] **v4.0 Stadium Rebuild + Preset Quality Leap** - Phases 52-59 (in progress)
 
 ## Phases
 
@@ -623,6 +623,16 @@ Note: Phases 52, 55, and 56 can start in parallel. Phase 53 depends on 52. Phase
 | 56. Per-Model Amp Parameter Overrides | v4.0 | 0/TBD | Not started | - |
 | 57. Effect Parameter Intelligence | v4.0 | 0/TBD | Not started | - |
 | 58. Architecture Audit | v4.0 | 0/TBD | Not started | - |
+
+### Phase 59: Fix Helix Floor preset import error 8309 incompatible device type
+
+**Goal:** Fix HX Edit error 8309 "Incompatible target device type" when importing generated .hlx presets on Helix Floor — reported by Paul Morgan
+**Requirements**: TBD
+**Depends on:** None (critical bug fix — can run in parallel with any phase)
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 59 to break down)
 
 ---
 *Roadmap created: 2026-03-01*
