@@ -24,6 +24,7 @@
 .DS_Store
 *.pem
 usage.jsonl
+scripts/baseline/
 
 # debug
 npm-debug.log*
