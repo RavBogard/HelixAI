@@ -249,6 +249,7 @@ function findModel(modelName: string, blockType: string): HelixModel | undefined
  *
  * @param chain - Signal chain from assembleSignalChain() with empty parameters
  * @param intent - Original ToneIntent for context (ampName determines category)
+ * @param device - Optional device target — used to apply device-specific param extensions
  * @returns New BlockSpec[] with all parameter values filled
  */
 export function resolveParameters(
@@ -286,7 +287,8 @@ export function resolveParameters(
 
     const resolved: BlockSpec = {
       ...block,
-      parameters: resolveBlockParams(block, effectiveCategory, effectiveTopology, genreProfile),
+      // Thread device through to resolveBlockParams for Stadium-specific extensions (STAD-06)
+      parameters: resolveBlockParams(block, effectiveCategory, effectiveTopology, genreProfile, device),
     };
     return resolved;
   });
@@ -294,18 +296,21 @@ export function resolveParameters(
 
 /**
  * Resolve parameters for a single block based on its type and the amp context.
+ * The device parameter enables Stadium-specific param extensions (e.g., 10 cab params).
  */
 function resolveBlockParams(
   block: BlockSpec,
   ampCategory: AmpCategory,
   topology: TopologyTag,
   genreProfile?: GenreEffectProfile,
+  device?: DeviceTarget,
 ): Record<string, number> {
   switch (block.type) {
     case "amp":
       return resolveAmpParams(block, ampCategory, topology);
     case "cab":
-      return resolveCabParams(ampCategory);
+      // STAD-06 fix: pass device to resolveCabParams so Stadium gets all 10 cab params
+      return resolveCabParams(ampCategory, device);
     case "distortion":
       return resolveDistortionParams(block, ampCategory);
     case "eq":
@@ -359,16 +364,39 @@ function resolveAmpParams(
 
 /**
  * Cab parameter resolution — Hz-encoded LowCut/HighCut, integer Mic index.
+ *
+ * STAD-06 fix: Stadium .hsp cab blocks require all 10 parameters.
+ * The 5 additional params (Delay, IrData, Level, Pan, Position) appear in every
+ * real Stadium .hsp cab block (Agoura_Bassman.hsp reference). Added conditionally
+ * for Stadium only to avoid regressing non-Stadium devices (Pitfall 5).
+ *
+ * Default values from Agoura_Bassman.hsp cab block inspection:
+ *   Delay: 0.0 (ms, no cabinet delay)
+ *   IrData: 0 (IR data index, 0 = default)
+ *   Level: 0.0 (dB, unity)
+ *   Pan: 0.5 (center)
+ *   Position: 0.25 (standard near-mic position)
  */
-function resolveCabParams(ampCategory: AmpCategory): Record<string, number> {
+function resolveCabParams(ampCategory: AmpCategory, device?: DeviceTarget): Record<string, number> {
   const cabDefaults = CAB_PARAMS[ampCategory];
-  return {
+  const params: Record<string, number> = {
     LowCut: cabDefaults.LowCut,
     HighCut: cabDefaults.HighCut,
     Mic: cabDefaults.Mic,
     Distance: cabDefaults.Distance,
     Angle: cabDefaults.Angle,
   };
+
+  // Stadium requires all 10 cab params — add the 5 missing ones conditionally
+  if (device && isStadium(device)) {
+    params.Delay = 0.0;
+    params.IrData = 0;
+    params.Level = 0.0;
+    params.Pan = 0.5;
+    params.Position = 0.25;
+  }
+
+  return params;
 }
 
 /**

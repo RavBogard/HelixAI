@@ -1,13 +1,13 @@
 // src/lib/helix/stadium-builder.ts
 // Helix Stadium preset builder — generates .hsp files for Line 6 Helix Stadium.
 //
-// Format verified against real .hsp files downloaded from The Gear Forum:
-//   - Cranked_2203.hsp (15.7 KB, uploaded by EOengineer, Dec 2025)
-//   - Rev_120_Purple_Recto.hsp (17 KB, uploaded by EOengineer, Dec 2025)
+// Format verified against real .hsp files from C:/Users/dsbog/Downloads/NH_STADIUM_AURA_REFLECTIONS/
+//   Reference: Agoura_Bassman.hsp — field-by-field comparison used for format verification.
 //
 // .hsp format: 8-byte magic header "rpshnosj" + JSON.stringify({ meta, preset })
-// Block format: slot-based ({ slot: [{ model, params: { K: { access, value } } }] })
+// Block format: slot-based ({ slot: [{ model, params: { K: { value: X } } }] })
 //   NOT flat-style ({ @model, ParamKey: value }) like .hlx
+//   NO access field — real files use { "value": X } only (Phase 53 fix, STAD-03)
 //
 // Public API: buildHspFile(spec) -> { magic, json, serialized }
 //             summarizeStadiumPreset(spec) -> string
@@ -31,6 +31,61 @@ const OUTPUT_POSITION = 13;
 // Block types that need amp-style harness params
 const AMP_TYPES = new Set(["amp"]);
 const CAB_TYPES = new Set(["cab"]);
+
+// ---------------------------------------------------------------------------
+// STAD-04: Slot-grid block key allocation
+// Canonical positions matching real .hsp files (Agoura_Bassman, Agoura_Hiwatt reference)
+// Key formula: key = 'b' + String(position).padStart(2, '0')
+// Invariant: key bNN implies "position": NN inside the block JSON
+// ---------------------------------------------------------------------------
+
+const STADIUM_SLOT_ALLOCATION: Record<string, number> = {
+  input:         0,   // b00 — always fixed
+  pre_gate:      1,   // b01 — first pre-amp dynamics/gate slot
+  pre_boost:     2,   // b02 — first pre-amp distortion/boost slot
+  pre_effect_1:  3,   // b03 — second pre-amp effect slot
+  pre_effect_2:  4,   // b04 — third pre-amp effect slot
+  amp:           5,   // b05 — canonical amp position
+  cab:           6,   // b06 — always follows amp (amp + 1)
+  post_gate:     7,   // b07 — first post-cab slot
+  post_eq:       8,   // b08
+  post_effect_1: 9,   // b09
+  post_effect_2: 10,  // b10
+  post_effect_3: 11,  // b11
+  post_gain:     12,  // b12
+  output:        13,  // b13 — always fixed
+};
+
+/** Returns the bNN key for a slot position. */
+function makeBlockKey(slotPosition: number): string {
+  return `b${String(slotPosition).padStart(2, "0")}`;
+}
+
+// ---------------------------------------------------------------------------
+// STAD-05: FX block type mapping
+// All effect blocks use type "fx" in real .hsp files.
+// Only structural blocks (amp, cab, input, output, split, join, looper) retain named types.
+// ---------------------------------------------------------------------------
+
+function getStadiumBlockType(blockSpecType: BlockSpec["type"]): string {
+  switch (blockSpecType) {
+    case "amp":         return "amp";
+    case "cab":         return "cab";
+    // All effect categories map to "fx"
+    case "distortion":
+    case "dynamics":
+    case "eq":
+    case "delay":
+    case "reverb":
+    case "modulation":
+    case "wah":
+    case "pitch":
+    case "volume":
+    case "send_return":
+    default:
+      return "fx";
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Exported types
@@ -68,6 +123,8 @@ interface StadiumSnapshotEntry {
 
 interface StadiumPreset {
   clip: Record<string, unknown>;
+  /** STAD-05 cursor fix: present in every real .hsp file at the preset level */
+  cursor: { flow: number; path: number; position: number };
   flow: Array<Record<string, unknown>>;
   params: {
     activeexpsw: number;
@@ -183,6 +240,8 @@ function buildStadiumPreset(spec: PresetSpec): StadiumPreset {
       path: "USER CLIPS",
       start: 0.0,
     },
+    // Fix: cursor field required in every real .hsp file (Phase 53, STAD-05/cursor)
+    cursor: { flow: 0, path: 0, position: 0 },
     flow,
     params: {
       activeexpsw: 1,
@@ -211,61 +270,104 @@ function buildStadiumPreset(spec: PresetSpec): StadiumPreset {
  * Flow 0: Active path with input, effect blocks, cab, and output.
  * Flow 1: Empty path (InputNone → OutputMatrix) — required by firmware.
  *
- * Block layout:
- *   b00 = input (P35_InputInst1), position 0
- *   b01..b12 = effect/amp/cab blocks, positions 1-12
- *   b13 = output (P35_OutputMatrix), position 13
+ * Block layout (Phase 53 fix, STAD-04 — slot-grid allocation):
+ *   b00 = input (P35_InputInst1), position 0  — always fixed
+ *   b01..b04 = pre-amp effects (gate, boost, etc.)
+ *   b05 = amp  — always canonical slot 5
+ *   b06 = cab  — always canonical slot 6 (amp + 1)
+ *   b07..b12 = post-amp effects (delay, reverb, modulation, eq, etc.)
+ *   b13 = output (P35_OutputMatrix), position 13 — always fixed
  *
+ * Invariant: key bNN implies "position": NN inside the block JSON.
  * Amp and cab blocks are linked via `linkedblock`.
  * Per-snapshot bypass states are stored in each block's @enabled.snapshots array.
  */
 function buildStadiumFlow(spec: PresetSpec): Array<Record<string, unknown>> {
-  // Order blocks: non-cab sorted by position, cab inserted after its amp
-  const orderedBlocks = orderBlocksForFlow(spec.signalChain);
+  // Sort signal chain blocks by their logical position
+  const sortedChain = [...spec.signalChain].sort((a, b) => a.position - b.position);
+
+  // Classify blocks into pre-amp (before amp) and post-amp (after amp)
+  const ampIndex = sortedChain.findIndex(b => b.type === "amp");
+
+  // Pre-amp effect blocks: dynamics/distortion/etc. that appear before amp
+  const preAmpBlocks = sortedChain
+    .filter((_, i) => i < ampIndex && sortedChain[i]!.type !== "cab")
+    .map((block, i) => ({ block, originalIndex: spec.signalChain.indexOf(block), slotName: i === 0 ? "pre_gate" : i === 1 ? "pre_boost" : i === 2 ? "pre_effect_1" : "pre_effect_2" }));
+
+  const ampBlock = ampIndex >= 0 ? sortedChain[ampIndex] : undefined;
+  const ampOriginalIndex = ampBlock ? spec.signalChain.indexOf(ampBlock) : -1;
+
+  // Cab block: follows amp
+  const cabBlock = sortedChain.find(b => b.type === "cab");
+  const cabOriginalIndex = cabBlock ? spec.signalChain.indexOf(cabBlock) : -1;
+
+  // Post-amp effect blocks: everything after amp that is not the cab
+  const postAmpBlocks = sortedChain
+    .filter((_, i) => i > ampIndex && sortedChain[i]!.type !== "cab")
+    .map((block, i) => ({
+      block,
+      originalIndex: spec.signalChain.indexOf(block),
+      slotName: i === 0 ? "post_effect_1" : i === 1 ? "post_effect_2" : i === 2 ? "post_effect_3" : "post_gain",
+    }));
 
   // Build Flow 0 (active path)
   const flow0: Record<string, unknown> = {};
   flow0["@enabled"] = { value: true };
 
-  // Input block at b00
+  // Track block keys for linkedblock wiring
+  const blockKeyMap: Map<number, string> = new Map();
+
+  // Input block at b00 (fixed)
   flow0["b00"] = buildInputBlock();
+  // Note: input block doesn't go in blockKeyMap since it's not in signalChain
 
-  // Track amp → cab linking
-  let ampFlowPosition: number | null = null;
+  // Pre-amp effect blocks at b01-b04
+  for (const { block, originalIndex, slotName } of preAmpBlocks) {
+    const slotPos = STADIUM_SLOT_ALLOCATION[slotName];
+    if (slotPos !== undefined) {
+      const blockKey = makeBlockKey(slotPos);
+      blockKeyMap.set(originalIndex, blockKey);
+      flow0[blockKey] = buildFlowBlock(block, slotPos, spec, originalIndex, blockKeyMap);
+    }
+  }
+
+  // Amp at b05 (fixed canonical position)
   let ampBlockKey: string | null = null;
-  let cabFlowPosition: number | null = null;
+  if (ampBlock && ampOriginalIndex >= 0) {
+    const ampSlotPos = STADIUM_SLOT_ALLOCATION["amp"]!;
+    ampBlockKey = makeBlockKey(ampSlotPos);
+    blockKeyMap.set(ampOriginalIndex, ampBlockKey);
+    flow0[ampBlockKey] = buildFlowBlock(ampBlock, ampSlotPos, spec, ampOriginalIndex, blockKeyMap);
+  }
+
+  // Cab at b06 (fixed canonical position — always follows amp)
   let cabBlockKey: string | null = null;
-
-  // Place effect blocks starting at position 1
-  let flowPos = 1;
-  const blockKeyMap: Map<number, string> = new Map(); // signalChain index → flow block key
-
-  for (const { block, originalIndex } of orderedBlocks) {
-    const blockKey = `b${String(flowPos).padStart(2, "0")}`;
-    blockKeyMap.set(originalIndex, blockKey);
-
-    if (AMP_TYPES.has(block.type)) {
-      ampFlowPosition = flowPos;
-      ampBlockKey = blockKey;
-    }
-    if (CAB_TYPES.has(block.type)) {
-      cabFlowPosition = flowPos;
-      cabBlockKey = blockKey;
-    }
-
-    flow0[blockKey] = buildFlowBlock(block, flowPos, spec, originalIndex, blockKeyMap);
-    flowPos++;
+  if (cabBlock && cabOriginalIndex >= 0) {
+    const cabSlotPos = STADIUM_SLOT_ALLOCATION["cab"]!;
+    cabBlockKey = makeBlockKey(cabSlotPos);
+    blockKeyMap.set(cabOriginalIndex, cabBlockKey);
+    flow0[cabBlockKey] = buildFlowBlock(cabBlock, cabSlotPos, spec, cabOriginalIndex, blockKeyMap);
   }
 
-  // Wire up amp ↔ cab linked blocks after all blocks are placed
+  // Post-amp effect blocks at b07-b12
+  for (const { block, originalIndex, slotName } of postAmpBlocks) {
+    const slotPos = STADIUM_SLOT_ALLOCATION[slotName];
+    if (slotPos !== undefined) {
+      const blockKey = makeBlockKey(slotPos);
+      blockKeyMap.set(originalIndex, blockKey);
+      flow0[blockKey] = buildFlowBlock(block, slotPos, spec, originalIndex, blockKeyMap);
+    }
+  }
+
+  // Wire up amp ↔ cab linked blocks
   if (ampBlockKey && cabBlockKey) {
-    const ampBlock = flow0[ampBlockKey] as Record<string, unknown>;
-    const cabBlock = flow0[cabBlockKey] as Record<string, unknown>;
-    ampBlock["linkedblock"] = { block: cabBlockKey, flow: 0 };
-    cabBlock["linkedblock"] = { block: ampBlockKey, flow: 0 };
+    const ampBlockObj = flow0[ampBlockKey] as Record<string, unknown>;
+    const cabBlockObj = flow0[cabBlockKey] as Record<string, unknown>;
+    ampBlockObj["linkedblock"] = { block: cabBlockKey, flow: 0 };
+    cabBlockObj["linkedblock"] = { block: ampBlockKey, flow: 0 };
   }
 
-  // Output block at b13
+  // Output block at b13 (fixed)
   flow0["b13"] = buildOutputBlock();
 
   // Build Flow 1 (empty path — required by firmware)
@@ -277,38 +379,6 @@ function buildStadiumFlow(spec: PresetSpec): Array<Record<string, unknown>> {
   return [flow0, flow1];
 }
 
-/**
- * Order blocks for the flow: non-cab blocks sorted by position, cab inserted after amp.
- */
-function orderBlocksForFlow(signalChain: BlockSpec[]): Array<{ block: BlockSpec; originalIndex: number }> {
-  const nonCabBlocks = signalChain
-    .map((block, i) => ({ block, originalIndex: i }))
-    .filter(({ block }) => block.type !== "cab")
-    .sort((a, b) => a.block.position - b.block.position);
-
-  const cabBlocks = signalChain
-    .map((block, i) => ({ block, originalIndex: i }))
-    .filter(({ block }) => block.type === "cab");
-
-  // Find the amp position in the sorted list, insert cab right after
-  const result: Array<{ block: BlockSpec; originalIndex: number }> = [];
-  for (const entry of nonCabBlocks) {
-    result.push(entry);
-    if (entry.block.type === "amp" && cabBlocks.length > 0) {
-      result.push(cabBlocks[0]);
-    }
-  }
-
-  // If no amp was found but we have cabs, append them at the end
-  if (!nonCabBlocks.some(e => e.block.type === "amp")) {
-    for (const cab of cabBlocks) {
-      result.push(cab);
-    }
-  }
-
-  return result;
-}
-
 // ---------------------------------------------------------------------------
 // Block builders
 // ---------------------------------------------------------------------------
@@ -316,15 +386,15 @@ function orderBlocksForFlow(signalChain: BlockSpec[]): Array<{ block: BlockSpec;
 /**
  * Build a slot-based flow block matching the real .hsp format.
  *
- * Real format example:
+ * Real format (Phase 53 fixes applied):
  * {
  *   "@enabled": { "value": true, "snapshots": [true, null, ...] },
  *   "favorite": 0,
  *   "harness": { "@enabled": { "value": true }, "params": { ... } },
  *   "path": 0,
- *   "position": N,
- *   "slot": [{ "@enabled": { "value": true }, "model": "...", "params": { "Bass": { "access": "enabled", "value": 0.5 } }, "version": 0 }],
- *   "type": "amp"
+ *   "position": N,  ← slot-grid position (invariant: key bNN implies position: NN)
+ *   "slot": [{ "@enabled": { "value": true }, "model": "...", "params": { "Bass": { "value": 0.5 } }, "version": 0 }],
+ *   "type": "amp"   ← or "fx" for all effect blocks (STAD-05)
  * }
  */
 function buildFlowBlock(
@@ -337,10 +407,11 @@ function buildFlowBlock(
   // Build @enabled with optional per-snapshot bypass states
   const enabledObj = buildBlockEnabled(block, spec, originalIndex);
 
-  // Build slot params in { ParamName: { access: "enabled", value: X } } format
+  // STAD-03 fix: Build slot params using { value: X } format — NO access field
+  // Real .hsp files use only { "value": X } — zero occurrences of "access" anywhere
   const slotParams: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(block.parameters)) {
-    slotParams[key] = { access: "enabled", value };
+    slotParams[key] = { value };
   }
 
   const obj: Record<string, unknown> = {
@@ -348,7 +419,7 @@ function buildFlowBlock(
     favorite: 0,
     harness: buildHarness(block),
     path: 0,
-    position: flowPosition,
+    position: flowPosition,  // Must match bNN key (invariant: key bNN implies position: NN)
     slot: [
       {
         "@enabled": { value: true },
@@ -357,7 +428,8 @@ function buildFlowBlock(
         version: 0,
       },
     ],
-    type: block.type,
+    // STAD-05 fix: Map all effect types to "fx" — only amp/cab/input/output/split/join/looper retain named types
+    type: getStadiumBlockType(block.type),
   };
 
   return obj;
@@ -416,15 +488,18 @@ function buildBlockEnabled(
  * Amp blocks get additional params (EvtIdx, bypass, upper).
  * Cab blocks get params (EvtIdx, bypass, dual, upper).
  * Other blocks get a minimal harness.
+ *
+ * STAD-03 fix: harness params use { value: X } format — NO access field.
+ * Real .hsp files have zero occurrences of "access" in harness params.
  */
 function buildHarness(block: BlockSpec): Record<string, unknown> {
   if (AMP_TYPES.has(block.type)) {
     return {
       "@enabled": { value: true },
       params: {
-        EvtIdx: { access: "enabled", value: -1 },
-        bypass: { access: "enabled", value: false },
-        upper: { access: "enabled", value: true },
+        EvtIdx: { value: -1 },
+        bypass: { value: false },
+        upper: { value: true },
       },
     };
   }
@@ -433,10 +508,10 @@ function buildHarness(block: BlockSpec): Record<string, unknown> {
     return {
       "@enabled": { value: true },
       params: {
-        EvtIdx: { access: "enabled", value: -1 },
-        bypass: { access: "enabled", value: false },
-        dual: { access: "enabled", value: true },
-        upper: { access: "enabled", value: true },
+        EvtIdx: { value: -1 },
+        bypass: { value: false },
+        dual: { value: true },
+        upper: { value: true },
       },
     };
   }
@@ -446,6 +521,7 @@ function buildHarness(block: BlockSpec): Record<string, unknown> {
 
 /**
  * Build the input block at position b00.
+ * STAD-03 fix: all slot params use { value: X } format — no access field.
  */
 function buildInputBlock(): Record<string, unknown> {
   return {
@@ -460,11 +536,11 @@ function buildInputBlock(): Record<string, unknown> {
         "@enabled": { value: true },
         model: STADIUM_INPUT_MODEL,
         params: {
-          Pad: { access: "enabled", value: 1 },
-          Trim: { access: "enabled", value: 0.0 },
-          decay: { access: "enabled", value: 0.1 },
-          noiseGate: { access: "enabled", value: false },
-          threshold: { access: "enabled", value: -48.0 },
+          Pad: { value: 1 },
+          Trim: { value: 0.0 },
+          decay: { value: 0.1 },
+          noiseGate: { value: false },
+          threshold: { value: -48.0 },
         },
         version: 0,
       },
@@ -475,6 +551,7 @@ function buildInputBlock(): Record<string, unknown> {
 
 /**
  * Build the output block at position b13.
+ * STAD-03 fix: all slot params use { value: X } format — no access field.
  */
 function buildOutputBlock(): Record<string, unknown> {
   return {
@@ -489,8 +566,8 @@ function buildOutputBlock(): Record<string, unknown> {
         "@enabled": { value: true },
         model: STADIUM_OUTPUT_MODEL,
         params: {
-          gain: { access: "enabled", value: 0.0 },
-          pan: { access: "enabled", value: 0.5 },
+          gain: { value: 0.0 },
+          pan: { value: 0.5 },
         },
         version: 0,
       },
@@ -501,6 +578,7 @@ function buildOutputBlock(): Record<string, unknown> {
 
 /**
  * Build the empty input block for Flow 1 (InputNone).
+ * STAD-03 fix: all slot params use { value: X } format — no access field.
  */
 function buildEmptyInputBlock(): Record<string, unknown> {
   return {
@@ -515,10 +593,10 @@ function buildEmptyInputBlock(): Record<string, unknown> {
         "@enabled": { value: true },
         model: STADIUM_INPUT_NONE_MODEL,
         params: {
-          Trim: { access: "enabled", value: 0.0 },
-          decay: { access: "enabled", value: 0.1 },
-          noiseGate: { access: "enabled", value: false },
-          threshold: { access: "enabled", value: -48.0 },
+          Trim: { value: 0.0 },
+          decay: { value: 0.1 },
+          noiseGate: { value: false },
+          threshold: { value: -48.0 },
         },
         version: 0,
       },
