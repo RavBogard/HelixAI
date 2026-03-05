@@ -172,7 +172,7 @@ export type DeviceTarget = "helix_lt" | "helix_floor" | "pod_go" | "helix_stadiu
 // Regression: commit 68ad895 (docs: start milestone v2.0) incorrectly reset helix_floor to 2162692
 export const DEVICE_IDS: Record<DeviceTarget, number> = {
   helix_lt: 2162692,        // 0x210004 — confirmed from real Helix LT .hlx exports (Phase 1, FNDN-03)
-  helix_floor: 2162691,     // 0x210003 — confirmed from real Helix Floor .hlx export (Phase 23, commit 3ba0768); regression in commit 68ad895 set this back to 2162692 — now restored
+  helix_floor: 2162689,     // 0x210001 — confirmed from 15 real .hlx files spanning fw v1.02–v3.80, verified working on all OG Helix devices (Phase 59, 2026-03-05)
   pod_go: 2162695,          // 0x210007 — confirmed from 18 real .pgp files (Phase 12)
   helix_stadium: 2490368,   // Source: FluidSolo Stadium_Metal_Rhythm.hsp, meta.device_id, 2026-03-04 (Phase 31)
   helix_stomp: 2162694,     // Confirmed from Swell_Delay.hlx (HX Stomp hardware export, 2026-03-04)

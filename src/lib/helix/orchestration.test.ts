@@ -87,13 +87,13 @@ describe("HLX-01/02: Device target", () => {
     expect(hlx.data.device).toBe(2162692);
   });
 
-  it("buildHlxFile with device='helix_floor' produces .hlx with device=2162691", () => {
+  it("buildHlxFile with device='helix_floor' produces .hlx with device=2162689", () => {
     const spec = buildPresetSpec(cleanIntent());
     validatePresetSpec(spec);
     const hlx = buildHlxFile(spec, "helix_floor");
 
     expect(hlx.data.device).toBe(DEVICE_IDS.helix_floor);
-    expect(hlx.data.device).toBe(2162691);
+    expect(hlx.data.device).toBe(2162689);
   });
 
   it("full pipeline produces valid .hlx JSON structure with correct top-level fields", () => {
