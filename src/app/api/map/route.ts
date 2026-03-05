@@ -32,7 +32,10 @@ export async function POST(req: NextRequest) {
     } else if (body.device === "pod_go") {
       device = "pod_go";
     } else if (body.device === "helix_stadium") {
-      device = "helix_stadium";
+      return NextResponse.json(
+        { error: "Stadium support is temporarily unavailable." },
+        { status: 400 }
+      );
     }
 
     // Safe cast: rigIntent was already Zod-validated by /api/vision before being

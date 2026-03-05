@@ -1309,7 +1309,6 @@ function HomeContent() {
                         {([
                           { id: "helix_lt" as const, label: "LT", desc: "Helix LT" },
                           { id: "helix_floor" as const, label: "FLOOR", desc: "Helix Floor" },
-                          { id: "helix_stadium" as const, label: "STADIUM", desc: "Helix Stadium" },
                           { id: "pod_go" as const, label: "POD GO", desc: "Pod Go" },
                           { id: "helix_stomp" as const, label: "STOMP", desc: "HX Stomp" },
                           { id: "helix_stomp_xl" as const, label: "STOMP XL", desc: "HX Stomp XL" },
@@ -1335,6 +1334,9 @@ function HomeContent() {
                             <span className="text-[10px] text-[var(--hlx-text-muted)]">{desc}</span>
                           </button>
                         ))}
+                        <div className="col-span-3 text-center">
+                          <span className="text-[10px] text-[var(--hlx-text-muted)] italic">Stadium support temporarily unavailable — we hope to bring it back soon</span>
+                        </div>
                       </div>
                       <p className="text-[11px] text-[var(--hlx-text-muted)] text-center leading-relaxed">
                         Or describe your tone in the chat below for a more tailored result
@@ -1402,7 +1404,6 @@ function HomeContent() {
                   {([
                     { id: "helix_lt" as const, label: "LT", desc: "Helix LT" },
                     { id: "helix_floor" as const, label: "FLOOR", desc: "Helix Floor" },
-                    { id: "helix_stadium" as const, label: "STADIUM", desc: "Helix Stadium" },
                     { id: "pod_go" as const, label: "POD GO", desc: "Pod Go" },
                     { id: "helix_stomp" as const, label: "STOMP", desc: "HX Stomp" },
                     { id: "helix_stomp_xl" as const, label: "STOMP XL", desc: "HX Stomp XL" },
@@ -1428,6 +1429,9 @@ function HomeContent() {
                       <span className="text-[11px] text-[var(--hlx-text-muted)]">{desc}</span>
                     </button>
                   ))}
+                  <div className="col-span-3 text-center">
+                    <span className="text-[10px] text-[var(--hlx-text-muted)] italic">Stadium support temporarily unavailable — we hope to bring it back soon</span>
+                  </div>
                 </div>
               </div>
             )}

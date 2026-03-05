@@ -33,7 +33,10 @@ export async function POST(req: NextRequest) {
     } else if (device === "pod_go") {
       deviceTarget = "pod_go";
     } else if (device === "helix_stadium") {
-      deviceTarget = "helix_stadium";
+      return NextResponse.json(
+        { error: "Stadium support is temporarily unavailable. Please select a different device." },
+        { status: 400 }
+      );
     } else if (device === "helix_stomp") {
       deviceTarget = "helix_stomp";
     } else if (device === "helix_stomp_xl") {
