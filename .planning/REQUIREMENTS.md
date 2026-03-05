@@ -35,10 +35,10 @@ Requirements for v4.0 Stadium Rebuild + Preset Quality Leap. Each maps to roadma
 
 ### Effect Intelligence
 
-- [ ] **FX-01**: Guitar-type EQ shaping uses guitarType from ToneIntent to adjust post-cab EQ curves
+- [x] **FX-01**: Guitar-type EQ shaping uses guitarType from ToneIntent to adjust post-cab EQ curves
 - [x] **FX-02**: Reverb PreDelay set per genre category (20-60ms range) to preserve note attack
 - [x] **FX-03**: Delay time calculated from tempoHint in ToneIntent (60000/BPM formula)
-- [ ] **FX-04**: Snapshot ChVol deltas per toneRole — leads louder than cleans by default
+- [x] **FX-04**: Snapshot ChVol deltas per toneRole — leads louder than cleans by default
 
 ### Architecture
 
@@ -95,10 +95,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AMP-03 | Phase 56 | Complete |
 | AMP-04 | Phase 56 | Complete |
 | AMP-05 | Phase 56 | Complete |
-| FX-01 | Phase 57 | Pending |
+| FX-01 | Phase 57 | Complete |
 | FX-02 | Phase 57 | Complete |
 | FX-03 | Phase 57 | Complete |
-| FX-04 | Phase 57 | Pending |
+| FX-04 | Phase 57 | Complete |
 | ARCH-01 | Phase 58 | Pending |
 | FLOOR-01 | Phase 59 | Pending |
 

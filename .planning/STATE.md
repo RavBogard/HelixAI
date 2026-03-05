@@ -35,10 +35,10 @@ See: .planning/PROJECT.md (updated 2026-03-05)
 
 ## Current Position
 
-Phase: 57 of 59 (Effect Parameter Intelligence — Plan 01 complete)
-Plan: 1 of 3 complete
-Status: In Progress (Phase 57 Plan 01 done; Phase 57 Plan 02 next)
-Last activity: 2026-03-05 — Phase 57 Plan 01 complete — PreDelay added to all 9 genre reverb entries; tempoHint tempo-synced delay (30/BPM); 208/208 tests green; FX-02/FX-03 satisfied
+Phase: 57 of 59 (Effect Parameter Intelligence — Plans 01 and 02 complete)
+Plan: 2 of 3 complete
+Status: In Progress (Phase 57 Plan 02 done; Phase 57 Plan 03 next)
+Last activity: 2026-03-05 — Phase 57 Plan 02 complete — EQ_GUITAR_TYPE_ADJUST for single_coil/humbucker/p90; FX-04 regression lock; 215/215 tests green; FX-01/FX-04 satisfied
 
 Progress: [████████████████████░░░░░░░░░] ~67% of v4.0 (5/8 phases complete, 57 in progress)
 
@@ -67,6 +67,10 @@ Progress: [████████████████████░░░
 - [Phase 57-01]: PreDelay values in normalized seconds (0.025 = 25ms) matching models.ts encoding
 - [Phase 57-01]: tempoHint passed as scalar not full ToneIntent to keep resolveDefaultParams signatures narrow
 - [Phase 57-01]: Override order: model defaults -> genre -> tempo (outermost, most intent-specific)
+- [Phase 57-02]: EQ_GUITAR_TYPE_ADJUST uses additive deltas (±0.02-0.03) on AmpCategory baseline — not absolute values
+- [Phase 57-02]: guitarType threaded as scalar string through resolveBlockParams to resolveEqParams
+- [Phase 57-02]: FX-04 needs zero new implementation — ROLE_CHVOL already in snapshot-engine.ts; test is regression lock only
+- [Phase 57-02]: Test 7 updated to use baseline intent without guitarType for pure AmpCategory EQ isolation
 
 ### Roadmap Evolution
 
@@ -95,6 +99,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-05
-Stopped at: Completed 57-01-PLAN.md — PreDelay in 9 genre reverb entries; tempoHint tempo-synced delay (30/BPM formula); 208/208 tests green; FX-02/FX-03 satisfied
+Stopped at: Completed 57-02-PLAN.md — EQ_GUITAR_TYPE_ADJUST for single_coil/humbucker/p90; FX-04 regression lock; 215/215 tests green; FX-01/FX-04 satisfied
 Resume file: None
-Next command: Continue Phase 57 — run Plan 02 (guitar-type EQ, FX-01)
+Next command: Continue Phase 57 — run Plan 03 (remaining requirements)
