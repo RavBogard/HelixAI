@@ -617,7 +617,7 @@ Note: Phases 52, 55, and 56 can start in parallel. Phase 53 depends on 52. Phase
 | 50. Donation/Support Integration | v3.2 | 1/1 | Complete | 2026-03-05 |
 | 51. Fix Stadium Agoura amp lookup | v3.2 | 2/2 | Complete | 2026-03-05 |
 | 52. Stadium Amp Catalog + Device Constants | 1/1 | Complete    | 2026-03-05 | - |
-| 53. Stadium Builder Rebuild | 2/2 | Complete   | 2026-03-05 | - |
+| 53. Stadium Builder Rebuild | 2/2 | Complete    | 2026-03-05 | - |
 | 54. Stadium Device Unblock | v4.0 | 0/TBD | Not started | - |
 | 55. Planner Prompt Enrichment | v4.0 | 0/TBD | Not started | - |
 | 56. Per-Model Amp Parameter Overrides | v4.0 | 0/TBD | Not started | - |
