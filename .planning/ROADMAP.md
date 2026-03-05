@@ -9,7 +9,7 @@
 - [x] **v2.0 Persistent Chat Platform** - Phases 24-30 (shipped 2026-03-04)
 - [x] **v3.0 Helix Stadium Support** - Phases 31-38 (shipped 2026-03-04)
 - [x] **v3.2 Infrastructure, Features & Audit Tooling** - Phases 42, 48-51 (shipped 2026-03-05)
-- [ ] **v4.0 Stadium Rebuild + Preset Quality Leap** - Phases 52-59 (in progress)
+- [ ] **v4.0 Stadium Rebuild + Preset Quality Leap** - Phases 52-60 (in progress)
 
 ## Phases
 
@@ -635,6 +635,17 @@ Plans:
 - [ ] 59-01-PLAN.md — Get confirmed Helix Floor device ID from real hardware export (human checkpoint)
 - [ ] 59-02-PLAN.md — Apply verified device ID to types.ts constant and test assertion
 
+### Phase 60: Tech Debt Cleanup — Spring Reverb, Orphaned Data, Code Constants
+
+**Goal:** Close 2 integration gaps (INT-01, INT-02) and 2 deferred architecture improvements from v4.0 audit — spring reverb PreDelay fix, ampFamily/cabAffinity runtime consumers, and model ID constant extraction
+**Requirements**: FX-02 (partial — spring reverb PreDelay), AMP-01/AMP-05 (partial — wire orphaned data)
+**Depends on:** Phase 59 (all v4.0 core phases complete)
+**Gap Closure:** Closes gaps from v4.0-MILESTONE-AUDIT.md (INT-01, INT-02, Improvements A & B)
+**Plans:** 0 plans
+
+Plans:
+- [ ] 60-01-PLAN.md — Spring reverb PreDelay fix + ampFamily/cabAffinity consumers + Stadium I/O constants + chain-rules model ID constants
+
 ---
 *Roadmap created: 2026-03-01*
-*Last updated: 2026-03-05 — Phase 59 planned (2 plans, 2 waves)
+*Last updated: 2026-03-05 — Phase 60 added for v4.0 gap closure (INT-01, INT-02, Improvements A & B)
