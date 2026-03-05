@@ -1210,7 +1210,10 @@ export const STADIUM_EQ_MODELS: Record<string, HelixModel> = {
 
 // Model name tuples for z.enum() constraints in ToneIntentSchema
 // z.enum() requires a non-empty tuple: [string, ...string[]]
-export const AMP_NAMES = Object.keys(AMP_MODELS) as [string, ...string[]];
+// AMP_NAMES includes BOTH standard (HD2_*) and Stadium (Agoura_*) amps.
+// The planner prompt filters which amps Claude sees per device — the schema just validates
+// that the chosen name exists somewhere in the combined catalog.
+export const AMP_NAMES = [...Object.keys(AMP_MODELS), ...Object.keys(STADIUM_AMPS)] as [string, ...string[]];
 export const CAB_NAMES = Object.keys(CAB_MODELS) as [string, ...string[]];
 // Combine user-selectable effect categories (exclude EQ, WAH, VOLUME -- Knowledge Layer handles those)
 export const EFFECT_NAMES = [
