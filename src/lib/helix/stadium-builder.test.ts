@@ -444,7 +444,7 @@ describe("structural comparison with real .hsp reference", () => {
   it("snapshots array has exactly 8 entries; valid snapshots have color field, invalid ones do not", () => {
     const fixture = makeStadiumFixture();
     const result = buildHspFile(fixture);
-    const snapshots = result.json.preset.snapshots as Array<Record<string, unknown>>;
+    const snapshots = result.json.preset.snapshots as unknown as Array<Record<string, unknown>>;
 
     expect(snapshots).toHaveLength(8);
 
@@ -542,7 +542,7 @@ describe("structural comparison with real .hsp reference", () => {
   it("meta has device_id (number), device_version (number), info (string), name (string <= 32 chars)", () => {
     const fixture = makeStadiumFixture();
     const result = buildHspFile(fixture);
-    const meta = result.json.meta as Record<string, unknown>;
+    const meta = result.json.meta as unknown as Record<string, unknown>;
 
     expect(typeof meta["device_id"]).toBe("number");
     expect(typeof meta["device_version"]).toBe("number");
