@@ -78,7 +78,7 @@ Generated presets must sound professional enough to compete with custom presets 
 - [ ] Effect parameter intelligence (guitar-type EQ, reverb PreDelay, tempo-scaled delay)
 - [ ] Effect combination logic (interaction params, genre substitution, cross-device validation)
 - [ ] Cost-aware model routing (evidence-based Haiku chat vs. Sonnet generation)
-- [ ] Architecture review: device/model abstraction layer (6 devices, builders, catalogs, chain rules)
+- [x] Architecture review: device/model abstraction layer (6 devices, builders, catalogs, chain rules) — v4.0
 
 ### Out of Scope
 
@@ -168,6 +168,7 @@ v3.2 added token usage audit tooling (usage-logger.ts, baseline generator, cache
 | Variax as input config, not signal chain block | Variax is @input:3 (Multi), not a separate block — matches real hardware behavior | ✓ Good |
 | Reactive-only Variax detection | Chat AI never asks about Variax unprompted — only responds when user mentions it | ✓ Good |
 | Rename shipped v4.0 to v3.2 | Core quality phases (43-47) weren't started; reserve v4.0 for the real quality leap + Stadium rebuild | ✓ Good |
+| **[v4.0] Architecture refactor: DEFERRED** | v4.0 architecture audit (Phase 58) found device/model abstraction layer is functional and maintainable at 6 devices. Guard-based branching in chain-rules.ts, param-engine.ts, and validate.ts has no compiler-enforced exhaustiveness (~17 guard sites), but sites are searchable and well-tested. Low-effort improvements (Stadium I/O model ID constants, hardcoded model ID cleanup) recommended for a future maintenance phase. Full capability registry refactor deferred until a 7th device is planned. See: `.planning/architecture-audit-v4.md` | ✓ Recorded |
 
 ---
-*Last updated: 2026-03-05 after v4.0 milestone start*
+*Last updated: 2026-03-05 after Phase 58 architecture audit*
