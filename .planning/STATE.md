@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Stadium Rebuild + Preset Quality Leap
 status: unknown
-last_updated: "2026-03-05T18:58:26.904Z"
+last_updated: "2026-03-05T19:04:47.169Z"
 progress:
   total_phases: 43
   completed_phases: 28
   total_plans: 63
-  completed_plans: 56
+  completed_plans: 57
 ---
 
 ---
@@ -31,14 +31,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-05)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** Phase 52 — Stadium Amp Catalog + Device Constants
+**Current focus:** Phase 55 — next phase (Stadium track complete through Phase 54)
 
 ## Current Position
 
-Phase: 52 of 59 (Stadium Amp Catalog + Device Constants)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-03-05 — v4.0 roadmap created (phases 52-58)
+Phase: 54 of 59 (Stadium Device Unblock — complete)
+Plan: 1 of 1 complete
+Status: Phase complete
+Last activity: 2026-03-05 — Phase 54 Plan 01 complete — Stadium fully unblocked (API guard removed, STADIUM in both device pickers)
 
 Progress: [████████████████████░░░░░░░░░] ~0% of v4.0 (0/7 phases complete)
 
@@ -57,6 +57,7 @@ Progress: [████████████████████░░░
 - [Phase 53-01]: Stadium cab params (Delay, IrData, Level, Pan, Position) added conditionally via device guard in resolveCabParams() — non-Stadium devices unaffected
 - [Phase 53-01]: STADIUM_SLOT_ALLOCATION constant replaces sequential flowPos — amp always at b05/pos:5, cab at b06/pos:6, matching Agoura_Bassman.hsp reference corpus
 - [Phase 53-02]: 9 structural comparison tests added using same fixture as Plan 01 — strict key-count assertion on flow 1, per-key sources verification, harness access-field absence check
+- [Phase 54-stadium-device-unblock]: Stadium format bugs (device version, slot params, grid positions) were already fixed by Phases 52 and 53 — no re-work needed in Phase 54
 
 ### Roadmap Evolution
 
@@ -80,13 +81,13 @@ None.
 
 ### Blockers/Concerns
 
-- **Phase 53 (Builder Rebuild):** High-risk rewrite. HX Edit import verification is the acceptance gate — TypeScript compilation alone is not sufficient.
 - **Phase 56 (Per-Model Overrides):** Layer 4 `paramOverrides` mechanism must be established with a unit test BEFORE individual model values are added, or overrides are silently discarded by category defaults.
 - **Prompt cache integrity:** Enrichment in Phase 55 must go in the shared static prefix of `buildPlannerPrompt()` — conditional insertions fragment the cache into 6 device buckets.
+- **HX Edit verification pending:** Stadium code path is fully unblocked but HX Edit import verification (5-10 test generations with varied tone goals) has not been run — this is the hardware acceptance gate.
 
 ## Session Continuity
 
 Last session: 2026-03-05
-Stopped at: v4.0 roadmap created — phases 52-58 written to ROADMAP.md, STATE.md updated, REQUIREMENTS.md traceability updated
+Stopped at: Completed 54-01-PLAN.md — Stadium device unblocked (API guard removed, STADIUM added to both device pickers, TypeScript fixed, 185 tests passing)
 Resume file: None
-Next command: `/gsd:plan-phase 52`
+Next command: `/gsd:plan-phase 55` (or whichever is next in parallel — quality track phases 55, 56, 57)
