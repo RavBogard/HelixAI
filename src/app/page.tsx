@@ -501,6 +501,13 @@ function HomeContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // startOver is defined once, no deps
 
+  // Phase 50: Listen for support button clicks from AuthButton / Footer
+  useEffect(() => {
+    const handler = () => setShowDonation(true)
+    window.addEventListener('helixtones:show-support', handler)
+    return () => window.removeEventListener('helixtones:show-support', handler)
+  }, [])
+
   // Phase 27: Create conversation on first authenticated message
   const ensureConversation = useCallback(async (): Promise<string | null> => {
     // Already have a conversation — return immediately
@@ -1543,12 +1550,6 @@ function HomeContent() {
               </div>
             )}
 
-            {/* Phase 50: Donation card — appears after first download */}
-            <DonationCard
-              visible={showDonation && !donationDismissed}
-              onDismiss={() => { setShowDonation(false); setDonationDismissed(true); }}
-            />
-
             <div ref={messagesEndRef} />
           </div>
         )}
@@ -1675,7 +1676,13 @@ function HomeContent() {
         </form>
       </div>
       )}
-      <Footer onSupportClick={() => setShowDonation(true)} />
+      {/* Phase 50: Fixed donation card — triggered by Support link (header/footer) */}
+      <DonationCard
+        visible={showDonation}
+        onDismiss={() => { setShowDonation(false); setDonationDismissed(true); }}
+        fixed
+      />
+      <Footer />
     </div>
   );
 }

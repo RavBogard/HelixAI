@@ -93,15 +93,27 @@ export function AuthButton() {
     return <div className="w-8 h-8" aria-hidden />
   }
 
-  // Anonymous (or no user): show Sign in button
+  function handleSupport() {
+    window.dispatchEvent(new Event('helixtones:show-support'))
+  }
+
+  // Anonymous (or no user): show Support + Sign in
   if (user?.is_anonymous ?? true) {
     return (
-      <button
-        onClick={handleSignIn}
-        className="text-sm px-3 py-1.5 rounded-lg border bg-[var(--hlx-elevated)] border-[var(--hlx-border)] text-[var(--hlx-text)] hover:border-[var(--hlx-border-warm)] hover:bg-[var(--hlx-surface)] transition-colors"
-      >
-        Sign in
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={handleSupport}
+          className="text-sm px-3 py-1.5 text-[var(--hlx-text-muted)] hover:text-[var(--hlx-amber)] transition-colors"
+        >
+          Support
+        </button>
+        <button
+          onClick={handleSignIn}
+          className="text-sm px-3 py-1.5 rounded-lg border bg-[var(--hlx-elevated)] border-[var(--hlx-border)] text-[var(--hlx-text)] hover:border-[var(--hlx-border-warm)] hover:bg-[var(--hlx-surface)] transition-colors"
+        >
+          Sign in
+        </button>
+      </div>
     )
   }
 
@@ -111,6 +123,12 @@ export function AuthButton() {
 
   return (
     <div className="flex items-center gap-2">
+      <button
+        onClick={handleSupport}
+        className="text-sm px-3 py-1.5 text-[var(--hlx-text-muted)] hover:text-[var(--hlx-amber)] transition-colors"
+      >
+        Support
+      </button>
       {avatarUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img

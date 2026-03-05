@@ -2,11 +2,11 @@
 
 export const FOOTER_HEIGHT = "2.25rem";
 
-interface FooterProps {
-  onSupportClick?: () => void;
-}
+export function Footer() {
+  function handleSupport() {
+    window.dispatchEvent(new Event("helixtones:show-support"));
+  }
 
-export function Footer({ onSupportClick }: FooterProps) {
   return (
     <footer
       className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-center px-4"
@@ -21,17 +21,13 @@ export function Footer({ onSupportClick }: FooterProps) {
         className="text-[11px] text-[var(--hlx-text-muted)] tracking-wide"
         style={{ pointerEvents: "auto" }}
       >
-        {onSupportClick && (
-          <>
-            <button
-              onClick={onSupportClick}
-              className="text-[var(--hlx-text-muted)] hover:text-[var(--hlx-amber)] transition-colors"
-            >
-              Support
-            </button>
-            {" "}&middot;{" "}
-          </>
-        )}
+        <button
+          onClick={handleSupport}
+          className="text-[var(--hlx-text-muted)] hover:text-[var(--hlx-amber)] transition-colors"
+        >
+          Support
+        </button>
+        {" "}&middot;{" "}
         A project of{" "}
         <a
           href="https://danielbogard.com"
