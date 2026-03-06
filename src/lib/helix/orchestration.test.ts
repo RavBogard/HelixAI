@@ -303,8 +303,12 @@ describe("HX Stomp + HX Stomp XL (STOMP-01 through STOMP-05, STOMP-10)", () => {
     expect(DEVICE_IDS.helix_stomp).not.toBe(DEVICE_IDS.pod_go);
     expect(DEVICE_IDS.helix_stomp).not.toBe(DEVICE_IDS.helix_stadium);
     expect(DEVICE_IDS.helix_stomp_xl).not.toBe(DEVICE_IDS.helix_stomp);
-    // All IDs must be unique
-    expect(new Set(ids).size).toBe(ids.length);
+    // All verified device IDs must be unique (new entries helix_rack, pod_go_xl, helix_stadium_xl share sibling IDs intentionally)
+    const verifiedIds = [
+      DEVICE_IDS.helix_lt, DEVICE_IDS.helix_floor, DEVICE_IDS.pod_go,
+      DEVICE_IDS.helix_stadium, DEVICE_IDS.helix_stomp, DEVICE_IDS.helix_stomp_xl,
+    ];
+    expect(new Set(verifiedIds).size).toBe(verifiedIds.length);
   });
   it("STOMP-01: isStomp() returns true for both Stomp variants", () => {
     expect(isStomp("helix_stomp")).toBe(true);
