@@ -5,7 +5,7 @@ milestone_name: Preset Craft Mastery
 status: active
 last_updated: "2026-03-06"
 progress:
-  total_phases: 5
+  total_phases: 6
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-03-06)
 Phase: Phase 70 ready to plan — Expression Pedal Controller Assignment
 Plan: —
 Status: Roadmap complete, ready to plan Phase 70
-Last activity: 2026-03-06 — v6.0 roadmap created (5 phases, 21 requirements)
+Last activity: 2026-03-06 — Phase 75 added (Preset Musical Coherence) from Blackbird Arena analysis
 
-Progress: [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0% (0/5 phases complete)
+Progress: [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0% (0/6 phases complete)
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Progress: [░░░░░░░░░░░░░░░░░░░░░░░
 - v5.0 Phase 67 added: Stadium Integration Quality — fix WAH/VOLUME catalog gap, dual-amp mismatch, schema/prompt integration tests
 - v5.0 Phase 68 added: Token Control and Prompt Caching — cost correction, per-device cache reporting
 - v5.0 complete: 9 phases (61-69), 17 plans, all verified
+- v6.0 Phase 75 added: Preset Musical Coherence — Blackbird Arena analysis revealed 6 systemic issues (missing reverb, boost always-on, comp/gate conflation, effect balance blindness, description-ToneIntent disconnect, snapshot range collapse)
 
 ### Blockers/Concerns
 

@@ -43,6 +43,15 @@ Requirements for Preset Craft Mastery milestone. Each maps to roadmap phases.
 - [ ] **QUAL-02**: Quality validation runs on every generated preset and warnings are logged for analysis
 - [ ] **QUAL-03**: Per-device baseline comparison validates that quality changes improve (not regress) preset output across all 6 device families
 
+### Preset Musical Coherence
+
+- [ ] **COHERE-01**: Chain-rules enforce effect palette balance — max 2 user-selected drives; at least 1 time-based effect (delay or reverb) when preset has clean/ambient snapshots
+- [ ] **COHERE-02**: Reverb soft-mandatory insertion — auto-insert genre-appropriate reverb (Plate default) when ToneIntent includes clean/ambient snapshot roles but no reverb effect
+- [ ] **COHERE-03**: Boost model disambiguation — snapshot-engine distinguishes mandatory boost (chain-rules inserted, slot="boost") from AI-selected drive (user chose Minotaur/Scream 808 as effect); user-selected boosts follow distortion toggle rules, not always-on
+- [ ] **COHERE-04**: Dynamics type split — separate "compressor" and "gate" block types in chain-rules, snapshot-engine, and frontend; compressor toggles OFF for high-gain lead/rhythm snapshots; gate remains always-on
+- [ ] **COHERE-05**: Frontend block label accuracy — BLOCK_LABEL map distinguishes compressor ("Comp") from gate ("Gate") instead of blanket "Gate" for all dynamics
+- [ ] **COHERE-06**: ToneIntent-description cross-validation — post-planner check warns when description mentions effects (reverb, delay, modulation) not present in ToneIntent.effects; logged as quality warning
+
 ## Future Requirements
 
 Deferred to future release. Tracked but not in current roadmap.
@@ -98,12 +107,18 @@ Which phases cover which requirements. Updated during roadmap creation.
 | QUAL-01 | Phase 74 | Pending |
 | QUAL-02 | Phase 74 | Pending |
 | QUAL-03 | Phase 74 | Pending |
+| COHERE-01 | Phase 75 | Pending |
+| COHERE-02 | Phase 75 | Pending |
+| COHERE-03 | Phase 75 | Pending |
+| COHERE-04 | Phase 75 | Pending |
+| COHERE-05 | Phase 75 | Pending |
+| COHERE-06 | Phase 75 | Pending |
 
 **Coverage:**
-- v6.0 requirements: 21 total
-- Mapped to phases: 21
+- v6.0 requirements: 27 total
+- Mapped to phases: 27
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-06*
-*Last updated: 2026-03-06 after initial definition*
+*Last updated: 2026-03-06 after Phase 75 addition (Blackbird Arena analysis)*

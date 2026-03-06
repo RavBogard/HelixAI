@@ -373,6 +373,31 @@ Plans:
 | 72. Effect Combinations | v6.0 | TBD | Pending | — |
 | 73. Per-Device Craft | v6.0 | TBD | Pending | — |
 | 74. Quality Validation | v6.0 | TBD | Pending | — |
+| 75. Preset Musical Coherence | v6.0 | TBD | Pending | — |
+
+### Phase 75: Preset Musical Coherence
+
+**Goal:** Close the fidelity gap between AI creative descriptions and actual builder output. Presets must be musically coherent — effect palette balanced, snapshot tonal range wide, reverb present when described, boost/compressor behavior context-aware.
+
+**Depends on:** Phase 72 (Effect Combinations), Phase 74 (Quality Validation)
+
+**Root cause (Blackbird Arena analysis):** AI described "hall reverb throughout" and "pristine cleans" but .hsp had zero reverb blocks and 2 boost-classified drives permanently ON for CLEAN snapshot. 6 systemic issues: effect balance blindness, description-ToneIntent disconnection, boost always-on for user drives, comp/gate dynamics conflation, no reverb safety net, snapshot tonal range collapse.
+
+**Requirements:**
+- [ ] **COHERE-01**: Chain-rules enforce effect palette balance — max 2 user-selected drives; at least 1 time-based effect (delay or reverb) when preset has clean/ambient snapshots
+- [ ] **COHERE-02**: Reverb soft-mandatory insertion — auto-insert genre-appropriate reverb (Plate default) when ToneIntent includes clean/ambient snapshot roles but no reverb effect
+- [ ] **COHERE-03**: Boost model disambiguation — snapshot-engine distinguishes mandatory boost (chain-rules inserted, slot="boost") from AI-selected drive (user chose Minotaur/Scream 808 as effect); user-selected boosts follow distortion toggle rules, not always-on
+- [ ] **COHERE-04**: Dynamics type split — separate "compressor" and "gate" block types in chain-rules, snapshot-engine, and frontend; compressor toggles OFF for high-gain lead/rhythm snapshots; gate remains always-on
+- [ ] **COHERE-05**: Frontend block label accuracy — BLOCK_LABEL map distinguishes compressor ("Comp") from gate ("Gate") instead of blanket "Gate" for all dynamics
+- [ ] **COHERE-06**: ToneIntent-description cross-validation — post-planner check warns when description mentions effects not present in ToneIntent.effects; logged as quality warning
+
+**Success Criteria:**
+- Blackbird Arena regeneration: reverb present, CLEAN snapshot fully drive-free, compressor shows as "Comp" not "Gate"
+- No preset with clean/ambient snapshots ships without at least one reverb block
+- AI-selected Minotaur/Scream 808 toggles OFF in clean snapshots (same as other drives)
+- 36-preset baseline: zero regressions, measurable improvement in effect variety
+
+**Plans:** TBD
 
 ---
 *Last updated: 2026-03-06 after v6.0 roadmap creation*
