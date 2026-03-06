@@ -10,9 +10,10 @@
 
 import * as fs from "fs";
 import * as path from "path";
-import { ToneIntentSchema } from "@/lib/helix/tone-intent";
+import { getToneIntentSchema } from "@/lib/helix/tone-intent";
 import type { ToneIntent, SnapshotIntent } from "@/lib/helix/tone-intent";
 import type { DeviceTarget, PresetSpec } from "@/lib/helix/types";
+import { resolveFamily } from "@/lib/helix/device-family";
 import { assembleSignalChain } from "@/lib/helix/chain-rules";
 import { resolveParameters } from "@/lib/helix/param-engine";
 import { buildSnapshots } from "@/lib/helix/snapshot-engine";
@@ -36,13 +37,20 @@ const SNAPSHOTS_3: SnapshotIntent[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// Cached per-family schemas (avoids rebuilding on every parse call)
+// ---------------------------------------------------------------------------
+
+const HelixSchema = getToneIntentSchema("helix");
+const StadiumSchema = getToneIntentSchema("stadium");
+
+// ---------------------------------------------------------------------------
 // Standard (non-Stadium) tone scenario fixtures
 // ---------------------------------------------------------------------------
 
 type ToneScenarioKey = "clean" | "crunch" | "high_gain" | "ambient" | "edge_of_breakup" | "dual_amp";
 
 const STANDARD_FIXTURES: Record<ToneScenarioKey, ToneIntent> = {
-  clean: ToneIntentSchema.parse({
+  clean: HelixSchema.parse({
     ampName: "US Deluxe Nrm",
     cabName: "1x12 US Deluxe",
     guitarType: "single_coil",
@@ -58,7 +66,7 @@ const STANDARD_FIXTURES: Record<ToneScenarioKey, ToneIntent> = {
     description: "Clean blues tone with edge-of-breakup character",
   }),
 
-  crunch: ToneIntentSchema.parse({
+  crunch: HelixSchema.parse({
     ampName: "Placater Clean",
     cabName: "4x12 Greenback25",
     guitarType: "humbucker",
@@ -74,7 +82,7 @@ const STANDARD_FIXTURES: Record<ToneScenarioKey, ToneIntent> = {
     description: "Classic rock rhythm crunch with Placater",
   }),
 
-  high_gain: ToneIntentSchema.parse({
+  high_gain: HelixSchema.parse({
     ampName: "Revv Gen Red",
     cabName: "4x12 Uber V30",
     guitarType: "humbucker",
@@ -90,7 +98,7 @@ const STANDARD_FIXTURES: Record<ToneScenarioKey, ToneIntent> = {
     description: "Modern metal high-gain with Revv Gen Red",
   }),
 
-  ambient: ToneIntentSchema.parse({
+  ambient: HelixSchema.parse({
     ampName: "US Deluxe Nrm",
     cabName: "1x12 US Deluxe",
     guitarType: "single_coil",
@@ -107,7 +115,7 @@ const STANDARD_FIXTURES: Record<ToneScenarioKey, ToneIntent> = {
     description: "Ambient wash with stacked delay and reverb",
   }),
 
-  edge_of_breakup: ToneIntentSchema.parse({
+  edge_of_breakup: HelixSchema.parse({
     ampName: "Placater Clean",
     cabName: "2x12 Blue Bell",
     guitarType: "single_coil",
@@ -123,7 +131,7 @@ const STANDARD_FIXTURES: Record<ToneScenarioKey, ToneIntent> = {
     description: "Edge-of-breakup jazz with warm spring reverb",
   }),
 
-  dual_amp: ToneIntentSchema.parse({
+  dual_amp: HelixSchema.parse({
     ampName: "US Deluxe Nrm",
     secondAmpName: "Placater Clean",
     cabName: "1x12 US Deluxe",
@@ -147,7 +155,7 @@ const STANDARD_FIXTURES: Record<ToneScenarioKey, ToneIntent> = {
 // ---------------------------------------------------------------------------
 
 const STADIUM_FIXTURES: Record<ToneScenarioKey, ToneIntent> = {
-  clean: ToneIntentSchema.parse({
+  clean: StadiumSchema.parse({
     ampName: "Agoura US Clean",
     cabName: "1x12 US Deluxe",
     guitarType: "single_coil",
@@ -163,7 +171,7 @@ const STADIUM_FIXTURES: Record<ToneScenarioKey, ToneIntent> = {
     description: "Stadium clean tone with Agoura US Clean",
   }),
 
-  crunch: ToneIntentSchema.parse({
+  crunch: StadiumSchema.parse({
     ampName: "Agoura German Crunch",
     cabName: "4x12 Greenback25",
     guitarType: "humbucker",
@@ -179,7 +187,7 @@ const STADIUM_FIXTURES: Record<ToneScenarioKey, ToneIntent> = {
     description: "Stadium crunch with Agoura German Crunch",
   }),
 
-  high_gain: ToneIntentSchema.parse({
+  high_gain: StadiumSchema.parse({
     ampName: "Agoura German Xtra Red",
     cabName: "4x12 Uber V30",
     guitarType: "humbucker",
@@ -195,7 +203,7 @@ const STADIUM_FIXTURES: Record<ToneScenarioKey, ToneIntent> = {
     description: "Stadium high-gain with Agoura German Xtra Red",
   }),
 
-  ambient: ToneIntentSchema.parse({
+  ambient: StadiumSchema.parse({
     ampName: "Agoura US Clean",
     cabName: "1x12 US Deluxe",
     guitarType: "single_coil",
@@ -212,7 +220,7 @@ const STADIUM_FIXTURES: Record<ToneScenarioKey, ToneIntent> = {
     description: "Stadium ambient wash with Agoura US Clean",
   }),
 
-  edge_of_breakup: ToneIntentSchema.parse({
+  edge_of_breakup: StadiumSchema.parse({
     ampName: "Agoura Brit Plexi",
     cabName: "2x12 Blue Bell",
     guitarType: "single_coil",
@@ -229,7 +237,7 @@ const STADIUM_FIXTURES: Record<ToneScenarioKey, ToneIntent> = {
   }),
 
   // Stadium does NOT support dual-amp; use single-amp variant
-  dual_amp: ToneIntentSchema.parse({
+  dual_amp: StadiumSchema.parse({
     ampName: "Agoura US Clean",
     cabName: "1x12 US Deluxe",
     guitarType: "humbucker",
@@ -251,7 +259,7 @@ const STADIUM_FIXTURES: Record<ToneScenarioKey, ToneIntent> = {
 // (pod_go, helix_stomp, helix_stomp_xl cannot do secondAmpName)
 // ---------------------------------------------------------------------------
 
-const SINGLE_DSP_DUAL_AMP_FALLBACK: ToneIntent = ToneIntentSchema.parse({
+const SINGLE_DSP_DUAL_AMP_FALLBACK: ToneIntent = HelixSchema.parse({
   ampName: "Placater Clean",
   cabName: "4x12 Greenback25",
   guitarType: "humbucker",
@@ -301,8 +309,9 @@ function adaptIntentForDevice(
   if (maxSnaps && baseIntent.snapshots.length > maxSnaps) {
     // Truncate snapshots to device limit
     const adapted = { ...baseIntent, snapshots: baseIntent.snapshots.slice(0, maxSnaps) };
-    // Re-validate after modification
-    return ToneIntentSchema.parse(adapted);
+    // Re-validate after modification using the correct family schema
+    const family = resolveFamily(device);
+    return getToneIntentSchema(family).parse(adapted);
   }
   return baseIntent;
 }

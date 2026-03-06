@@ -4,43 +4,112 @@
 // parameter values. If a field is numeric (Drive, Master, LowCut...), it does NOT belong here.
 //
 // Source: RESEARCH.md Architecture Pattern 1, CONTEXT.md decisions (2026-03-01)
+// Phase 62: getToneIntentSchema(family) factory for per-family constrained decoding.
 
 import { z } from "zod";
-import { AMP_NAMES, CAB_NAMES, EFFECT_NAMES, VARIAX_MODEL_NAMES } from "./models";
+import { VARIAX_MODEL_NAMES } from "./models";
+import { HELIX_AMP_NAMES, HELIX_CAB_NAMES, HELIX_EFFECT_NAMES } from "./catalogs/helix-catalog";
+import { STOMP_AMP_NAMES, STOMP_CAB_NAMES, STOMP_EFFECT_NAMES } from "./catalogs/stomp-catalog";
+import { PODGO_AMP_NAMES, PODGO_CAB_NAMES, PODGO_EFFECT_NAMES } from "./catalogs/podgo-catalog";
+import { STADIUM_AMP_NAMES, STADIUM_CAB_NAMES, STADIUM_EFFECT_NAMES } from "./catalogs/stadium-catalog";
+import type { DeviceFamily } from "./device-family";
 
-// An effect block the AI has chosen to include
+// ---------------------------------------------------------------------------
+// buildToneIntentSchema — internal helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Build a ToneIntent Zod schema constrained to a specific set of model names.
+ * The EffectIntentSchema is constructed inline with the provided effectNames.
+ */
+function buildToneIntentSchema(
+  ampNames: [string, ...string[]],
+  cabNames: [string, ...string[]],
+  effectNames: [string, ...string[]],
+) {
+  const effectSchema = z.object({
+    modelName: z.enum(effectNames),
+    role: z.enum(["always_on", "toggleable", "ambient"]),
+  });
+
+  return z.object({
+    ampName: z.enum(ampNames),
+    cabName: z.enum(cabNames),
+    secondAmpName: z.enum(ampNames).optional(),
+    secondCabName: z.enum(cabNames).optional(),
+    guitarType: z.enum(["single_coil", "humbucker", "p90"]),
+    genreHint: z.string().optional(),
+    effects: z.array(effectSchema).max(6),
+    snapshots: z.array(SnapshotIntentSchema).min(3).max(8),
+    tempoHint: z.number().int().min(60).max(200).optional(),
+    presetName: z.string().max(32).optional(),
+    description: z.string().optional(),
+    guitarNotes: z.string().optional(),
+    variaxModel: z.enum(VARIAX_MODEL_NAMES).optional(),
+  }).refine(
+    (data) => !data.secondAmpName || data.secondCabName,
+    { message: "secondCabName is required when secondAmpName is provided", path: ["secondCabName"] }
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Public schemas
+// ---------------------------------------------------------------------------
+
+/** An effect block the AI has chosen to include (backwards compat — uses helix effect set). */
 export const EffectIntentSchema = z.object({
-  modelName: z.enum(EFFECT_NAMES),                                   // Must match a key in effect model databases
-  role: z.enum(["always_on", "toggleable", "ambient"]),             // How this effect is used in the signal chain
+  modelName: z.enum(HELIX_EFFECT_NAMES),
+  role: z.enum(["always_on", "toggleable", "ambient"]),
 });
 
-// A snapshot the AI wants in the preset
+/** A snapshot the AI wants in the preset. */
 export const SnapshotIntentSchema = z.object({
-  name: z.string().max(10),                                          // Snapshot name shown on Helix display (max 10 chars)
-  toneRole: z.enum(["clean", "crunch", "lead", "ambient"]),         // What this snapshot represents tonally
+  name: z.string().max(10),
+  toneRole: z.enum(["clean", "crunch", "lead", "ambient"]),
 });
 
-// The complete AI output — all creative choices, zero numeric parameters
-export const ToneIntentSchema = z.object({
-  ampName: z.enum(AMP_NAMES),                                       // Must match a key in AMP_MODELS (human-readable name)
-  cabName: z.enum(CAB_NAMES),                                       // Must match a key in CAB_MODELS (human-readable name)
-  secondAmpName: z.enum(AMP_NAMES).optional(),                      // Optional second amp for dual-amp Helix presets
-  secondCabName: z.enum(CAB_NAMES).optional(),                      // Cab paired with second amp
-  guitarType: z.enum(["single_coil", "humbucker", "p90"]),          // Pickup type influences amp param defaults in Knowledge Layer
-  genreHint: z.string().optional(),                                  // e.g., "blues rock", "metal", "jazz" — informational only
-  effects: z.array(EffectIntentSchema).max(6),                      // Additional effects beyond mandatory boost (Knowledge Layer inserts boost)
-  snapshots: z.array(SnapshotIntentSchema).min(3).max(8),           // 3-8 snapshots: Stomp=3, StompXL/LT/Floor=4, Stadium=up to 8
-  tempoHint: z.number().int().min(60).max(200).optional(),          // BPM hint for delay sync — integer only
-  presetName: z.string().max(32).optional(),                         // Claude generates a creative preset name
-  description: z.string().optional(),                                // Brief tone description
-  guitarNotes: z.string().optional(),                                // Tips for the user (pickup position, tone knob)
-  variaxModel: z.enum(VARIAX_MODEL_NAMES).optional(),               // Variax guitar tone model — only populated when user proactively mentions a Variax guitar
-}).refine(
-  (data) => !data.secondAmpName || data.secondCabName,
-  { message: "secondCabName is required when secondAmpName is provided", path: ["secondCabName"] }
+// ---------------------------------------------------------------------------
+// getToneIntentSchema — per-family factory (Phase 62)
+// ---------------------------------------------------------------------------
+
+/**
+ * Return a Zod ToneIntent schema constrained to the model names valid for the
+ * given device family. This is the primary schema source for constrained decoding.
+ */
+export function getToneIntentSchema(family: DeviceFamily) {
+  switch (family) {
+    case "helix":
+      return buildToneIntentSchema(HELIX_AMP_NAMES, HELIX_CAB_NAMES, HELIX_EFFECT_NAMES);
+    case "stomp":
+      return buildToneIntentSchema(STOMP_AMP_NAMES, STOMP_CAB_NAMES, STOMP_EFFECT_NAMES);
+    case "podgo":
+      return buildToneIntentSchema(PODGO_AMP_NAMES, PODGO_CAB_NAMES, PODGO_EFFECT_NAMES);
+    case "stadium":
+      return buildToneIntentSchema(STADIUM_AMP_NAMES, STADIUM_CAB_NAMES, STADIUM_EFFECT_NAMES);
+    default:
+      throw new Error(`Unknown DeviceFamily: ${String(family)}`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Backwards-compat shim (Phase 62 transitional)
+// ---------------------------------------------------------------------------
+
+/**
+ * @deprecated Use getToneIntentSchema(family) instead.
+ * This shim uses the helix catalog — preserved temporarily for any consumers
+ * that haven't been updated to the factory pattern yet.
+ */
+export const ToneIntentSchema = buildToneIntentSchema(
+  HELIX_AMP_NAMES,
+  HELIX_CAB_NAMES,
+  HELIX_EFFECT_NAMES,
 );
 
+// ---------------------------------------------------------------------------
 // TypeScript types inferred from schema — single source of truth
-export type ToneIntent = z.infer<typeof ToneIntentSchema>;
+// ---------------------------------------------------------------------------
+
+export type ToneIntent = z.infer<ReturnType<typeof getToneIntentSchema>>;
 export type EffectIntent = z.infer<typeof EffectIntentSchema>;
 export type SnapshotIntent = z.infer<typeof SnapshotIntentSchema>;
