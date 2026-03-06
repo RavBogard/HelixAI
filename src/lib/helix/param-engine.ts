@@ -19,6 +19,7 @@ import {
   MODULATION_MODELS,
   DYNAMICS_MODELS,
   EQ_MODELS,
+  STADIUM_EQ_MODELS,
   WAH_MODELS,
   VOLUME_MODELS,
   CAB_MODELS,
@@ -230,7 +231,7 @@ const MODEL_LOOKUPS: Record<string, Record<string, HelixModel>> = {
   reverb: REVERB_MODELS,
   modulation: MODULATION_MODELS,
   dynamics: DYNAMICS_MODELS,
-  eq: EQ_MODELS,
+  eq: { ...EQ_MODELS, ...STADIUM_EQ_MODELS },
   wah: WAH_MODELS,
   pitch: {} as Record<string, HelixModel>, // no PITCH_MODELS export yet
   send_return: {} as Record<string, HelixModel>,
@@ -380,9 +381,14 @@ function resolveBlockParams(
 /**
  * Amp parameter resolution — 4-layer strategy:
  * 1. Start with model's own defaultParams
- * 2. Apply category-level overrides
- * 3. Apply topology-specific mid override (high-gain only)
+ * 2. Apply category-level overrides (HD2 amps only — skipped for Stadium)
+ * 3. Apply topology-specific mid override (HD2 high-gain only — skipped for Stadium)
  * 4. Apply per-model paramOverrides — wins over all shared layers (AMP-02)
+ *
+ * Stadium guard (STADPARAM-03): Stadium amps (Agoura_*) have complete firmware
+ * param tables in STADIUM_AMPS.defaultParams (19-27 keys including all hidden
+ * firmware params). AMP_DEFAULTS would corrupt these by injecting ChVol, incorrect
+ * Sag/Bias values, etc. Stadium amps skip layers 2 and 3.
  */
 function resolveAmpParams(
   block: BlockSpec,
@@ -390,24 +396,28 @@ function resolveAmpParams(
   topology: TopologyTag,
 ): Record<string, number | boolean> {
   // Layer 1: Start with the model's own defaults
-  const model = STADIUM_AMPS[block.modelName] ?? AMP_MODELS[block.modelName];
+  const stadiumModel = STADIUM_AMPS[block.modelName];
+  const model = stadiumModel ?? AMP_MODELS[block.modelName];
   const params: Record<string, number | boolean> = model
     ? { ...model.defaultParams }
     : { ...block.parameters };
 
-  // Layer 2: Apply category overrides (ensures consistency within category)
-  const categoryDefaults = AMP_DEFAULTS[ampCategory];
-  for (const [key, value] of Object.entries(categoryDefaults)) {
-    // Only override keys that exist in category defaults
-    // This preserves model-specific params like Cut, Deep, Resonance, BrightSwitch
-    params[key] = value;
-  }
+  // Stadium amps: firmware param table is the complete set — skip HD2 category/topology layers.
+  // This prevents AMP_DEFAULTS from injecting ChVol, incorrect Sag/Bias values, etc.
+  // Stadium amps have no ChVol, use Sag: 0 (not 0.25-0.60), and include all params in defaultParams.
+  if (!stadiumModel) {
+    // Layer 2: Apply category overrides (HD2 amps only)
+    const categoryDefaults = AMP_DEFAULTS[ampCategory];
+    for (const [key, value] of Object.entries(categoryDefaults)) {
+      params[key] = value;
+    }
 
-  // Layer 3: Apply topology-specific mid override if high-gain
-  if (ampCategory === "high_gain" && topology !== "not_applicable") {
-    const midOverride = TOPOLOGY_MID[topology];
-    if (midOverride !== undefined) {
-      params.Mid = midOverride;
+    // Layer 3: Apply topology-specific mid override if high-gain (HD2 amps only)
+    if (ampCategory === "high_gain" && topology !== "not_applicable") {
+      const midOverride = TOPOLOGY_MID[topology];
+      if (midOverride !== undefined) {
+        params.Mid = midOverride;
+      }
     }
   }
 
