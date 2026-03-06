@@ -198,11 +198,11 @@ Plans:
   3. The Stadium chat prompt uses Agoura-native tone vocabulary and mentions Stadium-specific capabilities (7-band Parametric EQ, dual-DSP routing)
   4. The Helix prompt surfaces dual-DSP and dual-amp routing as available options during the interview
   5. Each device family's planner prompt imports only its own catalog module — a grep for cross-family model names in any single prompt file returns zero results
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 65-01: Per-family chat system prompts (families/{family}/prompt.ts), parameterize getSystemPrompt(family)
-- [ ] 65-02: Per-family planner prompt sections, parameterize buildPlannerPrompt(family, device), validate cache economics per device
+- [ ] 65-01-PLAN.md — Shared composable prompt sections, per-family prompt modules (helix/stomp/podgo/stadium), and prompt router
+- [ ] 65-02-PLAN.md — Wire API routes to per-family prompts, delete monolithic functions, add device to usage logger, per-family prompt tests
 
 ### Phase 66: Frontend Picker and Database Migration
 **Goal**: The device picker appears before the first chat message, the selected device flows through the entire conversation and generation pipeline, and the Supabase database stores device context per conversation — including null-safe handling for all legacy rows
@@ -235,7 +235,7 @@ Plans:
 | 62. Catalog Isolation | v5.0 | 0/2 | Not started | - |
 | 63. Stadium Firmware Params | v5.0 | 0/2 | Not started | - |
 | 64. Knowledge Layer Guards | v5.0 | 0/2 | Not started | - |
-| 65. Device-Specific Prompts | v5.0 | 0/2 | Not started | - |
+| 65. Device-Specific Prompts | v5.0 | 0/2 | Planned | - |
 | 66. Frontend Picker + DB | v5.0 | 0/2 | Not started | - |
 
 ---
