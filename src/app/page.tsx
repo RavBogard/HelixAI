@@ -1687,7 +1687,42 @@ function HomeContent() {
   );
 }
 
+// Set to true to show maintenance page instead of chat
+const MAINTENANCE_MODE = true;
+
+function MaintenancePage() {
+  return (
+    <div className="relative z-10 flex flex-col items-center justify-center h-screen max-w-2xl mx-auto px-6 text-center">
+      <Image
+        src="/logo.jpg"
+        alt="HelixTones"
+        width={80}
+        height={80}
+        className="rounded-xl mb-6 opacity-90"
+      />
+      <h1 className="text-2xl font-semibold text-[var(--hlx-text)] mb-3">
+        We&apos;re Making Things Better
+      </h1>
+      <p className="text-[var(--hlx-text-sub)] text-lg leading-relaxed mb-6">
+        We&apos;re reworking the preset engine to deliver even better tones
+        for every device. Check back again in a few hours!
+      </p>
+      <div className="flex items-center gap-2 text-sm text-[var(--hlx-text-muted)]">
+        <span className="relative flex h-2.5 w-2.5">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+        </span>
+        Upgrading preset quality — back soon
+      </div>
+      <Footer />
+    </div>
+  );
+}
+
 export default function Home() {
+  if (MAINTENANCE_MODE) {
+    return <MaintenancePage />;
+  }
   return (
     <Suspense fallback={null}>
       <HomeContent />
