@@ -10,7 +10,7 @@
 - ✅ **v3.0 Helix Stadium Support** — Phases 31-38 (shipped 2026-03-04)
 - ✅ **v3.2 Infrastructure, Features & Audit Tooling** — Phases 42, 48-51 (shipped 2026-03-05)
 - ✅ **v4.0 Stadium Rebuild + Preset Quality Leap** — Phases 52-60 (shipped 2026-03-05)
-- 🚧 **v5.0 Device-First Architecture** — Phases 61-69 (in progress)
+- 🚧 **v5.0 Device-First Architecture** — Phases 61-69 (in progress, Phase 69 gap closure complete)
 
 ## Phases
 
@@ -127,7 +127,7 @@
 - [x] **Phase 66: Frontend Picker and Database Migration** — Move device picker to conversation start, add device column to Supabase conversations table, handle legacy rows
 - [x] **Phase 67: Stadium Integration Quality** — Fix WAH/VOLUME catalog gap, dual-amp capability mismatch, TODO(Phase62) placeholder in prompt, and add schema/prompt integration tests (completed 2026-03-06)
 - [x] **Phase 68: Token Control and Prompt Caching** — Reduce API costs without degrading preset quality: optimize token budgets, maximize prompt caching, audit system prompt sizes (completed 2026-03-06)
-- [ ] **Phase 69: Audit Gap Closure** — Fix Stomp maxFx budget mismatch, create retroactive verification documents for phases 62-65, update requirements traceability table (gap closure from v5.0 audit)
+- [x] **Phase 69: Audit Gap Closure** — Fix Stomp maxFx budget mismatch, create retroactive verification documents for phases 62-65, update requirements traceability table (completed 2026-03-06)
 
 ## Phase Details
 
@@ -242,7 +242,7 @@ Plans:
 | 66. Frontend Picker + DB | v5.0 | 2/2 | Complete | 2026-03-06 |
 | 67. Stadium Integration Quality | v5.0 | 2/2 | Complete | 2026-03-06 |
 | 68. Token Control + Caching | v5.0 | 2/2 | Complete | 2026-03-06 |
-| 69. Audit Gap Closure | v5.0 | 1/2 | In Progress | - |
+| 69. Audit Gap Closure | v5.0 | 2/2 | Complete | 2026-03-06 |
 
 ### Phase 67: Stadium Integration Quality
 
@@ -287,8 +287,8 @@ Plans:
 
 Plans:
 - [x] 69-01-PLAN.md — Fix Stomp maxFx values in planner.ts (isXL ? 5 : 2), update REQUIREMENTS.md traceability table
-- [ ] 69-02-PLAN.md — Create retroactive VERIFICATION.md for phases 62, 63, 64, 65
+- [x] 69-02-PLAN.md — Create retroactive VERIFICATION.md for phases 62, 63, 64, 65
 
 ---
-*Last updated: 2026-03-06 after Phase 69 planning*
+*Last updated: 2026-03-06 after Phase 69 completion*
 *Full phase details for completed milestones archived in `.planning/milestones/`*
