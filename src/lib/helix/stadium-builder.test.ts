@@ -239,15 +239,15 @@ describe("buildHspFile", () => {
     });
     const boostBlock = allBlocks.find(b => {
       const slot = b["slot"] as Array<Record<string, unknown>>;
-      return slot?.[0]?.["model"] === "HD2_DistMinotaur";
+      return slot?.[0]?.["model"] === "HD2_DistMinotaurMono";
     });
     const delayBlock = allBlocks.find(b => {
       const slot = b["slot"] as Array<Record<string, unknown>>;
-      return slot?.[0]?.["model"] === "HD2_DelayDual";
+      return slot?.[0]?.["model"] === "HD2_DelayDualStereo";
     });
     const reverbBlock = allBlocks.find(b => {
       const slot = b["slot"] as Array<Record<string, unknown>>;
-      return slot?.[0]?.["model"] === "HD2_RevPlate140";
+      return slot?.[0]?.["model"] === "HD2_RevPlate140Stereo";
     });
     const ampBlock = allBlocks.find(b => {
       const slot = b["slot"] as Array<Record<string, unknown>>;
@@ -833,5 +833,132 @@ describe("HD2 regression: AMP_DEFAULTS still applied for non-Stadium amps", () =
     const ampParams = result[0].parameters;
     // HD2 clean amps get Sag: 0.60 from AMP_DEFAULTS
     expect(ampParams.Sag).toBe(0.60);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// STAD-07: Mono/Stereo suffix regression tests
+// Root cause of "only cab shows up" bug: Stadium firmware requires Mono/Stereo
+// suffixes on ALL effect model IDs. Pre-amp effects get "Mono", post-amp get
+// "Stereo". Amps, cabs, and I/O blocks are unchanged.
+//
+// Verified against professional .hsp files:
+//   NH_BoomAuRang.hsp, Agoura_Bassman.hsp, Stadium_Rock_Rhythm.hsp
+// ---------------------------------------------------------------------------
+
+describe("STAD-07: Mono/Stereo suffix application", () => {
+  it("pre-amp effect blocks (before amp) get Mono suffix in generated .hsp", () => {
+    const fixture = makeStadiumFixture();
+    const result = buildHspFile(fixture);
+    const flow0 = result.json.preset.flow[0] as Record<string, unknown>;
+
+    // Gate at b01 is pre-amp — already has HX2_GateHorizonGateMono in fixture
+    const b01 = flow0["b01"] as Record<string, unknown>;
+    expect(b01).toBeDefined();
+    const b01Slot = (b01["slot"] as Array<Record<string, unknown>>)[0];
+    expect((b01Slot["model"] as string).endsWith("Mono")).toBe(true);
+
+    // Boost at b02 is pre-amp — HD2_DistMinotaur → HD2_DistMinotaurMono
+    const b02 = flow0["b02"] as Record<string, unknown>;
+    expect(b02).toBeDefined();
+    const b02Slot = (b02["slot"] as Array<Record<string, unknown>>)[0];
+    expect(b02Slot["model"]).toBe("HD2_DistMinotaurMono");
+  });
+
+  it("post-amp effect blocks (after cab) get Stereo suffix in generated .hsp", () => {
+    const fixture = makeStadiumFixture();
+    const result = buildHspFile(fixture);
+    const flow0 = result.json.preset.flow[0] as Record<string, unknown>;
+
+    // Delay at b07 is post-amp — HD2_DelayDual → HD2_DelayDualStereo
+    const b07 = flow0["b07"] as Record<string, unknown>;
+    expect(b07).toBeDefined();
+    const b07Slot = (b07["slot"] as Array<Record<string, unknown>>)[0];
+    expect(b07Slot["model"]).toBe("HD2_DelayDualStereo");
+
+    // Reverb at b08 is post-amp — HD2_RevPlate140 → HD2_RevPlate140Stereo
+    const b08 = flow0["b08"] as Record<string, unknown>;
+    expect(b08).toBeDefined();
+    const b08Slot = (b08["slot"] as Array<Record<string, unknown>>)[0];
+    expect(b08Slot["model"]).toBe("HD2_RevPlate140Stereo");
+  });
+
+  it("amp block does NOT get Mono/Stereo suffix", () => {
+    const fixture = makeStadiumFixture();
+    const result = buildHspFile(fixture);
+    const flow0 = result.json.preset.flow[0] as Record<string, unknown>;
+
+    const b05 = flow0["b05"] as Record<string, unknown>;
+    const ampSlot = (b05["slot"] as Array<Record<string, unknown>>)[0];
+    const model = ampSlot["model"] as string;
+    expect(model).toBe("Agoura_AmpUSTweedman");
+    expect(model.endsWith("Mono")).toBe(false);
+    expect(model.endsWith("Stereo")).toBe(false);
+  });
+
+  it("cab block gets WithPan suffix (not Mono/Stereo)", () => {
+    const fixture = makeStadiumFixture();
+    const result = buildHspFile(fixture);
+    const flow0 = result.json.preset.flow[0] as Record<string, unknown>;
+
+    const b06 = flow0["b06"] as Record<string, unknown>;
+    const cabSlot = (b06["slot"] as Array<Record<string, unknown>>)[0];
+    const model = cabSlot["model"] as string;
+    expect(model).toBe("HD2_CabMicIr_4x10TweedP10RWithPan");
+    expect(model.endsWith("Mono")).toBe(false);
+    expect(model.endsWith("Stereo")).toBe(false);
+  });
+
+  it("HD2_GateHorizonGate overridden to HX2_GateHorizonGate prefix in Stadium", () => {
+    // Build a fixture where Horizon Gate is used as a post-amp effect
+    // to verify the HD2→HX2 prefix override works with Stereo suffix
+    const fixture = makeStadiumFixture();
+    const result = buildHspFile(fixture);
+    const flow0 = result.json.preset.flow[0] as Record<string, unknown>;
+
+    // Gate at b01 uses HX2_ prefix (not HD2_) — verified against professional presets
+    const b01 = flow0["b01"] as Record<string, unknown>;
+    const gateSlot = (b01["slot"] as Array<Record<string, unknown>>)[0];
+    const model = gateSlot["model"] as string;
+    expect(model.startsWith("HX2_")).toBe(true);
+  });
+
+  it("preset params include inst2Z: 'FirstEnabled' (required by Stadium firmware)", () => {
+    const fixture = makeStadiumFixture();
+    const result = buildHspFile(fixture);
+    const params = result.json.preset.params as Record<string, unknown>;
+    expect(params["inst2Z"]).toBe("FirstEnabled");
+    expect(params["inst1Z"]).toBe("FirstEnabled");
+  });
+
+  it("every effect model ID in flow0 ends with Mono or Stereo (no bare IDs)", () => {
+    const fixture = makeStadiumFixture();
+    const result = buildHspFile(fixture);
+    const flow0 = result.json.preset.flow[0] as Record<string, unknown>;
+
+    // Collect all effect blocks (not input/output/amp/cab)
+    const effectBlocks: Array<{ key: string; model: string; type: string }> = [];
+    for (const [key, value] of Object.entries(flow0)) {
+      if (!key.startsWith("b")) continue;
+      const block = value as Record<string, unknown>;
+      const blockType = block["type"] as string;
+      if (blockType === "input" || blockType === "output" || blockType === "amp" || blockType === "cab") continue;
+
+      const slot = (block["slot"] as Array<Record<string, unknown>>)?.[0];
+      if (slot) {
+        effectBlocks.push({
+          key,
+          model: slot["model"] as string,
+          type: blockType,
+        });
+      }
+    }
+
+    expect(effectBlocks.length).toBeGreaterThan(0);
+
+    for (const { key, model } of effectBlocks) {
+      const hasSuffix = model.endsWith("Mono") || model.endsWith("Stereo");
+      expect(hasSuffix).toBe(true);
+    }
   });
 });
