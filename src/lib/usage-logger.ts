@@ -22,6 +22,8 @@ export interface PlannerUsageRecord {
   total_tokens: number;
   cost_usd: number;
   cache_hit: boolean;
+  /** Device target for per-family cache economics analysis. Uses string (not DeviceTarget) to keep logger dependency-free. */
+  device?: string;
 }
 
 // ---------------------------------------------------------------------------

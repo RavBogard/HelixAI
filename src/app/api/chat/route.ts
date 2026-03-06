@@ -1,10 +1,14 @@
 import { NextRequest } from "next/server";
-import { createGeminiClient, getSystemPrompt, getModelId, isPremiumKey } from "@/lib/gemini";
+import { createGeminiClient, getModelId, isPremiumKey } from "@/lib/gemini";
+import { getFamilyChatPrompt } from "@/lib/prompt-router";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { logUsage, estimateGeminiCost } from "@/lib/usage-logger";
+import type { DeviceTarget } from "@/lib/helix";
 
 export async function POST(req: NextRequest) {
-  const { messages, premiumKey, conversationId } = await req.json();
+  const body = await req.json();
+  const { messages, premiumKey, conversationId } = body;
+  const device: DeviceTarget = body.device ?? "helix_lt";
   const premium = isPremiumKey(premiumKey);
 
   // --- Persistence: save user message BEFORE streaming ---
@@ -71,7 +75,7 @@ export async function POST(req: NextRequest) {
   const chat = ai.chats.create({
     model: modelId,
     config: {
-      systemInstruction: getSystemPrompt(),
+      systemInstruction: getFamilyChatPrompt(device),
       tools: [{ googleSearch: {} }],
     },
     history,
@@ -113,6 +117,7 @@ export async function POST(req: NextRequest) {
             total_tokens: finalUsage.totalTokenCount ?? 0,
             cost_usd: estimateGeminiCost(finalUsage, modelId),
             cache_hit: (finalUsage.cachedContentTokenCount ?? 0) > 0,
+            device,
           });
         }
 

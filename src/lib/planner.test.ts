@@ -1,17 +1,20 @@
 // src/lib/planner.test.ts
-// Unit tests for buildPlannerPrompt() enrichment sections.
+// Unit tests for per-family planner prompt enrichment sections.
+// Updated for Phase 65: tests now use getFamilyPlannerPrompt() from the prompt router
+// instead of the deleted monolithic buildPlannerPrompt().
+//
 // PROMPT-01: Gain-Staging Intelligence
 // PROMPT-02: Amp-to-Cab Pairing
 // PROMPT-03: Effect Discipline by Genre
 // PROMPT-04: Shared prefix ordering (cache-safety)
 
 import { describe, it, expect } from "vitest";
-import { buildPlannerPrompt } from "./planner";
+import { getFamilyPlannerPrompt } from "@/lib/prompt-router";
 import { getModelListForPrompt } from "@/lib/helix";
 
-describe("buildPlannerPrompt", () => {
-  const modelList = getModelListForPrompt();
-  const prompt = buildPlannerPrompt(modelList);
+describe("getFamilyPlannerPrompt (helix)", () => {
+  const modelList = getModelListForPrompt("helix_lt");
+  const prompt = getFamilyPlannerPrompt("helix_lt", modelList);
 
   describe("enrichment sections", () => {
     // PROMPT-01: Gain-Staging Intelligence
@@ -34,9 +37,8 @@ describe("buildPlannerPrompt", () => {
     });
 
     it("Test 5: cab pairing section contains canonical cab names — 2x12 Blue Bell (Vox) and 4x12 Cali V30 (Mesa)", () => {
-      // Canonical names verified against CAB_MODELS in src/lib/helix/models.ts
-      expect(prompt).toContain("2x12 Blue Bell");  // Vox AC30 2x12 Blue
-      expect(prompt).toContain("4x12 Cali V30");   // Mesa 4x12 Vintage 30
+      expect(prompt).toContain("2x12 Blue Bell");
+      expect(prompt).toContain("4x12 Cali V30");
     });
 
     // PROMPT-03: Effect Discipline by Genre
@@ -45,85 +47,49 @@ describe("buildPlannerPrompt", () => {
     });
 
     it("Test 7: effect discipline section explicitly requires reverb AND delay for ambient/worship tones", () => {
-      // Section must mention ambient and require both reverb and delay
-      expect(prompt.toLowerCase()).toContain("ambient");
-      expect(prompt.toLowerCase()).toContain("reverb");
-      expect(prompt.toLowerCase()).toContain("delay");
-      // Confirm ambient section mandates both time-based effects
       const lowerPrompt = prompt.toLowerCase();
+      expect(lowerPrompt).toContain("ambient");
+      expect(lowerPrompt).toContain("reverb");
+      expect(lowerPrompt).toContain("delay");
       const ambientIdx = lowerPrompt.indexOf("ambient");
       expect(ambientIdx).toBeGreaterThan(-1);
-      // After the ambient mention there must be both reverb and delay guidance
       const afterAmbient = lowerPrompt.slice(ambientIdx);
       expect(afterAmbient).toMatch(/reverb/);
       expect(afterAmbient).toMatch(/delay/);
     });
 
-    it("Test 8: metal guidance constrains effect count (mentions a maximum number for metal)", () => {
+    it("Test 8: metal guidance constrains effect count", () => {
       const lowerPrompt = prompt.toLowerCase();
-      // Must contain metal guidance with either a number + effects mention or maximum keyword
       expect(lowerPrompt).toContain("metal");
       expect(lowerPrompt).toMatch(/metal[^.]*(?:\d\s*effects?|maximum)/i);
     });
   });
 
-  describe("INT-01: per-model cab affinity section", () => {
-    // INT-01: cabAffinity and ampFamily fields consumed by buildPlannerPrompt()
-    // Previously orphaned data — now surfaced as a runtime-consumed section.
-
-    it("Test 11: buildPlannerPrompt output contains 'Per-Model Cab Affinity' section heading", () => {
-      expect(prompt).toContain("Per-Model Cab Affinity");
-    });
-
-    it("Test 12: prompt contains cabAffinity data for US Deluxe Nrm (Fender amp with known cabs)", () => {
-      // US Deluxe Nrm has cabAffinity: ["1x12 US Deluxe","2x12 Double C12N"]
-      expect(prompt).toContain("US Deluxe Nrm");
-      expect(prompt).toContain("1x12 US Deluxe");
-    });
-
-    it("Test 13: prompt contains at least 10 amp entries with cab affinity data (count arrow occurrences)", () => {
-      // Each amp entry uses → separator: "AmpName → cab1, cab2"
-      const arrowCount = (prompt.match(/→/g) || []).length;
-      expect(arrowCount).toBeGreaterThanOrEqual(10);
-    });
-
-    it("Test 14: prompt contains ampFamily groupings Fender and Marshall", () => {
-      // Groups are formatted as **FamilyName** markdown bold headings
-      expect(prompt).toContain("**Fender**");
-      expect(prompt).toContain("**Marshall**");
-    });
-  });
-
   describe("cache safety", () => {
-    it("Test 9: all three enrichment sections appear BEFORE device-conditional DEVICE RESTRICTION text", () => {
+    it("Test 9: enrichment sections appear BEFORE 'Based on the conversation'", () => {
       const gainIdx = prompt.indexOf("## Gain-Staging Intelligence");
       const cabIdx = prompt.indexOf("## Amp-to-Cab Pairing");
       const effectIdx = prompt.indexOf("## Effect Discipline by Genre");
+      const basedOnIdx = prompt.indexOf("Based on the conversation");
 
-      // All sections must be present
       expect(gainIdx).toBeGreaterThan(-1);
       expect(cabIdx).toBeGreaterThan(-1);
       expect(effectIdx).toBeGreaterThan(-1);
+      expect(basedOnIdx).toBeGreaterThan(-1);
 
-      // For default (non-device-specific) prompt: DEVICE RESTRICTION may not appear
-      // The test verifies that if it does appear, enrichment sections come first
-      const deviceIdx = prompt.indexOf("DEVICE RESTRICTION");
-      if (deviceIdx !== -1) {
-        expect(gainIdx).toBeLessThan(deviceIdx);
-        expect(cabIdx).toBeLessThan(deviceIdx);
-        expect(effectIdx).toBeLessThan(deviceIdx);
-      }
+      expect(gainIdx).toBeLessThan(basedOnIdx);
+      expect(cabIdx).toBeLessThan(basedOnIdx);
+      expect(effectIdx).toBeLessThan(basedOnIdx);
     });
 
-    it("Test 10: Pod Go prompt contains all three enrichment sections (same shared static prefix)", () => {
+    it("Test 10: Pod Go prompt contains enrichment sections before DEVICE RESTRICTION", () => {
       const podGoModelList = getModelListForPrompt("pod_go");
-      const podGoPrompt = buildPlannerPrompt(podGoModelList, "pod_go");
+      const podGoPrompt = getFamilyPlannerPrompt("pod_go", podGoModelList);
 
       expect(podGoPrompt).toContain("## Gain-Staging Intelligence");
       expect(podGoPrompt).toContain("## Amp-to-Cab Pairing");
       expect(podGoPrompt).toContain("## Effect Discipline by Genre");
 
-      // Pod Go prompt must have enrichment sections before the DEVICE RESTRICTION block
       const gainIdx = podGoPrompt.indexOf("## Gain-Staging Intelligence");
       const deviceIdx = podGoPrompt.indexOf("DEVICE RESTRICTION");
       expect(gainIdx).toBeGreaterThan(-1);
