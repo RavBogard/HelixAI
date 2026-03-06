@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Device-First Architecture
-status: defining_requirements
-last_updated: "2026-03-05T22:30:00Z"
+status: ready_to_plan
+last_updated: "2026-03-05T22:45:00Z"
 progress:
-  total_phases: 0
+  total_phases: 6
   completed_phases: 0
-  total_plans: 0
+  total_plans: 11
   completed_plans: 0
 ---
 
@@ -18,44 +18,50 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-05)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** v5.0 Device-First Architecture — defining requirements
+**Current focus:** v5.0 Phase 61 — Family Router and Capabilities
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-03-05 — Milestone v5.0 started
+Phase: 61 of 66 (Family Router and Capabilities)
+Plan: 0 of 1 in current phase
+Status: Ready to plan
+Last activity: 2026-03-05 — v5.0 roadmap created, 27 requirements mapped across 6 phases
 
-Progress: [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0% — Defining requirements
+Progress: [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0% (0/11 plans complete)
+
+## Performance Metrics
+
+**Velocity:**
+- Total plans completed: 0 (this milestone)
+- Prior milestone avg: ~1 plan/session
+
+**By Phase:**
+
+| Phase | Plans | Total | Avg/Plan |
+|-------|-------|-------|----------|
+| — | — | — | — |
+
+*Updated after each plan completion*
 
 ## Accumulated Context
 
 ### Decisions
 
-- [v4.0]: Effect combination logic (COMBO-01/02/03) deferred — requires context-passing architectural decision
-- [v4.0]: Cost-aware model routing (COST-01) deferred — requires 30-day baseline and A/B quality test with 20+ tone goals
-- [v4.0→v5.0]: Architecture refactor — guard-based branching superseded by v5.0 device-first architecture
-- [v5.0]: Device picker moves to conversation start — eliminates Agoura leak, enables device-specific prompts/models/chains
-- [v5.0]: Stadium param completeness — real amps have 27 params, we generate 12 — root cause of "presets bleed into each other"
-
-### User Feedback (carried forward)
-
-- **Michael Weaver:** Dual-amp preset missing reverb/delay — validates PROMPT-03 (effect discipline). ADDRESSED by v4.0 prompt enrichment.
-- **Glenn Sully:** Output level too low, dual-DSP routing issue. Partially addressed by FX-04 (snapshot volume balance).
-- **Paul Morgan / Tal Solomon Vardy:** Error 8309 on Helix Floor — FIXED in Phase 59.
-- **JC Logan (Stadium):** "Preset only shows the amp" — FIXED (WithPan cab + harness params). "All 4 snapshots sound the same" — FIXED (inline snapshot param overrides). "Presets sound like factory preset" — ROOT CAUSE: incomplete firmware params (12 vs 27). Scoped in v5.0.
-- **Roberto (Stadium):** "Only the amp appear" — FIXED (WithPan cab + harness params).
-- **Agoura amp leak:** "Unknown amp model: Agoura Brit Plexi" for non-Stadium devices — patched with reverse fallback, but v5.0 eliminates by design.
+- [v4.0]: Architecture refactor deferred — guard sites functional at 6 devices; superseded by v5.0 device-first approach
+- [v5.0]: Family Router ships first (Phase 61) — zero regression risk, pure addition, unlocks all downstream phases
+- [v5.0]: Catalog isolation (Phase 62) is highest-risk phase — AMP_MODELS imported by chain-rules, param-engine, validate; all import sites must update atomically
+- [v5.0]: Stadium firmware params (Phase 63) runs parallel after Phase 62 — independent track, param extraction from real .hsp corpus required before coding
+- [v5.0]: Frontend picker + DB migration ship atomically (Phase 66) — deploying picker without migration causes legacy conversation crashes
 
 ### Blockers/Concerns
 
-- **HX Edit Stadium verification pending:** Stadium code path unblocked but HX Edit import verification has not been run with varied tone goals.
-- **Stadium param bleed:** Missing 15 internal firmware params causes preset state to carry over. Critical v5.0 target.
+- **Phase 63 pre-work:** Firmware param extraction script must run against `C:/Users/dsbog/Downloads/NH_STADIUM_AURA_REFLECTIONS/` corpus before Phase 63 implementation begins. Use `npx tsx scripts/extract-stadium-params.ts`.
+- **Phase 65 cache economics:** Measure per-device request volume via usage-logger.ts before splitting planner prompts. Low-volume devices (Stadium, Pod Go) may need shared "constrained-device" prompt bucket to sustain cache hits.
+- **HX Edit Stadium verification:** Stadium presets unblocked but HX Edit import not verified across varied tone goals — required as success criterion for Phase 63.
 
 ## Session Continuity
 
 Last session: 2026-03-05
-Stopped at: v5.0 milestone initialization — defining requirements
+Stopped at: Roadmap created — 6 phases, 27/27 requirements mapped, ready to plan Phase 61
 Resume file: None
-Next command: Continue requirements definition in this session
+Next command: `/gsd:plan-phase 61`

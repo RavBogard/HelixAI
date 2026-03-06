@@ -10,6 +10,7 @@
 - ✅ **v3.0 Helix Stadium Support** — Phases 31-38 (shipped 2026-03-04)
 - ✅ **v3.2 Infrastructure, Features & Audit Tooling** — Phases 42, 48-51 (shipped 2026-03-05)
 - ✅ **v4.0 Stadium Rebuild + Preset Quality Leap** — Phases 52-60 (shipped 2026-03-05)
+- 🚧 **v5.0 Device-First Architecture** — Phases 61-66 (in progress)
 
 ## Phases
 
@@ -112,6 +113,112 @@
 
 </details>
 
+### 🚧 v5.0 Device-First Architecture (In Progress)
+
+**Milestone Goal:** Rearchitect the pipeline so device identity is resolved at conversation start, every device family follows a fully isolated path (prompts, catalogs, schemas, chain rules), Stadium presets emit all 27 firmware params per amp block, and the frontend picker is the first thing a user sees.
+
+#### Phase Summary
+
+- [ ] **Phase 61: Family Router and Capabilities** — Define DeviceFamily type, resolveFamily(), and DeviceCapabilities — the type-system foundation all other phases depend on
+- [ ] **Phase 62: Catalog Isolation** — Extract per-family amp and effect catalogs, eliminate merged AMP_NAMES, close the Agoura leak at the structural level
+- [ ] **Phase 63: Stadium Firmware Parameter Completeness** — Extract all 27+ firmware params from real .hsp corpus and emit them on every Stadium amp block
+- [ ] **Phase 64: Knowledge Layer Guard Removal** — Replace 17+ boolean guard sites in chain-rules.ts, param-engine.ts, and validate.ts with DeviceCapabilities-driven dispatch
+- [ ] **Phase 65: Device-Specific Prompts** — Create per-family planner and chat prompt templates with only family-appropriate model catalogs and conversation arcs
+- [ ] **Phase 66: Frontend Picker and Database Migration** — Move device picker to conversation start, add device column to Supabase conversations table, handle legacy rows
+
+## Phase Details
+
+### Phase 61: Family Router and Capabilities
+**Goal**: The type system knows what family every device belongs to, and the application resolves family at pipeline entry — before any chat or generation begins
+**Depends on**: Phase 60 (v4.0 complete)
+**Requirements**: ROUTE-01, ROUTE-02, ROUTE-03, ROUTE-04
+**Success Criteria** (what must be TRUE):
+  1. TypeScript compiler rejects any code that handles a DeviceFamily without covering all four variants (helix, stomp, podgo, stadium)
+  2. Calling resolveFamily() with any valid DeviceTarget returns the correct DeviceFamily without a runtime error
+  3. getCapabilities() returns a DeviceCapabilities object that encodes correct block limits, DSP count, dual-amp support, and available block types for each family
+  4. Device family is resolved once at the pipeline entry point and passed forward — no downstream code calls resolveFamily() a second time
+**Plans**: TBD
+
+Plans:
+- [ ] 61-01: DeviceFamily type, resolveFamily(), getCapabilities(), DeviceCapabilities interface
+
+### Phase 62: Catalog Isolation
+**Goal**: Each device family has its own amp and effect catalog module containing only the models valid for that family — the global merged AMP_NAMES enum that allows cross-family model selection is eliminated
+**Depends on**: Phase 61
+**Requirements**: CAT-01, CAT-02, CAT-03, CAT-04, CAT-05
+**Success Criteria** (what must be TRUE):
+  1. Generating a preset for a non-Stadium device cannot produce an Agoura amp name — it is not in any enum or schema that non-Stadium paths can reach
+  2. Generating a Stadium preset cannot produce an HD2 amp name — it is not in any enum or schema that Stadium paths can reach
+  3. The global AMP_NAMES constant (or equivalent merged enum) no longer exists in the codebase
+  4. Per-family ToneIntent Zod schemas have ampName enums sourced from their respective family catalog — Claude's constrained decoding structurally cannot output a cross-family amp
+  5. Full 6-device generation test suite passes with no model-not-found errors
+**Plans**: TBD
+
+Plans:
+- [ ] 62-01: Per-family catalog modules (stadium/catalog.ts, helix/catalog.ts, stomp/catalog.ts, podgo/catalog.ts)
+- [ ] 62-02: Per-family ToneIntent schemas and getToneIntentSchema() factory, eliminate global AMP_NAMES
+
+### Phase 63: Stadium Firmware Parameter Completeness
+**Goal**: Every Stadium preset emits all 27+ firmware parameters per amp block, sourced from real .hsp corpus extraction — param bleed from previously loaded presets on hardware is eliminated
+**Depends on**: Phase 62 (for amp model IDs as source of truth)
+**Requirements**: STADPARAM-01, STADPARAM-02, STADPARAM-03, STADPARAM-04
+**Success Criteria** (what must be TRUE):
+  1. Loading a newly generated Stadium preset in HX Edit shows the correct amp model with all visible knobs set to expected values — no parameters carry over from the last preset loaded
+  2. A generated Stadium preset file contains all 27+ firmware param keys on every amp block (verified by inspecting raw .hsp JSON)
+  3. Hidden params (AmpCabPeak*, AmpCabShelf*, AmpCabZFir, Aggression, Bright, Contour, Depth, Fat, Hype) appear in every generated amp block with corpus-derived defaults
+  4. Stadium effect blocks also contain complete firmware param sets, not only amp blocks
+**Plans**: TBD
+
+Plans:
+- [ ] 63-01: Extract 27-param firmware table from .hsp corpus (median across 5+ files per Agoura model), produce families/stadium/params.ts
+- [ ] 63-02: Wire firmware params into stadium-builder.ts, verify with HX Edit import
+
+### Phase 64: Knowledge Layer Guard Removal
+**Goal**: The shared Knowledge Layer (chain-rules.ts, param-engine.ts, validate.ts) accepts DeviceCapabilities instead of a device string — the 17+ boolean guard sites (isPodGo, isStadium, isStomp) are replaced with capability field access
+**Depends on**: Phase 61 (DeviceCapabilities must exist before guards can be replaced)
+**Requirements**: KLAYER-01, KLAYER-02, KLAYER-03, KLAYER-04
+**Success Criteria** (what must be TRUE):
+  1. The strings "isPodGo", "isStadium", "isStomp" (and equivalent boolean device checks) no longer appear in chain-rules.ts, param-engine.ts, or validate.ts
+  2. Adding a hypothetical 7th device to an existing family requires changes only in the family module — no edits to chain-rules.ts, param-engine.ts, or validate.ts
+  3. Full 6-device generation test suite passes with no regressions after guard removal
+  4. Any remaining guard sites in shared code are documented in STATE.md with an explicit justification for why they remain
+**Plans**: TBD
+
+Plans:
+- [ ] 64-01: Refactor chain-rules.ts to accept DeviceCapabilities, remove guard sites
+- [ ] 64-02: Refactor param-engine.ts and validate.ts to accept DeviceCapabilities, remove guard sites, full regression test
+
+### Phase 65: Device-Specific Prompts
+**Goal**: Each device family gets its own planner prompt and chat system prompt, containing only that family's model catalog and the conversation arc appropriate to its constraints — prompt isolation is complete
+**Depends on**: Phase 62 (per-family catalogs must exist to source model lists)
+**Requirements**: PROMPT-01, PROMPT-02, PROMPT-03, PROMPT-04, PROMPT-05, PROMPT-06
+**Success Criteria** (what must be TRUE):
+  1. The Stomp chat prompt surfaces block-budget constraint framing — the user is asked what to prioritize or cut before the preset is generated
+  2. The Pod Go chat prompt surfaces slot priority and chain order framing appropriate to its 4-effect budget
+  3. The Stadium chat prompt uses Agoura-native tone vocabulary and mentions Stadium-specific capabilities (7-band Parametric EQ, dual-DSP routing)
+  4. The Helix prompt surfaces dual-DSP and dual-amp routing as available options during the interview
+  5. Each device family's planner prompt imports only its own catalog module — a grep for cross-family model names in any single prompt file returns zero results
+**Plans**: TBD
+
+Plans:
+- [ ] 65-01: Per-family chat system prompts (families/{family}/prompt.ts), parameterize getSystemPrompt(family)
+- [ ] 65-02: Per-family planner prompt sections, parameterize buildPlannerPrompt(family, device), validate cache economics per device
+
+### Phase 66: Frontend Picker and Database Migration
+**Goal**: The device picker appears before the first chat message, the selected device flows through the entire conversation and generation pipeline, and the Supabase database stores device context per conversation — including null-safe handling for all legacy rows
+**Depends on**: Phase 65 (per-family chat prompts must exist before device context activates device-specific interviews)
+**Requirements**: FRONT-01, FRONT-02, FRONT-03, FRONT-04
+**Success Criteria** (what must be TRUE):
+  1. A new user who opens the app sees the device picker before any chat input is available — they cannot start a conversation without selecting a device
+  2. The device selected at conversation start is the device used for preset generation — no opportunity for device to change silently mid-conversation
+  3. Resuming a legacy conversation (no device column value) shows the device picker rather than defaulting silently to any device
+  4. The Supabase conversations table has a device column and all existing rows have been backfilled or are handled with null-safe code paths
+**Plans**: TBD
+
+Plans:
+- [ ] 66-01: Supabase migration (add device column, backfill from preset_url heuristic), null-safe device reads in all conversation code paths
+- [ ] 66-02: Frontend device picker relocation (before chat input), device state propagation through /api/chat POST, device persistence on conversation create/resume
+
 ## Progress
 
 | Phase | Milestone | Plans | Status | Completed |
@@ -124,7 +231,13 @@
 | 31-41 | v3.0 | 12 | Complete | 2026-03-04 |
 | 42,48-51 | v3.2 | 8 | Complete | 2026-03-05 |
 | 52-60 | v4.0 | 13 | Complete | 2026-03-05 |
+| 61. Family Router | v5.0 | 0/1 | Not started | - |
+| 62. Catalog Isolation | v5.0 | 0/2 | Not started | - |
+| 63. Stadium Firmware Params | v5.0 | 0/2 | Not started | - |
+| 64. Knowledge Layer Guards | v5.0 | 0/2 | Not started | - |
+| 65. Device-Specific Prompts | v5.0 | 0/2 | Not started | - |
+| 66. Frontend Picker + DB | v5.0 | 0/2 | Not started | - |
 
 ---
-*Last updated: 2026-03-05 after v4.0 milestone*
-*Full phase details archived in `.planning/milestones/`*
+*Last updated: 2026-03-05 after v5.0 roadmap creation*
+*Full phase details for completed milestones archived in `.planning/milestones/`*

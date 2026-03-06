@@ -85,39 +85,39 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ROUTE-01 | — | Pending |
-| ROUTE-02 | — | Pending |
-| ROUTE-03 | — | Pending |
-| ROUTE-04 | — | Pending |
-| CAT-01 | — | Pending |
-| CAT-02 | — | Pending |
-| CAT-03 | — | Pending |
-| CAT-04 | — | Pending |
-| CAT-05 | — | Pending |
-| PROMPT-01 | — | Pending |
-| PROMPT-02 | — | Pending |
-| PROMPT-03 | — | Pending |
-| PROMPT-04 | — | Pending |
-| PROMPT-05 | — | Pending |
-| PROMPT-06 | — | Pending |
-| STADPARAM-01 | — | Pending |
-| STADPARAM-02 | — | Pending |
-| STADPARAM-03 | — | Pending |
-| STADPARAM-04 | — | Pending |
-| KLAYER-01 | — | Pending |
-| KLAYER-02 | — | Pending |
-| KLAYER-03 | — | Pending |
-| KLAYER-04 | — | Pending |
-| FRONT-01 | — | Pending |
-| FRONT-02 | — | Pending |
-| FRONT-03 | — | Pending |
-| FRONT-04 | — | Pending |
+| ROUTE-01 | Phase 61 | Pending |
+| ROUTE-02 | Phase 61 | Pending |
+| ROUTE-03 | Phase 61 | Pending |
+| ROUTE-04 | Phase 61 | Pending |
+| CAT-01 | Phase 62 | Pending |
+| CAT-02 | Phase 62 | Pending |
+| CAT-03 | Phase 62 | Pending |
+| CAT-04 | Phase 62 | Pending |
+| CAT-05 | Phase 62 | Pending |
+| PROMPT-01 | Phase 65 | Pending |
+| PROMPT-02 | Phase 65 | Pending |
+| PROMPT-03 | Phase 65 | Pending |
+| PROMPT-04 | Phase 65 | Pending |
+| PROMPT-05 | Phase 65 | Pending |
+| PROMPT-06 | Phase 65 | Pending |
+| STADPARAM-01 | Phase 63 | Pending |
+| STADPARAM-02 | Phase 63 | Pending |
+| STADPARAM-03 | Phase 63 | Pending |
+| STADPARAM-04 | Phase 63 | Pending |
+| KLAYER-01 | Phase 64 | Pending |
+| KLAYER-02 | Phase 64 | Pending |
+| KLAYER-03 | Phase 64 | Pending |
+| KLAYER-04 | Phase 64 | Pending |
+| FRONT-01 | Phase 66 | Pending |
+| FRONT-02 | Phase 66 | Pending |
+| FRONT-03 | Phase 66 | Pending |
+| FRONT-04 | Phase 66 | Pending |
 
 **Coverage:**
 - v5.0 requirements: 27 total
-- Mapped to phases: 0
-- Unmapped: 27 ⚠️
+- Mapped to phases: 27
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-05*
-*Last updated: 2026-03-05 after initial definition*
+*Last updated: 2026-03-05 after roadmap creation — all 27 requirements mapped*
