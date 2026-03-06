@@ -79,13 +79,23 @@ Generated presets must sound professional enough to compete with custom presets 
 - ✓ Helix Floor device ID fix (error 8309 corrected) — v4.0
 - ✓ Tech debt: spring reverb PreDelay, cabAffinity in planner prompt, system model constants — v4.0
 
+- ✓ Device-first conversation architecture — device picker at start, per-device prompt/model/chain paths — v5.0
+- ✓ Stadium firmware parameter completeness — all 27+ params from real .hsp corpus, no param bleed — v5.0
+- ✓ Device-specific planner prompts — each device has own prompt with only its model catalog — v5.0
+- ✓ Device-specific model catalogs — Stadium sees only Agoura, HD2 sees only HD2, zero cross-contamination — v5.0
+- ✓ Per-family catalog isolation — src/lib/helix/catalogs/{family}-catalog.ts with typed tuples — v5.0
+- ✓ Frontend device picker + DB migration — device column, picker UI, end-to-end device wiring — v5.0
+- ✓ Stomp prompt cache unification — helix_stomp and helix_stomp_xl share byte-identical system prompt — v5.0
+- ✓ Token control and prompt caching analysis — cost correction, per-device cache reporting, prompt size tooling — v5.0
+- ✓ Stadium Mono/Stereo effect suffix fix — firmware requires suffixed model IDs on all effect blocks — v5.0
+
 ### Active
 
-- [ ] Device-first conversation architecture — device picker moves to start of flow, separate prompt/model/chain paths per device — v5.0
-- [ ] Stadium firmware parameter completeness — extract all 27+ params from real .hsp corpus, eliminate param bleed between presets — v5.0
-- [ ] Device-specific planner prompts — each device gets its own prompt with only its model catalog, constraints, and capabilities — v5.0
-- [ ] Device-specific model catalogs — Stadium sees only Agoura amps, HD2 devices see only HD2 amps, no cross-contamination — v5.0
-- [ ] Effect combination logic (interaction params, genre substitution, cross-device validation) — deferred from v4.0
+- [ ] Expression pedal controller assignment — wah and volume blocks non-functional, EXP_PEDAL constants unused — v6.0
+- [ ] Per-model effect selection intelligence — AI prompts guide model choice within categories, not just category selection — v6.0
+- [ ] Per-device preset craft optimization — device-specific tone goals, constraints, and best practices in prompts — v6.0
+- [ ] Effect combination logic — interaction params, genre-appropriate combinations, comp→drive→mod→delay→reverb craft — v6.0
+- [ ] Preset quality validation — per-device baseline comparison, parameter audit, end-to-end tone verification — v6.0
 - [ ] Cost-aware model routing (evidence-based Haiku chat vs. Sonnet generation) — deferred from v4.0
 
 ### Out of Scope
@@ -96,21 +106,20 @@ Generated presets must sound professional enough to compete with custom presets 
 - Full pedalboard OCR (auto-detect all pedals from a single board photo) — too unreliable, per-pedal photos are the baseline
 - Parallel wet/dry routing (split/join paths) — deferred
 
-## Current Milestone: v5.0 — Device-First Architecture
+## Current Milestone: v6.0 — Preset Craft Mastery
 
-**Goal:** Rearchitect the conversation and generation pipeline so the user selects their device first, then follows a fully device-specific path — separate prompts, model catalogs, chain rules, and conversation arcs per device. Stadium gets full firmware parameter completeness (27+ params per amp, eliminating param bleed). Eliminates cross-device model contamination (Agoura leak) by design.
+**Goal:** Comprehensive audit and improvement of preset quality across all device families — fix broken expression pedal controllers (wah/volume non-functional), add per-model effect intelligence to AI prompts, optimize per-device preset craft, implement effect combination logic, and deliver significantly better out-of-box tones that compete with paid professional presets.
 
 **Target features:**
-- Device picker moves to the very start of the conversation flow
-- Each device gets its own planner prompt with only its model catalog
-- Stadium firmware parameter completeness (all hidden/internal params)
-- Device-specific conversation arcs (Stadium: dual-DSP routing, Stomp: constraint management, Pod Go: tight budget)
-- Device-specific chain rules and validation without guard-based branching
-- Clean device module architecture replacing 17+ guard sites
+- Expression pedal controller assignment for wah and volume blocks (currently completely non-functional)
+- Per-model effect selection intelligence — AI guided to pick the RIGHT model within each category, not just any model
+- Per-device preset craft optimization — device-specific tone goals, signal chain best practices, constraint handling
+- Effect combination logic — how effects interact (comp→drive gain staging, delay→reverb order, genre-appropriate choices)
+- Preset quality validation framework — per-device baseline comparison and parameter audit
 
 ## Current State
 
-All 6 devices fully supported and unblocked. The app is rebranded to **HelixTones** and supports: Helix LT, Helix Floor, Pod Go, Helix Stadium, HX Stomp, and HX Stomp XL. v4.0 delivered a major preset quality improvement through enriched prompts, per-model amp overrides, and effect intelligence. Post-v4.0 bug triage revealed Stadium presets have incomplete firmware parameter sets (12 vs 27 params) causing param bleed, and Agoura amp names leak to non-Stadium devices — both architectural issues that v5.0's device-first approach solves by design.
+All 6 devices fully supported with device-first architecture. The app is **HelixTones** and supports: Helix LT, Helix Floor, Pod Go, Helix Stadium, HX Stomp, and HX Stomp XL. v5.0 completed the device-first architecture — per-device prompts, catalogs, chain rules, frontend picker, DB migration, and Stadium Mono/Stereo suffix fix. Preset generation works end-to-end for all devices, but deep quality analysis reveals: (1) expression pedal controllers never assigned (wah/volume non-functional), (2) AI treats all effects in a category as interchangeable (no per-model guidance), (3) no effect combination intelligence, (4) no per-device craft optimization in prompts.
 
 **Shipped milestones:**
 - v1.0: Full Rebuild — planner-executor engine, LT/Floor support
@@ -122,6 +131,7 @@ All 6 devices fully supported and unblocked. The app is rebranded to **HelixTone
 - v3.1: HX Stomp/XL, HelixTones rebrand, Chat UX polish (Phases 39-41)
 - v3.2: Infrastructure, Features & Audit Tooling — token logging, Variax, donation, footer, bug fixes
 - v4.0: Stadium Rebuild + Preset Quality Leap — Stadium .hsp rebuild, planner enrichment, amp overrides, effect intelligence, architecture audit
+- v5.0: Device-First Architecture — per-device prompts/catalogs/chain-rules, frontend picker, DB migration, Stadium firmware params, Mono/Stereo suffix fix
 
 ## Context
 
@@ -187,4 +197,4 @@ Post-v4.0 bug triage (2026-03-05) revealed three architectural issues: (1) Stadi
 | **[v4.0] Stadium I/O model constants: COMPLETED** | Phase 60 moved Stadium I/O model IDs from string literals to STADIUM_CONFIG constants and centralized Helix/PodGo system model IDs | ✓ Good |
 
 ---
-*Last updated: 2026-03-05 after v5.0 milestone start*
+*Last updated: 2026-03-06 after v6.0 milestone start*
