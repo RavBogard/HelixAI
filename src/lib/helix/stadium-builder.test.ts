@@ -4,12 +4,17 @@
 // Phase 53: 5 confirmed format bugs — param encoding, block key positions, fx type mapping,
 // cab param count, missing cursor field.
 //
+// Phase 63: STADPARAM-03/04 — firmware param completeness tests.
+//
 // Reference: 11 real .hsp files from C:/Users/dsbog/Downloads/NH_STADIUM_AURA_REFLECTIONS/
 
 import { describe, it, expect } from "vitest";
 import { buildHspFile } from "./stadium-builder";
+import { resolveParameters } from "./param-engine";
+import { STADIUM_AMPS } from "./models";
 import { STADIUM_CONFIG } from "./config";
-import type { PresetSpec } from "./types";
+import type { PresetSpec, BlockSpec } from "./types";
+import type { ToneIntent } from "./tone-intent";
 
 // ---------------------------------------------------------------------------
 // Test fixture — realistic Stadium preset: gate, boost, amp, cab, delay, reverb
@@ -634,5 +639,195 @@ describe("structural comparison with real .hsp reference", () => {
     // Master has NO overrides — should NOT have snapshots array
     expect(ampParams["Master"]).not.toHaveProperty("snapshots");
     expect(ampParams["Master"]).toEqual({ value: 1.0 });
+  });
+});
+
+// ===========================================================================
+// Phase 63: STADPARAM-03 / STADPARAM-04 — firmware param completeness tests
+// ===========================================================================
+// Verifies that resolveParameters() emits the complete firmware param table
+// for Stadium amps (19-27 keys) and that AMP_DEFAULTS does NOT corrupt them.
+
+// Helper: create a minimal Stadium ToneIntent
+function makeStadiumIntent(overrides: Partial<ToneIntent> = {}): ToneIntent {
+  return {
+    ampName: "Agoura US Double Black",
+    cabName: "2x12 Double C12N",
+    guitarType: "humbucker",
+    effects: [],
+    snapshots: [
+      { name: "Clean", toneRole: "clean" },
+      { name: "Rhythm", toneRole: "crunch" },
+      { name: "Lead", toneRole: "lead" },
+      { name: "Ambient", toneRole: "ambient" },
+    ],
+    ...overrides,
+  };
+}
+
+// Helper: create a minimal BlockSpec for a Stadium amp
+function makeStadiumAmpBlock(modelName: string): BlockSpec {
+  const model = STADIUM_AMPS[modelName];
+  return {
+    type: "amp",
+    modelId: model?.id ?? "unknown",
+    modelName,
+    dsp: 0,
+    position: 2,
+    path: 0,
+    enabled: true,
+    stereo: false,
+    parameters: {},
+  };
+}
+
+// Helper: create a minimal HD2 ToneIntent for regression test
+function makeHd2Intent(): ToneIntent {
+  return {
+    ampName: "US Double Nrm",
+    cabName: "2x12 Double C12N",
+    guitarType: "humbucker",
+    effects: [],
+    snapshots: [
+      { name: "Clean", toneRole: "clean" },
+      { name: "Rhythm", toneRole: "crunch" },
+      { name: "Lead", toneRole: "lead" },
+      { name: "Ambient", toneRole: "ambient" },
+    ],
+  };
+}
+
+describe("STADPARAM-03: Stadium amp block param completeness", () => {
+  it("Agoura US Double Black amp block has 28 params after resolution", () => {
+    const chain: BlockSpec[] = [makeStadiumAmpBlock("Agoura US Double Black")];
+    const intent = makeStadiumIntent({ ampName: "Agoura US Double Black" });
+    const result = resolveParameters(chain, intent, "helix_stadium");
+    const ampParams = result[0].parameters;
+    // 14 universal + 6 standard (Drive,Bass,Mid,Treble,Master,Level) + 8 voice
+    expect(Object.keys(ampParams).length).toBe(28);
+  });
+
+  it("Agoura US Princess 76 amp block has 19 params after resolution", () => {
+    const chain: BlockSpec[] = [makeStadiumAmpBlock("Agoura US Princess 76")];
+    const intent = makeStadiumIntent({ ampName: "Agoura US Princess 76" });
+    const result = resolveParameters(chain, intent, "helix_stadium");
+    const ampParams = result[0].parameters;
+    expect(Object.keys(ampParams).length).toBe(19);
+  });
+
+  it("hidden firmware params (AmpCabPeak2Fc, Hype, ZPrePost, Sag, Ripple) present on every Stadium amp", () => {
+    const hiddenParams = ["AmpCabPeak2Fc", "Hype", "ZPrePost", "Sag", "Ripple"];
+    for (const [modelName] of Object.entries(STADIUM_AMPS)) {
+      const chain: BlockSpec[] = [makeStadiumAmpBlock(modelName)];
+      const intent = makeStadiumIntent({ ampName: modelName });
+      const result = resolveParameters(chain, intent, "helix_stadium");
+      const ampParams = result[0].parameters;
+      for (const param of hiddenParams) {
+        expect(ampParams).toHaveProperty(param);
+      }
+    }
+  });
+
+  it("no ChVol param on any Stadium amp block", () => {
+    for (const [modelName] of Object.entries(STADIUM_AMPS)) {
+      const chain: BlockSpec[] = [makeStadiumAmpBlock(modelName)];
+      const intent = makeStadiumIntent({ ampName: modelName });
+      const result = resolveParameters(chain, intent, "helix_stadium");
+      const ampParams = result[0].parameters;
+      expect(ampParams).not.toHaveProperty("ChVol");
+    }
+  });
+
+  it("boolean voice params preserved as booleans (Revv Ch3 Purple: Fat=true, Bright=false, Contour=false)", () => {
+    const chain: BlockSpec[] = [makeStadiumAmpBlock("Agoura Revv Ch3 Purple")];
+    const intent = makeStadiumIntent({ ampName: "Agoura Revv Ch3 Purple" });
+    const result = resolveParameters(chain, intent, "helix_stadium");
+    const ampParams = result[0].parameters;
+    expect(ampParams.Fat).toBe(true);
+    expect(typeof ampParams.Fat).toBe("boolean");
+    expect(ampParams.Bright).toBe(false);
+    expect(typeof ampParams.Bright).toBe("boolean");
+    expect(ampParams.Contour).toBe(false);
+    expect(typeof ampParams.Contour).toBe("boolean");
+  });
+
+  it("every Stadium amp has at least 19 params and at most 28 params", () => {
+    for (const [modelName] of Object.entries(STADIUM_AMPS)) {
+      const chain: BlockSpec[] = [makeStadiumAmpBlock(modelName)];
+      const intent = makeStadiumIntent({ ampName: modelName });
+      const result = resolveParameters(chain, intent, "helix_stadium");
+      const paramCount = Object.keys(result[0].parameters).length;
+      expect(paramCount).toBeGreaterThanOrEqual(19);
+      expect(paramCount).toBeLessThanOrEqual(28);
+    }
+  });
+});
+
+describe("STADPARAM-04: Stadium effect block completeness", () => {
+  it("Stadium effect blocks emit all of their model defaultParams keys", () => {
+    // Use a distortion block (Minotaur) — should get its specific params
+    const chain: BlockSpec[] = [
+      makeStadiumAmpBlock("Agoura US Double Black"),
+      {
+        type: "distortion",
+        modelId: "HD2_DistMinotaur",
+        modelName: "Minotaur",
+        dsp: 0,
+        position: 1,
+        path: 0,
+        enabled: true,
+        stereo: false,
+        parameters: {},
+      },
+    ];
+    const intent = makeStadiumIntent({ ampName: "Agoura US Double Black" });
+    const result = resolveParameters(chain, intent, "helix_stadium");
+    const distBlock = result.find(b => b.type === "distortion");
+    expect(distBlock).toBeDefined();
+    // Minotaur has Gain, Treble, Output
+    expect(distBlock!.parameters).toHaveProperty("Gain");
+    expect(distBlock!.parameters).toHaveProperty("Treble");
+    expect(distBlock!.parameters).toHaveProperty("Output");
+  });
+});
+
+describe("HD2 regression: AMP_DEFAULTS still applied for non-Stadium amps", () => {
+  it("HD2 amp (US Double Nrm) still gets ChVol from AMP_DEFAULTS", () => {
+    const chain: BlockSpec[] = [{
+      type: "amp",
+      modelId: "HD2_AmpUSDoubleNrm",
+      modelName: "US Double Nrm",
+      dsp: 0,
+      position: 0,
+      path: 0,
+      enabled: true,
+      stereo: false,
+      parameters: {},
+    }];
+    const intent = makeHd2Intent();
+    const result = resolveParameters(chain, intent);
+    const ampParams = result[0].parameters;
+    // HD2 amps must still get ChVol from AMP_DEFAULTS
+    expect(ampParams).toHaveProperty("ChVol");
+    expect(ampParams.ChVol).toBe(0.70);
+  });
+
+  it("HD2 amp (US Double Nrm) gets Sag from AMP_DEFAULTS (not 0)", () => {
+    const chain: BlockSpec[] = [{
+      type: "amp",
+      modelId: "HD2_AmpUSDoubleNrm",
+      modelName: "US Double Nrm",
+      dsp: 0,
+      position: 0,
+      path: 0,
+      enabled: true,
+      stereo: false,
+      parameters: {},
+    }];
+    const intent = makeHd2Intent();
+    const result = resolveParameters(chain, intent);
+    const ampParams = result[0].parameters;
+    // HD2 clean amps get Sag: 0.60 from AMP_DEFAULTS
+    expect(ampParams.Sag).toBe(0.60);
   });
 });

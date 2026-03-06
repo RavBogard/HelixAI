@@ -1,4 +1,4 @@
-import { getAllModels } from "./models";
+import { getAllModels, STADIUM_AMPS } from "./models";
 import type { PresetSpec, DeviceTarget } from "./types";
 import { isPodGo, isStadium, isStomp } from "./types";
 import { STADIUM_CONFIG, STOMP_CONFIG, HELIX_SYSTEM_MODELS, POD_GO_SYSTEM_MODELS } from "./config";
@@ -126,6 +126,12 @@ export function validatePresetSpec(spec: PresetSpec, device?: DeviceTarget): voi
         if (value < 1000.0 || value > 20100.0) {
           throw new Error(`Parameter '${key}' value ${value} out of range for block '${block.modelName}' (expected 1000.0-20100.0 Hz)`);
         }
+        continue;
+      }
+
+      // Stadium amp blocks: firmware params use raw Hz/dB/integer values — skip 0-1 check
+      // (corpus-verified tables contain AmpCabPeak2Fc: 1000, Level: -10, Channel: 1, etc.)
+      if (block.type === "amp" && STADIUM_AMPS[block.modelName]) {
         continue;
       }
 
@@ -319,6 +325,11 @@ export function validateAndFixPresetSpec(spec: PresetSpec): ValidationResult {
           block.parameters[key] = 8000.0;
           fixed = true;
         }
+        continue;
+      }
+
+      // Stadium amp blocks: firmware params use raw Hz/dB/integer values — skip clamping
+      if (block.type === "amp" && STADIUM_AMPS[block.modelName]) {
         continue;
       }
 
