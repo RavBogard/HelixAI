@@ -139,7 +139,9 @@ function makeStadiumFixture(): PresetSpec {
           block3: true,  // delay on
           block4: false, // reverb off
         },
-        parameterOverrides: {},
+        parameterOverrides: {
+          block2: { Bass: 0.40 },  // amp: clean bass setting
+        },
       },
       {
         name: "Drive",
@@ -152,7 +154,9 @@ function makeStadiumFixture(): PresetSpec {
           block3: false, // delay off
           block4: false, // reverb off
         },
-        parameterOverrides: {},
+        parameterOverrides: {
+          block2: { Bass: 0.70 },  // amp: drive bass boost
+        },
       },
     ],
   };
@@ -605,5 +609,30 @@ describe("structural comparison with real .hsp reference", () => {
     const reverbParams = reverbHarness["params"] as Record<string, unknown>;
     expect(reverbParams["Trails"]).toEqual({ value: true });
     expect(reverbParams["EvtIdx"]).toEqual({ value: -1 });
+  });
+
+  // Test 13: Per-snapshot parameter overrides are embedded inline on params
+  // Real .hsp files: "Bass": { "value": 0.64, "snapshots": [0.40, 0.70, null, null, ...] }
+  it("amp params with snapshot overrides include inline snapshots array", () => {
+    const fixture = makeStadiumFixture();
+    const result = buildHspFile(fixture);
+    const flow0 = result.json.preset.flow[0] as Record<string, unknown>;
+
+    // Amp at b05
+    const b05 = flow0["b05"] as Record<string, unknown>;
+    const ampSlot = (b05["slot"] as Array<Record<string, unknown>>)[0]!;
+    const ampParams = ampSlot["params"] as Record<string, Record<string, unknown>>;
+
+    // Bass has overrides in both snapshots (0.40, 0.70) — should have snapshots array
+    expect(ampParams["Bass"]).toHaveProperty("snapshots");
+    const bassSnaps = ampParams["Bass"]["snapshots"] as (number | null)[];
+    expect(bassSnaps[0]).toBe(0.40);  // Clean snapshot override
+    expect(bassSnaps[1]).toBe(0.70);  // Drive snapshot override
+    // Remaining 6 snapshot slots should be null (no snapshot defined)
+    expect(bassSnaps.slice(2)).toEqual([null, null, null, null, null, null]);
+
+    // Master has NO overrides — should NOT have snapshots array
+    expect(ampParams["Master"]).not.toHaveProperty("snapshots");
+    expect(ampParams["Master"]).toEqual({ value: 1.0 });
   });
 });

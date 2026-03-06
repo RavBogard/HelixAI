@@ -404,9 +404,42 @@ function buildFlowBlock(
 
   // STAD-03 fix: Build slot params using { value: X } format — NO access field
   // Real .hsp files use only { "value": X } — zero occurrences of "access" anywhere
+  //
+  // Per-snapshot parameter overrides: real .hsp files store snapshot values inline
+  // on each param, e.g. "Drive": { "value": 0.5, "snapshots": [0.6, 0.6, 0.18, null, ...] }
+  // The snapshot-engine generates these as parameterOverrides[blockKey][paramName] = value
+  const nonCabBlocks = spec.signalChain
+    .filter(b => b.type !== "cab")
+    .sort((a, b) => a.position - b.position);
+  const blockIndex = nonCabBlocks.findIndex(b => b === block);
+  const blockStateKey = block.type === "cab" ? null : (blockIndex >= 0 ? `block${blockIndex}` : null);
+
   const slotParams: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(block.parameters)) {
-    slotParams[key] = { value };
+    // Check if any snapshot overrides this parameter
+    if (blockStateKey && spec.snapshots.length > 0) {
+      const snapValues: (number | boolean | null)[] = [];
+      let hasOverride = false;
+      for (let i = 0; i < STADIUM_CONFIG.STADIUM_MAX_SNAPSHOTS; i++) {
+        const snap: SnapshotSpec | undefined = spec.snapshots[i];
+        if (snap?.parameterOverrides?.[blockStateKey]?.[key] !== undefined) {
+          snapValues.push(snap.parameterOverrides[blockStateKey][key]);
+          hasOverride = true;
+        } else if (snap && snap.blockStates && blockStateKey in snap.blockStates) {
+          // Valid snapshot but no override for this param — use base value
+          snapValues.push(value as number);
+        } else {
+          snapValues.push(null);
+        }
+      }
+      if (hasOverride) {
+        slotParams[key] = { value, snapshots: snapValues };
+      } else {
+        slotParams[key] = { value };
+      }
+    } else {
+      slotParams[key] = { value };
+    }
   }
 
   // Stadium cabs require "WithPan" suffix on model ID — confirmed across all 11 real .hsp files
