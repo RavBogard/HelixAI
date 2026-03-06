@@ -10,7 +10,8 @@
 - ✅ **v3.0 Helix Stadium Support** — Phases 31-38 (shipped 2026-03-04)
 - ✅ **v3.2 Infrastructure, Features & Audit Tooling** — Phases 42, 48-51 (shipped 2026-03-05)
 - ✅ **v4.0 Stadium Rebuild + Preset Quality Leap** — Phases 52-60 (shipped 2026-03-05)
-- 🚧 **v5.0 Device-First Architecture** — Phases 61-69 (in progress, Phase 69 gap closure complete)
+- ✅ **v5.0 Device-First Architecture** — Phases 61-69 (shipped 2026-03-06)
+- 🚧 **v6.0 Preset Craft Mastery** — Phases 70-74 (in progress)
 
 ## Phases
 
@@ -289,6 +290,90 @@ Plans:
 - [x] 69-01-PLAN.md — Fix Stomp maxFx values in planner.ts (isXL ? 5 : 2), update REQUIREMENTS.md traceability table
 - [x] 69-02-PLAN.md — Create retroactive VERIFICATION.md for phases 62, 63, 64, 65
 
+### v6.0 Preset Craft Mastery
+
+**Milestone Goal:** Comprehensive audit and improvement of preset quality across all device families — fix broken expression pedal controllers (wah/volume non-functional), add per-model effect intelligence to AI prompts, implement effect combination logic, optimize per-device preset craft, and deliver significantly better out-of-box tones.
+
+#### Phase Summary
+
+- [ ] **Phase 70: Expression Pedal Controller Assignment** — Fix P0 hardware bug: wah and volume blocks get @controller entries so expression pedals actually work on hardware
+- [ ] **Phase 71: Per-Model Effect Intelligence** — Genre-aware delay/reverb/wah model selection guidance in prompts + effectParamOverrides for models with known bad defaults
+- [ ] **Phase 72: Effect Combination Logic** — Deterministic cross-effect parameter interactions: wah+comp threshold, high-gain gate placement, delay+reverb balance, priority ordering for device budgets
+- [ ] **Phase 73: Per-Device Craft Optimization** — Device-specific tone optimization in both prompts (creative direction) and code (hard limit enforcement) for Stomp, Pod Go, Helix, and Stadium
+- [ ] **Phase 74: Quality Validation** — Non-throwing validatePresetQuality() advisory gate, per-device baseline comparison, regression detection
+
+### Phase 70: Expression Pedal Controller Assignment
+
+**Goal:** Fix the P0 silent hardware bug where wah and volume blocks are completely non-functional — pressing the expression pedal does nothing because @controller entries are never emitted. After this phase, wah blocks sweep when EXP pedal is pressed and volume blocks control level.
+**Depends on:** Phase 69 (v5.0 complete)
+**Requirements:** EXP-01, EXP-02, EXP-03, EXP-04, EXP-05
+**Success Criteria** (what must be TRUE):
+  1. Loading a generated preset with a wah block on Helix LT and pressing EXP pedal sweeps the wah filter — pedal is not silent
+  2. Volume blocks have @controller entries mapping Position/Volume to expression pedal — volume pedal functions on hardware
+  3. Pod Go presets emit only EXP1 assignments (1 physical pedal); Stadium presets emit zero EXP entries (0 physical pedals)
+  4. No EXP controller assignment conflicts with any snapshot controller assignment — snapshot-exclusion guard prevents collision
+  5. EXP @min/@max values are musically appropriate — wah sweep 0.0-1.0, volume heel-down not silent
+**Plans:** TBD
+
+### Phase 71: Per-Model Effect Intelligence
+
+**Goal:** The AI selects the RIGHT effect model for the genre, not just any model in the category. Delay, reverb, and wah prompts include per-genre model recommendations. Models with known bad defaults get effectParamOverrides. All guidance is in the static system prompt to preserve cache hit rates.
+**Depends on:** Phase 70 (expression pedal types may inform which models need guidance)
+**Requirements:** INTEL-01, INTEL-02, INTEL-03, INTEL-04, INTEL-05
+**Success Criteria** (what must be TRUE):
+  1. Blues presets produce Transistor Tape or Bucket Brigade delay in 7+ of 10 runs — not random delay selection
+  2. Country presets produce '63 Spring or Spring reverb in 7+ of 10 runs — genre-defining reverb choice
+  3. Ambient presets produce Ganymede reverb and Heliosphere/Adriatic delay in 6+ of 10 runs
+  4. Effect model guidance is in the static system prompt (cache_control: ephemeral) — not in the dynamic user message
+  5. Shimmer reverb (Ganymede) default Mix is corrected via effectParamOverrides — not the raw over-wet default
+**Plans:** TBD
+
+### Phase 72: Effect Combination Logic
+
+**Goal:** Effects interact intelligently instead of being independent islands. Wah+compressor threshold is reduced, high-gain tones omit compressor and place gate before amp, delay+reverb mix is balanced to prevent wash. All combination rules have priority ordering so Pod Go's 4-effect budget doesn't break musical intent.
+**Depends on:** Phase 71 (per-model overrides should be stable before adding cross-effect interactions)
+**Requirements:** COMBO-01, COMBO-02, COMBO-03, COMBO-04
+**Success Criteria** (what must be TRUE):
+  1. Wah + compressor presets have compressor Threshold at least 0.08 lower than same preset without wah — prevents over-compression
+  2. High-gain/metal presets place noise gate before amp and omit compressor — no squeezed dynamics
+  3. Delay + reverb presets have reverb Mix at least 0.05 lower than reverb-only presets — prevents wash
+  4. Pod Go presets with combination rules still fit within 4-effect budget — priority ordering ensures essential effects survive truncation
+**Plans:** TBD
+
+### Phase 73: Per-Device Craft Optimization
+
+**Goal:** Each device family's presets are optimized for its specific capabilities and constraints. Stomp presets maximize variety in 6 blocks, Pod Go presets intelligently prioritize in 4 effects, Helix presets leverage dual-DSP capacity, and craft guidance is encoded in both prompts and code.
+**Depends on:** Phase 72 (combination rules should be stable before per-device tuning)
+**Requirements:** CRAFT-01, CRAFT-02, CRAFT-03, CRAFT-04
+**Success Criteria** (what must be TRUE):
+  1. Stomp presets consistently produce 4-6 effects that maximize tonal variety within budget — not 2 effects leaving blocks unused
+  2. Pod Go presets intelligently prioritize effects based on genre — delay and reverb both present for ambient, drive prioritized for rock
+  3. Helix Floor/LT presets use richer effect chains than constrained devices — more creative routing, more effects
+  4. Per-device craft is encoded in both planner prompts (creative direction) and chain-rules code (hard limit enforcement) — no prompt-only guidelines that can be violated
+**Plans:** TBD
+
+### Phase 74: Quality Validation
+
+**Goal:** Every generated preset passes through a non-throwing quality validation gate that catches suboptimal parameter choices (over-wet reverb, missing cab filtering, snapshot level imbalance) and logs warnings for analysis. Per-device baselines ensure changes improve — not regress — preset quality.
+**Depends on:** Phase 73 (validates complete output of all prior phases)
+**Requirements:** QUAL-01, QUAL-02, QUAL-03
+**Success Criteria** (what must be TRUE):
+  1. validatePresetQuality() with reverb Mix 0.80 returns non-empty QualityWarning[] without throwing — advisory, not blocking
+  2. validatePresetQuality() with a well-formed clean preset returns empty array — no false positives
+  3. Presets with quality warnings still download successfully — warnings are logged, never block the user
+  4. Running 36-preset baseline generator before and after v6.0 shows measurable improvement in quality metrics
+**Plans:** TBD
+
+## Progress (v6.0)
+
+| Phase | Milestone | Plans | Status | Completed |
+|-------|-----------|-------|--------|-----------|
+| 70. Expression Pedal | v6.0 | TBD | Pending | — |
+| 71. Effect Intelligence | v6.0 | TBD | Pending | — |
+| 72. Effect Combinations | v6.0 | TBD | Pending | — |
+| 73. Per-Device Craft | v6.0 | TBD | Pending | — |
+| 74. Quality Validation | v6.0 | TBD | Pending | — |
+
 ---
-*Last updated: 2026-03-06 after Phase 69 completion*
+*Last updated: 2026-03-06 after v6.0 roadmap creation*
 *Full phase details for completed milestones archived in `.planning/milestones/`*

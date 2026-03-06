@@ -77,32 +77,32 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| EXP-01 | — | Pending |
-| EXP-02 | — | Pending |
-| EXP-03 | — | Pending |
-| EXP-04 | — | Pending |
-| EXP-05 | — | Pending |
-| INTEL-01 | — | Pending |
-| INTEL-02 | — | Pending |
-| INTEL-03 | — | Pending |
-| INTEL-04 | — | Pending |
-| INTEL-05 | — | Pending |
-| COMBO-01 | — | Pending |
-| COMBO-02 | — | Pending |
-| COMBO-03 | — | Pending |
-| COMBO-04 | — | Pending |
-| CRAFT-01 | — | Pending |
-| CRAFT-02 | — | Pending |
-| CRAFT-03 | — | Pending |
-| CRAFT-04 | — | Pending |
-| QUAL-01 | — | Pending |
-| QUAL-02 | — | Pending |
-| QUAL-03 | — | Pending |
+| EXP-01 | Phase 70 | Pending |
+| EXP-02 | Phase 70 | Pending |
+| EXP-03 | Phase 70 | Pending |
+| EXP-04 | Phase 70 | Pending |
+| EXP-05 | Phase 70 | Pending |
+| INTEL-01 | Phase 71 | Pending |
+| INTEL-02 | Phase 71 | Pending |
+| INTEL-03 | Phase 71 | Pending |
+| INTEL-04 | Phase 71 | Pending |
+| INTEL-05 | Phase 71 | Pending |
+| COMBO-01 | Phase 72 | Pending |
+| COMBO-02 | Phase 72 | Pending |
+| COMBO-03 | Phase 72 | Pending |
+| COMBO-04 | Phase 72 | Pending |
+| CRAFT-01 | Phase 73 | Pending |
+| CRAFT-02 | Phase 73 | Pending |
+| CRAFT-03 | Phase 73 | Pending |
+| CRAFT-04 | Phase 73 | Pending |
+| QUAL-01 | Phase 74 | Pending |
+| QUAL-02 | Phase 74 | Pending |
+| QUAL-03 | Phase 74 | Pending |
 
 **Coverage:**
 - v6.0 requirements: 21 total
-- Mapped to phases: 0
-- Unmapped: 21 ⚠️
+- Mapped to phases: 21
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-06*
