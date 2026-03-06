@@ -123,7 +123,7 @@
 - [ ] **Phase 62: Catalog Isolation** — Extract per-family amp and effect catalogs, eliminate merged AMP_NAMES, close the Agoura leak at the structural level
 - [ ] **Phase 63: Stadium Firmware Parameter Completeness** — Extract all 27+ firmware params from real .hsp corpus and emit them on every Stadium amp block
 - [ ] **Phase 64: Knowledge Layer Guard Removal** — Replace 17+ boolean guard sites in chain-rules.ts, param-engine.ts, and validate.ts with DeviceCapabilities-driven dispatch
-- [ ] **Phase 65: Device-Specific Prompts** — Create per-family planner and chat prompt templates with only family-appropriate model catalogs and conversation arcs
+- [x] **Phase 65: Device-Specific Prompts** — Create per-family planner and chat prompt templates with only family-appropriate model catalogs and conversation arcs
 - [ ] **Phase 66: Frontend Picker and Database Migration** — Move device picker to conversation start, add device column to Supabase conversations table, handle legacy rows
 
 ## Phase Details
@@ -201,8 +201,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 65-01-PLAN.md — Shared composable prompt sections, per-family prompt modules (helix/stomp/podgo/stadium), and prompt router
-- [ ] 65-02-PLAN.md — Wire API routes to per-family prompts, delete monolithic functions, add device to usage logger, per-family prompt tests
+- [x] 65-01-PLAN.md — Shared composable prompt sections, per-family prompt modules (helix/stomp/podgo/stadium), and prompt router
+- [x] 65-02-PLAN.md — Wire API routes to per-family prompts, delete monolithic functions, add device to usage logger, per-family prompt tests
 
 ### Phase 66: Frontend Picker and Database Migration
 **Goal**: The device picker appears before the first chat message, the selected device flows through the entire conversation and generation pipeline, and the Supabase database stores device context per conversation — including null-safe handling for all legacy rows
@@ -235,9 +235,9 @@ Plans:
 | 62. Catalog Isolation | v5.0 | 0/2 | Not started | - |
 | 63. Stadium Firmware Params | v5.0 | 0/2 | Not started | - |
 | 64. Knowledge Layer Guards | v5.0 | 0/2 | Not started | - |
-| 65. Device-Specific Prompts | v5.0 | 0/2 | Planned | - |
+| 65. Device-Specific Prompts | v5.0 | 2/2 | Complete | 2026-03-06 |
 | 66. Frontend Picker + DB | v5.0 | 0/2 | Not started | - |
 
 ---
-*Last updated: 2026-03-05 after v5.0 roadmap creation*
+*Last updated: 2026-03-06 after Phase 65 completion*
 *Full phase details for completed milestones archived in `.planning/milestones/`*

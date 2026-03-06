@@ -24,12 +24,12 @@ Requirements for v5.0 Device-First Architecture. Each maps to roadmap phases.
 
 ### Device-Specific Prompts
 
-- [ ] **PROMPT-01**: Each device family has its own planner prompt template with only its model catalog, constraints, and capabilities
-- [ ] **PROMPT-02**: Each device family has its own chat system prompt with device-appropriate conversation arc
-- [ ] **PROMPT-03**: Stomp prompt emphasizes block-budget management ("what do you cut?" constraint conversation)
-- [ ] **PROMPT-04**: Pod Go prompt emphasizes slot priority and regimented chain order
-- [ ] **PROMPT-05**: Stadium prompt uses Agoura-native tone vocabulary and references Stadium-specific features (7-band Parametric EQ)
-- [ ] **PROMPT-06**: Helix prompt leverages full dual-DSP capabilities and dual-amp routing options
+- [x] **PROMPT-01**: Each device family has its own planner prompt template with only its model catalog, constraints, and capabilities
+- [x] **PROMPT-02**: Each device family has its own chat system prompt with device-appropriate conversation arc
+- [x] **PROMPT-03**: Stomp prompt emphasizes block-budget management ("what do you cut?" constraint conversation)
+- [x] **PROMPT-04**: Pod Go prompt emphasizes slot priority and regimented chain order
+- [x] **PROMPT-05**: Stadium prompt uses Agoura-native tone vocabulary and references Stadium-specific features (7-band Parametric EQ)
+- [x] **PROMPT-06**: Helix prompt leverages full dual-DSP capabilities and dual-amp routing options
 
 ### Stadium Firmware Params
 
@@ -94,12 +94,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CAT-03 | Phase 62 | Pending |
 | CAT-04 | Phase 62 | Pending |
 | CAT-05 | Phase 62 | Pending |
-| PROMPT-01 | Phase 65 | Pending |
-| PROMPT-02 | Phase 65 | Pending |
-| PROMPT-03 | Phase 65 | Pending |
-| PROMPT-04 | Phase 65 | Pending |
-| PROMPT-05 | Phase 65 | Pending |
-| PROMPT-06 | Phase 65 | Pending |
+| PROMPT-01 | Phase 65 | Complete |
+| PROMPT-02 | Phase 65 | Complete |
+| PROMPT-03 | Phase 65 | Complete |
+| PROMPT-04 | Phase 65 | Complete |
+| PROMPT-05 | Phase 65 | Complete |
+| PROMPT-06 | Phase 65 | Complete |
 | STADPARAM-01 | Phase 63 | Pending |
 | STADPARAM-02 | Phase 63 | Pending |
 | STADPARAM-03 | Phase 63 | Pending |
@@ -120,4 +120,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-03-05*
-*Last updated: 2026-03-05 after roadmap creation — all 27 requirements mapped*
+*Last updated: 2026-03-06 after Phase 65 completion — PROMPT-01 through PROMPT-06 complete*
