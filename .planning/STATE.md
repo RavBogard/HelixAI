@@ -2,7 +2,7 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Device-First Architecture
-status: in_progress
+status: complete
 last_updated: "2026-03-06"
 progress:
   total_phases: 8
