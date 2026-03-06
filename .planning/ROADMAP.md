@@ -232,7 +232,7 @@ Plans:
 | 42,48-51 | v3.2 | 8 | Complete | 2026-03-05 |
 | 52-60 | v4.0 | 13 | Complete | 2026-03-05 |
 | 61. Family Router | v5.0 | Complete    | 2026-03-06 | 2026-03-06 |
-| 62. Catalog Isolation | v5.0 | 0/2 | Not started | - |
+| 62. Catalog Isolation | 1/2 | In Progress|  | - |
 | 63. Stadium Firmware Params | v5.0 | 0/2 | Not started | - |
 | 64. Knowledge Layer Guards | v5.0 | 0/2 | Not started | - |
 | 65. Device-Specific Prompts | v5.0 | 0/2 | Not started | - |
