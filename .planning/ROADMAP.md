@@ -214,11 +214,11 @@ Plans:
   2. The device selected at conversation start is the device used for preset generation — no opportunity for device to change silently mid-conversation
   3. Resuming a legacy conversation (no device column value) shows the device picker rather than defaulting silently to any device
   4. The Supabase conversations table has a device column and all existing rows have been backfilled or are handled with null-safe code paths
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 66-01: Supabase migration (add device column, backfill from preset_url heuristic), null-safe device reads in all conversation code paths
-- [ ] 66-02: Frontend device picker relocation (before chat input), device state propagation through /api/chat POST, device persistence on conversation create/resume
+- [ ] 66-01-PLAN.md — State variables (deviceLocked, needsDevicePicker), DEVICE_OPTIONS constant, null-safe loadConversation, startOver reset, backfill migration SQL documentation
+- [ ] 66-02-PLAN.md — Welcome screen device picker, device lock on first message, device in /api/chat POST body, readyToGenerate Generate button, MAINTENANCE_MODE off, human verification
 
 ## Progress
 
@@ -257,5 +257,5 @@ Plans:
 - [ ] 67-02-PLAN.md — Replace TODO placeholder with amp-cab pairing table, cross-family schema/prompt integration tests
 
 ---
-*Last updated: 2026-03-06 after planning Phase 67*
+*Last updated: 2026-03-06 after planning Phase 66*
 *Full phase details for completed milestones archived in `.planning/milestones/`*
