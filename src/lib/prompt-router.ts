@@ -3,6 +3,8 @@
 // API routes import from this router, not from individual family files.
 
 import type { DeviceTarget } from "@/lib/helix/types";
+import { resolveFamily } from "@/lib/helix";
+import type { DeviceFamily } from "@/lib/helix";
 import {
   buildPlannerPrompt as helixPlannerPrompt,
   getSystemPrompt as helixChatPrompt,
@@ -20,28 +22,7 @@ import {
   getSystemPrompt as stadiumChatPrompt,
 } from "./families/stadium/prompt";
 
-/** Device family grouping — maps multiple DeviceTargets to a single prompt module. */
-export type DeviceFamily = "helix" | "stomp" | "podgo" | "stadium";
-
-// TODO(Phase61): replace with canonical resolveFamily() from @/lib/helix/family-router
-/**
- * Resolve a DeviceTarget to its DeviceFamily.
- * Inline implementation until Phase 61 ships the canonical version.
- */
-function resolveFamily(device: DeviceTarget): DeviceFamily {
-  switch (device) {
-    case "helix_lt":
-    case "helix_floor":
-      return "helix";
-    case "helix_stomp":
-    case "helix_stomp_xl":
-      return "stomp";
-    case "pod_go":
-      return "podgo";
-    case "helix_stadium":
-      return "stadium";
-  }
-}
+export type { DeviceFamily };
 
 /**
  * Get the per-family planner system prompt for a device.

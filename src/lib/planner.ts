@@ -5,8 +5,8 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { ToneIntentSchema, getModelListForPrompt, VARIAX_MODEL_NAMES } from "@/lib/helix";
-import type { ToneIntent, DeviceTarget } from "@/lib/helix";
+import { getToneIntentSchema, getModelListForPrompt, VARIAX_MODEL_NAMES, getCapabilities } from "@/lib/helix";
+import type { ToneIntent, DeviceTarget, DeviceFamily } from "@/lib/helix";
 import { logUsage, estimateClaudeCost } from "@/lib/usage-logger";
 import { getFamilyPlannerPrompt } from "@/lib/prompt-router";
 
@@ -14,7 +14,7 @@ import { getFamilyPlannerPrompt } from "@/lib/prompt-router";
  * Call Claude Planner to generate a ToneIntent from conversation history.
  *
  * Uses structured output (output_config with zodOutputFormat) so Claude's
- * constrained decoding guarantees valid JSON matching ToneIntentSchema.
+ * constrained decoding guarantees valid JSON matching the family-specific ToneIntent schema.
  * Belt-and-suspenders: Zod validates the response after parsing to catch
  * any constraints that JSON Schema cannot express (min/max/minItems).
  *
@@ -26,6 +26,7 @@ import { getFamilyPlannerPrompt } from "@/lib/prompt-router";
 export async function callClaudePlanner(
   messages: Array<{ role: string; content: string }>,
   device?: DeviceTarget,
+  family?: DeviceFamily,
   toneContext?: string,
 ): Promise<ToneIntent> {
   const apiKey = process.env.CLAUDE_API_KEY;
@@ -33,7 +34,8 @@ export async function callClaudePlanner(
 
   const client = new Anthropic({ apiKey });
   const effectiveDevice = device ?? "helix_lt";
-  const modelList = getModelListForPrompt(effectiveDevice);
+  const caps = getCapabilities(effectiveDevice);
+  const modelList = getModelListForPrompt(caps);
   const systemPrompt = getFamilyPlannerPrompt(effectiveDevice, modelList);
 
   // Concatenate conversation history into a single user message
@@ -60,7 +62,7 @@ export async function callClaudePlanner(
     ],
     messages: [{ role: "user", content: userContent }],
     output_config: {
-      format: zodOutputFormat(ToneIntentSchema),
+      format: zodOutputFormat(getToneIntentSchema(family ?? "helix")),
     },
   });
 
@@ -118,5 +120,5 @@ export async function callClaudePlanner(
   }
 
   // Belt-and-suspenders: Zod validates all remaining constraints
-  return ToneIntentSchema.parse(raw);
+  return getToneIntentSchema(family ?? "helix").parse(raw);
 }

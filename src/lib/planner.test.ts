@@ -11,9 +11,10 @@
 import { describe, it, expect } from "vitest";
 import { getFamilyPlannerPrompt } from "@/lib/prompt-router";
 import { getModelListForPrompt } from "@/lib/helix";
+import { getCapabilities } from "@/lib/helix";
 
 describe("getFamilyPlannerPrompt (helix)", () => {
-  const modelList = getModelListForPrompt("helix_lt");
+  const modelList = getModelListForPrompt(getCapabilities("helix_lt"));
   const prompt = getFamilyPlannerPrompt("helix_lt", modelList);
 
   describe("enrichment sections", () => {
@@ -83,7 +84,7 @@ describe("getFamilyPlannerPrompt (helix)", () => {
     });
 
     it("Test 10: Pod Go prompt contains enrichment sections before DEVICE RESTRICTION", () => {
-      const podGoModelList = getModelListForPrompt("pod_go");
+      const podGoModelList = getModelListForPrompt(getCapabilities("pod_go"));
       const podGoPrompt = getFamilyPlannerPrompt("pod_go", podGoModelList);
 
       expect(podGoPrompt).toContain("## Gain-Staging Intelligence");

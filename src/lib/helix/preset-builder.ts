@@ -162,15 +162,15 @@ function buildDsp(blocks: BlockSpec[], dspIndex: number, isDualAmp?: boolean, us
     if (block.type === "cab") {
       const cabKey = `cab${cabIndex}`;
       // Determine mic from parameters or use smart default (0=SM57, 6=Ribbon121)
-      const mic = block.parameters["Mic"] ?? 0;
+      const mic = Number(block.parameters["Mic"] ?? 0);
       const cabParams = { ...block.parameters };
       delete cabParams["Mic"]; // Mic is a top-level @mic, not a parameter
       dsp[cabKey] = {
         "@model": block.modelId,
         "@enabled": block.enabled,
         "@mic": mic,
-        LowCut: cabParams.LowCut ?? 80.0,   // Hz default — required field
-        HighCut: cabParams.HighCut ?? 8000.0, // Hz default — required field
+        LowCut: Number(cabParams.LowCut ?? 80.0),   // Hz default — required field
+        HighCut: Number(cabParams.HighCut ?? 8000.0), // Hz default — required field
         ...cabParams,
       };
       cabIndex++;
@@ -354,7 +354,7 @@ function buildSnapshot(
         controllers[dspKey]![mapping.perDspKey] = {};
       }
       for (const [paramName, value] of Object.entries(params)) {
-        controllers[dspKey]![mapping.perDspKey][paramName] = { "@fs_enabled": false, "@value": value };
+        controllers[dspKey]![mapping.perDspKey][paramName] = { "@fs_enabled": false, "@value": value as number };
       }
     }
   }
@@ -436,7 +436,7 @@ function buildControllerSection(spec: PresetSpec) {
         if (!paramVariations.get(blockKey)!.has(paramName)) {
           paramVariations.get(blockKey)!.set(paramName, new Set());
         }
-        paramVariations.get(blockKey)!.get(paramName)!.add(value);
+        paramVariations.get(blockKey)!.get(paramName)!.add(value as number);
       }
     }
   }

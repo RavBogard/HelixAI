@@ -119,10 +119,10 @@
 
 #### Phase Summary
 
-- [ ] **Phase 61: Family Router and Capabilities** — Define DeviceFamily type, resolveFamily(), and DeviceCapabilities — the type-system foundation all other phases depend on
-- [ ] **Phase 62: Catalog Isolation** — Extract per-family amp and effect catalogs, eliminate merged AMP_NAMES, close the Agoura leak at the structural level
-- [ ] **Phase 63: Stadium Firmware Parameter Completeness** — Extract all 27+ firmware params from real .hsp corpus and emit them on every Stadium amp block
-- [ ] **Phase 64: Knowledge Layer Guard Removal** — Replace 17+ boolean guard sites in chain-rules.ts, param-engine.ts, and validate.ts with DeviceCapabilities-driven dispatch
+- [x] **Phase 61: Family Router and Capabilities** — Define DeviceFamily type, resolveFamily(), and DeviceCapabilities — the type-system foundation all other phases depend on
+- [x] **Phase 62: Catalog Isolation** — Extract per-family amp and effect catalogs, eliminate merged AMP_NAMES, close the Agoura leak at the structural level
+- [x] **Phase 63: Stadium Firmware Parameter Completeness** — Extract all 27+ firmware params from real .hsp corpus and emit them on every Stadium amp block
+- [x] **Phase 64: Knowledge Layer Guard Removal** — Replace 17+ boolean guard sites in chain-rules.ts, param-engine.ts, and validate.ts with DeviceCapabilities-driven dispatch
 - [x] **Phase 65: Device-Specific Prompts** — Create per-family planner and chat prompt templates with only family-appropriate model catalogs and conversation arcs
 - [ ] **Phase 66: Frontend Picker and Database Migration** — Move device picker to conversation start, add device column to Supabase conversations table, handle legacy rows
 
@@ -140,7 +140,7 @@
 **Plans**: TBD
 
 Plans:
-- [ ] 61-01: DeviceFamily type, resolveFamily(), getCapabilities(), DeviceCapabilities interface
+- [x] 61-01: DeviceFamily type, resolveFamily(), getCapabilities(), DeviceCapabilities interface, pipeline wiring, tests
 
 ### Phase 62: Catalog Isolation
 **Goal**: Each device family has its own amp and effect catalog module containing only the models valid for that family — the global merged AMP_NAMES enum that allows cross-family model selection is eliminated
@@ -155,8 +155,8 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 62-01: Per-family catalog modules (stadium/catalog.ts, helix/catalog.ts, stomp/catalog.ts, podgo/catalog.ts)
-- [ ] 62-02: Per-family ToneIntent schemas and getToneIntentSchema() factory, eliminate global AMP_NAMES
+- [x] 62-01: Per-family catalog modules (stadium/catalog.ts, helix/catalog.ts, stomp/catalog.ts, podgo/catalog.ts)
+- [x] 62-02: Per-family ToneIntent schemas and getToneIntentSchema() factory, eliminate global AMP_NAMES
 
 ### Phase 63: Stadium Firmware Parameter Completeness
 **Goal**: Every Stadium preset emits all 27+ firmware parameters per amp block, sourced from real .hsp corpus extraction — param bleed from previously loaded presets on hardware is eliminated
@@ -170,8 +170,8 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 63-01: Extract 27-param firmware table from .hsp corpus (median across 5+ files per Agoura model), produce families/stadium/params.ts
-- [ ] 63-02: Wire firmware params into stadium-builder.ts, verify with HX Edit import
+- [x] 63-01: Widen param types to Record<string, number | boolean>, expand 18 STADIUM_AMPS to full firmware param tables (19-28 keys each)
+- [x] 63-02: Stadium guard in resolveAmpParams(), STADPARAM-03/04 tests, validate.ts Stadium exemption
 
 ### Phase 64: Knowledge Layer Guard Removal
 **Goal**: The shared Knowledge Layer (chain-rules.ts, param-engine.ts, validate.ts) accepts DeviceCapabilities instead of a device string — the 17+ boolean guard sites (isPodGo, isStadium, isStomp) are replaced with capability field access
@@ -185,8 +185,8 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 64-01: Refactor chain-rules.ts to accept DeviceCapabilities, remove guard sites
-- [ ] 64-02: Refactor param-engine.ts and validate.ts to accept DeviceCapabilities, remove guard sites, full regression test
+- [x] 64-01: Refactor chain-rules.ts to accept DeviceCapabilities, remove guard sites
+- [x] 64-02: Refactor param-engine.ts and validate.ts to accept DeviceCapabilities, remove guard sites, full regression test
 
 ### Phase 65: Device-Specific Prompts
 **Goal**: Each device family gets its own planner prompt and chat system prompt, containing only that family's model catalog and the conversation arc appropriate to its constraints — prompt isolation is complete
@@ -231,13 +231,13 @@ Plans:
 | 31-41 | v3.0 | 12 | Complete | 2026-03-04 |
 | 42,48-51 | v3.2 | 8 | Complete | 2026-03-05 |
 | 52-60 | v4.0 | 13 | Complete | 2026-03-05 |
-| 61. Family Router | v5.0 | 0/1 | Not started | - |
-| 62. Catalog Isolation | v5.0 | 0/2 | Not started | - |
-| 63. Stadium Firmware Params | v5.0 | 0/2 | Not started | - |
-| 64. Knowledge Layer Guards | v5.0 | 0/2 | Not started | - |
+| 61. Family Router | v5.0 | 1/1 | Complete | 2026-03-06 |
+| 62. Catalog Isolation | v5.0 | 2/2 | Complete | 2026-03-06 |
+| 63. Stadium Firmware Params | v5.0 | 2/2 | Complete | 2026-03-06 |
+| 64. Knowledge Layer Guards | v5.0 | 2/2 | Complete | 2026-03-06 |
 | 65. Device-Specific Prompts | v5.0 | 2/2 | Complete | 2026-03-06 |
 | 66. Frontend Picker + DB | v5.0 | 0/2 | Not started | - |
 
 ---
-*Last updated: 2026-03-06 after Phase 65 completion*
+*Last updated: 2026-03-06 after merging Phases 61-65*
 *Full phase details for completed milestones archived in `.planning/milestones/`*

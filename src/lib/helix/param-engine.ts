@@ -7,8 +7,8 @@
 //
 // Usage: resolveParameters(chain, intent) -> BlockSpec[] with all parameters filled.
 
-import type { AmpCategory, BlockSpec, DeviceTarget, TopologyTag } from "./types";
-import { isStadium } from "./types";
+import type { AmpCategory, BlockSpec, TopologyTag } from "./types";
+import type { DeviceCapabilities } from "./device-family";
 import type { ToneIntent } from "./tone-intent";
 import {
   AMP_MODELS,
@@ -19,6 +19,7 @@ import {
   MODULATION_MODELS,
   DYNAMICS_MODELS,
   EQ_MODELS,
+  STADIUM_EQ_MODELS,
   WAH_MODELS,
   VOLUME_MODELS,
   CAB_MODELS,
@@ -230,7 +231,7 @@ const MODEL_LOOKUPS: Record<string, Record<string, HelixModel>> = {
   reverb: REVERB_MODELS,
   modulation: MODULATION_MODELS,
   dynamics: DYNAMICS_MODELS,
-  eq: EQ_MODELS,
+  eq: { ...EQ_MODELS, ...STADIUM_EQ_MODELS },
   wah: WAH_MODELS,
   pitch: {} as Record<string, HelixModel>, // no PITCH_MODELS export yet
   send_return: {} as Record<string, HelixModel>,
@@ -269,21 +270,21 @@ function findModel(modelName: string, blockType: string): HelixModel | undefined
  *
  * @param chain - Signal chain from assembleSignalChain() with empty parameters
  * @param intent - Original ToneIntent for context (ampName determines category)
- * @param device - Optional device target — used to apply device-specific param extensions
+ * @param caps - Device capabilities — used to apply device-specific param extensions
  * @returns New BlockSpec[] with all parameter values filled
  */
 export function resolveParameters(
   chain: BlockSpec[],
   intent: ToneIntent,
-  device?: DeviceTarget,
+  caps: DeviceCapabilities,
 ): BlockSpec[] {
   // Device-aware amp lookup with Stadium HD2→Agoura fallback (mirrors chain-rules.ts).
-  const stadium = device ? isStadium(device) : false;
-  let ampModel: HelixModel | undefined = stadium
+  const isAgouraEra = caps.ampCatalogEra === "agoura";
+  let ampModel: HelixModel | undefined = isAgouraEra
     ? STADIUM_AMPS[intent.ampName]
     : AMP_MODELS[intent.ampName];
 
-  if (!ampModel && stadium) {
+  if (!ampModel && isAgouraEra) {
     const hd2Model = AMP_MODELS[intent.ampName];
     if (hd2Model) {
       // Strategy 1: Name word overlap (mirrors chain-rules.ts fallback)
@@ -308,7 +309,7 @@ export function resolveParameters(
   }
 
   if (!ampModel) {
-    throw new Error(`Unknown amp model: "${intent.ampName}" — not found in ${stadium ? "STADIUM_AMPS" : "AMP_MODELS"}`);
+    throw new Error(`Unknown amp model: "${intent.ampName}" — not found in ${isAgouraEra ? "STADIUM_AMPS" : "AMP_MODELS"}`);
   }
 
   const ampCategory: AmpCategory = ampModel.ampCategory ?? "clean";
@@ -334,8 +335,8 @@ export function resolveParameters(
 
     const resolved: BlockSpec = {
       ...block,
-      // Thread device, tempoHint, and guitarType through to resolveBlockParams
-      parameters: resolveBlockParams(block, effectiveCategory, effectiveTopology, genreProfile, device, tempoHint, guitarType),
+      // Thread caps, tempoHint, and guitarType through to resolveBlockParams
+      parameters: resolveBlockParams(block, effectiveCategory, effectiveTopology, genreProfile, caps, tempoHint, guitarType),
     };
     return resolved;
   });
@@ -343,7 +344,7 @@ export function resolveParameters(
 
 /**
  * Resolve parameters for a single block based on its type and the amp context.
- * The device parameter enables Stadium-specific param extensions (e.g., 10 cab params).
+ * The caps parameter enables device-specific param extensions (e.g., 10 cab params for Stadium).
  * The tempoHint parameter enables tempo-synced delay Time for delay blocks (FX-03).
  * The guitarType parameter enables guitar-type EQ curve adjustments for HD2_EQParametric (FX-01).
  */
@@ -352,16 +353,16 @@ function resolveBlockParams(
   ampCategory: AmpCategory,
   topology: TopologyTag,
   genreProfile?: GenreEffectProfile,
-  device?: DeviceTarget,
+  caps?: DeviceCapabilities,
   tempoHint?: number,
   guitarType?: string,
-): Record<string, number> {
+): Record<string, number | boolean> {
   switch (block.type) {
     case "amp":
       return resolveAmpParams(block, ampCategory, topology);
     case "cab":
-      // STAD-06 fix: pass device to resolveCabParams so Stadium gets all 10 cab params
-      return resolveCabParams(ampCategory, device);
+      // STAD-06 fix: pass caps to resolveCabParams so Stadium gets all 10 cab params
+      return resolveCabParams(ampCategory, caps);
     case "distortion":
       return resolveDistortionParams(block, ampCategory);
     case "eq":
@@ -380,34 +381,43 @@ function resolveBlockParams(
 /**
  * Amp parameter resolution — 4-layer strategy:
  * 1. Start with model's own defaultParams
- * 2. Apply category-level overrides
- * 3. Apply topology-specific mid override (high-gain only)
+ * 2. Apply category-level overrides (HD2 amps only — skipped for Stadium)
+ * 3. Apply topology-specific mid override (HD2 high-gain only — skipped for Stadium)
  * 4. Apply per-model paramOverrides — wins over all shared layers (AMP-02)
+ *
+ * Stadium guard (STADPARAM-03): Stadium amps (Agoura_*) have complete firmware
+ * param tables in STADIUM_AMPS.defaultParams (19-27 keys including all hidden
+ * firmware params). AMP_DEFAULTS would corrupt these by injecting ChVol, incorrect
+ * Sag/Bias values, etc. Stadium amps skip layers 2 and 3.
  */
 function resolveAmpParams(
   block: BlockSpec,
   ampCategory: AmpCategory,
   topology: TopologyTag,
-): Record<string, number> {
+): Record<string, number | boolean> {
   // Layer 1: Start with the model's own defaults
-  const model = STADIUM_AMPS[block.modelName] ?? AMP_MODELS[block.modelName];
-  const params: Record<string, number> = model
+  const stadiumModel = STADIUM_AMPS[block.modelName];
+  const model = stadiumModel ?? AMP_MODELS[block.modelName];
+  const params: Record<string, number | boolean> = model
     ? { ...model.defaultParams }
     : { ...block.parameters };
 
-  // Layer 2: Apply category overrides (ensures consistency within category)
-  const categoryDefaults = AMP_DEFAULTS[ampCategory];
-  for (const [key, value] of Object.entries(categoryDefaults)) {
-    // Only override keys that exist in category defaults
-    // This preserves model-specific params like Cut, Deep, Resonance, BrightSwitch
-    params[key] = value;
-  }
+  // Stadium amps: firmware param table is the complete set — skip HD2 category/topology layers.
+  // This prevents AMP_DEFAULTS from injecting ChVol, incorrect Sag/Bias values, etc.
+  // Stadium amps have no ChVol, use Sag: 0 (not 0.25-0.60), and include all params in defaultParams.
+  if (!stadiumModel) {
+    // Layer 2: Apply category overrides (HD2 amps only)
+    const categoryDefaults = AMP_DEFAULTS[ampCategory];
+    for (const [key, value] of Object.entries(categoryDefaults)) {
+      params[key] = value;
+    }
 
-  // Layer 3: Apply topology-specific mid override if high-gain
-  if (ampCategory === "high_gain" && topology !== "not_applicable") {
-    const midOverride = TOPOLOGY_MID[topology];
-    if (midOverride !== undefined) {
-      params.Mid = midOverride;
+    // Layer 3: Apply topology-specific mid override if high-gain (HD2 amps only)
+    if (ampCategory === "high_gain" && topology !== "not_applicable") {
+      const midOverride = TOPOLOGY_MID[topology];
+      if (midOverride !== undefined) {
+        params.Mid = midOverride;
+      }
     }
   }
 
@@ -437,7 +447,7 @@ function resolveAmpParams(
  *   Pan: 0.5 (center)
  *   Position: 0.25 (standard near-mic position)
  */
-function resolveCabParams(ampCategory: AmpCategory, device?: DeviceTarget): Record<string, number> {
+function resolveCabParams(ampCategory: AmpCategory, caps?: DeviceCapabilities): Record<string, number> {
   const cabDefaults = CAB_PARAMS[ampCategory];
   const params: Record<string, number> = {
     LowCut: cabDefaults.LowCut,
@@ -448,7 +458,7 @@ function resolveCabParams(ampCategory: AmpCategory, device?: DeviceTarget): Reco
   };
 
   // Stadium requires all 10 cab params — add the 5 missing ones conditionally
-  if (device && isStadium(device)) {
+  if (caps?.ampCatalogEra === "agoura") {
     params.Delay = 0.0;
     params.IrData = 0;
     params.Level = 0.0;
@@ -465,7 +475,7 @@ function resolveCabParams(ampCategory: AmpCategory, device?: DeviceTarget): Reco
 function resolveDistortionParams(
   block: BlockSpec,
   ampCategory: AmpCategory,
-): Record<string, number> {
+): Record<string, number | boolean> {
   // Minotaur (Klon) — category-specific boost values
   if (block.modelId === "HD2_DistMinotaur") {
     return { ...MINOTAUR_PARAMS[ampCategory] };
@@ -489,7 +499,7 @@ function resolveEqParams(
   block: BlockSpec,
   ampCategory: AmpCategory,
   guitarType?: string,
-): Record<string, number> {
+): Record<string, number | boolean> {
   // Parametric EQ: use category-specific expert values with optional guitar-type adjustment
   if (block.modelId === "HD2_EQParametric") {
     const base = { ...EQ_PARAMS[ampCategory] };
@@ -511,7 +521,7 @@ function resolveEqParams(
 /**
  * Dynamics parameter resolution — gate-specific tables.
  */
-function resolveDynamicsParams(block: BlockSpec): Record<string, number> {
+function resolveDynamicsParams(block: BlockSpec): Record<string, number | boolean> {
   // Horizon Gate: expert-tuned gate values
   if (block.modelId === "HD2_GateHorizonGate") {
     return { ...HORIZON_GATE_PARAMS };
@@ -524,7 +534,7 @@ function resolveDynamicsParams(block: BlockSpec): Record<string, number> {
 /**
  * Volume block parameter resolution — Gain Block uses dB value.
  */
-function resolveVolumeParams(block: BlockSpec): Record<string, number> {
+function resolveVolumeParams(block: BlockSpec): Record<string, number | boolean> {
   // Gain Block: 0.0 dB (unity gain)
   if (block.modelId === "HD2_VolPanGain") {
     return { ...GAIN_BLOCK_PARAMS };
@@ -546,7 +556,7 @@ function resolveDefaultParams(
   block: BlockSpec,
   genreProfile?: GenreEffectProfile,
   tempoHint?: number,
-): Record<string, number> {
+): Record<string, number | boolean> {
   const model = findModel(block.modelName, block.type);
   const params = model ? { ...model.defaultParams } : { ...block.parameters };
 

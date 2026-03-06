@@ -17,6 +17,7 @@
 import {
   getModelIdForDevice,
   isModelAvailableForDevice,
+  getCapabilities,
 } from "@/lib/helix";
 import type { RigIntent, SubstitutionEntry, SubstitutionMap, DeviceTarget } from "@/lib/helix";
 import type { HelixModel } from "@/lib/helix/models";
@@ -529,7 +530,8 @@ function buildEntry(
   confidence: "direct" | "close" | "approximate",
   knobPositions?: Record<string, "low" | "medium-low" | "medium-high" | "high">,
 ): SubstitutionEntry {
-  const helixModelId = getModelIdForDevice(entry.model, entry.blockType, device);
+  const caps = getCapabilities(device);
+  const helixModelId = getModelIdForDevice(entry.model, entry.blockType, caps);
   const parameterMapping =
     knobPositions && Object.keys(knobPositions).length > 0 && entry.knobMap
       ? translateKnobs(knobPositions, entry.knobMap)
@@ -564,10 +566,11 @@ export function lookupPedal(
   const key = pedalName.toLowerCase().trim();
   // Normalize: strip hyphens in lookup for secondary match, keep original key for primary
   const keyNoHyphen = key.replace(/-/g, " ").replace(/\s+/g, " ").trim();
+  const caps = getCapabilities(device);
 
   // Tier 1: direct match — check original key, then hyphen-normalized key
   const directEntry = PEDAL_HELIX_MAP[key] ?? PEDAL_HELIX_MAP[keyNoHyphen];
-  if (directEntry && isModelAvailableForDevice(directEntry.model.name, device)) {
+  if (directEntry && isModelAvailableForDevice(directEntry.model.name, caps)) {
     return buildEntry(pedalName, directEntry, device, "direct", knobPositions);
   }
 
@@ -575,7 +578,7 @@ export function lookupPedal(
   const category = detectCategory(key) ?? detectCategory(keyNoHyphen);
   if (category && CATEGORY_DEFAULTS[category]) {
     const fallback = CATEGORY_DEFAULTS[category];
-    if (isModelAvailableForDevice(fallback.model.name, device)) {
+    if (isModelAvailableForDevice(fallback.model.name, caps)) {
       return buildEntry(pedalName, fallback, device, "close", knobPositions);
     }
     // Category fallback model is also excluded — fall through to approximate
