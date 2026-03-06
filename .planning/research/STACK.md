@@ -1,15 +1,14 @@
 # Stack Research
 
-**Domain:** HelixTones v4.0 — Stadium Rebuild + Preset Quality Leap
+**Domain:** HelixTones v5.0 — Device-First Architecture Rework
 **Researched:** 2026-03-05
-**Confidence:** HIGH overall — AI model specs from official Anthropic docs, .hsp format from direct codebase inspection + community sources, quality findings from Tonevault 250-preset analysis
+**Confidence:** HIGH overall — TypeScript patterns verified against official docs and codebase, firmware params extracted from 12 real amp blocks across 11 .hsp files, Zod 4.3.6 discriminatedUnion verified in installed package
 
 ---
 
 ## Scope
 
-This file covers ONLY what is new or changed for v4.0. The validated existing stack is NOT
-re-researched. The existing stack is:
+This file covers ONLY what is new or changed for v5.0. The validated existing stack is:
 
 | Layer | Technology | Version |
 |-------|-----------|---------|
@@ -21,28 +20,30 @@ re-researched. The existing stack is:
 | Auth + DB + Storage | Supabase | `@supabase/supabase-js` ^2.98.0, `@supabase/ssr` ^0.9.0 |
 | Hosting | Vercel (serverless) | — |
 | Schema validation | Zod | ^4.3.6 |
-| Image compression | browser-image-compression | ^2.0.2 |
 | Testing | Vitest | ^4.0.18 |
 
-v4.0 has three tracks:
+v5.0 has four tracks:
 
-1. **Stadium rebuild** — reverse-engineer real .hsp presets and rebuild the builder from ground truth
-2. **Preset quality leap** — gain-staging intelligence, per-model amp params, effect combinations
-3. **Cost-aware model routing** — evidence-based Haiku evaluation, architecture review
+1. **Device-first flow** — device picker moves to conversation start, routing all subsequent steps to device-specific paths
+2. **Device-family module architecture** — eliminate 17+ guard sites by routing to per-device modules from the beginning
+3. **Stadium firmware completeness** — extract all 27+ params from real .hsp corpus, eliminate param bleed
+4. **Per-device planner prompts** — each device gets its own prompt with only its model catalog
 
 ---
 
 ## The Single Most Important Finding
 
-**No new npm packages are needed for v4.0.**
+**No new npm packages are needed for v5.0.**
 
-All six work areas — Stadium .hsp format reverse-engineering, planner prompt enrichment,
-per-model amp parameter tables, effect combination logic, cost-aware routing evaluation,
-and architecture review — are accomplished by modifying TypeScript source files in
-`src/lib/helix/` and `src/lib/planner.ts`.
+All work is TypeScript source reorganization and new TypeScript patterns. The existing stack
+already has every tool required:
 
-The existing stack already has every tool required. Zero new dependencies means zero
-integration risk and no compatibility testing against Next.js 16 / Tailwind 4.
+- TypeScript discriminated unions handle device-family routing — `z.discriminatedUnion()` verified working in Zod 4.3.6
+- Node.js `Buffer` + `JSON.parse()` handles .hsp binary parsing for param extraction (8-byte magic header + JSON)
+- Vitest handles per-device test suites via `describe()` nesting and file-per-device organization
+- The existing `scripts/` pattern (`npx tsx scripts/extract-params.ts`) handles one-shot extraction tooling
+
+Zero new dependencies means zero integration risk and no compatibility testing.
 
 ---
 
@@ -50,380 +51,490 @@ integration risk and no compatibility testing against Next.js 16 / Tailwind 4.
 
 ### Core Technologies — No Changes
 
-| Technology | Version | Purpose | v4.0 Impact |
+| Technology | Version | Purpose | v5.0 Impact |
 |------------|---------|---------|-------------|
-| Next.js | 16.1.6 (existing) | App framework | No changes |
-| TypeScript | ^5 (existing) | Type safety | New types in `tone-intent.ts`, `types.ts` for gain-staging fields |
-| `@anthropic-ai/sdk` | ^0.78.0 (existing) | Claude Sonnet 4.6 planner | Model stays `claude-sonnet-4-6`; `zodOutputFormat` already works for structured output |
-| `@google/genai` | ^1.42.0 (existing) | Gemini 2.5 Flash chat interview | No changes — correct model for the job |
-| Zod | ^4.3.6 (existing) | ToneIntent schema validation | No new fields needed — gain-staging is a prompt+param change, not a schema change |
-| Supabase | existing | Auth + DB + Storage | No changes |
+| TypeScript | ^5 | Type safety | New discriminated union types: `DeviceFamily`, per-family `ToneIntent` schema variants; exhaustiveness checking via `never` guard |
+| Zod | ^4.3.6 | Runtime schema validation | `z.discriminatedUnion('family', [...])` for device-family routing — verified working in installed version |
+| Vitest | ^4.0.18 | Testing | Per-device test files: `helix.test.ts`, `stadium.test.ts`, `stomp.test.ts`, `podgo.test.ts` using existing `describe()` + `it()` pattern |
+| Next.js | 16.1.6 | App framework | No changes to API routes — device selection passed as parameter, routing happens in `lib/helix/` |
+| `@anthropic-ai/sdk` | ^0.78.0 | Claude Sonnet 4.6 planner | `buildPlannerPrompt()` refactored to `buildPlannerPromptForDevice(family)` — same API, different prompt text and model list per family |
 
-### Supporting Libraries — No New Additions
+### Supporting Tooling — One-Shot Script Only
 
-| Library | Current Version | v4.0 Use |
-|---------|----------------|---------|
-| `@anthropic-ai/sdk` | ^0.78.0 | `response.usage` already logged in `usage-logger.ts`; `zodOutputFormat` in `helpers/zod` already used by planner |
+| Tool | Version | Purpose | How Used |
+|------|---------|---------|----------|
+| `tsx` (already in environment) | n/a | Run TypeScript extraction scripts | `npx tsx scripts/extract-stadium-params.ts` — one-shot param extraction, not added to `package.json` |
 
-No new libraries. All v4.0 work is internal TypeScript.
-
----
-
-## Feature Area 1: Stadium .hsp Reverse Engineering
-
-### Current State
-
-The Stadium builder (`src/lib/helix/stadium-builder.ts`) was implemented in v3.0 and verified
-against two real .hsp files (Cranked_2203.hsp and Rev_120_Purple_Recto.hsp). However, the
-builder was temporarily blocked (Stadium selection returns 400) pending a broader verification
-against more real presets.
-
-### What Needs to Happen
-
-Reverse-engineer 11 real .hsp preset files to verify:
-1. The `flow` block format (slot-based with `params: { K: { access, value } }`)
-2. The `sources` footswitch section (24 entries, hex-keyed)
-3. Per-snapshot block bypass states (`@enabled.snapshots[]`)
-4. Amp/cab `linkedblock` wiring
-5. Stadium-specific amp parameter keys (do Agoura amps have `Presence`? `Sag`? `Bias`?)
-
-### Implementation Approach
-
-**No new tooling needed.** Real .hsp files are downloadable from:
-- [Fluid Solo — Stadium presets](https://www.fluidsolo.com/) — active Stadium preset community
-- [Noise Harmony free packs](https://www.noiseharmony.com/post/free-presets-for-line-6-helix-stadium-aura-reflections) — Aura + Reflections packs with free samples
-- [Jason Sadites Stadium template 2026](https://www.sadites.com/line-6-presets-free)
-
-Parse these with `JSON.parse()` (after stripping the 8-byte `rpshnosj` magic header). The
-format is already confirmed as `magic_header + JSON.stringify({ meta, preset })`. Direct file
-inspection in a text editor reveals the full parameter structure.
-
-**Key discovery needed:** What parameter keys do Agoura amps expose? The existing
-`STADIUM_AMPS` catalog uses `{ Drive, Bass, Mid, Treble, Master, ChVol }` for all models.
-Real preset inspection will confirm whether Presence, Sag, Bias, BiasX are valid for Agoura
-amps or if they use different keys.
-
-### Firmware Target
-
-Helix Stadium 1.2.1 (released January 20, 2026) is the current firmware. Community presets
-downloaded in 2026 are on this firmware. The builder must produce .hsp files compatible with
-firmware 1.2.x.
-
-Source: [Helix Stadium 1.2.1 Release Notes](https://line6.com/support/page/kb/effects-controllers/helix_130/helix-stadium-121-release-notes-r1105) — HIGH confidence (official)
+`tsx` is already available via `npx` with zero install. The extraction script reads real .hsp files
+from the local corpus, prints the complete param set per amp model, and terminates. Output is
+pasted into `STADIUM_AMPS` defaultParams in `models.ts`. This is a development tool, not a
+runtime dependency.
 
 ---
 
-## Feature Area 2: Planner Prompt Enrichment (Gain-Staging + Cab Pairing)
+## Feature Area 1: TypeScript Patterns for Device-Family Routing
 
-### What Changes
+### The Problem
 
-`buildPlannerPrompt()` in `src/lib/planner.ts` currently gives Claude creative selection
-guidance (~800 tokens). The prompt is NOT changing its structure — only adding targeted
-expert guidance sections.
-
-### Gain-Staging Intelligence to Add
-
-The existing prompt tells Claude what to pick but not how amp parameters interact. The new
-section should encode:
-
-**Amp gain staging rules (add to system prompt — cached):**
-
-| Amp Style | Gain Staging Pattern | What This Means for Claude |
-|-----------|---------------------|---------------------------|
-| Fender/Vox clean | Master at max, ChVol as level control, Drive very low | When picking a clean amp, always_on boost is volume, not saturation |
-| Marshall Plexi | Master at max, Drive at 0.65+, bass pushed, Presence cut | Plexi runs on the edge of breakup — boost adds sustain, not muddiness |
-| JCM800 / Crunch | Master at 0.35–0.55, Drive moderate, 808 for tightness | Master is the saturation control; Drive sets texture |
-| Rectifier / Mesa | Drive modest (0.35–0.50), 808 for tight punch, EQ cuts low-mid | Rectifiers saturate at front end; excessive Drive causes flub |
-| High-gain modern | Drive 0.40–0.55, Noise Gate threshold higher, 808 for definition | Modern amps are already tight — 808 adds pick attack definition |
-
-**Implementation:** Add a `## Gain Staging Guidance` section to `buildPlannerPrompt()`. This
-is pure text — no new parameters. Token cost: ~200 tokens, which falls within the cached
-system prompt and incurs only cache-write cost on first call.
-
-### Cab Pairing Intelligence to Add
-
-The existing `HelixModel.cabAffinity[]` already stores correct pairings. The prompt addition
-tells Claude why to follow affinity:
-
-```
-## Cab Pairing Rules
-- Match cab era to amp era: Fender-voiced amps → open-back 1x12 or 2x10/2x12 cabs
-- Marshall/British amps → closed-back 4x12 with Greenback 25 or T75 speakers
-- Mesa/American high-gain → 4x12 Uber V30 or Cali V30 (tight, focused midrange)
-- Vox → Blue Bell or equivalent alnico speaker cab (bright, chimey)
-- Single-coil guitars: prefer smaller cab configurations (1x12, 2x12) — less low-end buildup
-- Humbuckers: closed-back 4x12 handles the extra low-mid content
+Current code has 17+ guard sites:
+```typescript
+// Repeated everywhere — chain-rules, param-engine, planner, validate
+if (isPodGo(device)) { ... }
+if (isStadium(device)) { ... }
+if (isStomp(device)) { ... }
 ```
 
-This section is approximately 100 tokens and supplements the amp-specific `cabAffinity[]`
-lookups already in the Knowledge Layer.
+This means every new device adds a guard site in every module. It also means the planner
+prompt, model catalog, and chain rules all handle every device with runtime branching.
 
----
+### The Solution: Discriminated Union with Module-Per-Family
 
-## Feature Area 3: Per-Model Amp Parameter Tables
-
-### Current State
-
-`param-engine.ts` has three category-level tables (`AMP_DEFAULTS` for `clean`/`crunch`/`high_gain`)
-applied uniformly across all amps in a category. This is correct but coarse.
-
-### What Needs to Happen
-
-Add per-amp-model parameter overrides on top of category defaults. The `resolveParameters()`
-function already resolves the specific model — it just needs a lookup step.
-
-### Implementation Pattern (No New Libraries)
+**Step 1: Define device families as a discriminated union in `types.ts`**
 
 ```typescript
-// New table in param-engine.ts — keys match AMP_MODELS record keys
-const AMP_MODEL_OVERRIDES: Partial<Record<string, Partial<Record<string, number>>>> = {
-  // Plexi style: max Master, pushed bass, cut Presence to avoid ice-pick
-  "Brit Plexi Jump": { Master: 1.0, Bass: 0.70, Presence: 0.20, Drive: 0.65 },
-  "Brit Super": { Master: 1.0, Bass: 0.65, Presence: 0.25, Drive: 0.60 },
+// Device families — the routing unit for v5.0
+// Each family maps to a specific builder, prompt, model catalog, and chain rules
+export type DeviceFamily =
+  | "helix"   // Helix Floor, Helix LT, Helix Rack — .hlx, dual-DSP, dual-amp
+  | "stomp"   // HX Stomp, HX Stomp XL — .hlx, 6-9 block budget
+  | "podgo"   // Pod Go, Pod Go XL — .pgp, 4-effect limit
+  | "stadium"; // Helix Stadium, Helix Stadium XL — .hsp, Agoura amps, slot-based
 
-  // Rectifier: modest Drive, low Presence (fizz control)
-  "Cali Rectifire": { Drive: 0.40, Presence: 0.30, Bass: 0.35 },
-  "Cali Texas Ch2": { Drive: 0.42, Presence: 0.32, Bass: 0.38 },
+// Map device → family (single source of truth)
+export const DEVICE_FAMILY: Record<DeviceTarget, DeviceFamily> = {
+  helix_lt:       "helix",
+  helix_floor:    "helix",
+  helix_stomp:    "stomp",
+  helix_stomp_xl: "stomp",
+  pod_go:         "podgo",
+  helix_stadium:  "stadium",
+} as const;
 
-  // JC-120: solid state, no Sag/Bias — different param set
-  "Jazz Rivet 120": { Drive: 0.25, Master: 0.70, Bass: 0.50, Presence: 0.55 },
-
-  // 5150-style: tight low end, moderate Drive
-  "PV Panama": { Drive: 0.45, Bass: 0.25, Mid: 0.55, Presence: 0.45 },
-
-  // Stadium Agoura amps — same pattern, Agoura prefix
-  "Agoura Brit Plexi": { Master: 1.0, Bass: 0.68, Presence: 0.20 },
-  "Agoura Tread Plate Red": { Drive: 0.45, Bass: 0.35, Presence: 0.25 },
-};
+// Exhaustiveness checker — if a new family is added, this breaks at compile time
+export function assertNever(x: never): never {
+  throw new Error(`Unhandled device family: ${x}`);
+}
 ```
 
-This table is applied **after** the category defaults in `resolveAmpParameters()`, overriding
-specific keys where needed. The override only touches documented problem areas — all other
-parameters retain category defaults.
+**Step 2: Per-family module structure in `src/lib/helix/`**
 
-### Drive/Presence Anti-Correlation
+```
+src/lib/helix/
+  devices/
+    helix/
+      chain-rules.ts     — Helix-specific signal chain assembly
+      planner-prompt.ts  — Helix-only model catalog + prompt
+      models.ts          — HD2 amp/cab/effect catalog (no Agoura)
+    stadium/
+      chain-rules.ts     — Stadium slot-grid assembly
+      planner-prompt.ts  — Stadium-only Agoura catalog + prompt
+      models.ts          — Agoura amp catalog + HX2/VIC effects
+    stomp/
+      chain-rules.ts     — Stomp block budget rules
+      planner-prompt.ts  — Stomp-specific prompt (constraint-first)
+      models.ts          — re-exports from helix/models (same catalog, different constraints)
+    podgo/
+      chain-rules.ts     — Pod Go 4-effect limit rules
+      planner-prompt.ts  — Pod Go prompt (Mono/Stereo suffix catalog)
+      models.ts          — Pod Go model catalog (Mono/Stereo variants)
+  router.ts              — getDeviceModule(family: DeviceFamily) → per-family module
+  index.ts               — public barrel export (unchanged external API)
+```
 
-For Rectifier-style amps, top community presets show a strong negative correlation: as Drive
-goes up, Presence should go down (Tonevault data: r=−0.64). Implementation:
+**Step 3: Router replaces guard-based branching**
 
 ```typescript
-// In resolveAmpParameters(), after applying model overrides:
-if (model.ampCategory === "high_gain" && model.topology === "plate_fed") {
-  const drive = params.Drive ?? AMP_DEFAULTS.high_gain.Drive;
-  // Scale Presence down proportionally for Rectifier-style amps
-  // Only apply if the model name contains "Recti" or "Plate" style keywords
-  if (isRectifierStyle(model.id)) {
-    params.Presence = Math.max(0.20, 0.55 - (drive - 0.35) * 0.8);
+// src/lib/helix/router.ts
+import type { DeviceFamily } from "./types";
+
+// Each family module exports the same interface
+export interface DeviceModule {
+  assembleSignalChain: (intent: ToneIntent, device: DeviceTarget) => BlockSpec[];
+  buildPlannerPrompt: (device: DeviceTarget) => string;
+  getModelList: () => string;
+}
+
+export function getDeviceModule(family: DeviceFamily): DeviceModule {
+  switch (family) {
+    case "helix":   return import("./devices/helix");
+    case "stomp":   return import("./devices/stomp");
+    case "podgo":   return import("./devices/podgo");
+    case "stadium": return import("./devices/stadium");
+    default:        return assertNever(family);
   }
 }
 ```
 
-Source: Tonevault 250-preset analysis — HIGH confidence (data-driven primary source)
+The `default: assertNever(family)` makes TypeScript enforce exhaustive coverage at compile
+time. Adding a new device family without handling it here is a type error, not a runtime bug.
+
+### Confidence
+
+HIGH — TypeScript discriminated unions are the canonical pattern for this problem. The
+`assertNever()` trick is documented in the TypeScript handbook. Module-per-family is standard
+at Next.js scale. Zod 4.3.6 `z.discriminatedUnion()` verified working in installed package.
 
 ---
 
-## Feature Area 4: Effect Combination Logic
+## Feature Area 2: Per-Device ToneIntent Schema Variants
+
+### The Problem
+
+Current `ToneIntentSchema` uses global `AMP_NAMES` and `CAB_NAMES` arrays that include ALL
+amps from all devices. The planner can pick Agoura amps for Helix LT or HD2 amps for Stadium.
+
+### The Solution: Family-Specific Schema Construction
+
+**Pattern: Factory function, not separate schema files**
+
+```typescript
+// src/lib/helix/tone-intent.ts
+
+// Per-family schema factory — called once per device request
+export function buildToneIntentSchema(family: DeviceFamily) {
+  const { ampNames, cabNames } = getModelNamesForFamily(family);
+
+  return z.object({
+    ampName: z.enum(ampNames as [string, ...string[]]),
+    cabName: z.enum(cabNames as [string, ...string[]]),
+    // ... rest of schema — effects, snapshots, etc.
+    // Stadium-specific: allow secondAmpName for dual-DSP flow
+    ...(family === "helix" ? {
+      secondAmpName: z.enum(ampNames as [string, ...string[]]).optional(),
+      secondCabName: z.enum(cabNames as [string, ...string[]]).optional(),
+    } : {}),
+  });
+}
+```
+
+This approach builds the schema at request time from the family's model catalog. The Zod
+schema and its `z.enum()` validators are constructed from the correct per-family model list.
+Claude's structured output sees only the valid options for the requested device family.
+
+**Why not separate schema files per family:**
+The schema shape is 95% identical across families. Only `ampName` and `cabName` enums differ.
+A factory function avoids duplication while maintaining type safety.
+
+### Integration with Claude Structured Output
+
+```typescript
+// In planner.ts — family-aware call
+const schema = buildToneIntentSchema(family);
+const response = await claude.messages.create({
+  ...
+  tools: [zodOutputFormat(schema, "tone_intent")],
+});
+```
+
+The `zodOutputFormat` helper from `@anthropic-ai/sdk/helpers/zod` accepts any Zod object
+schema. Passing the family-specific schema constrains Claude's output to only the valid model
+names for that device. No post-validation filtering needed.
+
+### Confidence
+
+HIGH — `zodOutputFormat` accepts any Zod schema; confirmed working in v4.0. Factory pattern
+is standard TypeScript. Zod `z.enum()` from a string array is documented.
+
+---
+
+## Feature Area 3: Stadium Firmware Parameter Extraction
+
+### Ground Truth from Real .hsp Files
+
+Direct extraction from 11 .hsp files in the local corpus (12 amp blocks total, 10 unique Agoura
+amp models) reveals the complete firmware parameter set:
+
+**Parameters present in EVERY Agoura amp block (15 params — mandatory, must be emitted):**
+
+| Parameter | Present | Example Value | Notes |
+|-----------|---------|---------------|-------|
+| `AmpCabPeak2Fc` | 12/12 | 1000 | Hidden EQ: 2nd peak center freq |
+| `AmpCabPeak2G` | 12/12 | 0 | Hidden EQ: 2nd peak gain |
+| `AmpCabPeak2Q` | 12/12 | 0.707 | Hidden EQ: 2nd peak Q |
+| `AmpCabPeakFc` | 12/12 | 100 | Hidden EQ: 1st peak center freq |
+| `AmpCabPeakG` | 12/12 | 0 | Hidden EQ: 1st peak gain |
+| `AmpCabPeakQ` | 12/12 | 0.707 | Hidden EQ: 1st peak Q |
+| `AmpCabShelfF` | 12/12 | 1000 | Hidden EQ: shelf frequency |
+| `AmpCabShelfG` | 12/12 | 0 | Hidden EQ: shelf gain |
+| `AmpCabZFir` | 12/12 | 0 | Cabinet impulse response index |
+| `AmpCabZUpdate` | 12/12 | 0 | Cabinet update flag |
+| `Bass` | 12/12 | 0.64 | Standard tone stack |
+| `Hype` | 12/12 | 0 | Presence-like boost circuit |
+| `Ripple` | 12/12 | 0 | Power supply ripple |
+| `Sag` | 12/12 | 0 | Power amp sag |
+| `ZPrePost` | 12/12 | 0.3 | Pre/post EQ blend |
+
+**Parameters present in MOST amp blocks (amp-specific — include if model has them):**
+
+| Parameter | Present | Notes |
+|-----------|---------|-------|
+| `Level` | 11/12 | Output level |
+| `Treble` | 11/12 | Tone stack treble |
+| `Master` | 10/12 | Master volume |
+| `Mid` | 10/12 | Tone stack mid |
+| `Channel` | 8/12 | Channel selector (multi-channel amps) |
+| `Presence` | 8/12 | Presence control |
+| `Drive` | 8/12 | Primary gain (varies: "Drive", "NormalDrive", "BrightDrive") |
+
+**v4.0 was emitting only 12 params per amp. The 10 hidden params that were missing and
+causing param state bleed between presets:**
+
+```
+AmpCabPeak2Fc, AmpCabPeak2G, AmpCabPeak2Q,
+AmpCabPeakFc, AmpCabPeakG, AmpCabPeakQ,
+AmpCabShelfF, AmpCabShelfG,
+AmpCabZFir, AmpCabZUpdate
+```
+
+(Plus `Hype`, `Ripple`, `Sag`, `ZPrePost` — these were in some models but not all.)
+
+### Extraction Approach
+
+The extraction script is a one-shot Node.js script using only the standard library:
+
+```typescript
+// scripts/extract-stadium-params.ts
+import * as fs from "fs";
+
+const HSP_DIR = "C:/Users/dsbog/Downloads/NH_STADIUM_AURA_REFLECTIONS/";
+const files = fs.readdirSync(HSP_DIR).filter(f => f.endsWith(".hsp"));
+
+for (const file of files) {
+  const data = fs.readFileSync(HSP_DIR + file);
+  const j = JSON.parse(data.slice(8).toString("utf8")); // strip 8-byte magic header
+  const flow = j.preset.flow;
+  for (const [, block] of Object.entries(flow)) {
+    for (const [, slot] of Object.entries(block as Record<string, unknown>)) {
+      if (slot && typeof slot === "object" && (slot as Record<string, unknown>).type === "amp") {
+        const ampBlock = slot as { slot: Array<{ model: string; params: Record<string, { value: unknown }> }> };
+        const { model, params } = ampBlock.slot[0];
+        console.log(`${file} | ${model} | ${JSON.stringify(params)}`);
+      }
+    }
+  }
+}
+```
+
+Run with: `npx tsx scripts/extract-stadium-params.ts`
+
+Output goes directly into `STADIUM_AMPS` defaultParams in `models.ts`. No binary parser library
+needed — the .hsp format is 8-byte ASCII magic + JSON text. `data.slice(8)` strips the header.
+
+### Why No Binary Parser Library
+
+The .hsp format is confirmed as: `"rpshnosj"` (8 ASCII bytes) + `JSON.stringify({ meta, preset })`.
+After `data.slice(8)`, it is plain JSON. `JSON.parse()` handles everything. `binary-parser`,
+`binparse`, or any other library would add a dependency for zero benefit here.
+
+Source: Direct codebase inspection of `stadium-builder.ts` + verification against 11 real .hsp files.
+Confidence: HIGH (corpus-driven, ground truth).
+
+---
+
+## Feature Area 4: Barrel Export Strategy for Device Modules
+
+### The Problem
+
+The existing `src/lib/helix/index.ts` barrel exports everything from a flat module directory.
+Adding per-device subdirectories risks making the barrel unwieldy or leaking internal module
+details to consumers.
+
+### The Solution: Two-Layer Barrel Pattern
+
+**Layer 1: Per-family internal barrel**
+Each family directory gets its own `index.ts` that exports only what the router needs:
+
+```typescript
+// src/lib/helix/devices/stadium/index.ts
+export { assembleSignalChain } from "./chain-rules";
+export { buildPlannerPrompt, getModelList } from "./planner-prompt";
+export { STADIUM_AMPS, STADIUM_EQ_MODELS } from "./models";
+```
+
+**Layer 2: Root barrel — unchanged external API**
+`src/lib/helix/index.ts` continues to export the same public surface. Internal reorganization
+is invisible to API routes and test files that import from `@/lib/helix`.
+
+```typescript
+// src/lib/helix/index.ts — ADD these, keep everything else
+export { getDeviceModule, DEVICE_FAMILY } from "./router";
+export type { DeviceFamily, DeviceModule } from "./router";
+```
+
+### Next.js `optimizePackageImports` Consideration
+
+Next.js 16 supports `optimizePackageImports` to avoid loading barrel files that import
+everything. For internal `@/lib/helix` barrels this is irrelevant — tree-shaking handles
+server-side modules correctly and none of these ship to the browser bundle.
+
+The barrel pattern is appropriate here because `src/lib/helix/` is server-side only (used in
+`/api/generate/route.ts`) and the total module count is small (under 20 files).
+
+**Avoid:** Using `export * from "./devices/stadium"` from the root barrel — explicit named
+exports keep the public API surface intentional and prevent accidental leakage.
+
+### Confidence
+
+MEDIUM — barrel export patterns are well-established in TypeScript/Next.js. The two-layer
+approach is the standard for internal module reorganizations that must preserve external API
+compatibility.
+
+---
+
+## Feature Area 5: Planner Prompt Templating for Device-Specific Prompts
+
+### The Problem
+
+`buildPlannerPrompt()` in `planner.ts` uses runtime `if (stadium) / if (podGo)` branches to
+compose the prompt string. As device count grows, this function becomes unmaintainable.
+
+### The Solution: Prompt Template Objects
+
+**Pattern: Static template object per family, assembled at call time**
+
+```typescript
+// src/lib/helix/devices/helix/planner-prompt.ts
+
+// Static sections — eligible for Anthropic prompt caching (content doesn't change per request)
+const HELIX_SYSTEM_PROMPT_PREFIX = `
+You are an expert Helix signal chain engineer for Helix Floor/LT/Rack.
+This device supports dual DSP, dual-amp topologies, and up to 6 effects.
+` as const;
+
+// Dynamic section — varies per request (amp catalog is large but stable)
+export function buildPlannerPrompt(modelList: string): string {
+  return `
+${HELIX_SYSTEM_PROMPT_PREFIX}
+
+## Available Amps and Cabs
+${modelList}
+
+## Signal Chain Rules
+[Helix-specific chain rules...]
+`;
+}
+```
+
+**Why static prefix strings (not template files):**
+Prompt caching requires the `cache_control: { type: "ephemeral" }` marker on the system
+prompt block. The prefix must be stable between requests for the cache to hit. String
+constants in TypeScript are stable — no file I/O, no dynamic interpolation in the cached
+portion.
+
+**What stays dynamic (not cached):**
+The model list section (`## Available Amps and Cabs`) can vary if the catalog changes per
+firmware update, but in practice it is generated once at module load time via
+`getModelNamesForFamily()` and is stable within a deployment.
+
+### Cab Affinity Section per Family
+
+The existing per-family cab affinity section (built in `buildPlannerPrompt()`) moves into each
+family's prompt builder. Stadium's prompt includes only Agoura amp → cab affinity. Helix's
+prompt includes only HD2 amp → cab affinity. This eliminates cross-contamination where the
+planner sees Agoura cab affinity while generating a Helix LT preset.
+
+### Confidence
+
+HIGH — prompt template as TypeScript string constant is the existing pattern in `planner.ts`.
+The per-family refactor is a reorganization of existing code, not a new pattern.
+
+---
+
+## Feature Area 6: Per-Device Test Infrastructure
 
 ### Current State
 
-`param-engine.ts` resolves effect parameters independently — each effect gets genre-aware
-defaults from the category tables. There is no cross-effect coordination.
+Tests live alongside source files (`chain-rules.test.ts`, `stadium-builder.test.ts`). Vitest
+is configured in `vitest.config.ts` with `environment: "node"` and `@` path alias.
 
-### What Needs to Happen
+### v5.0 Test Pattern: Device-Scoped Test Files
 
-Add interaction-aware parameter adjustments for common effect combinations:
+No new test configuration is needed. The pattern is file-per-device-scenario using existing
+`describe()` nesting:
 
-**Interaction rules (pure TypeScript in `param-engine.ts`):**
+```typescript
+// src/lib/helix/devices/helix/chain-rules.test.ts
+import { describe, it, expect } from "vitest";
+import { assembleSignalChain } from "./chain-rules";
 
-| Combination | Interaction | Why |
-|-------------|-------------|-----|
-| Reverb + Delay (both on) | Reduce Reverb Mix by 0.05, Delay Mix by 0.05 | Combined wet signal overwhelms dry; each competes less |
-| OD/Dist + Compressor pre-amp | Compressor Ratio up slightly, Threshold lower | Compressor pre-drive adds sustain without squashing attack |
-| Chorus + Delay | Delay Feedback down 0.05 | Chorus modulation on delay repeats causes pitch drift pile-up |
-| Octave/Pitch + Reverb | Reverb pre-delay higher | Pitch shifting + early reflections creates mud on low notes |
+describe("Helix chain rules", () => {
+  describe("dual-amp topology", () => {
+    it("assembles split/join blocks for AB topology", () => { ... });
+  });
+  describe("single-amp topology", () => {
+    it("places boost before amp in DSP0", () => { ... });
+  });
+});
 
-**Guitar-type EQ adjustments (cross-block, affects post-cab EQ):**
+// src/lib/helix/devices/stadium/chain-rules.test.ts
+import { describe, it, expect } from "vitest";
+import { assembleSignalChain } from "./chain-rules";
 
-| Guitar Type | EQ Tweak | Why |
-|-------------|----------|-----|
-| single_coil | HighGain +0.03 (more presence) | Singles can be thin through closed cabs |
-| humbucker | LowGain -0.02 (tighter low end) | Humbuckers add thickness that can cloud the mix |
-| p90 | No change (P90 = mid, applies both) | P90 sits between; category defaults are already optimal |
+describe("Stadium chain rules", () => {
+  it("uses slot-grid positions b05/b06 for amp/cab", () => { ... });
+  it("includes all 15 mandatory AmpCab* params in output", () => { ... });
+  it("does not bleed params from previous preset", () => { ... });
+});
+```
 
-These are small numeric adjustments in the Knowledge Layer — not AI-generated values.
+**Key test for Stadium param completeness:**
+```typescript
+it("emits all 10 hidden AmpCab params for every Agoura amp", () => {
+  const REQUIRED_HIDDEN = [
+    "AmpCabPeak2Fc", "AmpCabPeak2G", "AmpCabPeak2Q",
+    "AmpCabPeakFc", "AmpCabPeakG", "AmpCabPeakQ",
+    "AmpCabShelfF", "AmpCabShelfG",
+    "AmpCabZFir", "AmpCabZUpdate",
+  ];
+  // Build a Stadium preset and verify every Agoura amp block has all hidden params
+  const spec = buildTestStadiumSpec();
+  const hsp = buildHspFile(spec);
+  const ampBlock = findAmpBlock(hsp);
+  for (const param of REQUIRED_HIDDEN) {
+    expect(ampBlock.params).toHaveProperty(param);
+  }
+});
+```
 
-### Implementation
+### Vitest `projects` (not needed at this scale)
 
-Add a `resolveEffectInteractions()` function in `param-engine.ts` called after individual
-effect parameters are set. It takes the full `BlockSpec[]` and `ToneIntent.guitarType` and
-returns adjusted parameters for blocks that need cross-effect coordination.
+Vitest 4.x supports `test.projects` for multi-environment configurations. For v5.0, this is
+unnecessary — all tests run in `environment: "node"` with the same `@` alias. Per-family test
+files are sufficient isolation without a separate project config per family.
 
-No new data structures or libraries. Pure TypeScript.
+The `projects` API would only be valuable if device families needed different environment
+configs (e.g., one device family testing browser APIs). That does not apply here.
 
----
+### Confidence
 
-## Feature Area 5: Cost-Aware Model Routing
-
-### Verified Model Costs (HIGH confidence — official Anthropic docs)
-
-| Model | API ID | Input per MTok | Output per MTok | Context |
-|-------|--------|---------------|-----------------|---------|
-| Claude Sonnet 4.6 | `claude-sonnet-4-6` | $3.00 | $15.00 | 200K |
-| Claude Haiku 4.5 | `claude-haiku-4-5-20251001` | $1.00 | $5.00 | 200K |
-| Claude Opus 4.6 | `claude-opus-4-6` | $5.00 | $25.00 | 200K |
-
-Source: [Anthropic Models Overview](https://platform.claude.com/docs/en/about-claude/models/overview) — HIGH confidence (official, verified 2026-03-05)
-
-**IMPORTANT MODEL STATUS:** Claude Haiku 3.5 (`claude-3-5-haiku-20241022`) has been retired
-as of early 2026 — all requests return an error. Claude Haiku 3 (`claude-3-haiku-20240307`) is
-deprecated and retires April 19, 2026. The current fast tier is Haiku 4.5 only.
-
-### Current Routing
-
-| Role | Model | Cost |
-|------|-------|------|
-| Chat (tone interview) | Gemini 2.5 Flash | $0.30 / $2.50 per MTok |
-| Planner (preset generation) | Claude Sonnet 4.6 | $3.00 / $15.00 per MTok |
-
-This split is already cost-correct: cheap model for chat, expensive model used only once per
-preset generation. The question is whether Haiku 4.5 can replace Sonnet 4.6 for the planner.
-
-### Chat Model Decision: KEEP Gemini 2.5 Flash
-
-**Rationale:** The chat model uses `tools: [{ googleSearch: {} }]` for real-time artist rig
-research. This Google Search grounding is architecturally essential — it lets the chat AI look
-up real-world artist gear ("What amp did Mark Knopfler use on Alchemy?") without hallucinating.
-
-Claude Haiku 4.5 does NOT support Google Search grounding natively. Moving chat to Haiku
-would require:
-1. Removing artist research capability, OR
-2. Integrating a separate search API (Google Custom Search or Brave API) into the chat route
-
-Neither is worth the cost. Gemini 2.5 Flash at $0.30/MTok input is already cheap.
-
-**Decision: No change to chat model.**
-
-| Candidate | Cost | Verdict |
-|-----------|------|---------|
-| Gemini 2.5 Flash (current) | $0.30 / $2.50 | Correct — Google Search grounding is the deciding factor |
-| Claude Haiku 4.5 | $1.00 / $5.00 | 3.3× more expensive AND loses Google Search grounding |
-| Gemini 2.5 Flash-Lite | $0.10 / $0.40 | 3× cheaper but 2.5 Flash is already within free tier |
-
-### Planner Model Decision: EVALUATE Haiku 4.5
-
-**The task:** Claude selects ~15 structured fields from a constrained list (exact model names).
-This is selection, not creative writing. The ToneIntent schema is small and deterministic.
-
-**Haiku 4.5 capabilities relevant to this task (HIGH confidence, verified):**
-- Structured output via `output_config.format` — GA, no beta header required
-- `zodOutputFormat` from `@anthropic-ai/sdk/helpers/zod` works on both Sonnet 4.6 and Haiku 4.5
-- API ID: `claude-haiku-4-5-20251001` (alias `claude-haiku-4-5`)
-- Same 200K context window as Sonnet 4.6
-- Supports prompt caching with same `cache_control: ephemeral` mechanism
-
-**The risk:** Creative model selection (which amp matches "Mark Knopfler Dire Straits tone"?)
-requires genuine guitar gear knowledge. Haiku 4.5 is near-frontier but a step below Sonnet 4.6
-on creative tasks. If Haiku picks the wrong amp or mismatches cab to amp, preset quality drops
-at the single most important step.
-
-**Recommendation: DO NOT switch without A/B quality validation.**
-
-Run 20+ preset generations with both models across diverse tone goals:
-- Clear Fender-style clean with single coils
-- Marshall crunch for classic rock
-- Mesa/Rectifier high gain for modern metal
-- Vox jangle for indie/British
-- Ambient reverb-forward clean
-
-Compare: amp category correctness, cab pairing accuracy, effect selection appropriateness,
-snapshot name quality.
-
-**If A/B test passes:** Change `model: "claude-sonnet-4-6"` → `model: "claude-haiku-4-5-20251001"`
-in `src/lib/planner.ts`. Prompt caching stays identical. Expected savings: 3× lower cost per
-generation call ($3→$1 input, $15→$5 output).
-
-**If A/B test fails:** Keep Sonnet 4.6. The quality difference is the product's core value.
-
-### Prompt Caching — Already Implemented, Verify It
-
-Prompt caching is live on the planner (`cache_control: { type: "ephemeral" }` on system
-prompt). The token usage logger (`usage-logger.ts`) already captures
-`cache_read_input_tokens`. Verify hit rate exceeds 80% — if not, investigate whether
-`buildPlannerPrompt()` arguments are changing between calls.
-
-| Metric | Source | Expected |
-|--------|--------|---------|
-| Cache hit rate | `PlannerUsageRecord.cache_hit` | >80% |
-| Input token baseline | `usage.input_tokens` | ~800 tokens per call |
-| Cache read savings | `cache_read_input_tokens × 0.10x` vs full input | ~90% savings on cached tokens |
-
-Source: [Anthropic Prompt Caching Docs](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) — HIGH confidence (official)
-
----
-
-## Feature Area 6: Device/Model Architecture Review
-
-### Current Architecture
-
-The device/model abstraction has 6 devices across 4 builders and 3 file formats:
-
-| Device | Builder | File Format | Key Constraint |
-|--------|---------|-------------|---------------|
-| Helix LT | `preset-builder.ts` | `.hlx` | 8 blocks/DSP, 8 snapshots, dual-DSP |
-| Helix Floor | `preset-builder.ts` | `.hlx` | Same as LT |
-| HX Stomp | `stomp-builder.ts` | `.hlx` | 6 blocks total, 3 snapshots |
-| HX Stomp XL | `stomp-builder.ts` | `.hlx` | 9 blocks total, 4 snapshots |
-| Pod Go | `podgo-builder.ts` | `.pgp` | 4 user effects max, different @type encoding |
-| Helix Stadium | `stadium-builder.ts` | `.hsp` | Slot-based format, Agoura amps, 8 snapshots |
-
-**Shared entry points:** `assembleSignalChain()`, `resolveParameters()`, `buildSnapshots()`
-in `chain-rules.ts` and `param-engine.ts` — all device-aware via `DeviceTarget` parameter.
-
-**Current device detection pattern:** Each module checks `isPodGo()`, `isStadium()`,
-`isStomp()`, `isHelix()` guard functions defined in `types.ts`.
-
-### What the Architecture Review Should Assess
-
-1. **Duplication between builders** — Do `preset-builder.ts`, `stomp-builder.ts`, and
-   `podgo-builder.ts` share block-building logic that could be extracted? (Likely yes for
-   `@enabled`, controller assignment, snapshot block-state encoding)
-
-2. **Stadium param-engine gaps** — Does `param-engine.ts` correctly apply all Stadium-specific
-   params? Currently the Agoura amps only have `{ Drive, Bass, Mid, Treble, Master, ChVol }`.
-   Real .hsp inspection may reveal additional keys (Presence? Sag? custom Agoura params).
-
-3. **Model catalog completeness** — `STADIUM_AMPS` has 12 entries. Firmware 1.2 added 7 new
-   Agoura amp channels. Are those channels in the catalog?
-
-4. **Chain-rules device branching** — `chain-rules.ts` has multiple `if (stadium)` / `if (stomp)`
-   branches. Consider whether a device-specific `ChainConfig` object passed into assembly
-   functions would be cleaner than inline guards.
-
-### Architecture Decision: Evolutionary, Not Rewrite
-
-**Do NOT refactor the builder architecture to a class hierarchy or plugin system.** The current
-flat function design with `DeviceTarget` guards is clear, testable, and well-covered by
-`*.test.ts` files. Any architectural consolidation should be purely additive — extract shared
-helpers, do not restructure calling patterns.
-
-**Target refactors that are safe and valuable:**
-- Extract a `buildBlockEnabled(block, snapshots, maxSnapshots)` helper used by all builders
-  (currently each builder re-implements snapshot state encoding slightly differently)
-- Add a `DeviceConfig` interface to `config.ts` capturing per-device constants (max blocks,
-  snapshot count, DSP count) instead of having them scattered across builder files
+HIGH — existing Vitest setup is correct for this pattern. File-per-device test organization
+is idiomatic for the codebase's existing structure.
 
 ---
 
 ## Installation
 
 ```bash
-# No new packages needed for v4.0
-# All changes are TypeScript source modifications in:
-#   src/lib/helix/param-engine.ts  — per-model overrides, effect interactions
-#   src/lib/helix/models.ts        — Stadium amp param verification
-#   src/lib/helix/chain-rules.ts   — effect combination rules
-#   src/lib/helix/stadium-builder.ts — .hsp format fixes from real preset inspection
-#   src/lib/planner.ts             — gain-staging + cab pairing guidance
+# No new packages for v5.0
+# All changes are TypeScript source reorganization in:
+
+# New directory structure:
+#   src/lib/helix/devices/
+#     helix/chain-rules.ts, planner-prompt.ts, models.ts
+#     stadium/chain-rules.ts, planner-prompt.ts, models.ts
+#     stomp/chain-rules.ts, planner-prompt.ts, models.ts
+#     podgo/chain-rules.ts, planner-prompt.ts, models.ts
+#   src/lib/helix/router.ts    — DeviceFamily → module routing
+#   src/lib/helix/tone-intent.ts — buildToneIntentSchema(family) factory
+
+# Modified files:
+#   src/lib/helix/types.ts       — DeviceFamily type, DEVICE_FAMILY map, assertNever()
+#   src/lib/helix/models.ts      — STADIUM_AMPS defaultParams with 15 mandatory params
+#   src/lib/helix/index.ts       — add router exports, keep all existing exports
+#   src/lib/planner.ts           — call buildPlannerPrompt from device module via router
+
+# One-shot extraction script (run once, output pasted into models.ts):
+npx tsx scripts/extract-stadium-params.ts
 ```
 
 ---
@@ -432,12 +543,13 @@ helpers, do not restructure calling patterns.
 
 | Recommended | Alternative | When to Use Alternative |
 |-------------|-------------|-------------------------|
-| Keep Claude Sonnet 4.6 for planner until validated | Switch to Haiku 4.5 immediately | Only after A/B quality test over 20+ diverse tone goals proves equivalent creative output |
-| Keep Gemini 2.5 Flash for chat | Claude Haiku 4.5 for chat | Never — Haiku lacks Google Search grounding; artist rig research would need separate search API integration |
-| Parse real .hsp files in text editor for Stadium research | External binary parser tool | Unnecessary — .hsp is magic_header + JSON text, readable in any editor after removing 8-byte header |
-| Per-amp model override table in `param-engine.ts` | Let AI set Drive/Presence directly in ToneIntent | Breaks Planner-Executor architecture — AI accuracy on numbers is unreliable |
-| Effect interaction rules in Knowledge Layer | Teach Claude about interactions in prompt | Claude applying interaction rules at selection time loses reproducibility; Knowledge Layer is the right place |
-| Evolutionary architecture review | Full builder refactor to class hierarchy | Existing flat functions + DeviceTarget guards are clear and testable; refactor risk exceeds benefit |
+| `DeviceFamily` discriminated union + module-per-family | Keep guard functions (`isPodGo`, `isStadium`) | Never for v5.0 — guards don't scale to new devices and don't eliminate cross-contamination |
+| Factory function `buildToneIntentSchema(family)` | Separate schema file per device family | Only if schema shapes diverge significantly — at 95% shared shape, a factory is simpler |
+| `assertNever(family)` exhaustiveness checker | Manual switch with `default: throw` | Same effect — `assertNever` is type-safe and gives better error messages |
+| Node.js `Buffer.slice(8)` + `JSON.parse()` for .hsp extraction | `binary-parser` npm package | Use binary-parser only if the format were non-JSON binary (e.g., raw C structs). .hsp is JSON text |
+| File-per-device test files with `describe()` | Vitest `test.projects` per device family | Use projects only if device families need different test environments (JSDOM vs node). All are node here |
+| Per-family barrel (`devices/stadium/index.ts`) | Flat re-export from root index.ts | Flat is fine for small module count but creates implicit coupling; family barrels keep boundaries explicit |
+| Static TypeScript string constants for prompt templates | File-based prompt templates (`.md` or `.txt` files) | Use files if prompts need non-developer editing or translation. Prompts here contain TypeScript variable interpolation |
 
 ---
 
@@ -445,64 +557,63 @@ helpers, do not restructure calling patterns.
 
 | Avoid | Why | Use Instead |
 |-------|-----|-------------|
-| Claude Haiku 3.5 / Haiku 3 | Retired/deprecated as of early 2026 — requests return errors | Claude Haiku 4.5 (`claude-haiku-4-5-20251001`) |
-| Claude Haiku 4.5 for chat (replacing Gemini) | Loses Google Search grounding which is architecturally required for artist rig research | Gemini 2.5 Flash with `tools: [{ googleSearch: {} }]` |
-| Claude Opus 4.6 for planner | $5/$25 per MTok — 1.67× more expensive than Sonnet 4.6 with no quality benefit for 15-field structured selection task | Claude Sonnet 4.6 |
-| External .hsp parser tools | Unnecessary complexity — .hsp is JSON text after 8-byte header strip | `JSON.parse(fileContent.slice(8))` |
-| Langfuse / LangSmith at this stage | Overhead exceeds value at current traffic; `usage-logger.ts` already provides structured JSONL logging | Existing `usage-logger.ts` + Vercel log drain |
-| Numeric parameters in ToneIntent | Breaks Planner-Executor architecture — the entire quality model rests on AI NOT setting numbers | Knowledge Layer param tables in `param-engine.ts` |
-| Parallel wet/dry routing in v4.0 | Blocked as out-of-scope in PROJECT.md; complex Split/Join block logic; DSP budget tight on Stomp devices | Series routing with well-tuned Mix parameters |
+| `binary-parser`, `binparse`, `bin-grammar` npm packages | The .hsp format is `"rpshnosj"` + plain JSON — `data.slice(8)` and `JSON.parse()` are sufficient. Any binary parser library adds a dependency for zero benefit | Node.js `Buffer` + `JSON.parse()` |
+| Class-based device hierarchy (`abstract class Device`) | Adds indirection without type safety benefit over discriminated unions. TypeScript structural typing means interface + function is equivalent without the inheritance chain | `DeviceModule` interface + `getDeviceModule()` function |
+| Dynamic `import()` for device modules at request time | Server-side Next.js API routes — all modules load at startup. Dynamic import adds async overhead with no bundle benefit (server side, no browser download) | Static imports in `router.ts` with a `switch` that returns the already-loaded module |
+| Separate Zod schemas per device in separate files | 95% of the schema is identical across devices. Per-file schemas mean updating snapshot rules, effect limits, or variax support in 4 places | `buildToneIntentSchema(family)` factory function in `tone-intent.ts` |
+| `z.union()` instead of `z.discriminatedUnion()` for device routing | `z.union()` checks every option in order — slower and gives worse error messages when validation fails. `z.discriminatedUnion()` uses the discriminator key for O(1) lookup | `z.discriminatedUnion('family', [...])` — verified working in Zod 4.3.6 |
+| Adding numeric params to ToneIntent per device | Breaks the Planner-Executor architecture — AI accuracy on numbers is unreliable. Device-specific numeric params belong in Knowledge Layer defaults per device family | Device-specific default tables in `param-engine.ts` per family |
+| Global `AMP_NAMES` in `buildToneIntentSchema` | Allows cross-device model contamination (the Agoura leak) — root cause of the v4.0 bug | `getModelNamesForFamily(family)` returning only the correct catalog for the requested family |
 
 ---
 
 ## Stack Patterns by Variant
 
-**If Haiku 4.5 planner A/B test proves quality equivalent:**
-- Change `model: "claude-sonnet-4-6"` → `model: "claude-haiku-4-5-20251001"` in `src/lib/planner.ts`
-- `max_tokens: 4096` stays unchanged — output is identical schema
-- Update `CLAUDE_SONNET_PRICE` constant references in `usage-logger.ts` to reflect Haiku pricing
-- Expect 3× lower cost per generation call
-- Cache behavior is identical — `cache_control: ephemeral` works on Haiku 4.5
+**If a new device is added (e.g., Pod Go XL as its own family):**
+- Add `"podgo_xl"` to `DeviceFamily` union — TypeScript immediately flags unhandled case in `router.ts`
+- Create `src/lib/helix/devices/podgo-xl/` with same interface shape
+- Update `DEVICE_FAMILY` map
+- The `assertNever(family)` in `router.ts` catches it at compile time
 
-**If real .hsp inspection reveals Agoura amps have different parameter keys:**
-- Update `STADIUM_AMPS` defaultParams in `models.ts` with correct keys
-- Update `param-engine.ts` if Agoura amps need different AMP_DEFAULTS table entries
-- Do NOT add a new builder — `stadium-builder.ts` handles the slot format correctly
+**If Stadium gets new Agoura amp models in future firmware:**
+- Run `npx tsx scripts/extract-stadium-params.ts` against new .hsp files
+- Update `STADIUM_AMPS` in `src/lib/helix/devices/stadium/models.ts`
+- Re-run `getModelNamesForFamily("stadium")` — planner sees updated catalog automatically
 
-**If firmware 1.2 Agoura amps are missing from `STADIUM_AMPS`:**
-- Add 7 new Agoura models to `STADIUM_AMPS` in `models.ts`
-- Re-run `getModelListForPrompt()` for Stadium device — confirm planner sees the new models
-- Update planner prompt to inform Claude about the expanded amp catalog
+**If a device family needs different snapshot count logic:**
+- Add `maxSnapshots` to the `DeviceModule` interface
+- Each family's module returns the correct value
+- `buildToneIntentSchema(family)` uses `family === "stomp" ? 3 : ...` for `snapshots.max()`
 
 ---
 
 ## Version Compatibility
 
-| Package | Version | Compatible With | Notes |
-|---------|---------|-----------------|-------|
-| `@anthropic-ai/sdk` | ^0.78.0 | `claude-sonnet-4-6`, `claude-haiku-4-5-20251001` | `zodOutputFormat` from `helpers/zod` works on both; `response.usage` present on both; structured output GA on both (no beta header needed) |
-| `@anthropic-ai/sdk` | ^0.78.0 | Zod ^4.3.6 | `zodOutputFormat` helper compatible with Zod 4 |
-| `@google/genai` | ^1.42.0 | `gemini-2.5-flash` | Streaming + `tools: [{ googleSearch: {} }]` — no changes needed |
-| Next.js | 16.1.6 | Vercel serverless | Token logging via `usage-logger.ts` JSONL — compatible with Vercel |
-| Zod | ^4.3.6 | TypeScript ^5 | No migration needed; already on Zod 4 |
+| Package | Version | Notes |
+|---------|---------|-------|
+| `zod` | 4.3.6 | `z.discriminatedUnion()` verified working — tested in installed package. `z.enum()` from `[string, ...string[]]` tuple type works. Zod author plans to replace with `z.switch()` but current API is stable |
+| `@anthropic-ai/sdk` | ^0.78.0 | `zodOutputFormat()` accepts any Zod object schema — family-specific schema works identically to global schema |
+| `vitest` | ^4.0.18 | File-per-device test files work with existing `vitest.config.ts` — no project config changes needed |
+| `typescript` | ^5 | Discriminated union exhaustiveness checking via `assertNever(x: never)` is a TypeScript ^4.1+ feature — supported |
+| `next` | 16.1.6 | Static imports in `router.ts` are compatible — no dynamic import overhead for server-side modules |
 
 ---
 
 ## Sources
 
-- [Anthropic Models Overview](https://platform.claude.com/docs/en/about-claude/models/overview) — Haiku 4.5 model ID (`claude-haiku-4-5-20251001`), Sonnet 4.6 pricing, structured output GA status — HIGH confidence (official, verified 2026-03-05)
-- [Anthropic Model Deprecations](https://platform.claude.com/docs/en/about-claude/model-deprecations) — Haiku 3.5 retired, Haiku 3 deprecated — HIGH confidence (official)
-- [Anthropic Structured Outputs Docs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs) — GA support across Haiku 4.5, Sonnet 4.6; `output_config.format`; `zodOutputFormat` helper — HIGH confidence (official)
-- [Anthropic Prompt Caching Docs](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) — `cache_control: ephemeral` on Haiku 4.5; cache read pricing 0.1× — HIGH confidence (official)
-- [Claude Haiku 4.5 Announcement](https://www.anthropic.com/news/claude-haiku-4-5) — Model capabilities, coding parity with Sonnet 4, extended thinking support — HIGH confidence (official)
-- [Helix Stadium 1.2.1 Release Notes](https://line6.com/support/page/kb/effects-controllers/helix_130/helix-stadium-121-release-notes-r1105) — Firmware version, new Agoura amps in 1.2 — HIGH confidence (official)
-- [Fluid Solo — Stadium presets](https://www.fluidsolo.com/) — Community .hsp preset source for reverse engineering — MEDIUM confidence (community, primary source)
-- [Gemini vs Haiku 4.5 comparison](https://blog.galaxy.ai/compare/claude-haiku-4-5-vs-gemini-2-5-flash) — Gemini 2.5 Flash vs Haiku 4.5 for conversational quality — MEDIUM confidence (third-party analysis)
-- [Tonevault 250-preset analysis](https://www.tonevault.io/blog/250-helix-amps-analyzed) — Per-amp parameter ranges, Drive/Presence correlation, cab affinity data — HIGH confidence (data-driven primary source)
-- `src/lib/helix/stadium-builder.ts` — Existing .hsp format implementation as verified baseline — HIGH confidence (codebase, cross-checked against 2 real .hsp files)
-- `src/lib/helix/models.ts` — STADIUM_AMPS catalog, Agoura amp param defaults — HIGH confidence (codebase, source of truth for current state)
+- Direct codebase inspection: `src/lib/helix/types.ts` — existing `DeviceTarget`, guard functions, DEVICE_IDS — HIGH confidence
+- Direct codebase inspection: `src/lib/helix/tone-intent.ts` — existing ToneIntent schema, AMP_NAMES global — HIGH confidence
+- Direct codebase inspection: `src/lib/planner.ts` — existing `buildPlannerPrompt()` guard pattern — HIGH confidence
+- Direct corpus analysis: 11 real .hsp files in `C:/Users/dsbog/Downloads/NH_STADIUM_AURA_REFLECTIONS/` — 12 Agoura amp blocks examined, complete param set extracted — HIGH confidence (ground truth from real firmware files)
+- Node.js execution: `node -e "..."` against corpus files — confirmed 15 params present in all 12 amp blocks, 10 hidden params missing from v4.0 builder — HIGH confidence
+- Zod package verification: `node -e "require('.../zod')"` — `z.discriminatedUnion()` confirmed working in installed 4.3.6 — HIGH confidence
+- [TypeScript Handbook — Discriminated Unions](https://www.typescriptlang.org/docs/handbook/unions-and-intersections.html) — exhaustiveness checking with `never` — HIGH confidence (official docs)
+- [Zod discriminatedUnion docs](https://zod.dev/api) — `z.discriminatedUnion('key', [...])` API — HIGH confidence (official)
+- [Vitest Test Projects](https://vitest.dev/guide/projects) — per-file isolation, `describe()` organization — HIGH confidence (official)
+- [How we optimized package imports in Next.js](https://vercel.com/blog/how-we-optimized-package-imports-in-next-js) — barrel file behavior in Next.js 16, server-side tree-shaking — MEDIUM confidence (official Vercel blog)
+- [tsx documentation](https://tsx.is/) — `npx tsx script.ts` for one-shot TypeScript scripts — HIGH confidence (official)
 
 ---
 
-*Stack research for: HelixTones v4.0 — Stadium Rebuild + Preset Quality Leap*
+*Stack research for: HelixTones v5.0 — Device-First Architecture Rework*
 *Researched: 2026-03-05*

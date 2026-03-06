@@ -1,260 +1,266 @@
 # Pitfalls Research
 
-**Domain:** HelixTones v4.0 — Stadium .hsp rebuild, preset quality improvements, per-model param overrides, device abstraction refactor, AI model routing split, shared Knowledge Layer modification
+**Domain:** HelixTones v5.0 — Device-First Architecture Rework on a Live Production App
 **Researched:** 2026-03-05
-**Confidence:** HIGH — based on direct codebase inspection (stadium-builder.ts, param-engine.ts, chain-rules.ts, planner.ts, config.ts, tone-intent.ts, models.ts), real .hsp reference files (Cranked_2203.hsp, Rev_120_Purple_Recto.hsp), existing bug history (dual-DSP key collision, Stadium amp lookup failure documented in PROJECT.md), architectural CONCERNS audit (2026-03-02), and official Anthropic prompt caching documentation.
+**Confidence:** HIGH — based on direct codebase inspection (chain-rules.ts, validate.ts, param-engine.ts, planner.ts, models.ts, tone-intent.ts, stadium-builder.ts, generate/route.ts, chat/route.ts, gemini.ts), v4.0 architecture audit (architecture-audit-v4.md), PROJECT.md bug history, STATE.md accumulated context, and official Anthropic prompt caching documentation.
 
-> This document covers v4.0 pitfalls across two dimensions: (A) codebase-specific pitfalls discovered from direct source inspection and real .hsp file analysis, and (B) architectural pitfalls from prompt engineering research, community analysis, and routing patterns. Both dimensions are required for safe v4.0 execution.
+> This document covers pitfalls specific to adding device-first architecture to a live production app. The prior v4.0 PITFALLS.md covered Stadium builder and param quality pitfalls. This document focuses on architectural migration risks, prompt caching hazards during prompt splitting, conversation migration, new device variant integration, and firmware parameter extraction.
 
 ---
 
 ## Critical Pitfalls
 
-### Pitfall 1: Stadium Agoura Amps Use Non-Standard Parameter Keys That the Category Overlay Ignores
+### Pitfall 1: Splitting the Planner Prompt Destroys the Cache for All Existing Users
 
 **What goes wrong:**
-The Agoura amp models (Stadium-exclusive) contain parameters absent from all standard Helix amps: `ZPrePost`, `Jack`, `Hype`, `Level`, `AmpCabPeak2Fc`, `AmpCabPeak2G`, `AmpCabPeak2Q`, `AmpCabPeakFc`, `AmpCabPeakG`, `AmpCabPeakQ`, `AmpCabShelfF`, `AmpCabShelfG`, `AmpCabZFir`, `AmpCabZUpdate`. The `AMP_DEFAULTS` category tables in `param-engine.ts` cover only the standard Helix set (Drive, Master, Bass, Mid, Treble, Presence, Sag, Hum, Ripple, BiasX). When `resolveAmpParams()` applies the category overlay to an Agoura amp, those extra parameters receive no category-level value — they rely entirely on `model.defaultParams` in `STADIUM_AMPS`.
+The current `buildPlannerPrompt()` in `planner.ts` produces a single system prompt with a stable shared prefix (~80% of text) that is identical across all 6 devices. The `cache_control: { type: "ephemeral", ttl: "1h" }` annotation on this block builds one warm cache bucket that all device calls share. Splitting into device-specific prompts — even if each new prompt has an identical opening section — creates N separate cache buckets (one per device). Each new bucket starts cold and must pay `cache_creation_input_tokens` cost until warmed by enough requests.
 
-Confirmed from `real-cranked-2203-pretty.json`: `Agoura_AmpBrit2203MV` requires `ZPrePost: 0.81`, `Jack: 1` (integer enum, not float), `Hype: 0.26`, `Level: -10.0`, `Sag: 0.0`, `Ripple: 0.0`. The standard high_gain category defaults are `Sag: 0.25`, `Ripple: 0.05`, `Master: 0.45` — all wrong for this amp. If `STADIUM_AMPS` entries were estimated rather than extracted from real .hsp files, every generated Stadium preset has systematically wrong amp parameters on hardware.
+The real danger: Stadium and Pod Go have far fewer daily users than Helix LT. Their cache buckets may never warm because request volume is too low to justify cache creation cost. The net effect is a cost increase for low-volume devices, not the cost decrease the split intends.
+
+Worse: the v4.0 `cabAffinitySection` is dynamically built from `AMP_MODELS` at prompt construction time (planner.ts lines 41-67). This section is already device-conditionally filtered but appended inside the shared prefix. Any device-specific prompt that includes a static copy of this section will drift from the live model catalog the moment a new amp is added with `cabAffinity` — a maintenance trap invisible to TypeScript.
 
 **Why it happens:**
-`resolveAmpParams()` applies `AMP_DEFAULTS[ampCategory]` unconditionally over model defaults. For Agoura amps, this overwrites the correct Sag/Ripple values with category values that were derived from HD2_* model analysis. There is no guard that says "for Stadium amps, preserve model defaults for keys not in the shared param set."
+Device-specific prompts feel like a clean win because the planner currently has conditional text bolted on at the end. Developers assume separate prompts means separate caches are acceptable. The interaction between cache TTL, per-device request volume, and cache creation cost is not modeled before splitting.
 
 **How to avoid:**
-For every Agoura amp in `STADIUM_AMPS`, extract `defaultParams` directly from real .hsp files — not by estimation. `Level` is in dB (not normalized 0-1). `Jack` is an integer. `AmpCab*` keys are EQ parameters baked into the amp model. Create a separate `STADIUM_AMP_DEFAULTS` table covering only the keys verified to be shared between Agoura and HD2_* amp models, or gate the category overlay with a `model.stadiumOnly` flag check to skip incompatible keys.
+Model the cache economics before splitting. Current cache hit rate is logged via `usage-logger.ts`. For each device, estimate daily generation requests. A cache bucket with fewer than 5-10 requests per TTL window will never recoup its `cache_creation_input_tokens` cost. If low-volume devices (Stadium, Pod Go) cannot sustain cache hits, keep a shared prompt prefix and put device differentiation in the user message, not the system prompt. Alternatively, group devices into families that share a cache bucket: Helix family (LT/Floor) share one prompt, Stomp family (Stomp/StompXL) share another, Stadium and Pod Go stay in separate buckets only if volume justifies it.
+
+Do not regenerate `cabAffinitySection` dynamically inside device-specific prompts — centralize it as a module-level constant computed once at import time, then reused across all device prompt builders.
 
 **Warning signs:**
-- Stadium preset sounds muddy or over-compressed (Level param at 0 instead of -10 dB shifts output level by 10 dB)
-- Stadium preset loads but amp sounds thin (AmpCab* EQ params absent, defaulting to firmware zero values)
-- `Jack: 0.0` in generated output instead of `Jack: 1` (integer) — firmware may reject non-integer enum
+- `cache_read_input_tokens` drops to zero or near-zero in the Vercel function logs after the prompt split
+- `cache_creation_input_tokens` spikes in usage logs for every generation call during the first hour after deploy
+- Cost per generation increases by more than 50% post-deploy (full input cost instead of cached cost)
 
 **Phase to address:**
-Stadium builder rebuild phase — validate every Agoura amp's `defaultParams` against real .hsp files before any generation attempt.
+Device-specific prompt phase — model cache economics per device before splitting. Implement split only for devices with sufficient request volume to sustain warm cache buckets.
 
 ---
 
-### Pitfall 2: Stadium Cab Params Are a Partial Schema — Missing Delay, IrData, Level, Pan, Position
+### Pitfall 2: The Combined AMP_NAMES Zod Enum is the Root of Cross-Device Contamination — Splitting It Requires Migrating the ToneIntentSchema
 
 **What goes wrong:**
-Real .hsp inspection of `Cranked_2203.hsp` shows the Stadium cab block (`HD2_CabMicIr_4x121960AT75WithPan`) includes `Delay`, `IrData`, `Level`, `Pan`, `Position` — not present in the current `resolveCabParams()` implementation. The current code only emits `LowCut`, `HighCut`, `Mic`, `Distance`, `Angle`. The builder wraps whatever `resolveCabParams()` returns in the `{ access, value }` slot format, so the generated .hsp cab block will be missing required firmware params.
+`AMP_NAMES` in `models.ts` (line 1340) is `[...Object.keys(AMP_MODELS), ...Object.keys(STADIUM_AMPS)]` — a combined tuple used in `ToneIntentSchema` as `z.enum(AMP_NAMES)`. The `zodOutputFormat` wraps this schema for Claude's constrained decoding. When device-specific prompts are implemented, the generation pipeline still uses the same combined `ToneIntentSchema` for all devices. Claude sees a Stadium-only amp list in its prompt but the constrained decoding allows HD2 amp names because the schema has not been split.
 
-More critically: the real .hsp shows Stadium cabs with `LowCut: 19.9 Hz` (near-zero — cab model handles its own filtering). The current `CAB_PARAMS` table sets `LowCut: 100 Hz` for high_gain cabs. Generated Stadium presets will over-filter low end, causing thin bass response that conflicts with the Stadium hardware's actual behavior.
+This means: even with device-specific prompts, a Stadium session can still generate a ToneIntent with `ampName: "Brit Plexi Jump"` because the Zod schema allows it. The prompt-level filtering and the schema-level validation are decoupled, and Zod's `z.enum()` cannot be conditionally narrowed at runtime without creating a separate schema per device. The current fallback logic in `chain-rules.ts` (the cross-catalog name-match heuristic) exists precisely because this schema gap was never closed.
 
 **Why it happens:**
-`resolveCabParams()` was built from Helix LT/Floor format knowledge. Stadium cabs use the same `HD2_CabMicIr_*WithPan` model family but in .hsp slot-based format, and those models have additional params not exposed in the .hlx format. The cab schema difference was not discovered during v3.0 development because only 2 real .hsp files were used for reference, and the param comparison was focused on structure, not completeness.
+Adding a new device was always additive — STADIUM_AMPS was appended to AMP_NAMES, and device-specific filtering was added to `getModelListForPrompt()`. The Zod schema was never narrowed per device because `zodOutputFormat` does not accept runtime-conditional schemas easily. The result is that prompt filtering is a best-effort hint to the LLM, not a hard constraint.
 
 **How to avoid:**
-Read the full param set for a Stadium cab block from a real .hsp file and update `CAB_MODELS` defaultParams for `HD2_CabMicIr_*WithPan` models to include all six params: `LowCut`, `HighCut`, `Mic`, `Distance`, `Angle`, `Delay`, `IrData`, `Level`, `Pan`, `Position`. Add a Stadium-specific cab param resolver path in `resolveCabParams()` gated on `isStadium(device)` if Stadium needs different default LowCut/HighCut values than Helix.
+Create per-device ToneIntent schemas: `StadiumToneIntentSchema` uses `z.enum([...Object.keys(STADIUM_AMPS)])` for `ampName`. `HelixToneIntentSchema` uses `z.enum([...Object.keys(AMP_MODELS)])`. `StompToneIntentSchema` and `PodGoToneIntentSchema` are subsets of Helix. Pass the device-appropriate schema to `zodOutputFormat` in `callClaudePlanner()` based on `deviceTarget`. This closes the schema gap at the constrained decoding level — the LLM cannot generate a cross-device amp name because the JSON Schema does not allow it.
+
+This is a non-trivial refactor: `ToneIntentSchema` is imported in `planner.ts`, `tone-intent.ts`, and potentially test files. The refactor must keep backward compatibility for the non-device-specific fields (effects, snapshots, guitar type, etc.) and only split the amp/cab enums.
 
 **Warning signs:**
-- Generated .hsp cab block has 5 params; reference .hsp has 10 params — field count mismatch visible in diff
-- Stadium preset loads but bass sounds filtered or thin relative to factory presets
-- Preset validator passes (cab param completeness is not validated) but hardware behavior differs from expected
+- Stadium generation logs show Agoura fallback heuristic firing (`[chain-rules] Agoura→HD2 fallback` warning)
+- Helix generation logs show `[chain-rules] Stadium fallback` warning (Agoura amp picked for non-Stadium device)
+- Device-specific prompts are deployed but cross-device contamination bug persists
 
 **Phase to address:**
-Stadium builder rebuild phase — do a field-by-field param comparison between generated and reference .hsp for every block type before marking Stadium unblocked.
+ToneIntentSchema split phase — must happen alongside or immediately after device-specific prompts, not deferred. Prompt filtering without schema filtering is incomplete contamination prevention.
 
 ---
 
-### Pitfall 3: Prompt Enrichment Invalidates the Prompt Cache Token Boundary
+### Pitfall 3: Moving Device Selection to Conversation Start Breaks Resumed Conversations
 
 **What goes wrong:**
-The planner system prompt is cached via `cache_control: { type: "ephemeral" }`. Any character-level change to the system prompt text — including appending gain-staging rules, cab pairing heuristics, or effect discipline guidance — creates a new cache bucket and invalidates the existing one. The first request after a deploy pays full input token cost (`cache_creation_input_tokens`), and the cache only repopulates after sufficient reuse.
+Chat persistence stores the full conversation history in Supabase per user. Existing conversations were created under the late-selection model: the user chatted without a committed device, then selected a device at the [READY_TO_GENERATE] step. Resumed conversations (opened from the sidebar) load the stored messages without the device-first context — there is no `device` field stored per conversation in the database schema (confirmed: `conversations` table stores `preset_url` and `updated_at`, not `device`).
 
-The more serious failure mode: enrichment that inserts device-specific text inside the existing `if (stadium)` / `if (podGo)` conditional blocks in `buildPlannerPrompt()` means every device variant now has a larger, different prompt. If the shared static prefix (the first 90% of the prompt that was previously identical across all devices) gains conditionally-inserted content that varies by device, there are now 6 separate cache buckets — each with lower hit frequency — potentially eliminating cache savings entirely.
+When v5.0 moves device selection to conversation start and stores `device` as a conversation property, old conversations resumed under the new UI will not have a stored device. If the app assumes device is always set from the conversation record, resumed old conversations will crash or silently default to `helix_lt`. Users who had Pod Go or Stadium conversations will regenerate with the wrong device.
 
 **Why it happens:**
-`buildPlannerPrompt(modelList, device)` builds the prompt string at call time. The cache key is the full content. Developers adding enrichment naturally reach for the section they're modifying (e.g., the stadium block) without modeling the cache fragmentation impact. Prompt caching ROI analysis typically looks at per-call token costs, not at the interaction between content placement and cache bucket multiplicity.
+Database migrations for live production apps are often scoped to new conversations only. Adding a `device` column to the `conversations` table with a `DEFAULT NULL` allows existing rows to persist without a device value. But application code that reads `conversation.device` without null-checking will crash on old rows. The migration plan and the application code must handle null `device` together.
 
 **How to avoid:**
-Treat the system prompt like a compiled binary with a stable shared prefix. New enrichment content (gain-staging rules, cab affinity guidance, effect discipline) belongs in the shared static section that is identical across all devices — generic enough to apply everywhere. Device-specific text must remain in the `if (device)` blocks that are already at the end of the prompt. Rule: the first ~70% of the prompt must be character-for-character identical for all 6 device calls.
-
-Before any prompt change: use the existing token usage logger (`usage-logger.ts`) to measure current cache hit rate as baseline. After deploy, verify cache hit rate is within 5% of baseline. Any drop larger than that indicates cache fragmentation.
+Migrate the `conversations` table with `ALTER TABLE conversations ADD COLUMN device TEXT DEFAULT NULL`. Write a migration script to backfill device from the stored `preset_url` extension: `.hlx` → assume `helix_lt`, `.pgp` → `pod_go`, `.hsp` → `helix_stadium`. This is imperfect (LT and Floor share `.hlx`) but sets a reasonable default that covers the majority of existing conversations. All application code that reads `conversation.device` must handle `null` with a graceful fallback: show the device picker when device is null rather than defaulting silently to `helix_lt`.
 
 **Warning signs:**
-- `cache_read_input_tokens` drops to zero after a deploy (cache miss)
-- `cache_creation_input_tokens` spikes in the usage log after any prompt change
-- Cost per generation doubles unexpectedly post-deploy
+- Users report that resumed Stadium conversations generate Helix LT presets
+- Console errors: `TypeError: Cannot read property 'device' of null` in conversation loading
+- The device picker is shown to users on mid-flight sessions who already selected a device in the prior session
 
 **Phase to address:**
-Planner prompt enrichment phase — restructure `buildPlannerPrompt` so new content can be appended to stable sections before adding any enrichment text.
+Device-first conversation flow phase — database migration and null-handling for resumed conversations must be in scope, not deferred. Go live with the new flow only after the migration has been applied and tested with real legacy conversation data.
 
 ---
 
-### Pitfall 4: Per-Model Amp Overrides Are Silently Discarded by Category Defaults
+### Pitfall 4: Guard-Based Branching Converted Partially Leaves the Codebase in a Hybrid State
 
 **What goes wrong:**
-`resolveAmpParams()` applies a 3-layer strategy: (1) model `defaultParams`, (2) `AMP_DEFAULTS[ampCategory]` category overlay, (3) topology mid override. Layer 2 iterates `AMP_DEFAULTS[category]` and unconditionally writes each key into `params`. If a per-model override is added at Layer 1 (model `defaultParams`) for a value that is also in Layer 2 (`AMP_DEFAULTS`), the override is silently discarded — the category default wins.
+The architecture-audit-v4.md documents ~17 guard sites across `chain-rules.ts` (10), `param-engine.ts` (3), and `validate.ts` (4). If device-first refactoring converts some guard sites to device modules but leaves others as `isPodGo()` / `isStadium()` guards, the codebase ends up in a hybrid state: some device behavior is in device modules, some is in shared files behind guards. This is worse than either pure approach because:
 
-Example: the Litigator (`HD2_AmpIndyHardCorePre`) is a crunch amp that sounds best with `Drive: 0.35-0.40`. The crunch category default is `Drive: 0.50`. If a per-model override for Drive is added to `defaultParams`, it is overwritten back to 0.50 by Layer 2. The override exists in the code but has no effect on output. Developers investigating why the override doesn't work will waste time before discovering the layer ordering.
+1. Developers adding a new device must search both device modules AND guard sites — no single registration point
+2. A device module that handles chain assembly but delegates to a guard in `param-engine.ts` has a hidden coupling that is invisible from the module's perspective
+3. Test coverage becomes ambiguous — does a device module test cover param resolution, or does it trust that the guard in `param-engine.ts` will do the right thing?
+
+The specific risk: if `assembleSignalChain()` is replaced by device-specific chain assemblers but `validatePresetSpec()` retains its guard-based device branching, validation and assembly are now in different abstraction layers. A new device variant (Stadium XL) added to the device module will silently pass validation with the wrong rules because `validate.ts` does not know about the new variant.
 
 **Why it happens:**
-The 3-layer resolution strategy was designed to enable category consistency, not per-model precision. Developers adding per-model quality improvements naturally reach for `model.defaultParams`, not realizing that Layer 2 clobbers any key present in both. There is no TypeScript error, no warning, no unit test failure — the override silently loses.
+Refactors are done incrementally. The first phase converts chain-rules; the second defers param-engine "for a future phase"; the third defers validate. Each deferral is individually reasonable, but the cumulative effect is a permanent hybrid.
 
 **How to avoid:**
-Introduce a fourth layer: `model.paramOverrides` field on `HelixModel`, applied AFTER category defaults. Resolution order: (1) model defaultParams, (2) category defaults, (3) topology mid, (4) model paramOverrides. Layer 4 wins over all shared layers. This makes the override mechanism explicit and visible in the model definition.
+Define the target architecture before writing any code: which files are replaced by device modules, which are extended, which are deleted. Commit to completing the full conversion within v5.0 (or explicitly time-box which guard sites remain). If `validate.ts` is not converted in v5.0, document which guard sites it still contains and add a test that asserts new devices added to `DeviceTarget` union cause a compile error in `validate.ts` (enforced by `Record<DeviceTarget, ...>` pattern).
 
-Alternatively, add a `lockedParams` set to each model listing param keys that the category overlay must not touch. But the separate `paramOverrides` field is cleaner.
+Do not ship the partial refactor as "done" — document the guard sites that remain explicitly in STATE.md.
 
 **Warning signs:**
-- A `HelixModel.defaultParams` entry has a Drive/Master/Bias value that differs from the category default, but resolved presets always show the category default value
-- Unit test for a per-model override passes in isolation (calling model lookup directly) but the integration output shows the category value
-- Reviewing the generated preset file shows the amp block using category default values despite model-specific intent
+- `chain-rules.ts` has device modules but `validate.ts` still has `if (isStadium(device))` scattered throughout
+- A new device (Stadium XL) added to the `DeviceTarget` union does not produce a compile error in `validate.ts`
+- Two code paths exist for the same device behavior: the device module and a guard site that was not removed
 
 **Phase to address:**
-Per-model amp parameter overrides phase — establish the 4-layer override mechanism BEFORE adding individual model-specific values, to prevent silent-discard bugs.
+Architecture refactor phase — establish a clear end state and a checklist of all files/guard sites that must be converted before the phase is marked complete.
 
 ---
 
-### Pitfall 5: Device Abstraction Refactor Breaks Exclusion Guards Via Silent Capability Gaps
+### Pitfall 5: Firmware Parameter Extraction From Real .hsp Files Produces Incomplete or Wrong Values
 
 **What goes wrong:**
-The codebase has 14+ explicit `isStadium(device)`, `isStomp(device)`, `isPodGo(device)` guards in `chain-rules.ts`, `param-engine.ts`, `planner.ts`, and the generate route. A device abstraction refactor that introduces a capability object or strategy pattern risks breaking these guards if: (a) the capability object is opt-in (new capabilities default to `true`) rather than explicit (each device declares every capability), or (b) the refactor converts some guards to capability checks but leaves others as `is*()` calls, creating inconsistency.
+The v4.0 architecture audit confirmed Stadium presets include only 12 of 27 firmware params per amp block. The missing params — `AmpCabPeak2Fc`, `AmpCabPeak2G`, `AmpCabPeak2Q`, `AmpCabPeakFc`, `AmpCabPeakG`, `AmpCabPeakQ`, `AmpCabShelfF`, `AmpCabShelfG`, `AmpCabZFir`, `AmpCabZUpdate`, `Aggression`, `Bright`, `Contour`, `Depth`, `Fat`, `Hype` — are not emitted in generated presets. When a user loads a generated preset, the firmware fills the missing params from the device's internal state (the last-loaded preset's values for those params). The result: every generated Stadium preset inherits partial sonic character from whatever preset was loaded before it. This is the param bleed bug reported by JC Logan ("all 4 snapshots sound the same") and "presets sound like factory preset."
 
-The failure mode is silent: TypeScript does not complain if a capability flag is missing from a new device's config — it just returns `undefined` (falsy), which could accidentally allow or block the wrong behavior. For example, if `capabilities.postCabEq` is missing from a device config, `if (capabilities.postCabEq)` evaluates false, silently skipping the mandatory Parametric EQ insertion for that device.
+The extraction risk: reading param values from a single real .hsp file gives values for that specific amp with that specific tone goal. If `Aggression: 0.7` is extracted from a high-gain metal reference and treated as a default for all Agoura high-gain amps, it biases all generated high-gain Stadium presets toward that single reference's character. Extraction without per-param semantic understanding produces defaults that are technically complete but tonally arbitrary.
 
 **Why it happens:**
-Refactors that convert boolean-function guards to object properties often use "present = enabled" semantics. If a device config object is created by adding known capabilities, any capability not explicitly set is implicitly absent (disabled). For capabilities that should be ENABLED by default (e.g., all Helix devices support dsp1), this "false by default" inversion causes bugs that only manifest when generating presets for specific devices.
+Building from analogy (HD2 amp params → Agoura amp params) is faster than extraction. The 15 missing params appear in real .hsp files but were not included in the initial `STADIUM_AMPS` `defaultParams` because they have no HD2 equivalent to reason from. Developers documented the incomplete extraction ("12 of 27 params") but deferred completing it.
 
 **How to avoid:**
-Define `DeviceCapabilities` as a fully required interface — no optional fields. Every device must declare every capability explicitly. TypeScript enforces completeness: adding a new capability to the interface makes every device config a compile error until updated. Use an "opt-in" pattern: all capabilities are `false` unless explicitly set `true`. Only devices that have been verified to support a capability get it enabled.
+Extract defaults from a corpus of at least 5 real .hsp files per amp model (not 1). For each param, compute the median across the corpus rather than using a single reference value. Cross-check against Line 6 Stadium documentation or HelixHelp wiki for param semantic descriptions before assigning defaults. Params with documented unit types (dB, Hz, boolean) must be validated against the spec — `Level` is dB (not normalized 0-1), `Jack` is an integer enum, `ZPrePost` likely controls pre/post position.
 
-Do this refactor in a dedicated architecture phase, not combined with any feature work. The refactor must not change behavior — only the mechanism for expressing it.
+For params where no corpus guidance exists, use the firmware's default value (the value found in a freshly-initialized preset on hardware) rather than inventing a value. A firmware default causes no state bleed; an invented value causes a different kind of bleed.
 
 **Warning signs:**
-- A new device passes all existing tests but generates presets that fail hardware import
-- `chain-rules.ts` or `param-engine.ts` tests pass for 5 devices but the 6th device was not added to the test matrix
-- Stomp preset generates 7 blocks (one over the 6-block limit) without a validation error
+- Generated Stadium preset sounds different depending on which factory preset was loaded on the device before importing it
+- Amp block in generated .hsp has 12 param keys; reference .hsp has 27 param keys (count mismatch visible in JSON diff)
+- `Hype`, `Fat`, `Contour` absent from generated .hsp amp block
+- Two different generated Stadium presets from the same amp model have identical AmpCab* param values (copy-paste from a single reference, not corpus extraction)
 
 **Phase to address:**
-Architecture review / device abstraction phase — must be a standalone phase before any feature changes to chain rules or param engine.
+Stadium firmware parameter completeness phase — must be completed before Stadium is considered production-ready. Param bleed is a critical quality failure, not a cosmetic one.
 
 ---
 
-### Pitfall 6: AI Chat Model Split Degrades Tone Interview Quality Without Measurable Warning
+### Pitfall 6: New Device Variants (Stadium XL, Helix Rack, Pod Go XL) Assumed Compatible With Existing Family Builders
 
 **What goes wrong:**
-Routing chat to Haiku (cheaper/faster) and generation to Sonnet splits the conversation pipeline. The risk is that Haiku gathers less specific tone information during the interview — shorter follow-up questions, less artist/rig detail, more generic responses — and the Planner receives a lower-quality conversation to translate into ToneIntent. Users experience this as "the AI understood me less" even though the generation step itself is unchanged.
+The milestone context identifies three new device variants not currently supported: Stadium XL, Helix Rack, Pod Go XL. The assumption that these share format, device IDs, and param schemas with their family members (Stadium, Helix Floor, Pod Go) is an unverified hypothesis. The v4.0 architecture audit documented a precedent: `stadium-builder.ts` was initially implemented by analogy to `preset-builder.ts`, producing 5 confirmed format bugs that were only discovered by comparing generated output against real .hsp files.
 
-The quality degradation is not immediately measurable: it shows up as slightly more generic `ampName` choices, vaguer `genreHint` strings, or less useful `guitarNotes`. These metrics require deliberate benchmarking to detect — a simple cost measurement will show savings without revealing the quality cost.
-
-Additionally: the Sonnet planner prompt cache is warm when Sonnet handles both chat and generation (prior conversation calls prime the context). With Haiku handling chat, the first Sonnet generation call in each session starts cold, potentially increasing `cache_creation_input_tokens` per generation.
+Specific risks per variant:
+- **Stadium XL**: May have a different `device_id`, `device_version`, or extended block count vs. Stadium. Using `helix_stadium` device ID for Stadium XL presets will cause HX Edit to reject the import.
+- **Helix Rack**: Has different physical I/O than Helix Floor (rack-mount, different routing defaults). The `HELIX_SYSTEM_MODELS` constants (INPUT, OUTPUT, SPLIT, JOIN) must be verified against real Helix Rack exports. If Rack uses different I/O model IDs, any preset built with Floor I/O model IDs will have routing errors on Rack hardware.
+- **Pod Go XL**: May have a different block budget or effect ordering convention than Pod Go. The `POD_GO_MAX_USER_EFFECTS = 4` constant may be wrong for Pod Go XL. If Pod Go XL allows more user effects, using the same constant under-budgets every generated preset.
 
 **Why it happens:**
-Model routing decisions are made on latency and cost metrics, both of which improve with Haiku. Quality metrics (interview specificity, ToneIntent diversity) require subjective evaluation and deliberate A/B testing — work that is easy to skip when cost savings are obvious and immediate.
+Family-variant devices look identical from the firmware perspective in documentation. Developers add the new `DeviceTarget` union value, map it to the family builder, and ship. The correctness assumption ("same family = same format") is almost always wrong at the device ID level and frequently wrong at the block budget or I/O model level.
 
 **How to avoid:**
-Before deploying Haiku for chat, run 15 parallel tone interviews with identical conversation starters using both Haiku and the current model. Evaluate the ToneIntents produced: are `ampName` choices as specific? Are `guitarNotes` as useful? Are `genreHint` values as concrete? Only ship if ToneIntent quality is within acceptable thresholds. Use the existing 36-preset deterministic baseline generator (v3.2) as a quality floor.
-
-Separately: measure current Sonnet `cache_read_input_tokens` hit rate before any model split. If hit rate drops after splitting, route only initial greeting turns to Haiku and hand off to Sonnet when the conversation becomes gear-specific.
+For each new variant, obtain at least 2 real preset files exported from that specific hardware (or from HX Edit targeting that device) before writing any code. Extract: device ID, device version, I/O model IDs, block count per DSP, snapshot count. Do not start implementation until these values are known from real files. If real hardware is not available, mark the device as "research pending" in the UI and block generation for that variant.
 
 **Warning signs:**
-- ToneIntent `ampName` selections cluster toward 3-4 common amps in Haiku-interviewed sessions but show wider distribution in Sonnet sessions
-- `guitarNotes` field is often empty or formulaic ("Use neck pickup for warm tone")
-- `cache_read_input_tokens` in Sonnet generation responses drops to zero after model split
-- Session-level API cost increases (Sonnet generation cache misses offset Haiku chat savings)
+- A new variant added to `DEVICE_IDS` has a device ID copied from its family member (e.g., Stadium XL uses Stadium's `2490368`)
+- The new variant is activated in the UI without a corresponding real preset corpus inspection
+- `validate.ts` allows the new variant without device-specific block limit rules (falls through to the Helix else branch with 8-block DSP limit)
 
 **Phase to address:**
-Cost-aware model routing phase — requires a side-by-side quality comparison gate before shipping; cost measurement alone is insufficient.
+New device variant research phase — must precede any implementation. Each variant gets its own corpus inspection before code is written. Do not add a variant to `DeviceTarget` union until its device ID and block budget are confirmed from real files.
 
 ---
 
-### Pitfall 7: Shared Knowledge Layer Changes Regress Working Devices
+### Pitfall 7: Device Picker at Conversation Start Creates Orphaned Conversations When User Changes Device Mid-Conversation
 
 **What goes wrong:**
-`chain-rules.ts` and `param-engine.ts` are shared across all 6 devices. Any change to these files — adding a new chain slot, changing a category default, modifying a DSP assignment — affects all devices simultaneously. A change that improves Stadium preset quality can silently regress Helix LT presets if the change touches code paths exercised by both.
+Under the current late-selection model, device is selected at generation time — the conversation has no committed device until the user clicks Generate. Under device-first, device is selected before the first chat message. If the user changes their mind mid-conversation ("actually, I'm using Stomp not LT"), one of three failure modes occurs:
 
-The specific risk for v4.0: adding per-model param overrides to `param-engine.ts` changes the resolution path for `resolveAmpParams()`. A bug in the new override logic (e.g., it looks up by `block.modelName` but the amp block has `modelId` not `modelName`) will cause every amp's parameter resolution to throw, breaking all 6 devices simultaneously on production.
+1. **The app ignores the change**: The conversation continues with the original device. The user generates a preset for the wrong device. They download an LT preset for their Stomp and it fails to load.
+2. **The app restarts the conversation**: The conversation history is discarded. The user loses the discussion they just had. Frustrating UX.
+3. **The app changes device but keeps history**: The chat system prompt and planner prompt change but the stored conversation messages reference device-specific constraints from the previous device. The planner may hallucinate based on LT-specific context when now targeting Stomp.
+
+This is not a hypothetical: users frequently switch devices. Power users have multiple Line 6 devices. A guitarist with both an LT and a Stomp will start with LT, realize they need a Stomp preset, and want to switch.
 
 **Why it happens:**
-Shared code is fast to change but high-impact to break. The 6-device test matrix is large and easy to partially test (developers test the device they're working on and forget to verify the others). Changes that add new code paths feel safe because they don't touch existing paths — but a new code path with an uncaught exception in the shared resolver kills the shared function for all devices.
+Device-first architecture optimizes for single-device sessions. Multi-device users are a minority but a high-value segment (power users, professionals). Their workflow is not modeled during design.
 
 **How to avoid:**
-For any change to `chain-rules.ts` or `param-engine.ts`:
-1. Run the full device test matrix (all 6 devices, not just the target device) before merging
-2. Any new code path (e.g., `if (model.paramOverrides)`) must be guarded against missing data: `model.paramOverrides ?? {}` not bare access
-3. Architectural changes (new layers, new resolution strategies) must be added as NEW code paths that fall through to the existing behavior when not configured — never modify the existing path
-
-When modifying `AMP_DEFAULTS`, verify the change with 3 amps per category (clean/crunch/high_gain) for at least Helix LT and Stomp (the two devices with the most different block budgets).
+Allow device switching with a visible confirmation step: "Switching to HX Stomp will update your device context. Your conversation history will be preserved, but some constraints have changed (block budget is tighter). Continue?" Store the new device in the conversation record. Pass the current `deviceTarget` through all downstream calls — do not cache device at conversation creation time. In the chat system prompt, confirm the device change by appending a system note to the conversation: "[Device changed to HX Stomp. Block budget: 6 total blocks.]" This keeps the LLM's context current without discarding history.
 
 **Warning signs:**
-- A PR to `param-engine.ts` that only includes tests for one device
-- An exception thrown in `resolveAmpParams()` for a specific amp that had no previous issues
-- `chain-rules.ts` tests pass for Helix LT but no tests cover Pod Go or Stomp
-- A new field added to `HelixModel` that is accessed without null checking in the shared resolution path
+- The device picker is hidden or disabled after the first message (hard-coded to the initial selection)
+- `conversations.device` is set once on conversation creation and has no update path
+- The generate route uses `conversation.device` from the database rather than `req.body.device` from the frontend — stale device after mid-conversation switch
 
 **Phase to address:**
-Every phase that touches `chain-rules.ts` or `param-engine.ts` — establish the 6-device test matrix rule as a hard gate before any shared Knowledge Layer change ships.
+Device-first conversation flow phase — model device switching in the UI spec before building the picker. Add a device update API endpoint alongside the conversation creation endpoint.
 
 ---
 
-### Pitfall 8: Planner Prompt Bloat Degrades Structured Output Compliance
+### Pitfall 8: The Chat System Prompt Does Not Distinguish Device Families at the Conversation Level
 
 **What goes wrong:**
-Adding richer creative guidelines, signal chain intelligence rules, and effect interaction patterns to the planner system prompt can degrade structured output compliance, not improve it. Research shows that "generic improved" prompts can cause extraction pass rates to drop from 100% to 90% and RAG compliance from 93.3% to 80% for structured output tasks (arxiv 2025, "When Better Prompts Hurt"). This is the "lost in the middle" effect: LLMs give less weight to information in the middle of long contexts. A planner prompt tuned for reliable ToneIntent JSON may start producing schema validation failures when bloated with additional guidance.
+`gemini.ts` returns a single `getSystemPrompt()` used for all devices in the chat phase. The system prompt (lines 34-141) contains device constraint summaries for all 6 devices. Under device-first architecture, the chat AI should only discuss the user's specific device — Stadium users do not need to hear about Pod Go DSP limits, and Pod Go users do not need dual-amp explanations. But more importantly: with device-first, the system prompt must NOT list other devices as options. If the system prompt still says "Supported Devices: Helix LT, Helix Floor, HX Stomp..." and a user asks "can I use this preset on my Pod Go?" the AI may incorrectly say "yes" or give advice that applies to a different device's budget.
 
-The current `buildPlannerPrompt()` already works well. Adding 500+ tokens of creative guidelines without testing is gambling with structured output reliability on every generation.
+The current system prompt also says explicitly "Do NOT ask which device they use" (line 46) — correct for the current model where device is already selected in UI. Under device-first, this instruction remains correct but the reasoning changes: device is committed at conversation start, not mid-flow. The system prompt must reference the specific device as a first-class context, not just list all devices.
 
 **Why it happens:**
-The instinct is "more context = better output." This holds for conversational tasks but frequently fails for structured output tasks where the model must adhere to a narrow schema. Instruction competition degrades format compliance.
+The chat system prompt was designed for the current architecture where the device is a late-binding UI widget, not a conversation property. Moving device to the start of the flow invalidates the "list all devices" design of the system prompt but developers may not update it because the chat still "works" — it just gives less focused advice.
 
 **How to avoid:**
-- Benchmark the current planner prompt's compliance rate before changing anything (run 20 test generations, count schema failures and creative diversity)
-- Add one section at a time, retest after each addition — never batch multiple prompt changes
-- Keep prompt under 2,000 tokens total; prune lower-value sections if it exceeds this
-- Put new creative guidelines BEFORE the schema field definitions, not after — instructions near the beginning receive more weight
-- `zodOutputFormat` constrains decoding but does not eliminate compliance degradation — test, don't assume
+Create device-specific system prompts for the chat phase (or parameterize `getSystemPrompt(device)` to inject the specific device's constraints). The chat prompt for an HX Stomp session should only describe Stomp constraints, not list all 6 devices. The prompt for a Helix LT session should emphasize dual-amp capability. This improves interview quality: the AI can make concrete recommendations ("since you're on Stomp, we'll skip the post-cab EQ to save blocks") instead of hedging across all devices.
+
+Cache consideration: the Gemini chat system prompt does not use Claude prompt caching (it uses Gemini), so splitting the chat system prompt has no cache cost. It does create more prompt maintenance surface, but the quality gain justifies it.
 
 **Warning signs:**
-- Schema validation failures appear in logs after a prompt update
-- Generated ToneIntents are valid JSON but creatively flat (same 3 amps, same effects)
-- `ampName` selections become repetitive; model reverts to "safe" common choices
-- Effect `role` distribution skews — everything becomes `always_on`
+- The chat system prompt still lists all 6 devices after device-first is implemented
+- A Stadium user asks "can I get a dual amp preset?" and the AI says "yes, dual amp is supported"
+- The AI's tone recommendations reference Pod Go block limits during a Helix LT session
 
 **Phase to address:**
-Planner prompt enrichment phase — establish a quality baseline and a one-change-at-a-time protocol before any planner prompt modifications.
+Device-first chat prompt phase — update `getSystemPrompt(device)` to be device-specific in the same phase that moves device selection to conversation start.
 
 ---
 
-### Pitfall 9: Stadium Agoura Amp Params Added to Global AMP_DEFAULTS Corrupt Non-Stadium Presets
+### Pitfall 9: The `isHelix()` Guard Treats LT and Floor as Identical But Helix Rack Has Different Capabilities
 
 **What goes wrong:**
-If Stadium-specific Agoura amp params (`Jack`, `ZPrePost`, `Level`, `Hype`, `AmpCab*`) are added to the global `AMP_DEFAULTS` table to reuse the existing 3-layer strategy, those params get emitted into every non-Stadium preset (Helix LT, Floor, Stomp, Pod Go). HD2_* amp models do not have these params. The .hlx builder will emit them as orphan keys in the amp block's param object — a behavior that may cause HX Edit import warnings or corrupt presets with a future firmware update that validates param schemas strictly.
+`types.ts` defines `isHelix(device)` returning true for `helix_lt` and `helix_floor`. This function is the guard used throughout the codebase to apply "Helix family" behavior (dual DSP, 8 blocks per DSP, dual-amp support). If Helix Rack is added to the Helix family and `isHelix()` is extended to return true for `helix_rack`, all Rack presets will inherit LT/Floor behavior — including dual-amp, dual-DSP split/join topology, and block type assignments.
+
+The risk: Helix Rack has different physical I/O (rack-mount XLR outputs, different routing defaults) and may use different system model IDs than Floor/LT. If `HELIX_SYSTEM_MODELS.FLOW1_INPUT` is a Floor/LT model ID, using it for Rack presets will cause routing errors. The `isHelix()` function treats LT and Floor as identical (confirmed correct per audit) — but this cannot be extended to Rack without verification that Rack uses the same I/O model IDs and block format.
 
 **Why it happens:**
-It is tempting to extend `AMP_DEFAULTS` rather than write a Stadium-specific resolver. The cost (extra keys in non-Stadium presets) seems harmless because Helix firmware currently ignores unknown params. But this is an unverified assumption about firmware tolerance and will fail silently.
+`isHelix()` was designed as a family predicate, not a capability predicate. "Is this device in the Helix family?" and "does this device use Floor/LT I/O model IDs?" are different questions that currently resolve to the same answer. Adding Rack to the family assumes both questions have the same answer for Rack, which is unverified.
 
 **How to avoid:**
-Any param added to `AMP_DEFAULTS` requires verification that it exists on HD2_* amp models for ALL 6 supported devices. Stadium-specific params belong in a `STADIUM_AMP_DEFAULTS` table only, applied inside an `isStadium(device)` guard. Never add a param to the shared table without checking it against the non-Stadium model catalog.
+Before adding `helix_rack` to `DeviceTarget`, extract the I/O model IDs from at least 2 real Helix Rack preset exports. Compare against `HELIX_SYSTEM_MODELS`. If they differ, add `HELIX_RACK_SYSTEM_MODELS` as a separate config object. The `isHelix()` predicate can remain a family predicate; the preset builder must do a sub-check: `isHelix(device) && !isHelixRack(device)` for the Floor/LT I/O path, `isHelixRack(device)` for the Rack I/O path.
 
 **Warning signs:**
-- A non-Stadium preset's amp block params include `Jack` or `ZPrePost` keys when inspected
-- HX Edit logs an import warning about unexpected parameters
-- The shared `AMP_DEFAULTS` table gains a key that does not appear in any HD2_* model's `defaultParams`
+- `helix_rack` added to `isHelix()` return condition without a separate `HELIX_RACK_SYSTEM_MODELS` config verification
+- Helix Rack presets built with `HELIX_SYSTEM_MODELS.FLOW1_INPUT` model ID that does not match real Rack exports
+- The `DEVICE_IDS` record gets a `helix_rack` entry with a device ID copied from `helix_floor`
 
 **Phase to address:**
-Per-model amp parameter overrides phase — define the scope rules for shared vs. device-specific param tables before any Stadium amp param work.
+Helix Rack device addition phase — corpus inspection first, implementation second. Block Rack generation until device ID and I/O model IDs are confirmed.
 
 ---
 
-### Pitfall 10: Effect Combination Rules Overflow Block Budget on Constrained Devices
+### Pitfall 10: Shared Chain Rules Assume Single-Path for All Non-Helix Devices — Stadium XL May Support Dual Path
 
 **What goes wrong:**
-New effect combination logic (e.g., "always pair pitch shift with reverb for shimmer", "compressor before delay for tighter echoes") that was designed and tested on Helix LT (generous block budget) will silently overflow HX Stomp's 6-block limit. Mandatory blocks already consume 3-4 slots (amp, cab, boost, gate). On HX Stomp that leaves 2 user effect slots. Any "quality" effect combination pattern that assumes 4+ user slots is Stomp-incompatible and will generate presets that cannot load on hardware.
+`chain-rules.ts` currently encodes: Helix LT/Floor = dual DSP + dual path; Pod Go = single DSP; Stadium = single path; Stomp = single DSP. This mapping is derived from the 6 currently-supported devices. If Stadium XL supports dual-path (reasonable for a larger device), the current `isStadium()` guard routing all Stadium presets to single-path will under-generate for Stadium XL. Every XL user gets a single-amp preset when dual-amp was available.
+
+The inverse failure is more dangerous: if the code assumes Stadium XL supports dual-path but hardware only has single-path, generated presets will fail to load on Stadium XL hardware. There is no firmware error at generation time — the hardware is the only validator.
 
 **Why it happens:**
-Quality research focuses on what sounds best without always modeling device constraints. Helix LT has 16 total block slots; HX Stomp has 6. Combination patterns designed on the generous device silently break the constrained one.
+Device capabilities are assumed from family membership rather than verified from device documentation or corpus inspection. "Stadium XL is a bigger Stadium" implies more capability, but Line 6 may have kept the same single-path constraint to simplify the architecture.
 
 **How to avoid:**
-Every new effect combination pattern must declare its minimum block budget requirement. Chain rules must check the device's available user slots BEFORE inserting optional combination patterns — if the combination won't fit, fall back to the simpler single-effect choice. Test every new pattern against all 6 supported devices in a single validation pass.
+Verify Stadium XL's DSP topology from the Line 6 Stadium XL spec or real hardware presets before adding it to `DeviceTarget`. Do not assume it inherits Stadium's single-path constraint. Do not assume it extends to dual-path. Get real data. If real presets are not available, contact Line 6 or check the HelixHelp community wiki.
 
 **Warning signs:**
-- Generated HX Stomp presets have 7+ blocks (impossible to load on hardware)
-- Chain rules tests pass for Helix LT but no test covers the combination pattern on Stomp
-- `userEffects.length` truncation (already in chain-rules.ts) silently drops the secondary effect in the pair
+- Stadium XL added to `DeviceTarget` and routed to `isStadium()` without a separate stadium_xl capability check
+- Stadium XL documentation review skipped ("it's the same as Stadium, just bigger")
+- Generated Stadium XL preset has a different block layout than a real Stadium XL factory preset
 
 **Phase to address:**
-Effect combination / chain rules improvement phase — block budget checks must be in place for all 6 devices before new combination patterns are added.
+New device variant research phase — same phase as Pitfall 6. Topology verification is as critical as device ID verification.
 
 ---
 
@@ -262,14 +268,13 @@ Effect combination / chain rules improvement phase — block budget checks must 
 
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| Add Stadium amp params to global `AMP_DEFAULTS` | No new code paths needed | Orphan params in all non-Stadium presets; firmware tolerance is unverified assumption | Never |
-| Estimate Agoura `defaultParams` without reading real .hsp files | Faster implementation | Wrong amp character on hardware; silent quality failure impossible to detect in code review | Never |
-| Add enrichment content inside existing `if (stadium)` prompt blocks | Stays near existing device code | Fragments cache into 6 buckets; eliminates cache savings | Never for content applicable to all devices |
-| Skip `DeviceCapabilities` interface and add more `isPodGo()` guards | Faster than refactoring | Guards accumulate; new devices require grep-scanning all guard sites | Only if deferring refactor to a dedicated architecture phase |
-| Use Haiku for chat without quality comparison gate | Immediate cost savings | Lower interview quality → generic presets → user dissatisfaction | Never without evidence-based quality gate first |
-| Apply `AMP_DEFAULTS` category overlay to Agoura amps without key compatibility check | Reuse existing layers | Agoura-specific params get wrong values or are overwritten | Never |
-| Add per-model overrides to `model.defaultParams` without Layer 4 mechanism | Simple, no new structures | Overrides silently discarded by category defaults; developer time wasted debugging | Never |
-| Batch multiple prompt enrichment additions in one PR | Faster iteration | Cannot isolate which change caused compliance regression | Never — one change at a time |
+| Split prompts without modeling cache economics per device | Clean device-specific prompts | Low-volume devices (Stadium, Pod Go) never warm cache; cost increases | Never without per-device request volume analysis first |
+| Keep combined `AMP_NAMES` enum after adding device-specific prompts | No ToneIntentSchema refactor needed | Cross-device amp contamination persists; fallback heuristics remain active | Never — prompt filtering without schema filtering is incomplete |
+| Add `device` column to `conversations` table without null-handling in app code | Fast migration | Old conversations crash on resume when app reads `device` without null check | Never — null-handling must ship with migration |
+| Convert chain-rules guard sites but leave validate.ts guards unchanged | Faster iteration | Hybrid state — new devices bypass validation guards; capability gaps invisible | Acceptable only if STATE.md documents remaining guard sites and they are scheduled for a subsequent phase |
+| Add Stadium XL to `isStadium()` return condition without corpus inspection | No new code paths needed | Stadium XL gets wrong block budget, device ID, or I/O model IDs | Never — corpus inspection is mandatory before any new device ships |
+| Dynamically rebuild `cabAffinitySection` inside device-specific prompts | Stays current with model catalog | Every prompt reconstruction re-computes the same static data; cache invalidation risk | Never — compute once at module init, reuse across all device prompts |
+| Copy-paste a single reference .hsp file's AmpCab* param values for all amps | Fast extraction of missing params | All Stadium presets inherit one reference's EQ character regardless of amp | Never — median from corpus of 5+ files per amp, not single reference |
 
 ---
 
@@ -277,14 +282,14 @@ Effect combination / chain rules improvement phase — block budget checks must 
 
 | Integration | Common Mistake | Correct Approach |
 |-------------|----------------|------------------|
-| Stadium .hsp builder — amp-cab linking | Wiring `linkedblock` before block positions are finalized, then overwriting when blocks shift | Place all blocks first, then wire `linkedblock` by resolved block key in a post-pass (current stadium-builder.ts does this correctly — do not regress it) |
-| Stadium .hsp builder — cab harness `dual` param | Omitting `dual: true` in cab harness params | Real .hsp always has `dual: true` in cab harness; confirmed in Cranked_2203.hsp b07 |
-| Stadium .hsp builder — device_id | Using wrong `device_id` (2162696 was the pre-fix value; 2490368 is correct) | config.ts uses 2490368 — this was fixed in v3.2; do not change it |
-| Anthropic prompt caching — cache boundary | Adding variable content (device name, model list) to the shared static prefix | Static prefix must be character-for-character identical across all device calls sharing a bucket; variable content goes at end or in user message |
-| Zod structured output — `zodOutputFormat` constraint stripping | Assuming `max()` / `min()` schema constraints are enforced during Claude's constrained decoding | `zodOutputFormat` strips min/max from JSON Schema; validate and truncate post-parse (planner.ts snapshot name truncation is the correct pattern) |
-| Per-model param overrides — category default conflict | Adding overrides to `model.defaultParams` expecting them to survive the category overlay | Use a separate `model.paramOverrides` field applied after category defaults (Layer 4) |
-| Stadium cab params — LowCut/HighCut range | Applying Helix category values (80-100 Hz) to Stadium cabs | Real .hsp Stadium cabs use LowCut: 19.9 Hz; cab model handles its own filtering; do not apply Helix cab filter values to Stadium |
-| Haiku model routing — cache warm-up | Assuming Sonnet planner cache remains warm during sessions where Haiku handles chat | Measure Sonnet `cache_read_input_tokens` in the first generation of each session post-split to verify cache is still warm |
+| Anthropic prompt caching — device split | Assuming all device prompts share one cache bucket | Each unique system prompt string creates its own bucket; group devices into families that share a prompt if request volume per device is low |
+| Supabase conversations table — device field | Adding `device DEFAULT NULL` column but not null-checking in app code | All code paths that read `conversation.device` must handle null — show device picker, not silent default to helix_lt |
+| zodOutputFormat — per-device enum | Assuming `z.enum(AMP_NAMES)` constrains Claude to device-appropriate amps when the prompt filters | zodOutputFormat passes the full enum to constrained decoding; per-device filtering requires per-device schema |
+| Stadium .hsp firmware params — extraction | Reading param values from a single reference .hsp and treating as universal defaults | Use median from 5+ files per amp; validate unit types (dB vs normalized, integer vs float) before encoding |
+| Device picker — mid-conversation switch | Storing device once on conversation creation with no update path | Device must be updatable mid-conversation; generate route reads device from request body, not only from database record |
+| New device variant — `isHelix()` extension | Adding `helix_rack` to `isHelix()` without verifying Rack I/O model IDs | Verify I/O model IDs from real exports first; add sub-check if Rack differs from Floor/LT |
+| Gemini chat system prompt — device-specific | Using same `getSystemPrompt()` for all devices after device-first moves device selection to conversation start | Parameterize system prompt by device; Stadium chat prompt should not mention Pod Go constraints |
+| Device ID for new variants | Copying device ID from family member | Every variant has a unique device ID; extract from real hardware exports or HX Edit device targeting |
 
 ---
 
@@ -292,10 +297,10 @@ Effect combination / chain rules improvement phase — block budget checks must 
 
 | Trap | Symptoms | Prevention | When It Breaks |
 |------|----------|------------|----------------|
-| Prompt cache invalidation on every deploy | Cost spikes after deploy while cache repopulates across sessions | Measure cache hit rate before and after every `planner.ts` change; require cache hit rate to be within 5% of baseline | Breaks immediately after any deploy touching `buildPlannerPrompt` |
-| `buildPlannerPrompt` called fresh per request without memoization | Same prompt rebuilt for every request | Memoize per device target at module init (if prompt is stable during a server lifetime) | Breaks at moderate concurrency — repeated computation, not a correctness issue |
-| Large prompt from full model list injection | As model catalog grows (new firmware = 50+ new models), injected model list grows, pushing prompt past cache prefix limit | Prune model list to active/recommended models only; Stadium has fewer amps than Helix LT | Breaks if total prompt exceeds ~32K tokens (Anthropic cache prefix limit) |
-| Model split creates two billing streams with no unified cost monitoring | Cannot determine if split is net positive | Add per-call logging of all 4 token fields (`input_tokens`, `output_tokens`, `cache_creation_input_tokens`, `cache_read_input_tokens`) for both Haiku and Sonnet calls | Immediately after model split — without logging, ROI is unknown |
+| Device-specific prompts fragment cache into N buckets | Cost per generation spikes for low-volume devices (Stadium, Pod Go) | Model request volume per device before splitting; keep family-shared prompts for devices with fewer than 10 daily generations | Immediately after deploy — Stadium/Pod Go users pay full token cost on every generation |
+| `buildPlannerPrompt(device)` recomputes `cabAffinitySection` on every call | CPU spike at moderate concurrency; not a correctness issue | Compute `cabAffinitySection` once at module import time (or use module-level memoization keyed by device) | At 50+ concurrent generations |
+| Per-device ToneIntentSchema with inline model arrays | Large Zod schema objects computed per-request | Compute schemas once at import time using device-family constants | At 20+ concurrent generations |
+| Supabase migration applied without index on `device` column | Conversation list queries slow if filtering by device | Add `CREATE INDEX idx_conversations_device ON conversations(device)` in migration | When conversation count per user exceeds ~100 |
 
 ---
 
@@ -303,9 +308,9 @@ Effect combination / chain rules improvement phase — block budget checks must 
 
 | Mistake | Risk | Prevention |
 |---------|------|------------|
-| Exposing model routing config as a user-queryable API param | User forces Sonnet for all calls, eliminating cost savings | Model selection must be server-side only; never derived from request params |
-| Logging full ToneIntent for quality analysis | Logs contain user conversation content (rig descriptions, tone preferences) | Log schema compliance metadata only (ampName, effect count, snapshot count) — not conversation content |
-| Adding Stadium device_id / device_version to public API response | Reveals firmware version enabling targeted firmware exploits | Keep device config internal; API returns only file content and display strings |
+| Device type derived from user-provided request body without validation | User passes `device: "helix_stadium_xl"` (invalid), crashes generation | Validate `deviceTarget` against the `DeviceTarget` union immediately in generate route — reject unknown device strings |
+| `device` stored from user-provided string without sanitization | Stored invalid device string in conversations table contaminates future reads | Validate device string against the `DeviceTarget` union before writing to Supabase |
+| New device variants unlocked in UI before backend validation rules are ready | Users generate presets for unsupported devices that fail silently | Feature flag per device in environment config — new variants are gated until corpus inspection and validation rules are confirmed |
 
 ---
 
@@ -313,25 +318,25 @@ Effect combination / chain rules improvement phase — block budget checks must 
 
 | Pitfall | User Impact | Better Approach |
 |---------|-------------|-----------------|
-| Unblocking Stadium without hardware verification | Users generate Stadium presets that sound wrong or fail to load, eroding trust in all generated presets | Block Stadium in UI until a generated preset passes HX Edit import AND sounds correct on hardware; not just code compilation |
-| Overly specific planner prompt guidance ignoring user input | AI always orders delay before reverb even when user requested reverb-heavy ambient tone | Prompt enrichment should add constraints for edge cases (e.g., "do not stack 3 drives") not override natural signal chain ordering; test with 5 diverse tone interviews after each enrichment addition |
-| Per-model overrides making presets inconsistent across amp families | User requests "similar tone but different amp" and gets dramatically different results | Apply per-model overrides only for documented sonic character differences; category defaults should remain the stable cross-amp baseline |
-| Haiku chat produces shorter follow-up questions | Less personalized presets because tone interview is shallower | If Haiku chat is adopted, compensate in system prompt to maintain follow-up question depth |
+| Device picker shown after [READY_TO_GENERATE] is removed in favor of conversation-start picker — but picker is confusing for new users | New users do not know which device to pick before talking about tone | Show device picker first but provide "I'm not sure" option that defaults to Helix LT with an explanation; allow switching during conversation |
+| Resumed conversations show device picker again (null device from old conversation) | Returning users must re-pick their device instead of resuming naturally | For old conversations with null device, infer from `preset_url` extension if available; show picker only if inference is ambiguous |
+| Stadium presets unblocked in UI before firmware param completeness is resolved | Users download Stadium presets that exhibit param bleed; trust in app erodes | Stadium remains UI-blocked until AmpCab* and hidden params are complete in generated presets AND verified on hardware |
+| Device-specific prompts make Stadium conversation more restrictive ("Stadium is preview") | Stadium users get a weaker interview experience | Remove preview language once Stadium param completeness is resolved; treat Stadium as first-class device in chat |
 
 ---
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **Stadium builder verified**: Generated .hsp loads in HX Edit without errors AND parameters match reference .hsp field-by-field (not just structurally valid — param values must be correct). TypeScript compilation passing is NOT sufficient.
-- [ ] **Agoura amp defaultParams complete**: Every amp in `STADIUM_AMPS` has `defaultParams` sourced from real .hsp files. `Jack` is integer, `Level` is dB, `ZPrePost` present. No estimated values.
-- [ ] **Stadium cab defaultParams complete**: `HD2_CabMicIr_*WithPan` entries in `CAB_MODELS` include `Delay`, `IrData`, `Level`, `Pan`, `Position` in addition to the 5 existing params.
-- [ ] **Per-model overrides survive category defaults**: Unit test confirms that a model-level paramOverride for Drive is present in the resolved param output — not overwritten by `AMP_DEFAULTS`.
-- [ ] **Prompt cache hit rate unchanged after enrichment**: Post-deploy cache hit rate is within 5% of pre-enrichment baseline (verified via `usage-logger.ts` cache report).
-- [ ] **Model routing quality gate passed**: Side-by-side ToneIntent comparison shows no statistically significant difference in ampName specificity or genreHint quality between Haiku and current model.
-- [ ] **6-device test matrix for Knowledge Layer changes**: Any change to `chain-rules.ts` or `param-engine.ts` includes tests covering all 6 device targets — not just the target device.
-- [ ] **Stadium UI unblocked only after hardware verification**: The Stadium `blocked` flag in the device picker is removed only after a generated preset passes hardware import — not just after builder code compiles.
-- [ ] **Effect combinations verified on Stomp**: Any new effect combination pattern is tested against HX Stomp (6 blocks max) and confirmed to fall back gracefully when block budget is exceeded.
-- [ ] **Non-Stadium presets unaffected by Stadium param changes**: LT/Floor amp block does not contain `Jack`, `ZPrePost`, or any other Agoura-specific key after Stadium param work is merged.
+- [ ] **Prompt cache verified post-deploy**: `cache_read_input_tokens` is nonzero in production logs for all device paths, not just Helix LT. Stadium and Pod Go must sustain cache hits.
+- [ ] **ToneIntentSchema split complete**: Stadium generation cannot produce an HD2 amp name (`z.enum` for Stadium only includes Agoura amps). Verified by attempting to generate a Stadium preset with an HD2 amp name in the test suite.
+- [ ] **Resumed conversations handle null device**: Old conversations opened from sidebar show device picker rather than silently defaulting to `helix_lt`. Tested with a seeded legacy conversation (no device column value).
+- [ ] **Stadium firmware params complete**: Every Agoura amp in `STADIUM_AMPS` has all 27 params including AmpCab*, Aggression, Bright, Contour, Depth, Fat, Hype. Verified by JSON diff of generated vs. real .hsp file.
+- [ ] **New device variants have confirmed device IDs**: Stadium XL, Helix Rack, Pod Go XL each have device IDs extracted from real exports — not copied from family member device IDs.
+- [ ] **Guard site inventory closed**: After refactor, every guard site that was converted to a device module is removed from the shared files. Remaining guard sites are documented in STATE.md.
+- [ ] **Device switch mid-conversation works**: User can change device selection after the first chat message; the new device is stored and used for generation without conversation restart.
+- [ ] **Chat system prompt is device-specific**: Stadium chat session does not receive Pod Go or LT constraint descriptions. HX Stomp session does not receive dual-amp prompting.
+- [ ] **Database migration applied and backfilled**: `conversations.device` column exists, old rows have inferred device from preset_url, app code null-checks the field.
+- [ ] **6-device regression test after any shared file change**: Any change to `chain-rules.ts`, `param-engine.ts`, or `validate.ts` is tested against all 6 current device targets before merge.
 
 ---
 
@@ -339,13 +344,13 @@ Effect combination / chain rules improvement phase — block budget checks must 
 
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| Agoura amp defaultParams are estimated, not from real files | MEDIUM | Re-read all 11 reference .hsp files, extract per-amp param tables, update `STADIUM_AMPS` entries, regenerate baseline presets, re-verify against reference |
-| Stadium cab partial param schema | LOW | Add missing 5 params to `CAB_MODELS` defaultParams for `HD2_CabMicIr_*WithPan` from real .hsp reference, add Stadium cab param completeness test |
-| Category defaults clobber per-model overrides | LOW | Add `paramOverrides` field to `HelixModel` type, move intended overrides from `defaultParams` to `paramOverrides`, update `resolveAmpParams()` to apply as Layer 4 |
-| Prompt enrichment breaks cache | LOW | Revert to previous prompt text, measure baseline cache rate, add enrichment incrementally with cache rate check after each addition |
-| Device abstraction refactor breaks Stadium or Stomp exclusion guards | HIGH | Revert refactor entirely, add comprehensive device capability tests first (6 devices x all guarded paths), redo refactor test-first |
-| Haiku chat routing degrades preset quality | MEDIUM | Revert to previous model for chat, collect ToneIntent quality samples from both models over 2 weeks, rerun comparison before re-shipping |
-| Shared Knowledge Layer change regresses working devices | MEDIUM | Identify which device(s) regressed from test failure, isolate change, add guard condition, run full 6-device test suite before re-merging |
+| Prompt split breaks cache for Stadium/Pod Go | LOW | Merge Stadium and Pod Go into a shared "constrained-device" prompt bucket; verify cache warms within one TTL window |
+| AMP_NAMES split causes ToneIntentSchema regression | MEDIUM | Revert to combined schema; add schema split as a separate focused PR with dedicated test coverage for per-device enum validation |
+| Resumed conversations crash on null device | LOW | Add null check in conversation loading code; deploy hotfix before broader v5.0 rollout |
+| Stadium firmware param bleed persists after "completeness" phase | HIGH | Re-extract all 27 params from 5+ real .hsp files; cross-validate across corpus; re-run hardware import test |
+| New device variant ships with wrong device ID | MEDIUM | Correct device ID in `DEVICE_IDS`, redeploy; existing generated presets in Supabase storage are already committed — users with old presets must regenerate |
+| Hybrid guard/module state causes device capability gap | HIGH | Complete the guard conversion for the missed files; add TypeScript `Record<DeviceTarget, ...>` enforcement to catch gaps at compile time |
+| Mid-conversation device switch not handled | LOW | Update generate route to accept device from request body (not only from database); update UI to allow device change with confirmation |
 
 ---
 
@@ -353,69 +358,44 @@ Effect combination / chain rules improvement phase — block budget checks must 
 
 | Pitfall | Prevention Phase | Verification |
 |---------|------------------|--------------|
-| Stadium Agoura amp non-standard param keys | Stadium builder rebuild | Field-by-field param comparison of generated .hsp vs real-cranked-2203-pretty.json for every amp block |
-| Stadium cab partial param schema | Stadium builder rebuild | Generated cab block has 10 params (not 5); LowCut matches reference value |
-| Prompt enrichment breaks cache boundary | Planner prompt enrichment (restructure before adding content) | Cache hit rate post-deploy within 5% of baseline via usage-logger.ts report |
-| Per-model overrides clobbered by category defaults | Per-model amp parameter overrides (establish Layer 4 first) | Unit test: model with paramOverride for Drive resolves to override value, not AMP_DEFAULTS value |
-| Device abstraction refactor breaks exclusion guards | Architecture review phase (standalone phase, not combined) | 6 devices x all guarded paths test matrix; no device allows disallowed capability |
-| AI model routing quality degradation | Cost-aware model routing (quality gate before shipping) | 15 interview pairs; ampName distribution and genreHint specificity not regressed vs. Sonnet baseline |
-| Stadium params polluting global AMP_DEFAULTS | Per-model amp parameter overrides (scope rules defined first) | Non-Stadium integration test: LT/Floor amp block contains no Agoura-specific keys |
-| Planner prompt bloat degrades compliance | Planner prompt enrichment (baseline first, one change at a time) | Schema failure rate not increased after enrichment; run 20 test generations before/after |
-| Shared Knowledge Layer change regresses devices | Every phase touching chain-rules.ts or param-engine.ts | Full 6-device test matrix passes before merge |
-| Stadium UI unblocked prematurely | Stadium builder rebuild | Hardware or HX Edit import verification sign-off required before UI `blocked` flag is removed |
-
----
-
-## The Quality Research Protocol (for Community Preset Pattern Extraction)
-
-Pattern extraction from community preset files requires discipline to avoid encoding output-chain corrections as tonal defaults.
-
-**Step 1 — Source selection:** Use only presets explicitly marked as professional or commercial (ToneFactor, Glenn DeLaune, M. Britt, Alex Price). Arbitrary community uploads mix quality with idiosyncratic output chain corrections.
-
-**Step 2 — Extract mid-chain params only:** From each preset, extract amp Drive, Sag, Bias, Bass, Mid, Treble, Presence, Master, and cab LowCut/HighCut. Do NOT extract Gain Block levels, output levels, or global EQ — these are output-chain corrections, not tonal choices.
-
-**Step 3 — Group by amp model, calculate deviation from current defaults:** `actual_value - AMP_DEFAULTS[category][param]`. A deviation larger than 0.15 represents a meaningful pattern worth investigating.
-
-**Step 4 — Hardware validate before encoding:** Before adding any extracted value to `AMP_DEFAULTS` or a new per-model override, play the modified preset through Helix LT and confirm the change sounds better. Do not ship any param change that was only verified in code review.
-
-**Step 5 — Comment the source in code:**
-```typescript
-// CORRECT — cite source
-high_gain: {
-  Drive: 0.52, // Range 0.40-0.65 from ToneFactor/M.Britt analysis (35 presets); tested LT 2026-03-XX
-}
-// WRONG — no source
-high_gain: {
-  Drive: 0.52, // feels better
-}
-```
+| Prompt split destroys cache | Device-specific prompt phase — model cache economics first | `cache_read_input_tokens` nonzero in production logs for all device paths post-deploy |
+| Combined AMP_NAMES allows cross-device contamination | ToneIntentSchema split phase — same phase as device-specific prompts | Test: Stadium generation rejects HD2 amp name at schema validation level |
+| Resumed conversations break on null device | Device-first conversation flow phase — database migration in scope | Legacy conversation resumed from sidebar shows device picker, not wrong device default |
+| Hybrid guard/module state | Architecture refactor phase — define end state before writing code | Guard site inventory in STATE.md shows zero remaining unplanned guard sites |
+| Stadium firmware param incompleteness | Stadium firmware parameter completeness phase | JSON diff of generated vs. real .hsp shows 27 params for every amp block |
+| New device variants assumed compatible | New device variant research phase — corpus before code | Each new variant has confirmed device ID from real exports; no family-member device ID reuse |
+| Device picker creates orphaned conversations on switch | Device-first conversation flow phase — model device switching in UX spec | Device change mid-conversation is tested: stored device updates, generation uses new device |
+| Chat system prompt is device-agnostic | Device-first chat prompt phase | Stadium chat session tested: AI does not mention Pod Go or dual-amp (LT-only) constraints |
+| isHelix() extended to Rack without verification | Helix Rack device addition phase | Helix Rack I/O model IDs verified from real exports; separate config object if they differ |
+| Stadium XL topology assumed without verification | New device variant research phase | Stadium XL block topology confirmed from Line 6 spec or real exports before code touches chain-rules |
 
 ---
 
 ## Sources
 
-### HIGH confidence (direct codebase and reference file inspection)
-- `src/lib/helix/stadium-builder.ts` — builder implementation, block format, harness structure (2026-03-05)
-- `src/lib/helix/param-engine.ts` — 3-layer resolution strategy, AMP_DEFAULTS table, category overlay logic (2026-03-05)
-- `src/lib/helix/chain-rules.ts` — device guards, block budget enforcement, DSP assignment (2026-03-05)
-- `src/lib/planner.ts` — prompt caching pattern, buildPlannerPrompt structure, model routing (2026-03-05)
-- `tmp-stadium-research/real-cranked-2203-pretty.json` — real .hsp reference: Agoura amp params, cab params, block structure (EOengineer, Dec 2025)
-- `tmp-stadium-research/real-recto-pretty.json` — corroborating real .hsp reference (EOengineer, Dec 2025)
-- `.planning/PROJECT.md` — known bugs: dual-DSP key collision, Stadium amp lookup failure (v3.2 history)
-- `.planning/codebase/CONCERNS.md` — fragile areas, tech debt, test coverage gaps (2026-03-02)
-- `.planning/codebase/ARCHITECTURE.md` — layer contracts, device polymorphism (2026-03-02)
+### HIGH confidence (direct codebase inspection)
+- `src/lib/helix/chain-rules.ts` — guard pattern at ~17 sites, device-conditional branching, block budget enforcement (2026-03-05)
+- `src/lib/helix/validate.ts` — 4 device-conditional branches, guard variables, model ID whitelist (2026-03-05)
+- `src/lib/helix/param-engine.ts` — Stadium AMPS fallback, 3 guard sites, resolveAmpParams() layer structure (2026-03-05)
+- `src/lib/planner.ts` — buildPlannerPrompt(), cache_control: ephemeral annotation, cabAffinitySection dynamic generation (2026-03-05)
+- `src/lib/helix/models.ts` — AMP_NAMES combined tuple, getModelListForPrompt() filtering, STADIUM_AMPS catalog (2026-03-05)
+- `src/lib/helix/tone-intent.ts` — ToneIntentSchema with combined AMP_NAMES enum, zodOutputFormat usage (2026-03-05)
+- `src/lib/helix/types.ts` — DeviceTarget union, isHelix()/isStadium()/isPodGo()/isStomp() predicates (2026-03-05)
+- `src/lib/gemini.ts` — getSystemPrompt() single-device-agnostic chat prompt, device list at lines 38-43 (2026-03-05)
+- `src/app/api/generate/route.ts` — device resolution from request body, if-chain builder selection (2026-03-05)
+- `.planning/architecture-audit-v4.md` — 17 guard sites documented, fragility analysis, refactor decision (2026-03-05)
+- `.planning/PROJECT.md` — Stadium param bleed bug (JC Logan), Agoura amp leak, v5.0 scope (2026-03-05)
+- `.planning/STATE.md` — accumulated decisions, Stadium HX Edit verification pending (2026-03-05)
 
 ### HIGH confidence (official documentation)
-- Anthropic prompt caching docs (2026): https://platform.claude.com/docs/en/build-with-claude/prompt-caching — cache structure, workspace isolation, pricing multipliers
-- Line 6 Helix Parallel Split/Summing phase cancellation issue: https://line6.com/support/topic/56905-parallel-splitsumming-wetdry-issues/
-- Line 6 phase issue with two amp blocks on parallel paths: https://line6.com/support/topic/58405-phase-issue-with-two-amp-blocks-one-path-each/
+- Anthropic prompt caching docs: https://platform.claude.com/docs/en/build-with-claude/prompt-caching — cache structure, TTL, per-workspace isolation, pricing
+- Anthropic zodOutputFormat: Zod schema constraint stripping behavior documented in SDK helpers
 
-### MEDIUM confidence (research and community analysis, verified against multiple sources)
-- "When Better Prompts Hurt: Evaluation-Driven Iteration" (arxiv 2025): https://arxiv.org/html/2601.22025v1 — structured output regression from prompt changes, lost-in-the-middle effect
-- Tonevault "250 Helix amp analysis": https://www.tonevault.io/blog/250-helix-amps-analyzed — Scream 808 prevalence, amp param ranges
-- Claude API pricing guide (2026): https://devtk.ai/en/blog/claude-api-pricing-guide-2026/ — Haiku vs Sonnet quality/cost tradeoffs
+### MEDIUM confidence (verified from multiple sources)
+- HelixHelp community wiki — Stadium hardware capabilities, Helix Rack I/O configuration, device variant differences
+- Line 6 Helix Rack product page — rack-mount I/O, VDI availability, confirmed same HX DSP architecture as Floor/LT
 
 ---
 
-*Pitfalls research for: HelixTones v4.0 — Stadium Rebuild + Preset Quality Leap*
+*Pitfalls research for: HelixTones v5.0 — Device-First Architecture Rework on Live Production App*
 *Researched: 2026-03-05*

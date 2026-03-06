@@ -1,248 +1,247 @@
 # Feature Research
 
-**Domain:** AI-powered guitar preset generator — HelixTones v4.0 Stadium rebuild + preset quality leap
+**Domain:** AI-powered guitar preset generator — HelixTones v5.0 Device-First Architecture
 **Researched:** 2026-03-05
-**Confidence:** HIGH (Anthropic pricing from official docs; amp parameter guidance from Line 6 Community + HelixHelp; signal chain order from Strymon/BOSS/Reverb consensus; cab pairings from community analysis; AI routing from official pricing page verified 2026-03-05)
+**Confidence:** HIGH (codebase analysis is direct inspection; device constraint patterns from Line 6 Community + Sweetwater + official manuals; UX patterns from BIAS X, Quad Cortex, and conversational AI research)
 
 ---
 
-## Context: What Already Exists vs. What This Milestone Adds
+## Context: What This Milestone Adds
 
-HelixTones v3.2 has a fully working planner-executor architecture. The Planner (Claude Sonnet 4.6) selects amp/cab/effects via structured output. The Knowledge Layer deterministically assigns all numeric parameters. All six devices are supported in code; Stadium is temporarily blocked in the UI pending builder rebuild.
+v4.0 is fully shipped. All 6 devices generate presets. The current architecture routes every device through the same system prompt, the same planner prompt, and the same guard-based branching (17+ `if (isPodGo(...))` / `if (isStadium(...))` / `if (isStomp(...))` sites). Two post-v4.0 bugs revealed the architectural limits of this approach: (1) Agoura amp names leak to non-Stadium devices because `AMP_NAMES` is a single global list, and (2) Stadium presets only emit 12 of 27 firmware params per amp, causing param bleed from previously loaded presets. Both bugs are symptoms of the same root cause: device identity enters the pipeline too late.
 
-**What already works well:**
-- Category-level amp defaults (clean/crunch/high_gain) with Drive/Master/ChVol/Sag/Bias in param-engine.ts
-- Topology-aware mid adjustment (cathode_follower vs plate_fed) — 3-layer resolution already in place
-- Cab LowCut/HighCut filtering per category; post-cab Parametric EQ per category
-- Genre-aware effect defaults for delay/reverb/modulation (9 genres)
-- Snapshot design with 4 toneRoles (clean/crunch/lead/ambient)
-- Always-on mandatory blocks: Minotaur/Scream 808 boost, Horizon Gate (high-gain), post-cab Parametric EQ, Gain Block
-- Signal chain slot ordering: wah > compressor > boost > amp > cab > gate > eq > mod > delay > reverb
-- guitarType in ToneIntent (single_coil/humbucker/p90) — captured but not yet used to differentiate params
-- cabAffinity field on HelixModel — populated but not yet enforced at runtime
-- tempoHint in ToneIntent — captured but not wired to Knowledge Layer delay calculation
-- Token usage logging with baseline generator (v3.2)
-- Chat uses Claude Sonnet 4.6; all API calls use Sonnet regardless of task complexity
+**What v5.0 changes:**
+- Device picker moves from mid-conversation to the very first screen (before any text is typed)
+- Each device family gets its own isolated planner prompt, model catalog, chain rules, and conversation arc
+- Stadium amp blocks emit all 27+ firmware params by extracting the complete set from the real .hsp corpus
+- Device selection is a routing decision at pipeline entry, not a guard flag inside every function
 
-**The quality gap this milestone closes:**
-The six features under research address the specific ways generated presets fall short of professional preset builders: gain-staging is category-level (not per-model), cab pairing is AI-chosen (not expert-validated), effects ignore interaction parameters, amp tuning ignores per-model circuit behavior, all API calls use the most expensive model, and the six-device codebase has no unified abstraction layer.
+**What already exists (do not re-research):**
+- 6 device builders (preset-builder, podgo-builder, stadium-builder, stomp-builder)
+- ToneIntent schema + Planner structured output
+- Knowledge Layer (chain-rules, param-engine, snapshot-engine)
+- Device guards: `isPodGo()`, `isStadium()`, `isStomp()`, `isHelix()` in types.ts
+- Per-model amp overrides (Layer 4), ampFamily classification, cabAffinity — all shipped in v4.0
+- Gemini 2.5 Flash chat interview + Google Search grounding for artist rig research
 
 ---
 
-## Research Findings: The Six Feature Areas
+## Research Findings: The Five Feature Areas
 
-### Finding 1: Gain-Staging Intelligence
+### Finding 1: Device-First UX Flow
 
-**What professional Helix preset builders do:**
+**How the current flow works (late device selection):**
 
-Drive, Master, and Channel Volume serve completely different roles — a fact not fully reflected in the current AMP_DEFAULTS category tables:
+The device selector currently appears in the UI after the AI emits `[READY_TO_GENERATE]`. The chat runs for 3-6 exchanges, THEN the user picks their device, THEN generation fires. This means:
+- The chat AI says "Since you're on HX Stomp, we'll keep the chain lean" — but device selection hasn't happened yet. The system prompt warns about this but cannot enforce it.
+- The planner prompt receives the device only at generation time, after the interview has already set expectations the device cannot fulfill (e.g., 6-effect conversation with a Stomp user)
+- All prompt text, model catalogs, and chain rules exist in a single file with device-specific sections guarded by conditionals
 
-- **Drive**: Maps to the Volume knob on non-master-volume amps (Fender Deluxe, Vox AC30, Hiwatt). On these amps, Drive at 0.25 produces almost no character — it should be 0.55-0.70 to get edge-of-breakup. On master-volume amps (Marshall JCM, Mesa), Drive maps to the Gain/Drive input and determines preamp saturation.
-- **Master**: On non-master-volume amps, Helix "invents" a master volume equivalent. Run it at 1.0 (fully open) to let the power amp character engage. On master-volume amps, lower Master = tighter feel. Professional presets for high-gain Marshall/Mesa run Master 0.40-0.55. Master above 0.65 with high Drive produces mushiness.
-- **Channel Volume (ChVol)**: Pure level control — no tonal effect. Used exclusively for balancing preset output level across snapshots and presets. Pro standard: 0.70 base, then +0.05 for crunch, +0.10 for lead, -0.05 for ambient.
+**Industry pattern — device selection before configuration:**
 
-**Current state gap:** The AMP_DEFAULTS table sets high_gain Master at 0.45, clean Master at 0.95 — these are reasonable category-level defaults but wrong for specific models. The US Deluxe Nrm's Drive should be 0.55-0.65 (Volume knob), not 0.25. The Vox AC-30 should run Master 1.0, not 0.95 (minor but meaningful). High-gain amps need per-model Drive values because Drive 0.40 on a Mesa Rectifier sounds completely different from Drive 0.40 on a Bogner Uberschall.
+Research across competing hardware tools (Kemper, Quad Cortex, BIAS X) reveals a universal pattern: device or hardware context is established first, then the configuration UI adapts.
 
-**Recommended implementation:** Sparse per-model override table applied as layer 4 (highest priority) in resolveAmpParams(). Most amps can continue using category defaults. Priority overrides for: US Deluxe/Vib/Double (Drive up), AC-15/AC-30 (Drive up, Master to 1.0), Matchless DC-30 (Master 1.0), Essex/WhoWatt (Master 1.0), non-master-volume amps generally.
+- Quad Cortex: New preset creation begins with selecting a template that encodes the device's path topology (mono serial, stereo, parallel, multi-input). All subsequent block placement respects that template's constraints. The template IS the device context.
+- BIAS X (Positive Grid, 2025): The AI tone platform launches with a device/format selection — plugin format (VST3/AU/AAX) or standalone — before any tone creation begins. The AI's amp and effect catalog is scoped to the selected format. Text-to-Tone uses the already-established device context to constrain its suggestions.
+- Kemper: "Performance" vs "Studio" mode is chosen before any sound creation. Performance mode constrains to 5 slots with footswitch-compatible topology; Studio mode is unconstrained.
 
-**Source confidence:** HIGH — Line 6 Community official documentation on parameter semantics, HelixHelp Common Amp Settings, Sweetwater Understanding Helix Amp Parameters editorial.
+**The "device-first as routing decision" pattern:**
 
----
+The correct mental model for v5.0 is not "add a device picker step" but "route to a device-specific pipeline from the first moment." The device selection IS the entry point. Everything downstream — system prompt, model catalog, conversation beats, chain rules, validation — is device-specific. This is the Quad Cortex template pattern applied to a conversational pipeline.
 
-### Finding 2: Cab Pairing Guidance
+**Device family grouping rationale:**
 
-**Community-validated amp-to-cab pairing table:**
+Users do not think in terms of "helix_lt" vs "helix_floor" — they think "I have a Helix." The v5.0 device families match natural user mental models:
 
-| Amp Family (real-world origin) | Recommended Helix Cab(s) | Rationale |
-|-------------------------------|--------------------------|-----------|
-| Fender Deluxe/Vibrolux/Super | 1x12 US Deluxe, 2x12 Double C12N | Same C12N speaker as original combos |
-| Fender Twin Reverb | 2x12 Double C12N | Original Twin C12N speaker in 2x12 format |
-| Fender Bassman / Tweed | 4x10 Tweed P10R | Jensen P10R speakers — Bassman original config |
-| Vox AC30 (normal/top boost) | 2x12 Blue Bell | Alnico Blue — the AC30 sound |
-| Vox AC15 | 2x12 Blue Bell, 1x12 Blue Bell | Same Alnico Blue, smaller format |
-| Marshall Plexi (low-power) | 4x12 Greenback25, 4x12 Greenback20 | Historical G12M Greenback pairing |
-| Marshall JCM800/JVM (modern) | 4x12 1960 T75, 4x12 Brit V30 | T75 for tight British; V30 for singing mids |
-| Mesa Boogie Mk I/II/III/IV | 4x12 Cali V30, 1x12 Cali IV | Mesa's own V30 cabs |
-| Mesa Rectifier (Dual/Triple) | 4x12 Cali V30, 4x12 XXL V30 | Rectifier always pairs with V30 in studio and live |
-| Orange (Rockerverb/TH30) | 2x12 Mandarin 30 | Orange PPC212 with V30 — canonical Orange cab |
-| Matchless DC-30 / Two-Rock | 2x12 Match H30, 2x12 Match G25 | Celestion H30/G25 Matchless originals |
-| Bogner Uberschall/Ecstasy | 4x12 Uber V30, 4x12 Uber T75 | Bogner's own Uberkab |
-| High-gain modern (Friedman/Diezel/5150) | 4x12 XXL V30, 4x12 Cali V30 | V30s for sustain and mid-forward character |
-| Silverface Fender (clean headroom) | 2x12 Double C12N | Same Fender family; classic clean tone |
+| Family Name | Devices Included | Why Grouped |
+|-------------|-----------------|-------------|
+| Stadium | Helix Stadium | Unique architecture: Agoura amps, dual-flow DSP, .hsp format, 12 blocks/path |
+| Helix | Helix Floor, Helix LT | Same .hlx format, dual DSP, identical generation path — differ only in footswitch count (invisible to preset generation) |
+| Stomp | HX Stomp, HX Stomp XL | Same .hlx format, single DSP, differ only in block count (6 vs 9) and snapshot count (3 vs 4) |
+| Pod Go | Pod Go, Pod Go XL | Same .pgp format, single DSP, 4-effect limit |
 
-**Implementation approach:** The cabAffinity field on HelixModel already contains these pairings (added in an earlier build). The gap is enforcement — the AI (Planner) chooses the cab, but there is no validation that the chosen cab is in the amp's affinity list. Two options:
-1. Enrich the planner prompt with an explicit pairing table (low code risk, leverages AI selection)
-2. Add a fallback in chain-rules.ts: if chosen cabName is not in amp's cabAffinity list, substitute the first affinity option (more deterministic, but overrides user intent)
-
-Recommended: Option 1 (prompt enrichment) for v4.0. Option 2 as a future Quality Gate.
-
-**Source confidence:** MEDIUM — community consensus from Line 6 forums and Helix Cabinet Model documentation. No official Line 6 pairing guide exists; these are historically-accurate amp-cab pairings mapped to the Helix model catalog.
+**Source confidence:** HIGH — direct codebase analysis + industry observation from Quad Cortex, BIAS X, Kemper behavior.
 
 ---
 
-### Finding 3: Effect Interaction Parameters
+### Finding 2: Device-Specific Conversation Arcs
 
-**Industry-standard signal chain order (already implemented — chain-rules.ts slot ordering is correct):**
+**The core insight: constraint-first conversation beats**
 
-The standard order from Strymon, BOSS, and Reverb News is universally:
+For constrained devices (Stomp, Pod Go), the conversation arc must surface the hardware budget EARLY so the user can make informed choices before the AI generates a plan they cannot execute. The anti-pattern: building a detailed 6-effect plan, then saying "oh, but you only have 4 blocks." The correct pattern: establish constraints in the opening, then design WITHIN them.
+
+**Stomp conversation arc ("what will you cut?"):**
+
+HX Stomp users come with one of two mental models:
+1. "I want to add Helix-quality amp modelling to my existing pedalboard" — they care about minimal block count, may have external drives/modulation
+2. "I want to replace my entire pedalboard" — they need a complete signal chain in 6 blocks
+
+The interview must distinguish these in the first exchange. If the user has external drives, the Stomp conversation arc is: amp + cab + 2 post-effects + maybe gate = 5 blocks. If they need full signal chain, the constraint question is explicit: "With 6 blocks total (including amp and cab), which 4 effects matter most to you?"
+
+Community research (Line 6 Community, Sweetwater InSync "Get More Out of HX Stomp") confirms that experienced Stomp users approach preset design with explicit budget thinking:
+- They evaluate using a preamp block instead of full amp+cab (saves 1 block of DSP budget)
+- They know that the mixer level parameter can replace a volume/gain block
+- They prioritize effects by tonal role: amp is fixed, cab is fixed, leaving 4 "real" blocks
+
+The conversation arc question is: "Are you using this with an existing pedalboard, or as your complete signal chain?" This one question bifurcates the rest of the conversation.
+
+**Pod Go conversation arc ("tight budget"):**
+
+Pod Go users are budget-constrained but typically have full-signal-chain intent (the Pod Go is an all-in-one). The 4-effect limit (after amp and cab are allocated) means:
+- Standard chain: Gate + Boost + Delay + Reverb = 4 effects exactly
+- Any modulation replaces one of these four
+- No room for compressor + drive + mod + delay + reverb (5 effects)
+
+The interview question is: "You've got 4 effect slots to work with. What are the 2-3 effects you absolutely need for this tone?" This is not apologetic about the constraint — it focuses creative decision-making.
+
+**Helix conversation arc (dual-DSP capability):**
+
+Helix users have 16 blocks across 2 DSPs. The interview does NOT need to ask about budget. Instead, the conversation beats are:
+1. Tone goal (artist, genre, vibe)
+2. Guitar (pickup type)
+3. Dual-amp question: "Are you after one amp sound or a split between a clean and a driven amp?" — This distinguishes single-amp from AB topology, which is a real decision (AB topology uses 4 extra blocks for split/join)
+4. Ready to generate
+
+The Helix arc is the most expansive — the AI can propose a full-featured chain and the user's main constraint is musical (tone goal) rather than hardware (block count).
+
+**Stadium conversation arc (dual-DSP routing, use-case oriented):**
+
+Stadium users are arena/professional users who chose the device for its Agoura amp quality and 4-path capability. The conversation should orient around:
+1. Which Agoura amp family fits the tone goal (this is why Stadium has a completely separate model catalog)
+2. Whether they need multi-path routing (guitar + fx loop + monitor, or guitar only)
+3. 8-snapshot layout (Stadium supports 8 vs Helix's 4 usable ones)
+
+Stadium's constraint is not block count but amp catalog: NO HD2 amps are appropriate for a Stadium user. The conversation arc must never mention "Plexi," "Dumble," or any HD2 amp name — only Agoura amp families.
+
+**Source confidence:** MEDIUM-HIGH. Block constraint patterns from Line 6 Community + Sweetwater are verified. Conversation arc design is inferred from hardware constraints + conversational UX principles. No published "HX Stomp interview script" exists.
+
+---
+
+### Finding 3: Device-Specific Planner Prompts (No Cross-Contamination)
+
+**The Agoura leak problem — what it looks like in production:**
+
+`buildPlannerPrompt()` calls `getModelListForPrompt(device)` which filters `AMP_MODELS` by `stadiumOnly`. But `AMP_NAMES` (the string list passed to the prompt) is built from a global concatenation of all amp names with a `stadiumOnly` filter. The filter works for the text list — but the planner system prompt references "Valid Model Names" as a text block. If the filter has any gap (e.g., a new amp added to `STADIUM_AMPS` without setting `stadiumOnly: true`), the name appears in non-Stadium prompts.
+
+The v5.0 fix is structural: each device family has its own model catalog module that exports ONLY the models valid for that family. The planner prompt for that family never imports from other catalogs. Cross-contamination is impossible by construction because the catalogs are never in scope together.
+
+**What each device-specific planner prompt needs:**
+
+| Device Family | Model Catalog Scope | Unique Prompt Instructions |
+|---------------|---------------------|---------------------------|
+| Stadium | Agoura_* amps only; Stadium Parametric EQ; Stadium cabs | "Use ONLY Agoura_* amp names. HD2 amps are legacy imports — never suggest them unless user requests a specific HD2 sound. Signal path: single flow, 12 blocks/path, 8 snapshots." |
+| Helix (LT/Floor) | Full HD2 amp catalog (no Agoura); Helix cabs; full effect library | "Two DSP paths. Dual-amp AB topology is supported and recommended when user wants clean + driven amp. Up to 8 snapshots." |
+| Stomp | Same HD2 amps as Helix (same .hlx format); same effect library; no dual-amp | "Single DSP. 6 blocks total (Stomp) or 9 blocks (Stomp XL). NO dual-amp. Snapshot count: 3 (Stomp) or 4 (Stomp XL). Budget effects aggressively." |
+| Pod Go | HD2 amps (Pod Go model suffix variants); Pod Go cab list; Pod Go effects | "Single DSP. 4 user-effect limit. NO dual-amp. Stereo and Mono variants for all models — match the suffix convention." |
+
+**Current planner prompt architecture — what changes:**
+
+`buildPlannerPrompt()` in `planner.ts` is currently one function with 4+ conditional branches. The v5.0 target is 4 separate prompt builders:
+- `buildHelixPlannerPrompt(device: "helix_lt" | "helix_floor")`
+- `buildStompPlannerPrompt(device: "helix_stomp" | "helix_stomp_xl")`
+- `buildPodGoPlannerPrompt()`
+- `buildStadiumPlannerPrompt()`
+
+Each function imports ONLY the model catalog relevant to it. No function has access to models it should not offer. The factory `buildPlannerPrompt(device)` routes to the correct builder.
+
+This is also a prompt-caching win: Helix and Stomp prompts are currently the same with guards injected at the end. Separate prompts can have `cache_control: ephemeral` independently — Stadium edits don't invalidate Helix cache.
+
+**Source confidence:** HIGH — direct codebase analysis. The model contamination mechanism is confirmed by code inspection of `planner.ts` line 42-48 (AMP_MODELS iteration without strict device isolation).
+
+---
+
+### Finding 4: Stadium Firmware Parameter Completeness
+
+**The 12-vs-27 param problem:**
+
+Post-v4.0 bug triage confirmed: real .hsp files contain 27+ parameters per amp block. The current `stadium-builder.ts` emits only 12. When HX Edit loads a preset, any parameter NOT explicitly set in the file retains the value from the previously loaded preset in that slot. This is "param bleed" — it explains why Stadium presets sometimes sound wrong on hardware despite looking correct in the JSON.
+
+**What the missing parameters are:**
+
+Based on reverse-engineering of the .hsp corpus (Agoura_Bassman.hsp, Agoura_Hiwatt.hsp confirmed in v4.0), and the Helix Stadium manual amp block documentation, the hidden internal parameters include:
+
+| Parameter Key | What It Controls | User-Visible? |
+|--------------|-----------------|---------------|
+| AmpCabPeak | Cab-amp coupling resonance frequency peak | No — internal |
+| AmpCabShelf | Cab-amp coupling high-frequency shelf | No — internal |
+| Aggression | Power amp class AB crossover distortion | No — internal (per-model preset) |
+| Bright | Bright cap switch (high-freq boost) | Yes — some amps show this |
+| Contour | Mid-scoop voicing (e.g., Mesa Rectifier) | Yes — some amps show this |
+| Depth | Low-frequency presence boost | Yes — some amps show this |
+| Fat | Low-mid richness voicing | Yes — some amps show this |
+| Hype | Behind-the-scenes multi-param smoother | Yes — all Agoura amps |
+| Ripple | AC ripple power amp interaction | Yes — shown in manual |
+| Hum | Power supply hum level | Yes — shown in manual |
+| BiasX | Bias excursion (power amp tube voicing) | Yes — shown in manual |
+
+These parameters MUST be emitted with sensible defaults even when the user has no preference — otherwise the hardware reads garbage from the previous preset slot.
+
+**The corpus extraction approach:**
+
+The correct approach (same as v4.0 Stadium builder rebuild) is corpus-driven: extract the complete param key list from 10+ real .hsp files, determine which params are present in every amp block vs which are amp-specific, establish default values from the corpus median, and emit all params unconditionally with per-model defaults where needed.
+
+This is the same methodology that fixed the 5 format bugs in v4.0 Stadium rebuild. The constraint is that some params (Bright, Contour, Depth, Fat) exist only on specific amp models — emitting them on all amps may cause validation errors. The corpus must be used to determine which params are universal vs model-gated.
+
+**Implementation touchpoints:**
+
+- `stadium-builder.ts`: extend `buildAmpParams()` to emit the full parameter set
+- `src/lib/helix/models.ts` (STADIUM_AMPS catalog): add `paramOverrides` for model-specific hidden param defaults
+- Verification: load generated .hsp in HX Edit and confirm param count matches the reference corpus files
+
+**Source confidence:** MEDIUM — the 27-param count is from post-v4.0 bug triage. The specific param key names (AmpCabPeak etc.) are from code comments in the project; only Bright/Contour/Hype/Depth/Fat are confirmed in public documentation (Helix Stadium manual + community forum). Full param list requires direct .hsp file inspection.
+
+---
+
+### Finding 5: Device-Specific Chain Rules and Validation
+
+**Current state — guard-based branching:**
+
+`chain-rules.ts` contains 17+ guard sites:
+```typescript
+if (isStadium(device)) { ... }
+if (isPodGo(device)) { ... }
+if (isStomp(device)) { ... }
+const maxBlocks = podGo ? 4 : stomp ? (isStompXL ? 6 : 4) : 6;
 ```
-Guitar -> Tuner -> Wah -> Compressor -> Drive/Overdrive -> Amp -> Cab -> Gate -> EQ -> Modulation -> Delay -> Reverb
-```
 
-This is exactly what chain-rules.ts already produces. The v4.0 improvement is not about ordering — it is about interaction-aware parameter values.
+Each guard is correct at the time it was added. The problem is accumulation: new device constraints get added as new guards, making the code harder to reason about and impossible to unit-test per-device without running the whole function.
 
-**Effect interaction rules that matter for parameter quality:**
+**The device-module pattern:**
 
-| Interaction | Parameter to Adjust | Rule | Why |
-|-------------|---------------------|------|-----|
-| Compressor + mandatory boost | Compressor Threshold lower | -0.05 relative to default when boost is also always_on | Boost drives amp harder; compressor should not double-compress the clean signal |
-| High-gain amp + gate | Horizon Gate Threshold higher | 0.55 instead of 0.50 | High-gain amps amplify the noise floor significantly more than clean amps |
-| Modulation + Reverb together | Reverb Mix lower | -0.08 relative to genre default when a modulation block is also present | Lush modulation + full reverb mix = muddy wash; reduce reverb when modulation is active |
-| Delay + Reverb (standard) | Delay before Reverb | Already correct — slot order enforces this | Echoes should decay into reverb space naturally |
-| Tempo-synced delay | Delay Time = 60000/BPM * note_factor | Quarter note factor = 1.0, dotted-eighth = 0.75 (the "Edge" style), eighth = 0.5 | Delay aligned to BPM creates musical rhythmic echoes; arbitrary ms is unprofessional |
-| Reverb PreDelay by category | PreDelay by amp category | Clean: 40-60ms, Crunch: 20-40ms, High-gain: 10-20ms | High-gain needs tight attack before reverb tail; ambient/clean benefits from longer pre-delay separation |
-
-**Note on delay timing:** The formula is straightforward: `Time_ms = 60000 / BPM * note_factor`. Helix normalizes delay Time as 0.0-1.0 where the max is typically 2000ms. So normalized value = Time_ms / 2000. For 120 BPM dotted-eighth: 60000/120 * 0.75 = 375ms = 0.1875 normalized. This should be computed in param-engine.ts when `intent.tempoHint` is present for a delay block.
-
-**Reverb PreDelay:** Not currently in any reverb model's defaultParams or genre overrides. Adding it as a new key in GENRE_EFFECT_DEFAULTS reverb entries (e.g., `PreDelay: 0.030` for 30ms) is a single low-risk addition — but must verify that Helix reverb models accept a PreDelay parameter in the .hlx file.
-
-**Source confidence:** HIGH for signal chain ordering (multiple authoritative sources agree universally). HIGH for PreDelay ranges (iZotope professional audio documentation + Music Guy Mixing). MEDIUM for interaction parameter adjustments (derived from professional preset analysis; not official Line 6 specs).
-
----
-
-### Finding 4: Per-Model Amp Parameter Tables
-
-**How professional Helix preset builders tune parameters per model:**
-
-Professional builders treat each amp model as its own entity with its own circuit behavior. Key differences:
-
-- **Non-master-volume amps (Fender, Vox, Hiwatt, early Marshall):** Drive IS the Volume knob. Setting Drive low produces a quiet, characterless sound. Drive 0.60-0.75 for edge-of-breakup; Master at 1.0 (fully engaged power amp). The current category default (clean: Drive 0.25) is wrong for this class of amp.
-- **Master-volume amps (JCM800, JVM, Mesa):** Drive controls preamp gain. Master controls power amp level and feel. Lower Master = tighter response; higher Master = more compressed power amp saturation. Pro presets run Master 0.40-0.55 for modern high-gain tightness.
-- **Model-specific unique controls:** Some amps have controls with no category-level equivalent — Bogner Ecstasy Contour, Mesa Mk IV Pull Bright/Pull Deep, WhoWatt Resonance. The current category overlay writes only to Drive/Master/ChVol/Sag/Bias/Bass/Mid/Treble/Presence — model-specific params like Cut, Deep, Resonance, BrightSwitch survive because they are not in the overlay key set. This is already correct behavior.
-
-**Top 15 amps needing per-model Drive/Master overrides (by request frequency):**
-
-| Amp Model (Helix name) | Real-world amp | Key override |
-|------------------------|---------------|--------------|
-| US Deluxe Nrm / Vib | Fender Deluxe Reverb | Drive: 0.60, Master: 1.0 (no real master) |
-| US Double Nrm / Vib | Fender Twin Reverb | Drive: 0.55, Master: 1.0 |
-| US Princess | Fender Princeton | Drive: 0.65, Master: 1.0 |
-| Voltage Queen | Victoria Victorilux (6V6 Fender-style) | Drive: 0.58, Master: 1.0 |
-| Interstate Zed | Dr. Z Z-Wreck | Drive: 0.58, Master: 1.0 |
-| Matchstick Ch1/Ch2 | Matchless DC-30 | Drive: 0.55, Master: 1.0 |
-| A30 Fawn Nrm / Brt | Vox AC30 Normal/Top Boost | Drive: 0.60, Master: 1.0 |
-| Mandarin 80 | Orange OR80 | Drive: 0.52, Master: 0.75 |
-| Essex A-15 | Vox AC15 | Drive: 0.60, Master: 1.0 |
-| WhoWatt 100 | Hiwatt DR-103 | Drive: 0.50, Master: 0.85 |
-| Placater Clean / Dirty | Friedman BE-100 | Clean: Drive: 0.45, Master: 0.75; Dirty: Drive: 0.50, Master: 0.50 |
-| Cali IV Rhythm 1/2 | Mesa Mk IV Rhythm | Drive: 0.40, Master: 0.65 |
-| Cali IV Lead | Mesa Mk IV Lead | Drive: 0.52, Master: 0.55 |
-| Das Benzin Chunk / Lead | Diezel VH4 | Drive: 0.45, Master: 0.48 |
-| 2204 Mod | Marshall JCM800 modded | Drive: 0.50, Master: 0.55 |
-
-**Implementation:** Sparse override table in param-engine.ts applied as Layer 4 (after topology mid override). Keys: only Drive and Master where they significantly deviate from category defaults. ChVol stays at category default (0.70) — it is a level control, not a tone control. Sag/Bias also remain at category level unless specific model requires otherwise.
-
-**Source confidence:** MEDIUM — values derived from community analysis of professional presets, HelixHelp documentation on per-model behavior, and Sweetwater editorial. Not official Line 6 engineering specs.
-
----
-
-### Finding 5: Cost-Aware AI Model Routing
-
-**Current state:** Every API call uses claude-sonnet-4-6 at $3/$15 per million tokens. The token usage logger was added in v3.2 but the routing decision was deferred pending baseline data.
-
-**Official Anthropic pricing (verified 2026-03-05 from platform.claude.com/docs/en/about-claude/pricing):**
-
-| Model | Input (per MTok) | Output (per MTok) | Cache Read | Cache Write 5min |
-|-------|-----------------|-------------------|------------|------------------|
-| claude-sonnet-4-6 | $3.00 | $15.00 | $0.30 | $3.75 |
-| claude-haiku-3-5 | $0.80 | $4.00 | $0.08 | $1.00 |
-| claude-haiku-4-5 | $1.00 | $5.00 | $0.10 | $1.25 |
-
-**Routing analysis:**
-
-Two distinct call types exist in HelixTones:
-
-1. **Chat turns** (`/api/chat` or equivalent): Conversational turns — asking about tone goals, genre, artist references, guitar type. These do NOT require structured output or expert gear knowledge. They require: natural conversation, following up on prior messages, asking clarifying questions, and detecting when enough info exists to signal [READY_TO_GENERATE]. This is within Haiku capability.
-
-2. **ToneIntent generation** (`/api/generate`): The Planner structured output call — selecting specific amp models (e.g., "Placater Dirty" for a Friedman BE-100 lead tone), cab models, effect combinations, snapshot design. This requires deep gear knowledge and schema-constrained output. Must stay on Sonnet.
-
-**Recommendation:** Route chat turns to claude-haiku-3-5. Keep preset generation on claude-sonnet-4-6.
-
-**Cost savings at scale (evidence-based, not guesswork):**
-
-Typical chat conversation: 8-12 turns before [READY_TO_GENERATE]. Average ~1500 tokens input, ~300 tokens output per chat turn (based on system prompt ~500 tokens + conversation history growing).
-
-Per conversation chat cost on Sonnet: 10 turns * (1500 * $3 + 300 * $15) / 1,000,000 = 10 * ($0.0045 + $0.0045) = $0.09 per conversation
-Per conversation chat cost on Haiku 3.5: 10 turns * (1500 * $0.80 + 300 * $4) / 1,000,000 = 10 * ($0.0012 + $0.0012) = $0.024 per conversation
-**Savings: 73% reduction on chat costs.** At 100 conversations/month: $6.60 savings. At 1000 conversations/month: $66 savings.
-
-**Implementation risk:** Low. Haiku 3.5 chat quality is adequate for conversational turns that do not require complex reasoning or gear knowledge. The only risk is Haiku failing to detect [READY_TO_GENERATE] correctly — mitigated by providing the trigger phrase in the system prompt explicitly.
-
-**Anti-pattern to avoid:** Dynamic escalation ("try Haiku, escalate to Sonnet if response quality is poor") requires quality evaluation which is itself expensive and adds latency. Use static routing: chat = Haiku always, generation = Sonnet always. This is the industry-standard pattern for mixed-complexity workloads.
-
-**Pre-condition:** Run 30 days of token logging baseline first to confirm chat calls dominate cost and that per-turn token counts match the estimates above. The v3.2 token logger makes this straightforward.
-
-**Source confidence:** HIGH for pricing — directly from official Anthropic API pricing page. MEDIUM for Haiku routing recommendation — industry pattern is well-established; specific cost savings depend on actual call volume.
-
----
-
-### Finding 6: Unified Device Abstraction Layer
-
-**Current state — four separate builders:**
-
-| File | Device(s) | Format | DSP model |
-|------|-----------|--------|-----------|
-| preset-builder.ts | Helix LT, Helix Floor | .hlx | Dual DSP (dsp0/dsp1), 8 blocks each |
-| podgo-builder.ts | Pod Go | .pgp | Single DSP, different @type encoding |
-| stadium-builder.ts | Helix Stadium | .hsp | Single path, 12 blocks max |
-| stomp-builder.ts | HX Stomp, HX Stomp XL | .hlx | Single DSP, 6 or 9 block limit |
-
-**What is already unified (good):**
-- `chain-rules.ts` handles all 6 devices with device-aware branching — single function
-- `param-engine.ts` handles all devices with device-aware amp lookup at top
-- `ToneIntent` is the shared contract — all devices go through the same Planner output
-- `DeviceTarget` type is the shared discriminant
-
-**What is fragmented (gaps):**
-- 4 separate serializer files with no shared interface — adding device 7 requires creating a 5th file
-- Block type encoding: `BLOCK_TYPES` (Helix/Stadium) vs `BLOCK_TYPES_PODGO` — separate maps
-- STADIUM_AMPS in models.ts is a separate table from AMP_MODELS, but uses the same HelixModel type
-- No `DeviceBuilder` factory pattern — callers need to know which specific builder to import
-- Stomp builder code is nearly identical to LT/Floor builder but with different DEVICE_IDS and block limits
-
-**What a unified abstraction would look like:**
+The v5.0 target architecture is a device module per family:
 
 ```typescript
-// A shared interface (Ports and Adapters pattern)
-interface DeviceBuilder {
-  buildPreset(spec: PresetSpec, intent: ToneIntent): unknown;
-  getFileExtension(): ".hlx" | ".pgp" | ".hsp";
-  getDeviceId(): number;
+interface DeviceChainRules {
+  maxBlocksPerDsp: number;
+  maxEffects: number;
+  supportsDualAmp: boolean;
+  supportsSnapshotCount: number;
+  validateChain(blocks: BlockSpec[]): ValidationResult;
+  allocateDsp(blocks: BlockSpec[]): DspAllocation;
 }
-
-// Factory function — single import point for callers
-function createBuilder(device: DeviceTarget): DeviceBuilder;
 ```
 
-Internal logic of each builder stays unchanged. The interface enforces a consistent public API.
+Each device family exports a `DeviceChainRules` implementation. `chain-rules.ts` becomes a dispatcher that routes to the correct implementation based on device. No guards needed inside the implementation — each one only knows its own constraints.
 
-**Cost-benefit assessment for refactor:**
+**Block budget rules per device (confirmed from codebase + hardware research):**
 
-- Cost: HIGH — touching 4+ files with risk of regression; needs full test suite run
-- User-facing benefit: ZERO — users see no difference
-- Maintainability benefit: HIGH for future device additions; MEDIUM for current maintenance
-- Recommendation: **Do the audit in v4.0 to document what is shared vs. diverged. Only refactor if the Stadium builder rebuild reveals that the current 4-builder structure makes Stadium fixes require touching 3+ files simultaneously.**
+| Device | Total Blocks | Amp | Cab | Max User Effects | Dual-Amp |
+|--------|-------------|-----|-----|-----------------|----------|
+| Helix LT | 16 (8/dsp) | 1 per dsp | 1 per dsp | 6 | YES (4 extra blocks) |
+| Helix Floor | 16 (8/dsp) | same | same | 6 | YES |
+| HX Stomp | 6 total | 1 | 1 | 4 | NO |
+| HX Stomp XL | 9 total | 1 | 1 | 6-7 | NO |
+| Pod Go | fixed positions | 1 | 1 | 4 | NO |
+| Stadium | 12/path | 1 | 1 | up to 10 | via multi-path |
 
-**What makes a device abstraction layer work well (from software architecture research):**
+**Validation that belongs in device modules (not guards):**
 
-The Ports and Adapters (Hexagonal Architecture) pattern is the strongest match:
-- Core preset engine (ToneIntent -> PresetSpec) is the "domain core" — stays device-agnostic
-- Each builder is a "port adapter" that translates PresetSpec to device-specific file format
-- chain-rules.ts and param-engine.ts are "domain services" — they already handle device branching internally
+- Stomp: reject any ToneIntent with `secondAmpName` set — dual-amp is architecturally impossible
+- Pod Go: reject effects count > 4; validate all model names carry Mono/Stereo suffix convention
+- Stadium: reject any HD2 amp name (non-Agoura); validate param key completeness before file emission
+- Helix: validate dual-amp block budget (AB topology consumes 4 extra slots, so max effects drops to 4 when dual-amp)
 
-The existing architecture already approximates this pattern. The main gap is the missing `DeviceBuilder` interface and factory function. This is a low-risk refactor (adding an interface + factory, not rewriting the builders themselves).
-
-**Source confidence:** HIGH for current state assessment — direct code analysis. MEDIUM for abstraction recommendation — standard software engineering patterns; no Helix-specific architecture guidance exists.
+**Source confidence:** HIGH — all block limits are directly confirmed from hardware inspection and STOMP_CONFIG / STADIUM_CONFIG constants in the codebase.
 
 ---
 
@@ -250,127 +249,107 @@ The existing architecture already approximates this pattern. The main gap is the
 
 ### Table Stakes (Users Expect These)
 
-Features that define quality for a preset generator competing with paid commercial presets.
+Features that a "device-first" architecture must deliver to feel complete. Missing these means the architecture rework is not done.
 
 | Feature | Why Expected | Complexity | Dependencies on Existing Code |
 |---------|--------------|------------|-------------------------------|
-| Stadium rebuild from real .hsp files | Stadium is blocked in the UI — users literally cannot select it | HIGH | Reverse-engineer 11 real .hsp files; extend stadium-builder.ts from ground truth |
-| Tempo-synced delay | Users who provide BPM expect delay to lock to tempo; dotted-eighth delay is ubiquitous in worship/rock | LOW | tempoHint already in ToneIntent; add BPM formula to param-engine.ts delay resolution |
-| Reverb PreDelay (20-60ms) | Professional presets always set PreDelay — absent pre-delay smears note attack | LOW | Add PreDelay key to GENRE_EFFECT_DEFAULTS reverb entries; verify reverb models accept it |
-| Guitar-type EQ shaping | Single coil vs humbucker presets should differ — same tone settings are wrong for both | LOW | guitarType in ToneIntent; extend EQ_PARAMS or AMP_DEFAULTS with guitarType dimension |
-| Cab pairing enforcement/guidance | Random cab selection sounds amateur — Fender Deluxe should pair with Fender-style 1x12, not 4x12 Greenback | LOW | cabAffinity populated on HelixModel; enrich planner prompt with pairing table |
-| Gain-staging refinement per amp category | Category defaults are already reasonable; per-amp Master/Drive is the next quality level | MEDIUM | Extend 3-layer resolution in param-engine.ts with layer 4 per-model overrides |
+| Device picker at conversation start | Users expect to declare their hardware BEFORE describing tone, not after — all hardware-aware tools (Kemper, Quad Cortex, BIAS X) do this | LOW (UI change) | Move device selector component before chat input; pass device to chat route from first message; chat system prompt receives device at session start |
+| Device-specific planner prompts (isolated model catalogs) | Agoura amp names leaking to non-Stadium devices is a correctness bug, not a UX preference — any wrong model name produces a broken preset file | MEDIUM | Refactor `buildPlannerPrompt()` into 4 device-family builders; each imports only its own catalog; factory routes by device family |
+| Stadium firmware parameter completeness (27+ params) | Param bleed on hardware is silent data corruption — presets sound different each time depending on what was loaded previously | HIGH | Corpus extraction of full param key list from real .hsp files; extend `buildAmpParams()` in stadium-builder.ts; add model-specific hidden param defaults to STADIUM_AMPS catalog |
+| Device-specific conversation arcs | Chat AI that ignores Stomp's 6-block limit during the interview sets up unreachable expectations — user designs a chain that won't fit | MEDIUM | Device passed to chat route at conversation start; Gemini system prompt receives device context; device-specific interview beat instructions per family |
+| No cross-device model contamination by design | Guard-based filtering is fragile — new models added without `stadiumOnly: true` silently leak; structural isolation is the correct fix | MEDIUM | Separate catalog modules per device family; no shared `AMP_NAMES` global; each planner prompt builder imports from its own catalog file |
 
 ### Differentiators (Competitive Advantage)
 
+Features that go beyond fixing the architecture bugs to create a genuinely better experience.
+
 | Feature | Value Proposition | Complexity | Dependencies on Existing Code |
 |---------|-------------------|------------|-------------------------------|
-| Per-model amp parameter overrides | Instead of all high-gain amps getting the same Drive, each amp model gets expert-tuned values | HIGH | New sparse override table in param-engine.ts; ampFamily classification in models.ts |
-| Effect combination logic (interaction-aware params) | Reverb Mix lower when modulation is active; Gate Threshold higher for high-gain; compressor adjusted when boost is always-on | MEDIUM | Extend resolveDefaultParams() and resolveDynamicsParams() with interaction-aware logic |
-| Cost-aware model routing (Haiku for chat) | 73% chat cost reduction; Sonnet reserved for structured ToneIntent generation only | MEDIUM | New routing logic in chat API endpoint; change model string for chat calls only |
-| Genre-aware cab selection in planner prompt | Metal presets bias to V30/Greenback; jazz to small 1x12/2x12 | LOW | Planner prompt enrichment only; no Knowledge Layer changes |
-| Snapshot-aware volume compensation (ChVol per toneRole) | Lead snapshots +10% ChVol vs clean — makes snapshots volume-balanced by default | LOW | Extend snapshot-engine.ts with per-toneRole ChVol delta table |
-| Device/model abstraction layer (DeviceBuilder interface) | Reduces duplication; makes adding device 7 a single file rather than touching chain-rules + param-engine + builder | HIGH | New interface + factory; internal builder logic unchanged |
+| Stomp constraint interview ("what will you cut?") | Transforms a limitation into a creative decision — users feel the AI understands their hardware, not fighting it | LOW | Stomp-specific conversation beat in chat system prompt; single question distinguishes "add to pedalboard" vs "replace pedalboard" |
+| Pod Go budget framing ("4 slots, what matters most?") | Same creative reframe — constraint as focus tool, not apology | LOW | Pod Go-specific conversation beat; rephrase effect selection as explicit priority question |
+| Stadium Agoura-first conversation arc | Stadium users paid a premium for Agoura modeling — the interview should talk about Agoura amp families, not "what kind of gain do you want?" | MEDIUM | Stadium-specific system prompt section; Agoura amp family awareness in chat AI |
+| Clean device module architecture (no guard sites) | Maintainability: adding a 7th device is one new module file, not touching 17+ guard sites across 5 files | HIGH | DeviceChainRules interface; factory routing; migrate each guard to its device module |
+| Device-family grouping in UI (4 families, not 6 devices) | Reduces cognitive load at device selection — users who have a "Helix" don't need to know "LT vs Floor" for preset generation | LOW | UI change to device picker: show 4 family cards, then device variant within family |
+| Per-family prompt caching | Separate system prompts per device family cache independently — Stadium updates don't invalidate Helix cache | LOW | Byproduct of device-specific prompt builders; no extra implementation needed |
 
 ### Anti-Features (Commonly Requested, Often Problematic)
 
 | Feature | Why Requested | Why Problematic | Alternative |
 |---------|---------------|-----------------|-------------|
-| AI-generated numeric amp parameters | "Let Claude pick Drive and Master values per amp model" | AI numbers are inconsistent and not calibrated to Helix's float encoding. Planner-Executor split exists because AI-generated params were tried and produced worse results. | Curated per-model override tables — deterministic, testable, improvable over time |
-| Haiku for ToneIntent generation | "The Planner call is expensive — use Haiku to save 73%" | ToneIntent generation is where all preset quality lives. Model selection (choosing "Placater Dirty" vs "Solo Lead 100") requires deep gear knowledge. Haiku 3.5 achieves ~90% benchmark performance but gear knowledge is not a benchmark. | Route chat to Haiku; keep Sonnet for generation. The Planner call is ~1 per preset vs. 10 chat turns — its cost is already 10x smaller. |
-| Real-time dynamic escalation (Haiku -> Sonnet) | "Try Haiku, escalate if poor quality" | Quality evaluation requires AI evaluation — creates cost loops and latency. | Static routing: Haiku for chat always, Sonnet for generation always. |
-| IRs (impulse responses) in generated presets | "IRs sound better than stock cabs" | IRs require file loading infrastructure, per-user IR libraries, and break preset portability. Already explicitly out of scope in PROJECT.md. | Better mic choice selection and cab parameter tuning achieves competitive results within stock cabs. |
-| Full parallel routing by AI | "Let Claude design any signal topology" | Unconstrained AI topology selection produces DSP overflows and broken presets. Routing must be the Knowledge Layer's responsibility with named topologies. | Offer 2-3 named topologies (serial, dual_amp_AB) that the Planner can select; each has pre-validated block budgets. |
-| Device abstraction refactor before Stadium rebuild | "Refactor first, then rebuild Stadium on the clean architecture" | Refactoring all 4 builders before the Stadium rebuild is confirmed working adds regression risk. Stadium rebuild is the unblock. | Do Stadium rebuild first. Audit the abstraction gaps in parallel. Only refactor if the rebuild reveals structural problems. |
+| Universal model catalog (show all amps for all devices, user picks) | "Let me choose any amp from any device" | Stadium with HD2 amps produces broken .hsp files — wrong parameter encoding. Pod Go with Agoura names produces invalid .pgp files. Model selection MUST be device-constrained or file generation fails silently on hardware. | Device-isolated catalogs. Explain in UI why Stadium has different amps ("Stadium uses the Agoura modeling engine — different amp library"). |
+| Device selection mid-conversation | "Let me discover my options first, then pick the device" | The interview content (dual-amp conversation, effect budget, snap count) fundamentally changes based on device. A mid-conversation device switch invalidates every exchange that preceded it. This was the v3.x pattern — it caused the Agoura leak and interview expectation mismatch. | Device-first routing. One sentence of explanation in the UI: "Select your device first so we can design within its capabilities." |
+| Cross-device preset import in the generator | "I have a Helix preset I love — can you reinterpret it for my Stomp?" | Requires full reverse-engineering of .hlx format, device capability mapping, and effect substitution. This is a separate product feature, not a preset generation concern. Already explicitly out of scope. | Import Line 6's HX Edit for preset conversion. HelixTones focuses on generation, not conversion. |
+| Guard removal refactor before device-first routing | "Clean up the guards first, then add device-first routing" | Guards ARE the current device-first mechanism — removing them before the new routing is in place breaks all 6 devices simultaneously. The correct order: add device-first routing → new device modules → guards become dead code → remove guards. | Sequential implementation: routing first, modules second, guard removal last. |
+| Single giant device-specific system prompt per device | "Just write 6 different system prompts, one per device" | 6 separate system prompts with full content duplication creates a maintenance burden — guitar interview best practices, pro techniques, conversation style, all duplicated 6 times. A bug fix requires editing 6 files. | Shared interview framework + device-specific sections injected at the device boundary. Common conversation style, device-specific constraint beats and model catalog. |
 
 ---
 
 ## Feature Dependencies
 
 ```
-Stadium rebuild from real .hsp files
-    └──required by──> Unblock Stadium in UI (blocked since v3.2)
-                           └──required by──> Stadium users can generate presets
-    └──informs──> Device abstraction layer audit (may reveal structural issues)
+Device picker at conversation start
+    └──enables──> Device context at chat route entry
+                      └──enables──> Device-specific Gemini system prompt
+                                        └──enables──> Stomp constraint interview arc
+                                        └──enables──> Pod Go budget interview arc
+                                        └──enables──> Stadium Agoura-first arc
+                                        └──enables──> Helix dual-amp interview arc
 
-Tempo-synced delay
-    └──requires──> tempoHint in ToneIntent [EXISTS]
-    └──requires──> Delay Time override formula in param-engine.ts resolveDefaultParams()
+Device-specific planner prompts
+    └──requires──> Separate catalog modules per device family
+                       └──eliminates──> Agoura amp name leak to non-Stadium devices
+                       └──eliminates──> Guard-based model filtering in buildPlannerPrompt()
+    └──enables──> Per-family prompt caching (Helix cache != Stadium cache)
+    └──independent of──> Conversation arc changes (different pipeline stage)
 
-Reverb PreDelay
-    └──requires──> PreDelay key added to GENRE_EFFECT_DEFAULTS reverb sections
-    └──requires──> Verification that Helix reverb model .hlx format accepts PreDelay param
+Stadium firmware parameter completeness
+    └──requires──> Corpus extraction of full 27+ param key list from real .hsp files
+    └──requires──> Extension of buildAmpParams() in stadium-builder.ts
+    └──requires──> Per-model hidden param defaults in STADIUM_AMPS catalog
+    └──independent of──> Device-first routing (pure Stadium builder fix)
+    └──fixes──> Param bleed on hardware (silent data corruption)
 
-Guitar-type EQ shaping
-    └──requires──> guitarType in ToneIntent [EXISTS: single_coil/humbucker/p90]
-    └──requires──> New EQ_PARAMS dimension (currently indexed by ampCategory only)
-    └──enhances──> Pickup-specific EQ — first use of the guitarType field in Knowledge Layer
+Device-specific chain rules (module pattern)
+    └──requires──> DeviceChainRules interface definition
+    └──requires──> 4 device-module implementations
+    └──enables──> Single-file addition for device 7 (no guard edits needed)
+    └──requires (ordering)──> Device-specific routing in place before guard removal
+    └──note──> Existing block budget constants (STOMP_CONFIG, STADIUM_CONFIG) migrate to device modules unchanged
 
-Gain-staging refinement + Per-model amp overrides
-    └──requires──> ampFamily classification on HelixModel in models.ts
-    └──requires──> Layer 4 override table in param-engine.ts resolveAmpParams()
-    └──conflicts with (ordering)──> Must be applied AFTER category + topology layers
-    └──note──> ampFamily is shared infrastructure for both Master strategy and Drive overrides
-
-Cab pairing guidance
-    └──requires──> cabAffinity on HelixModel [EXISTS, populated on most amps]
-    └──requires──> Planner prompt enrichment with pairing table text
-    └──optional──> Runtime validation in chain-rules.ts (future Quality Gate)
-
-Effect combination logic
-    └──requires──> Access to full effect list in resolveBlockParams()
-    └──requires──> Interaction detection: does a compressor block appear alongside a boost?
-    └──note──> Current architecture passes each block individually — may need refactor to pass context
-
-Snapshot-aware volume compensation
-    └──requires──> Per-toneRole ChVol delta table in snapshot-engine.ts
-    └──requires──> toneRole in SnapshotIntent [EXISTS]
-    └──note──> ChVol changes must be applied as snapshot parameter overrides, not base params
-
-Cost-aware model routing
-    └──requires──> Anthropic SDK model string change in chat endpoint
-    └──requires──> 30-day token logging baseline to confirm savings match estimates
-    └──independent of──> all tone quality features
-
-Device abstraction layer
-    └──requires──> Audit of 4 builder files + chain-rules + param-engine
-    └──informs──> whether DeviceBuilder interface + factory is worth the refactor cost
-    └──independent of──> all tone quality features
-    └──blocked by (recommended)──> Stadium rebuild should complete first
+Device family UI grouping (4 cards vs 6 selectors)
+    └──requires──> Device picker moved to conversation start
+    └──enhances──> Device selection UX (Stadium/Helix/Stomp/Pod Go mental model)
+    └──independent of──> Backend architecture changes
 ```
 
 ### Dependency Notes
 
-- **Stadium rebuild is the only P1 unblock for a device.** Without it, Stadium users are blocked. All other features improve quality for the 5 working devices.
-- **ampFamily classification enables three quality features.** Gain-staging, per-model overrides, and Master Volume strategy all share the ampFamily infrastructure. Implement once in models.ts.
-- **Effect combination logic requires architectural consideration.** The current param-engine.ts processes each block in isolation via resolveBlockParams(). Interaction-aware params require knowing what other blocks are present. The cleanest approach: pass the full resolved chain as context to resolveDefaultParams(), or do a second pass over the chain after initial resolution.
-- **Guitar-type EQ is the easiest P1 feature.** guitarType is already in ToneIntent; adding a dimension to EQ_PARAMS is a small table change with immediate quality impact for all users.
-- **Cost routing is independent of quality features.** It can be implemented in parallel with any tone quality work.
+- **Device picker move is the foundation.** Every other feature in this milestone depends on device context being established at conversation start. Without it, device-specific prompts and conversation arcs have no moment to fire. This is P0 — it must ship before anything else.
+- **Planner prompt isolation and conversation arc changes are parallel tracks.** Planner prompt isolation fixes a correctness bug (wrong model names in files). Conversation arc changes fix a UX problem (wrong expectations during interview). They touch different pipeline stages and can be implemented in parallel.
+- **Stadium param completeness is an independent fix.** It does not require device-first routing to be complete. It is a pure Stadium builder fix that should be implemented in the same milestone because the symptom (param bleed) is the other post-v4.0 bug driving this milestone.
+- **Device module architecture is the lowest priority in the group.** It has zero user-facing impact. It is the correct long-term direction but is not required for the other features to ship correctly. Implement last, after the higher-priority fixes are stable.
+- **UI family grouping (4 cards) can ship independently.** It is a frontend change with no backend impact. It can be implemented in the same PR as the device picker move.
 
 ---
 
-## MVP Definition for v4.0
+## MVP Definition for v5.0
 
-### Launch With (v4.0 — highest value-to-effort ratio)
+### Launch With (v5.0 core — required to close the architectural gaps)
 
-- [ ] Stadium rebuild from real .hsp files — **required to unblock Stadium device selection**
-- [ ] Tempo-synced delay — wire tempoHint to 60000/BPM formula in param-engine.ts
-- [ ] Reverb PreDelay per genre — add PreDelay key to GENRE_EFFECT_DEFAULTS reverb entries
-- [ ] Guitar-type EQ shaping — extend EQ_PARAMS with humbucker/single_coil/p90 dimension
-- [ ] Planner prompt enrichment — gain-staging guidance, cab pairing table, effect discipline rules
-- [ ] Gain-staging category refinement — validate and tighten existing AMP_DEFAULTS values
+- [ ] Device picker at conversation start — move selector to before chat; pass device to Gemini system prompt on first message; this is the architectural prerequisite for everything else
+- [ ] Device-specific Gemini system prompt sections — Stomp constraint beat, Pod Go budget beat, Stadium Agoura-first beat, Helix dual-amp beat; each injected based on device family at session start
+- [ ] Device-specific planner prompts with isolated model catalogs — 4 separate prompt builder functions; each imports only its own catalog; factory routes by device family; eliminates Agoura leak by construction
+- [ ] Stadium firmware parameter completeness — corpus extraction; extend `buildAmpParams()` to emit all 27+ params with sensible defaults; fixes param bleed on hardware
 
-### Add in v4.0 Extended (medium complexity)
+### Add in v5.0 Extended (higher implementation cost, same milestone)
 
-- [ ] Per-model amp parameter overrides — sparse override table for top 15 amps; requires ampFamily classification
-- [ ] Snapshot-aware volume compensation — per-toneRole ChVol delta in snapshot-engine.ts
-- [ ] Cost-aware model routing — Haiku for chat after 30-day baseline confirms cost structure
+- [ ] Device-specific chain validation modules — move per-device validation from guards to DeviceChainRules implementations; Stomp dual-amp rejection, Pod Go effect count enforcement, Stadium HD2 amp rejection
+- [ ] Device family UI grouping — 4 family cards (Stadium / Helix / Stomp / Pod Go) with variant picker inside each card; reduces cognitive load at device selection
 
-### Future Consideration (v4.1+)
+### Future Consideration (v5.1+ — architecture hygiene, not features)
 
-- [ ] Effect combination logic — interaction-aware params; requires architectural decision on context passing
-- [ ] Device/model abstraction layer refactor — only if Stadium rebuild reveals structural issues
-- [ ] Genre-specific mandatory block substitution — jazz/ambient get compressor instead of boost
+- [ ] Full guard removal from chain-rules.ts and param-engine.ts — only after device modules are stable and tested; guards become dead code once routing is in place
+- [ ] Device 7 onboarding (single-file pattern) — new device via DeviceChainRules implementation + device-specific catalog module + builder; no guard edits anywhere
 
 ---
 
@@ -378,64 +357,109 @@ Device abstraction layer
 
 | Feature | User Value | Implementation Cost | Priority |
 |---------|------------|---------------------|----------|
-| Stadium rebuild from real .hsp files | HIGH (unblocks entire device) | HIGH | P1 |
-| Tempo-synced delay | HIGH (audible, immediate) | LOW | P1 |
-| Reverb PreDelay | HIGH (audible, immediate) | LOW | P1 |
-| Guitar-type EQ shaping | HIGH (affects every preset) | LOW | P1 |
-| Planner prompt enrichment | HIGH (zero code risk) | LOW | P1 |
-| Gain-staging category validation | MEDIUM | LOW | P1 |
-| Per-model amp overrides | HIGH (quality leap) | HIGH | P2 |
-| Snapshot ChVol compensation | HIGH (pro feel) | LOW | P2 |
-| Cost-aware model routing | LOW user / HIGH operational | MEDIUM | P2 |
-| Effect combination logic | MEDIUM | MEDIUM-HIGH | P2 |
-| Device abstraction layer | LOW user / HIGH maintainability | HIGH | P3 |
+| Device picker at conversation start | HIGH (fixes late-device UX mismatch) | LOW (UI + route change) | P0 |
+| Device-specific Gemini system prompt sections | HIGH (Stomp/Pod Go constraint awareness) | LOW (prompt additions) | P1 |
+| Device-specific planner prompts + catalog isolation | HIGH (fixes Agoura correctness bug) | MEDIUM (refactor prompt builder) | P1 |
+| Stadium firmware parameter completeness | HIGH (fixes param bleed on hardware) | HIGH (corpus extraction + builder extension) | P1 |
+| Device-specific chain validation modules | LOW user / HIGH maintainability | HIGH (DeviceChainRules interface + 4 impls) | P2 |
+| Device family UI grouping (4 cards) | MEDIUM (better mental model for users) | LOW (frontend only) | P2 |
+| Full guard removal | ZERO user / HIGH code quality | MEDIUM (cleanup after modules land) | P3 |
 
 **Priority key:**
-- P1: Ship in v4.0 core — direct quality impact, low or manageable implementation cost
-- P2: Ship in v4.0 extended — meaningful improvement requiring more design
-- P3: Evaluate after P1/P2 are complete — architectural or future-facing
+- P0: Architectural prerequisite — nothing else works without this
+- P1: Correctness fixes that directly affect preset quality on hardware
+- P2: Architecture and UX improvements; meaningful but not blocking
+- P3: Code quality; implement when P1/P2 is stable
+
+---
+
+## Device Constraint Conversation Patterns (Reference)
+
+This section documents the specific conversation beats that work best for each device family. These are reference patterns for the chat system prompt author.
+
+### Stomp (6-block / 9-block hard limit)
+
+**Opening constraint question (ask within first 2 exchanges):**
+> "One quick thing before we build — are you using the Stomp with an existing pedalboard (drives, modulation already covered), or is it your complete signal chain? That tells me how many of your 6 blocks we need for effects."
+
+**Budget declaration (include in plan summary):**
+> "Here's what fits in your 6 blocks: amp (1) + cab (1) + [3-4 effects]. I'm planning: [list effects]. That leaves [N] blocks used — [M] free if you want to swap anything."
+
+**Constraint reframe (if user wants more effects than budget):**
+> "That's 5 effects plus amp and cab — one too many for the Stomp. Which matters more to you: [effect A] or [effect B]? The other can live on a physical pedal if you have one."
+
+**Anti-pattern to avoid:** Apologizing for the Stomp's block count. The constraint is the creative challenge.
+
+---
+
+### Pod Go (4-effect limit)
+
+**Budget declaration (early in conversation):**
+> "Pod Go gives us 4 effect slots after amp and cab. For a [genre] tone that's actually perfect — we want [2 core effects] plus room for [2 more]. What are the 2 effects you'd fight to keep if it came to that?"
+
+**When user wants more:**
+> "With 4 slots we need to pick: [list requested effects]. For [genre], I'd prioritize [effect A] and [effect B]. Want me to go with that, or swap one out?"
+
+**Anti-pattern to avoid:** Treating Pod Go as a lesser device. It is a budget-constrained all-in-one, and the interview should feel focused, not apologetic.
+
+---
+
+### Helix (16 blocks, dual-DSP)
+
+**Dual-amp question (after tone goal and guitar are established):**
+> "Do you want to be able to switch between two different amp characters — like a clean Fender for your rhythm parts and a Marshall for leads — or is one amp sound doing everything?"
+
+**If dual-amp:** "Great — I'll set it up so your clean/crunch snapshots use the [amp A] and lead/ambient snapshots switch to [amp B]. The two amps run in parallel with a split-merge block."
+
+**If single-amp:** Skip dual-amp discussion entirely. Proceed to effect preferences.
+
+**Anti-pattern to avoid:** Asking about dual-amp too early (before tone goal). The answer only makes sense in context.
+
+---
+
+### Stadium (Agoura amp catalog, professional use case)
+
+**Amp family orientation (replace generic "what gain level" question):**
+> "Stadium's Agoura engine models the actual circuits — so instead of 'clean vs. heavy,' tell me the amp brand you're after. Fender-voiced clean? Vox chime? Marshall crunch? Mesa rectified lead? I'll match you to the Agoura version."
+
+**Snapshot count awareness:**
+> "Stadium supports 8 snapshots — that's more than the Helix's 4. Do you want to use all 8 (great for live sets with distinct sections) or keep it to the standard 4 (cleaner footswitch management)?"
+
+**Multi-path question (optional, for advanced users who bring it up):**
+> "Stadium also supports routing a microphone or second instrument on a separate path with its own amp and effects. Are you running just guitar, or do you want to use the multi-path capability?"
+
+**Anti-pattern to avoid:** Mentioning HD2 amp names at all. Stadium users chose the device for Agoura quality — referencing "Placater Dirty" or "Litigator" is a category error.
 
 ---
 
 ## Competitor Feature Analysis
 
-| Dimension | Commercial Presets (Alex Price, Glenn DeLaune, M. Britt) | Free Community (Line 6 CustomTone) | HelixTones v4.0 Target |
-|-----------|----------------------------------------------------------|-------------------------------------|------------------------|
-| Amp parameter tuning | Hand-tuned per model, per circuit knowledge | Inconsistent; often default values | Category defaults + sparse per-model overrides for top 15 amps |
-| Cab pairing | Hand-selected for tone character and era match | Random or default | cabAffinity-guided + planner prompt pairing table |
-| Delay timing | Tempo-synced (dotted-8th, quarter) per genre | Static ms values | BPM formula when tempoHint provided; genre subdivision targets |
-| Reverb definition | Pre-delay 20-60ms on all presets | No pre-delay | Genre-indexed PreDelay values in GENRE_EFFECT_DEFAULTS |
-| Guitar-type variants | Separate preset versions (humbucker vs. single coil) | Rare | Single preset with guitarType-indexed EQ branch |
-| Device support | One device per pack | Single device | 6 devices from one generation flow |
-| Quality consistency | Manually tested on hardware | Variable | Deterministic Knowledge Layer; baseline generator for regression testing |
-| Iterative refinement | Purchased once, fixed | Fixed | AI chat iteration; regenerate with tweaks |
+| Dimension | BIAS X (Positive Grid, 2025) | Quad Cortex (Neural DSP) | HelixTones v5.0 Target |
+|-----------|------------------------------|--------------------------|------------------------|
+| Device selection timing | Plugin format selected at launch; AI catalog scoped to that format before tone creation | Template (path topology) selected before any block placement | Device family selected before first chat message; all downstream pipeline scoped to that family |
+| Constraint communication | AI transparently shows what fits in selected format | Block slots shown visually; DSP meter shows remaining budget | Constraint declared in conversation beat; budget stated explicitly in plan summary |
+| Constrained device experience | Not applicable (plugin, not hardware) | Preamp block option to save DSP; visual budget indicator | Stomp: "what will you cut?" arc; Pod Go: 4-slot priority question |
+| Model catalog isolation | Catalog is format-specific; no leakage between formats | Models filtered by hardware capability | Device-family catalog modules; no shared global; leakage architecturally impossible |
+| Professional device experience | N/A | Full-featured with no apology for constraints | Stadium: Agoura-first conversation; 8-snapshot awareness; multi-path mention for advanced users |
 
 ---
 
 ## Sources
 
-- [Controlling Gain, Master Volume and Channel Volume — Line 6 Community](https://line6.com/support/topic/32285-controlling-gain-master-volume-and-channel-volume/) — HIGH confidence
-- [High Gain Staging — Line 6 Community](https://line6.com/support/topic/33117-high-gain-staging/) — HIGH confidence
-- [Common Amp Settings — Helix Help](https://helixhelp.com/tips-and-guides/universal/common-amp-settings) — HIGH confidence
-- [Mastering Amp Parameters on Line 6 Helix — Komposition101](https://www.komposition101.com/blog/mastering-amp-parameters-on-line6-helix) — MEDIUM confidence
-- [Volume Matching Presets on Line 6 Helix — Komposition101](https://www.komposition101.com/blog/volume-matching-presets-on-line6-helix) — MEDIUM confidence
-- [Amps and Cabs That Typically Are Paired Together — Line 6 Community](https://line6.com/support/topic/25961-amps-and-cabs-that-typically-are-paired-together/) — MEDIUM confidence (community consensus)
-- [Line 6 Helix Cabinet Models — DShowMusic](https://dshowmusic.com/line-6-helix-cabinet-models/) — MEDIUM confidence
-- [Helix Cabs — Settings, Tips, Tricks — The Gear Forum](https://thegearforum.com/threads/helix-cabs-share-your-settings-tips-tricks.4944/) — MEDIUM confidence
-- [Setting Up Your Effect Signal Chain — Strymon](https://www.strymon.net/setting-up-your-effect-signal-chain/) — HIGH confidence
-- [The Ultimate Guide to Guitar Effects Pedal Order — BOSS Articles](https://articles.boss.info/the-ultimate-guide-to-guitar-effects-pedal-order-and-signal-chain/) — HIGH confidence
-- [Signal Chain 101 — Reverb News](https://reverb.com/news/signal-chain-101-going-back-to-school-on-pedal-order) — HIGH confidence
-- [Guitar Effects Pedal Order 101 — Get My Guitar](https://getmyguitar.com/guitar-effects-pedal-order-101-2025-guide/) — MEDIUM confidence
-- [Reverb Pre-Delay Explained — iZotope](https://www.izotope.com/en/learn/reverb-pre-delay) — HIGH confidence
-- [What is Pre Delay on Reverb — Music Guy Mixing](https://www.musicguymixing.com/pre-delay/) — MEDIUM confidence
-- [BPM to Delay Times Cheat Sheet — Sweetwater InSync](https://www.sweetwater.com/insync/bpm-delay-times-cheat-sheet/) — HIGH confidence
-- [Delay Time Calculator — Guitar Gear Finder](https://guitargearfinder.com/guides/delay-time-calculator-instructions/) — MEDIUM confidence
-- [Anthropic Claude API Pricing — Official Docs](https://platform.claude.com/docs/en/about-claude/pricing) — HIGH confidence (verified 2026-03-05)
-- [LLM API Pricing Comparison — IntuitionLabs](https://intuitionlabs.ai/articles/llm-api-pricing-comparison-2025) — MEDIUM confidence
-- [Smart Model Routing — Clawdbot API Cost Optimization](https://zenvanriel.com/ai-engineer-blog/clawdbot-api-cost-optimization-guide/) — MEDIUM confidence
-- [Multiple Layers of Abstraction — Spotify Engineering](https://engineering.atspotify.com/2023/05/multiple-layers-of-abstraction-in-design-systems) — HIGH confidence
+- [HX Stomp: Are 6 blocks enough? — Line 6 Community](https://line6.com/support/topic/36658-hx-stomp-are-6-blocks-enough-not-really/) — HIGH confidence (community consensus on block budget strategies)
+- [Creative Ways to Get Even More out of HX Stomp — Sweetwater InSync](https://www.sweetwater.com/insync/get-much-more-out-of-hx-stomp/) — HIGH confidence (editorial, verified techniques)
+- [Signal Path Routing — Helix Stadium Manual](https://manuals.line6.com/en/helix-stadium/live/signal-path-routing) — HIGH confidence (official documentation)
+- [Amp Blocks — Helix Stadium Manual](https://manuals.line6.com/en/helix-stadium/live/amp-blocks) — HIGH confidence (official; documents Hype, Bright, Contour, Aggression, Depth, Fat params)
+- [Helix Stadium 1.2.1 Release Notes — Line 6 Community](https://line6.com/support/page/kb/effects-controllers/helix_130/helix-stadium-121-release-notes-r1105) — HIGH confidence (official firmware notes confirming Agoura amp additions)
+- [BIAS X Review — Develop Device](https://developdevice.com/blogs/news/bias-x-review-positive-grids-ai-powered-revolution-in-guitar-tone) — MEDIUM confidence (describes AI-first tone creation flow)
+- [Positive Grid BIAS X — Guitar World](https://www.guitarworld.com/gear/plugins-apps/positive-grid-bias-x-launch) — MEDIUM confidence (device-first format selection documented)
+- [Quad Cortex vs Helix vs Kemper — Guitar Guitar](https://www.guitarguitar.co.uk/news/141684/) — MEDIUM confidence (confirms Quad Cortex template-first UX pattern)
+- [Neural DSP Quad Cortex Review — HoneySonic](https://www.honeysonic.com/blog/neural-dsp-quad-cortex-review) — MEDIUM confidence (confirms preset template as device context in QC)
+- [Understanding Helix Amp Parameters — Sweetwater InSync](https://www.sweetwater.com/insync/understanding-helix-amp-parameters/) — HIGH confidence (editorial confirming Drive/Master/ChVol roles)
+- [The Blocks — Helix Help](https://helixhelp.com/tips-and-guides/helix/the-blocks) — HIGH confidence (block budget rules and DSP constraints)
+- Direct codebase inspection of `planner.ts`, `chain-rules.ts`, `config.ts`, `types.ts`, `models.ts`, `stadium-builder.ts` (2026-03-05) — HIGH confidence
 
 ---
 
-*Feature research for: HelixTones v4.0 — Stadium rebuild + preset quality leap*
+*Feature research for: HelixTones v5.0 — Device-First Architecture Rework*
 *Researched: 2026-03-05*

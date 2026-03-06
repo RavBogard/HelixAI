@@ -1,191 +1,204 @@
 # Project Research Summary
 
-**Project:** HelixTones v4.0 — Stadium Rebuild + Preset Quality Leap
-**Domain:** AI-powered guitar preset generator (Planner-Executor architecture, multi-device)
+**Project:** HelixTones v5.0 — Device-First Architecture Rework
+**Domain:** AI-powered guitar preset generator for Line 6 Helix-family hardware
 **Researched:** 2026-03-05
-**Confidence:** HIGH
+**Confidence:** HIGH overall — all findings grounded in direct codebase inspection, real firmware corpus analysis, and verified against official documentation
+
+---
 
 ## Executive Summary
 
-HelixTones v4.0 is a focused quality and device-completion milestone on top of a stable v3.2 platform. The architecture is sound: a two-model AI pipeline (Gemini 2.5 Flash for conversational tone interview, Claude Sonnet 4.6 for structured ToneIntent generation) feeds a deterministic Knowledge Layer that converts AI selections into instrument-accurate preset files for 6 Line 6 devices. The single most important finding from all four research streams is that no new npm packages, infrastructure changes, or architectural rewrites are needed — every v4.0 improvement is accomplished by modifying TypeScript source files in `src/lib/helix/` and `src/lib/planner.ts`.
+HelixTones v5.0 is a targeted architectural rework of an existing, fully-shipped AI guitar preset generator. The app supports six Line 6 hardware devices and uses a Planner-Executor pipeline (Claude Sonnet 4.6 for structured preset planning, Gemini 2.5 Flash for conversational interview) deployed on Vercel/Next.js with Supabase. Two confirmed post-v4.0 production bugs are driving this milestone: Agoura amp names leaking into non-Stadium device presets (causing invalid model selections), and Stadium presets emitting only 12 of 27 required firmware parameters per amp block (causing unpredictable "param bleed" from previously loaded presets on hardware). Both bugs share the same root cause: device identity enters the pipeline too late and the shared model catalog is structurally unsound.
 
-The primary blocker is the Helix Stadium device, which has been disabled in the UI since v3.2 due to an unverified builder. Direct inspection of 10 real .hsp files confirms 5 concrete bugs in `stadium-builder.ts`: the `access` field in parameter encoding does not exist in real files, block keys use sequential numbering instead of Stadium's 14-slot grid positions, all effect blocks must use `type: "fx"` regardless of category, 6 Agoura amp IDs are missing from the catalog entirely, and the device version constant is wrong. These are all deterministic, fixable bugs — not fundamental design issues. The Stadium rebuild must complete before the device is unblocked, and it must be verified by loading generated .hsp files in HX Edit, not just by passing TypeScript compilation.
+The recommended approach is a sequential architectural migration: establish a `DeviceFamily` routing layer, extract per-family amp catalogs (eliminating the merged `AMP_NAMES` enum), create per-family Zod schemas for constrained AI output, migrate Knowledge Layer guard sites to a `DeviceCapabilities` object, complete Stadium firmware params from real .hsp corpus, isolate per-family prompts, and finally relocate the device picker to conversation start. No new npm packages are required. The entire rework is TypeScript source reorganization within the existing stack. The critical path is catalog isolation before schema isolation before guard removal — doing these out of order breaks all six devices simultaneously.
 
-The preset quality improvements (gain-staging intelligence, per-model amp parameter overrides, effect combination logic, planner prompt enrichment) are all independent of the Stadium track and can proceed in parallel. The key risk across all quality work is that the existing 3-layer amp parameter resolution silently discards per-model overrides — a Layer 4 `paramOverrides` mechanism must be established before individual model tuning values are added, or every override will be clobbered by category defaults without any TypeScript error. Cost-aware model routing (Haiku for chat) is operationally independent but requires a deliberate quality gate before shipping: the interview quality degradation is real but invisible to cost metrics alone.
+The primary risks are cache economics during planner prompt splitting (Stadium and Pod Go have low enough request volume that separate cache buckets may never warm), database migration for resumed legacy conversations (existing rows lack a `device` column), and partial guard removal leaving the codebase in a hybrid state that is harder to maintain than either the old or new pattern. All three risks have clear avoidance strategies documented in PITFALLS.md and must be explicitly in-scope — not deferred — during each phase.
+
+---
 
 ## Key Findings
 
 ### Recommended Stack
 
-No new dependencies are required for v4.0. The existing stack — Next.js 16.1.6, TypeScript 5, `@anthropic-ai/sdk` ^0.78.0, `@google/genai` ^1.42.0, Zod ^4.3.6, Supabase — covers every feature area. All v4.0 work is TypeScript source modifications in `src/lib/helix/` and `src/lib/planner.ts`. Zero new dependencies means zero integration risk and no compatibility testing against Next.js 16 or Tailwind 4.
-
-Model routing is resolved: Gemini 2.5 Flash stays for chat because Google Search grounding is architecturally required for artist rig research and cannot be replicated with Claude Haiku 4.5 without a separate search API. Claude Sonnet 4.6 stays for ToneIntent generation until an A/B quality test with 20+ diverse tone goals passes. Claude Haiku 3.5 and Haiku 3 are retired/deprecated and must not be used. The current fast-tier option if the A/B test passes is `claude-haiku-4-5-20251001`.
+No new dependencies are required for v5.0. The existing stack handles every technical requirement for this rework.
 
 **Core technologies:**
-- Claude Sonnet 4.6 (`claude-sonnet-4-6`): ToneIntent structured generation — deepest gear knowledge required; keep until A/B validated
-- Gemini 2.5 Flash: Chat tone interview — Google Search grounding for artist rig lookup is the decisive reason to keep this model; Haiku 4.5 at $1/$5 per MTok is more expensive AND loses this capability
-- `@anthropic-ai/sdk` ^0.78.0: `zodOutputFormat` from `helpers/zod` works on both Sonnet 4.6 and Haiku 4.5; prompt caching via `cache_control: ephemeral` already live; `response.usage` already logged in `usage-logger.ts`
-- Zod ^4.3.6: ToneIntent schema validation — no new fields needed; gain-staging is a prompt and param change, not a schema change
-- Supabase: Auth, DB, Storage — `.hsp` file storage already implemented; no changes
+- **TypeScript ^5:** Discriminated union `DeviceFamily` type with `assertNever()` exhaustiveness checking — new devices produce compile errors immediately when not handled; `z.discriminatedUnion()` confirmed working in installed Zod 4.3.6
+- **Zod ^4.3.6:** Per-family `ToneIntentSchema` built via factory function `buildToneIntentSchema(family)` — each schema's `ampName` enum is scoped to only the valid models for that family; this is the structural fix to constrained-decoding escape
+- **`@anthropic-ai/sdk` ^0.78.0:** `zodOutputFormat()` accepts any Zod object schema, so per-family schemas slot in identically to the current global schema
+- **Vitest ^4.0.18:** File-per-device test organization using existing `describe()` nesting — no new test configuration needed
+- **Node.js `Buffer` + `JSON.parse()`:** .hsp format is 8-byte ASCII magic header + JSON text; `data.slice(8)` is sufficient — no binary parser library needed for corpus extraction
 
-See `.planning/research/STACK.md` for full analysis.
+See [STACK.md](.planning/research/STACK.md) for version compatibility table and full pattern documentation.
 
 ### Expected Features
 
-The six v4.0 feature areas split into a Stadium hardware track (sequential dependency chain) and a quality improvement track (fully parallel and device-agnostic).
+**Must have (table stakes — required to close v5.0 architectural gaps):**
+- Device picker relocated to before the first chat message — P0 architectural prerequisite; all other features depend on device context being established at session start
+- Device-specific planner prompts with isolated model catalogs — each of the four device families gets its own prompt builder importing only its own amp catalog; eliminates Agoura leak by construction
+- Stadium firmware parameter completeness — emit all 27+ params per amp block from real .hsp corpus extraction; fixes param bleed (critical quality failure, not cosmetic)
+- Device-specific Gemini chat system prompts — Stomp constraint interview arc, Pod Go budget framing, Stadium Agoura-first arc, Helix dual-amp arc; each injected from device context at session start
 
-**Must have (table stakes — P1):**
-- Stadium builder rebuild from real .hsp files — device is blocked in production UI; users cannot select Stadium at all
-- Tempo-synced delay — `tempoHint` exists in ToneIntent but is unwired to Knowledge Layer delay calculation; formula is `60000/BPM * note_factor / 2000` for normalized Helix value
-- Reverb PreDelay per genre — professional presets always set PreDelay; absent pre-delay smears note attack; requires key verification in Helix reverb model format
-- Guitar-type EQ shaping — `guitarType` (single_coil/humbucker/p90) is captured in ToneIntent but not yet used in Knowledge Layer
-- Planner prompt enrichment — gain-staging guidance, cab pairing table, effect discipline by genre; zero schema risk, high quality impact
-- Gain-staging category validation — validate and tighten AMP_DEFAULTS values; non-master-volume amps (Fender, Vox) need Drive 0.55-0.70, not 0.25
+**Should have (competitive differentiators, same milestone):**
+- Device-specific chain validation modules — migrate per-device validation from 17+ guard sites to `DeviceChainRules` implementations; Stomp dual-amp rejection, Pod Go 4-effect enforcement, Stadium HD2 amp rejection
+- Device family UI grouping — four family cards (Stadium / Helix / Stomp / Pod Go) with variant picker inside; reduces cognitive load and matches user mental model
 
-**Should have (competitive — P2):**
-- Per-model amp parameter overrides — sparse override table for top 15+ amps; requires Layer 4 `paramOverrides` mechanism in `resolveAmpParams()` to be established first or overrides are silently discarded
-- Snapshot-aware volume compensation — per-toneRole ChVol delta in `snapshot-engine.ts`; `toneRole` already in SnapshotIntent; leads should be louder than cleans by default
-- Cost-aware model routing (Haiku 4.5 for chat) — 73% chat cost reduction; requires 30-day baseline logging and side-by-side quality comparison gate before shipping
+**Defer (v5.1+ — architecture hygiene, not features):**
+- Full guard removal from chain-rules.ts and param-engine.ts — only after device modules are stable and tested; guards become dead code once routing is in place, but removal is zero user-facing impact
+- New device variant support (Stadium XL, Helix Rack, Pod Go XL) — each requires corpus inspection of real exports before any code; do not add to `DeviceTarget` union until device IDs confirmed from real files
 
-**Defer (v4.1+):**
-- Effect combination logic — interaction-aware params require architectural decision on context passing; `param-engine.ts` currently processes each block in isolation
-- Device/model abstraction layer refactor — user-facing value is zero; only warranted if Stadium rebuild reveals structural multi-file problems
-- Genre-specific mandatory block substitution — jazz/ambient get compressor instead of 808 boost
-
-See `.planning/research/FEATURES.md` for full dependency graph and prioritization matrix.
+See [FEATURES.md](.planning/research/FEATURES.md) for prioritization matrix, device constraint conversation patterns, and anti-feature analysis.
 
 ### Architecture Approach
 
-The existing Planner-Executor architecture with its deterministic Knowledge Layer is the correct foundation for v4.0. The architectural invariant must be preserved: AI outputs only named selections (ampName, cabName, effects list), never numbers. The Knowledge Layer deterministically assigns all numeric parameters through a 3-layer resolution today: model defaultParams, category AMP_DEFAULTS, topology mid override. v4.0 adds a 4th layer (per-model `paramOverrides`) and a 5th layer (effect combination adjustments), both in `param-engine.ts`.
+The v5.0 architecture replaces 17+ boolean guard sites (`isPodGo`, `isStadium`, `isStomp`) scattered across shared files with a single `resolveFamily(device)` router and a `DeviceCapabilities` object that carries all device constraints. Per-family amp catalog modules (`families/stadium/catalog.ts`, `families/helix/catalog.ts`, etc.) eliminate the merged `AMP_NAMES` enum that allows cross-device model contamination. The Knowledge Layer (`chain-rules.ts`, `param-engine.ts`, `validate.ts`) accepts `DeviceCapabilities` instead of `device?: DeviceTarget`, removing guard sites while preserving the existing Planner-Executor architecture without any API route changes.
 
-The architecture review confirmed an evolutionary approach: no class hierarchy refactor, no plugin system, no new abstraction layer unless Stadium rebuild forces the issue. The existing flat function design with `DeviceTarget` guards is clear, testable, and well-covered by existing test files. The 5 Stadium bugs are all in `stadium-builder.ts` and all correctable without touching the shared Knowledge Layer.
+**Major components and their responsibilities:**
+1. **`families/index.ts` (new):** `resolveFamily()` exhaustive switch, `getCapabilities()` factory, `DeviceFamily` type — the single registration point for device-to-family mapping
+2. **`families/{family}/catalog.ts` (4 new files):** Per-family amp catalogs — Stadium gets Agoura amps only, Helix/Stomp/PodGo get HD2 amps; structural fix to the cross-contamination root cause
+3. **`families/{family}/prompt.ts` (4 new files):** Per-family chat and planner prompt sections — injected by `getSystemPrompt(family)` and `buildPlannerPrompt(family, device)`
+4. **`families/stadium/params.ts` (new):** 27-param firmware completeness table extracted from real .hsp corpus — merged into `stadium-builder.ts` output to eliminate param bleed
+5. **Modified Knowledge Layer:** `chain-rules.ts`, `param-engine.ts`, `validate.ts` accept `DeviceCapabilities` — same logic, guard pattern replaced by capability field access
 
-**Major components and v4.0 change status:**
-1. `stadium-builder.ts` — REWRITE: fix param encoding (`{ value: X }` only), block key slot-grid allocation (b00=input, b05=amp, b06=cab, b13=output), `type: "fx"` for all effect blocks, harness params, device version
-2. `models.ts` — MODIFY: add 6 missing Agoura amp IDs to STADIUM_AMPS with defaultParams from real .hsp files; defaultParams audit for model-specific controls (Vox Cut, JC-120 BrightSwitch, Diezel Deep)
-3. `planner.ts` / `buildPlannerPrompt()` — MODIFY: add gain-staging intelligence, amp+cab pairing guidance, effect discipline by genre; enrichment must go in the shared static prefix to avoid cache bucket fragmentation
-4. `param-engine.ts` — MODIFY: add Layer 4 `model.paramOverrides` field applied after category defaults; add Layer 5 `EFFECT_COMBO_PARAMS` constant and `applyComboAdjustments()` function
-5. `validate.ts` — MODIFY: add HX2_* and VIC_* model IDs for Stadium
-6. `config.ts` — MODIFY: update `STADIUM_DEVICE_VERSION` to 301990015 (observed in real files)
-7. `/api/generate/route.ts` — MODIFY: remove Stadium 400 guard only after hardware verification
-8. `chain-rules.ts`, `snapshot-engine.ts`, `preset-builder.ts`, `stomp-builder.ts`, `podgo-builder.ts`, `tone-intent.ts`, `types.ts` — NO CHANGE
+**Build order (critical):** Phase 1 (family router + capabilities) → Phase 2 (catalog extraction) → Phase 3 (per-family ToneIntent schemas) → Phase 4 (Knowledge Layer guard removal) | Phase 5 (Stadium firmware params, parallel) → Phase 6 (prompt isolation) → Phase 7 (frontend picker relocation).
 
-See `.planning/research/ARCHITECTURE.md` for full data flow diagrams and build order.
+See [ARCHITECTURE.md](.planning/research/ARCHITECTURE.md) for full data flow diagrams, component integration map, and build order dependency graph.
 
 ### Critical Pitfalls
 
-Full details, warning signs, and recovery strategies in `.planning/research/PITFALLS.md`.
+1. **Splitting the planner prompt destroys the shared cache** — Each new unique system prompt creates a separate cache bucket. Stadium and Pod Go have far fewer daily users than Helix LT, so their separate buckets may never warm. Prevention: model per-device request volume before splitting; if low-volume devices cannot sustain cache hits, group them into shared "constrained-device" prompt buckets.
 
-1. **Per-model overrides silently clobbered by category defaults** — `resolveAmpParams()` Layer 2 (`AMP_DEFAULTS`) unconditionally overwrites Layer 1 model defaults. Any Drive/Master added to `defaultParams` is silently discarded with no TypeScript error. Avoid: establish `model.paramOverrides` field (Layer 4, applied after category defaults) BEFORE adding any individual model values; write a unit test that explicitly confirms an override survives category defaults.
+2. **Per-family prompts without per-family Zod schemas leaves contamination open** — Even with device-specific planner prompts, the current combined `AMP_NAMES` enum allows constrained decoding to select Agoura amps for non-Stadium requests. Schema isolation (Phase 3) must ship in the same milestone as prompt isolation (Phase 6) — not deferred.
 
-2. **Agoura amps have non-standard parameter keys incompatible with shared AMP_DEFAULTS** — Agoura amps expose `ZPrePost`, `Jack` (integer enum), `Level` (in dB, not normalized 0-1), `Hype`, `AmpCab*` EQ params. Applying the category overlay overwrites correct Agoura values. Avoid: extract every Agoura `defaultParams` from real .hsp files, never estimate; use a `STADIUM_AMP_DEFAULTS` table inside `isStadium()` guard; never add Agoura-specific keys to the shared `AMP_DEFAULTS`.
+3. **Moving device selection to conversation start breaks resumed legacy conversations** — The `conversations` table has no `device` column. Prevention: `ALTER TABLE conversations ADD COLUMN device TEXT DEFAULT NULL`, backfill from `preset_url` extension heuristic, null-check in all code paths that read `conversation.device`.
 
-3. **Prompt enrichment invalidates the prompt cache token boundary** — Any change to `buildPlannerPrompt()` creates a new cache bucket; conditional insertions inside `if (stadium)` or `if (podGo)` blocks fragment into 6 separate cache buckets with lower hit frequency. Avoid: all enrichment content applicable across devices goes in the shared static prefix (first ~70% of prompt); device-specific text stays in terminal `if (device)` blocks; measure cache hit rate via `usage-logger.ts` before and after every prompt change.
+4. **Partial guard removal leaves the codebase in a hybrid state** — Converting chain-rules guards but leaving validate.ts guards creates hidden couplings invisible from device modules. Prevention: define end state before writing any code; document remaining guard sites in STATE.md if not fully converted.
 
-4. **Stadium builder produces presets that compile but fail on hardware** — TypeScript compilation passing is not verification. Wrong block slot positions load in code but appear incorrectly in HX Edit's visual flow editor and may cause hardware routing failures. Avoid: field-by-field comparison of generated .hsp against `Agoura_Bassman.hsp` reference before marking builder done; hardware or HX Edit import verification required before removing UI block.
+5. **Firmware param extraction from a single .hsp file produces biased defaults** — Single-reference extraction biases all generated Stadium presets toward that reference's tone character. Prevention: extract median from 5+ real .hsp files per amp model; validate unit types against Line 6 documentation.
 
-5. **Shared Knowledge Layer changes regress all 6 devices simultaneously** — `chain-rules.ts` and `param-engine.ts` are shared; a new code path with an uncaught exception kills all devices in production. Avoid: any change to shared Knowledge Layer files requires a full 6-device test matrix pass, not just the target device; new code paths must use null-safe access (`model.paramOverrides ?? {}`); never modify the existing path, only add new paths that fall through when not configured.
+See [PITFALLS.md](.planning/research/PITFALLS.md) for all 10 pitfalls with phase-to-pitfall mapping, recovery strategies, and the "Looks Done But Isn't" verification checklist.
+
+---
 
 ## Implications for Roadmap
 
-Research confirms a natural two-track phase structure: the Stadium hardware track is a sequential dependency chain (catalog completion → builder rebuild → device unblock), while the quality improvement track is fully parallel. Five phases cover the complete v4.0 scope.
+Based on the combined research, seven phases are the correct structure. The architecture research's build order is authoritative — dependency relationships are firm, confirmed by codebase inspection.
 
-### Phase 43: Stadium Amp Catalog Completion
+### Phase 1: Family Router and Capabilities Foundation
+**Rationale:** Pure addition — no existing files modified. Creates the type system foundation that every downstream phase depends on. Zero regression risk. Must ship first.
+**Delivers:** `DeviceFamily` type, `resolveFamily()` exhaustive switch, `getCapabilities()` factory, `DeviceCapabilities` interface. All six devices map to four families. TypeScript exhaustiveness enforced from this point forward.
+**Addresses:** The architectural prerequisite for all other features — device identity becomes a compile-time-enforced routing decision, not a scattered runtime concern.
+**Avoids:** Starting catalog extraction or guard removal before the type system exists (would require retrofit and creates transient broken state).
+**Research flag:** Standard TypeScript patterns — no research phase needed; patterns documented in STACK.md with verified code examples.
 
-**Rationale:** The Stadium builder rebuild requires real Agoura amp IDs in the catalog to test against. This is the only pure data phase — no logic changes — and carries the lowest regression risk of any v4.0 work. Starting here unblocks the builder phase without delay and requires no architectural decisions.
-**Delivers:** STADIUM_AMPS expanded from 12 to 18 entries; 6 missing Agoura amp IDs (`Agoura_AmpRevvCh3Purple`, `Agoura_AmpSolid100`, `Agoura_AmpUSDoubleBlack`, `Agoura_AmpUSLuxeBlack`, `Agoura_AmpUSPrincess76`, `Agoura_AmpUSTweedman`) with defaultParams extracted from real .hsp files; `STADIUM_DEVICE_VERSION` updated to 301990015; `HX2_*` and `VIC_*` IDs added to `validate.ts`
-**Addresses:** Stadium device completeness (FEATURES.md P1); Bug 4 — missing amp IDs (ARCHITECTURE.md)
-**Avoids:** Cross-device fallback anti-pattern (PITFALLS.md Pitfall 1); estimated defaultParams must never be committed — only values from real file inspection
+### Phase 2: Catalog Extraction (Highest Risk Phase)
+**Rationale:** The structural fix to the Agoura leak root cause. Must happen before schema isolation and prompt isolation, because both depend on family-scoped catalog modules as their source of truth. Highest regression risk in the milestone because `AMP_MODELS` and `STADIUM_AMPS` are currently imported by chain-rules.ts, param-engine.ts, and validate.ts — all import sites must update atomically.
+**Delivers:** `families/stadium/catalog.ts` (Agoura amps only), `families/helix/catalog.ts` (HD2 amps), `families/stomp/catalog.ts`, `families/podgo/catalog.ts`. Merged `AMP_NAMES` enum eliminated from models.ts.
+**Avoids:** Pitfall 2 (cross-device contamination persisting after prompt split) — catalog isolation is the structural prerequisite for schema isolation; cannot skip this and rely on prompt filtering.
+**Research flag:** No research needed — catalog contents already exist in models.ts; this is extraction and reorganization. Full 6-device test suite must pass before proceeding to Phase 3.
 
-### Phase 44: Stadium Builder Rebuild
+### Phase 3: Per-Family ToneIntent Schemas
+**Rationale:** Closes the constrained-decoding escape path. Prompt isolation without schema isolation leaves the Agoura leak exploitable at the token-validation level. This is a non-negotiable companion to prompt work — these two phases must ship in the same milestone.
+**Delivers:** `StadiumToneIntentSchema`, `HelixToneIntentSchema`, `StompToneIntentSchema`, `PodGoToneIntentSchema`, and a `getToneIntentSchema(family)` factory. Stadium generation structurally cannot produce an HD2 amp name at the constrained-decoding level.
+**Implements:** Per-family catalog modules from Phase 2 as the source of `ampName` enum values.
+**Avoids:** Pitfall 2 — incomplete contamination prevention from prompt-only filtering without schema filtering.
+**Research flag:** Standard Zod and Anthropic SDK patterns — no research phase needed; confirmed working in installed versions.
 
-**Rationale:** Fixes the 5 confirmed structural bugs in `stadium-builder.ts` using the real .hsp corpus as ground truth. This is the highest-risk single phase because it is a rewrite of the serializer, but the bugs are deterministic and the reference files are available locally. Phase 43 must complete first so tests can use real amp IDs.
-**Delivers:** .hsp files that load correctly in HX Edit; slot-grid block key allocation (b00=input, b01=gate, b02=boost, b05=amp, b06=cab, b09-b12=post-effects, b13=output); `{ value: X }` parameter encoding (no `access` field); `type: "fx"` for all effect blocks; Stadium cab params complete with `Delay`, `IrData`, `Level`, `Pan`, `Position`; `cursor` field added to preset JSON
-**Uses:** STADIUM_SLOT_ALLOCATION constant replacing the sequential `flowPos` counter; `getStadiumBlockType()` mapping function for type field normalization
-**Avoids:** Sequential flow key anti-pattern, access field anti-pattern, Stadium cab partial schema pitfall (PITFALLS.md Pitfalls 1, 2, Anti-Patterns 2 and 3)
+### Phase 4: Knowledge Layer Guard Removal
+**Rationale:** Replaces 17+ boolean guard sites with capability-driven branching. Zero user-facing impact, but makes adding a 7th device a one-file operation instead of a 17-file search. Can run in parallel with Phase 5.
+**Delivers:** `chain-rules.ts`, `param-engine.ts`, `validate.ts` all accept `DeviceCapabilities` instead of `device?: DeviceTarget`. Guard site count in shared files drops to zero (or near-zero with remaining sites documented in STATE.md).
+**Avoids:** Pitfall 4 (hybrid guard/module state) — commit to completing the full conversion for all three files in this phase. Requires full 6-device regression test after any shared file change.
+**Research flag:** Standard TypeScript refactor — no research phase needed. Risk is regression, not novelty; mitigated by test suite.
 
-### Phase 45: Stadium Device Unblock and End-to-End Verification
+### Phase 5: Stadium Firmware Parameter Completeness (Parallel Track)
+**Rationale:** Independent of Phases 3 and 4. Can start after Phase 2 (catalog isolation) and run in parallel with guard removal. This is the other P1 correctness bug — param bleed is a critical quality failure that directly affects hardware behavior and user trust.
+**Delivers:** `families/stadium/params.ts` with complete 27-param firmware table sourced from real .hsp corpus (median across 5+ files per Agoura amp model). `stadium-builder.ts` extended to merge firmware defaults with param-engine output. Param bleed eliminated. Hardware verification via HX Edit import required before marking complete.
+**Avoids:** Pitfall 5 (biased defaults from single reference file). Corpus extraction methodology documented in STACK.md — extraction script at `scripts/extract-stadium-params.ts`, corpus at `C:/Users/dsbog/Downloads/NH_STADIUM_AURA_REFLECTIONS/`.
+**Research flag:** NEEDS RESEARCH before implementation — param table must be extracted from real .hsp corpus for each Agoura amp model. Values cannot be inferred; they must be observed. Use `npx tsx scripts/extract-stadium-params.ts` and validate unit types against Line 6 Stadium manual.
 
-**Rationale:** Only remove the 400 guard after hardware verification — this is a hard requirement from PITFALLS.md, not a soft recommendation. This phase is the acceptance gate for the Stadium track.
-**Delivers:** Stadium device selection enabled in production UI; 5-10 real generation requests verified by opening .hsp in HX Edit; amp parameters confirmed musically sensible; snapshot names and block states confirmed correct
-**Avoids:** Premature UI unblock pitfall (PITFALLS.md UX Pitfalls — Stadium must pass hardware import AND sound correct, not just compile)
+### Phase 6: Prompt Isolation
+**Rationale:** Creates per-family chat and planner prompt templates. Depends on Phase 2 catalogs for model list generation. Can run after Phase 2 and in parallel with Phase 4. Must complete before Phase 7 because the frontend picker only adds value when the chat API uses device context from session start.
+**Delivers:** `families/{family}/prompt.ts` for all four families. `getSystemPrompt(family)` in gemini.ts parameterized by family. `buildPlannerPrompt(family, device)` in planner.ts using family constraints and catalog. Per-family prompt caching: Stadium updates don't invalidate Helix cache.
+**Avoids:** Pitfall 1 (cache destruction) — model cache economics per device before splitting; if Stadium/Pod Go request volume too low, merge into a shared "constrained-device" prompt bucket. Verify `cache_read_input_tokens` nonzero for all four device paths post-deploy.
+**Research flag:** Standard prompt template patterns — no research phase needed. Cache economics validation is a pre-implementation measurement step, not a research problem.
 
-### Phase 46: Planner Prompt Enrichment
-
-**Rationale:** Zero schema changes, zero Knowledge Layer changes, highest ROI quality improvement. The prompt additions improve AI creative choices upstream, producing better ToneIntent inputs to the Knowledge Layer. Fully independent of the Stadium track; can begin immediately alongside Phase 43. Must respect prompt cache architecture throughout.
-**Delivers:** `buildPlannerPrompt()` extended with gain-staging intelligence section (Minotaur for clean/crunch, Scream 808 for high-gain, never both), amp+cab pairing guidance (US-type amps to open-back 1x12/2x12; Brit-type to closed-back 4x12 Greenback/V30; Vox to open-back 2x12), effect discipline by genre (metal: max 3 effects; ambient/worship: 4-5 appropriate; blues/country: 2-3); cache hit rate measured before and after via usage-logger.ts
-**Implements:** Planner Prompt Enrichment pattern (ARCHITECTURE.md Pattern 5)
-**Avoids:** Cache invalidation pitfall (PITFALLS.md Pitfall 3 — enrichment in shared static prefix, not inside device-conditional blocks); prompt bloat compliance pitfall (PITFALLS.md Pitfall 8 — one section at a time, baseline before adding, under 2000 tokens total)
-
-### Phase 47: Per-Model Amp Param Audit and Effect Combination Layer
-
-**Rationale:** Two tightly coupled quality improvements that both modify `param-engine.ts`. The Layer 4 `paramOverrides` mechanism must be established first in this phase before any individual model values are set. Fully independent of Stadium track; can begin alongside Phase 43 and run in parallel with Phase 46.
-**Delivers:** `model.paramOverrides` field on `HelixModel` applied as Layer 4 after category defaults; per-model overrides for non-master-volume amps (US Deluxe Drive: 0.60, Master: 1.0; AC30 Drive: 0.60, Master: 1.0; Matchstick Master: 1.0) and high-gain amps (Cali Rectifire Drive: 0.40, Presence: 0.30); defaultParams audit for Vox Cut (~0.25-0.35), JC-120 BrightSwitch (1), Diezel Deep (~0.35-0.40); `EFFECT_COMBO_PARAMS` constant with 4+ entries (comp-to-drive, modulation-to-reverb, delay-to-reverb, distortion-to-delay); `applyComboAdjustments()` as Layer 5 in `resolveParameters()`; unit tests for every combo confirming delta applies and non-matching blocks are unchanged
-**Avoids:** Silent override discard pitfall (PITFALLS.md Pitfall 4 — Layer 4 mechanism must be established before individual values are added); shared layer regression pitfall (Pitfall 7 — 6-device test matrix required for any param-engine change); Stadium param pollution pitfall (Pitfall 9 — Agoura-specific keys never added to global AMP_DEFAULTS)
+### Phase 7: Frontend Device Picker Relocation and Database Migration
+**Rationale:** The final integration step that surfaces all backend work to users. Device picker moves from post-`[READY_TO_GENERATE]` to before the first chat message. Database migration for legacy conversations must ship in the same phase — not after go-live. These two tasks are coupled: deploying the picker without the migration causes resumed legacy conversation crashes.
+**Delivers:** Device picker rendered before chat input; `selectedDevice` in frontend state from first render; `device` sent on every `/api/chat` POST; Supabase `conversations.device` column with backfill from preset_url heuristic; null-handling in all code paths that read `conversation.device`; device update path for mid-conversation device switching.
+**Avoids:** Pitfall 3 (resumed conversation crashes) — database migration and null-handling are in-scope, not deferred. Pitfall 7 (orphaned conversations on device switch) — `conversations.device` must be updatable, not set-once on creation.
+**Research flag:** Standard Next.js + Supabase patterns — no research phase needed. Migration requires staging verification with real legacy conversation data before production apply.
 
 ### Phase Ordering Rationale
 
-- Phases 43 → 44 → 45 are strictly sequential: catalog must be complete before builder tests can use real amp IDs, and builder must be hardware-verified before the UI guard is removed
-- Phases 46 and 47 have no dependencies on the Stadium track and can start immediately in parallel with Phase 43
-- The natural sprint structure: start Phases 43, 46, and 47 together; Phases 44 and 45 complete after 43 finishes; all five phases are achievable in a single sprint
-- Cost-aware model routing (Haiku 4.5 for planner chat) is deferred: the preconditions (30-day token baseline, 20+ preset A/B quality comparison) mean it cannot ship in the same sprint; it should be a separate planning item after v4.0 ships
+- Phases 1-3 are a strict sequential dependency chain: family types must exist before catalog modules, catalog modules must exist before schemas source from them.
+- Phase 4 depends only on Phase 1 (capabilities object). Phases 2 and 3 can be complete but are not blocking for guard removal — the Knowledge Layer consumes `ToneIntent` (TypeScript type, unchanged by the schema refactor), not the Zod schema itself.
+- Phase 5 depends only on Phase 2 (catalog isolation for amp model IDs as the source of truth for the firmware param table). It is the natural parallel track for a developer working on Stadium while another developer works on Phases 3-4.
+- Phase 6 depends on Phase 2 (catalogs for model list generation) and is otherwise independent of Phases 3-4.
+- Phase 7 depends on Phase 6 (per-family chat prompts must exist before the frontend picker activates device-specific interviews).
+- Critical path: 1 → 2 → 3 → 4 → 6 → 7 (sequential). Parallel track: 5 can run after Phase 2, alongside Phases 3 and 4.
 
 ### Research Flags
 
-Phases with implementation complexity requiring deliberate validation:
-- **Phase 44 (Stadium Builder Rebuild):** High-risk rewrite — all 5 bugs are known and localized, but the implementation must be validated field-by-field against a reference .hsp file, not just checked for structural validity. The cab parameter schema completeness (10 params, not 5) is easy to miss in a diff. Recommend a dedicated JSON diff step comparing generated output against `Agoura_Bassman.hsp` before marking the phase complete.
-- **Phase 47 (Per-Model Amp Params):** The Layer 4 mechanism is the prerequisite — if it ships without the `paramOverrides` field established first, every subsequent model tuning effort will be silently wasted. This phase needs a unit test that explicitly confirms an override value at Layer 4 survives the category defaults applied at Layer 2.
+Phases requiring pre-implementation research:
+- **Phase 5 (Stadium Firmware Params):** Firmware param table must be extracted from the real .hsp corpus at `C:/Users/dsbog/Downloads/NH_STADIUM_AURA_REFLECTIONS/`. Use `npx tsx scripts/extract-stadium-params.ts`. STACK.md documents the extraction approach in full. This is an execution research step (run the script, validate output) rather than an exploration step (unknown technology).
 
-Phases with well-documented, low-risk patterns:
-- **Phase 43 (Catalog Completion):** Pure data entry from real .hsp files — no logic changes; the work is mechanical and the reference corpus is locally available
-- **Phase 45 (Unblock):** Single line removal guarded by explicit acceptance criteria; the risk is entirely in Phase 44, not here
-- **Phase 46 (Prompt Enrichment):** Standard prompt engineering work; cache fragmentation is the only risk, and the existing usage logger already provides the monitoring needed
+Phases with standard patterns (no research needed):
+- **Phase 1:** TypeScript discriminated unions + `assertNever()` — fully documented in STACK.md with verified code patterns.
+- **Phase 2:** Catalog extraction — contents already exist in models.ts; mechanical reorganization.
+- **Phase 3:** Zod schema factory pattern — confirmed working in installed Zod 4.3.6.
+- **Phase 4:** Knowledge Layer refactor — 17 guard sites documented in architecture-audit-v4.md; replacement pattern documented in ARCHITECTURE.md.
+- **Phase 6:** Prompt template pattern — already exists in planner.ts; reorganization into per-family modules.
+- **Phase 7:** Next.js frontend + Supabase migration — standard patterns, well-documented.
+
+---
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Official Anthropic docs verified 2026-03-05; model IDs, pricing, and structured output GA status confirmed; no new packages needed eliminates all integration uncertainty |
-| Features | HIGH | Six feature areas clearly defined with explicit code file targets; P1/P2/P3 priority established; two anti-features (AI numeric params, Haiku for ToneIntent generation without A/B validation) explicitly ruled out with rationale |
-| Architecture | HIGH | 10 real .hsp files inspected from local corpus; 5 bugs confirmed with exact code locations and fix strategies; component status table (REWRITE/MODIFY/NO CHANGE) established for every affected file |
-| Pitfalls | HIGH | 10 pitfalls identified from direct codebase inspection, real .hsp file analysis, and official Anthropic caching documentation; each includes warning signs, recovery steps, and specific phase assignment |
+| Stack | HIGH | All technologies verified against installed packages and official docs. Zero new dependencies. TypeScript patterns confirmed against TypeScript handbook. Zod 4.3.6 `z.discriminatedUnion()` verified against installed package via Node.js execution. |
+| Features | HIGH | Direct codebase inspection confirms bug root causes. Feature priority derived from confirmed production bugs and hardware constraint documentation. Competitive analysis (Quad Cortex, BIAS X, Kemper) confirms device-first as industry standard pattern. |
+| Architecture | HIGH | All 17+ guard sites documented in architecture-audit-v4.md. Component integration map verified from direct source inspection of all affected files. Build order dependency relationships derived from code imports, not assumptions. |
+| Pitfalls | HIGH | All 10 pitfalls grounded in direct codebase inspection. Cache pitfall confirmed from Anthropic prompt caching docs. Resumed-conversation pitfall confirmed from Supabase schema inspection (no `device` column exists in current conversations table). |
 
-**Overall confidence:** HIGH
+**Overall confidence: HIGH**
 
 ### Gaps to Address
 
-- **Agoura amp defaultParams for the 6 missing catalog entries:** Phase 43 must extract exact numeric values from real .hsp files for `Agoura_AmpRevvCh3Purple`, `Agoura_AmpSolid100`, `Agoura_AmpUSDoubleBlack`, `Agoura_AmpUSLuxeBlack`, `Agoura_AmpUSPrincess76`, and `Agoura_AmpUSTweedman`. The architecture file specifies amp categories by real-world analogy but the exact `defaultParams` numeric values need ground-truth extraction, not estimation.
-- **Reverb PreDelay parameter key verification:** FEATURES.md flags that `PreDelay` must be confirmed as an accepted parameter key in Helix reverb model `.hlx` format before adding it to `GENRE_EFFECT_DEFAULTS`. This is a quick file inspection task needed at the start of Phase 46.
-- **Haiku 4.5 A/B quality test for planner routing:** The cost savings case is clear (3x lower cost per generation call) but the quality gate has not been run. This test requires 20+ diverse tone goals with both models and a defined evaluation rubric. Treat as a separate planning item for after v4.0 ships.
-- **Effect combination logic context-passing architecture:** FEATURES.md flags that `param-engine.ts` currently processes each block in isolation — interaction-aware params require either passing the full chain as context to `resolveDefaultParams()` or a second post-resolution pass. This architectural decision is deferred to v4.1 but should be tracked as a known design constraint.
+- **Stadium firmware param completeness (Phase 5):** The 27-param list must be extracted from the real .hsp corpus before Phase 5 implementation. The corpus at `C:/Users/dsbog/Downloads/NH_STADIUM_AURA_REFLECTIONS/` has 11 files covering 10 Agoura amp models. For any Agoura amp model not represented in the corpus, use firmware defaults (values from a factory-reset preset on hardware) rather than inventing values.
+
+- **Cache economics per device family:** Request volume per device is not documented in the research files. Before splitting planner prompts in Phase 6, pull production usage logs via `usage-logger.ts` to determine whether Stadium and Pod Go sustain enough daily requests to warrant separate cache buckets. This is a pre-Phase-6 measurement step, not a design question.
+
+- **New device variants (Stadium XL, Helix Rack, Pod Go XL):** Explicitly deferred to v5.1+. Before any future implementation, real exported preset files must be obtained for each variant to confirm device IDs, block budgets, and I/O model IDs. PITFALLS.md documents the specific verification checklist (Pitfalls 6, 9, 10).
+
+---
 
 ## Sources
 
-### Primary (HIGH confidence)
-- [Anthropic Models Overview](https://platform.claude.com/docs/en/about-claude/models/overview) — Haiku 4.5 model ID (`claude-haiku-4-5-20251001`), Sonnet 4.6 pricing, structured output GA status (verified 2026-03-05)
-- [Anthropic Prompt Caching Docs](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) — `cache_control: ephemeral`, cache read pricing 0.1x, cache bucket behavior
-- [Anthropic Model Deprecations](https://platform.claude.com/docs/en/about-claude/model-deprecations) — Haiku 3.5 retired, Haiku 3 deprecated April 2026
-- [Anthropic Structured Outputs Docs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs) — `zodOutputFormat`, GA status on Haiku 4.5 and Sonnet 4.6
-- [Helix Stadium 1.2.1 Release Notes](https://line6.com/support/page/kb/effects-controllers/helix_130/helix-stadium-121-release-notes-r1105) — Current firmware version, new Agoura amps in 1.2
-- Real .hsp file corpus: 10 presets from C:/Users/dsbog/Downloads/NH_STADIUM_AURA_REFLECTIONS/ — block structure, param encoding, slot positions confirmed by direct inspection
-- `tmp-stadium-research/real-cranked-2203-pretty.json` — Agoura amp params, cab params, reference for all 5 format bugs
-- [Tonevault 250-preset analysis](https://www.tonevault.io/blog/250-helix-amps-analyzed) — per-amp parameter ranges, Drive/Presence anti-correlation for Rectifier-style amps (data-driven primary source)
-- Direct codebase inspection: `stadium-builder.ts`, `param-engine.ts`, `chain-rules.ts`, `planner.ts`, `models.ts`, `tone-intent.ts`, `validate.ts`, `config.ts`, `generate/route.ts` — ground truth for all integration points
+### Primary (HIGH confidence — direct codebase inspection)
+- `src/lib/helix/chain-rules.ts`, `validate.ts`, `param-engine.ts`, `planner.ts`, `models.ts`, `tone-intent.ts`, `types.ts`, `gemini.ts` — guard pattern audit, 17+ guard sites documented (2026-03-05)
+- `.planning/architecture-audit-v4.md` — 17 guard sites documented, fragility analysis, refactor decision
+- `.planning/PROJECT.md` — Stadium param bleed bug (JC Logan), Agoura amp leak, v5.0 scope
+- `.planning/STATE.md` — accumulated decisions, Stadium HX Edit verification pending
+- Real .hsp corpus: 11 files in `C:/Users/dsbog/Downloads/NH_STADIUM_AURA_REFLECTIONS/` — 12 Agoura amp blocks, 10 unique models, complete param set extracted via Node.js (2026-03-05)
+- Node.js verification: `z.discriminatedUnion()` confirmed working in installed Zod 4.3.6
 
-### Secondary (MEDIUM confidence)
-- [Line 6 Community — Gain Staging, Master Volume, Channel Volume](https://line6.com/support/topic/32285-controlling-gain-master-volume-and-channel-volume/) — amp parameter semantics
-- [HelixHelp Common Amp Settings](https://helixhelp.com/tips-and-guides/universal/common-amp-settings) — per-model Drive/Master guidance
-- [Strymon Signal Chain Guide](https://www.strymon.net/setting-up-your-effect-signal-chain/) — effect ordering (confirmed with BOSS and Reverb News)
-- [Sweetwater BPM to Delay Times Cheat Sheet](https://www.sweetwater.com/insync/bpm-delay-times-cheat-sheet/) — tempo-synced delay formulas
-- [iZotope Reverb Pre-Delay](https://www.izotope.com/en/learn/reverb-pre-delay) — pre-delay ranges by application
-- [Fluid Solo — Stadium presets](https://www.fluidsolo.com/) — community .hsp preset source for reverse engineering
-- [Gemini vs Haiku 4.5 comparison](https://blog.galaxy.ai/compare/claude-haiku-4-5-vs-gemini-2-5-flash) — model quality tradeoffs
-- "When Better Prompts Hurt" (arxiv 2025, https://arxiv.org/html/2601.22025v1) — structured output regression from prompt changes; extraction pass rate drop documented empirically
+### Secondary (HIGH confidence — official documentation)
+- [TypeScript Handbook — Discriminated Unions](https://www.typescriptlang.org/docs/handbook/unions-and-intersections.html) — exhaustiveness checking with `never`
+- [Zod discriminatedUnion docs](https://zod.dev/api) — `z.discriminatedUnion('key', [...])` API
+- [Anthropic prompt caching docs](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) — cache structure, TTL, per-workspace isolation, pricing
+- [Signal Path Routing — Helix Stadium Manual](https://manuals.line6.com/en/helix-stadium/live/signal-path-routing) — official documentation
+- [Amp Blocks — Helix Stadium Manual](https://manuals.line6.com/en/helix-stadium/live/amp-blocks) — Hype, Bright, Contour, Aggression, Depth, Fat params documented
+- [HX Stomp block budget — Line 6 Community](https://line6.com/support/topic/36658-hx-stomp-are-6-blocks-enough-not-really/) — community consensus on block budget strategies
+- [Sweetwater InSync — Get More Out of HX Stomp](https://www.sweetwater.com/insync/get-much-more-out-of-hx-stomp/) — verified block budget techniques
 
-### Tertiary (LOW confidence)
-- Per-amp Drive/Master numeric values for non-master-volume amps (US Deluxe, AC30, Hiwatt, Matchless) — derived from community preset analysis and HelixHelp; requires hardware validation before encoding in param tables
-- [Noise Harmony free Stadium preset packs](https://www.noiseharmony.com/post/free-presets-for-line-6-helix-stadium-aura-reflections) — additional .hsp corpus source if more Agoura amp examples are needed
+### Tertiary (MEDIUM confidence — competitive analysis)
+- [Quad Cortex review — Guitar Guitar](https://www.guitarguitar.co.uk/news/141684/) — confirms Quad Cortex template-first UX pattern (device-first as industry standard)
+- [BIAS X — Guitar World](https://www.guitarworld.com/gear/plugins-apps/positive-grid-bias-x-launch) — format selection before AI tone creation documented
+- [tsx documentation](https://tsx.is/) — `npx tsx script.ts` for one-shot extraction scripts
 
 ---
+
 *Research completed: 2026-03-05*
 *Ready for roadmap: yes*
