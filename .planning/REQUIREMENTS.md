@@ -49,8 +49,8 @@ Requirements for v5.0 Device-First Architecture. Each maps to roadmap phases.
 
 - [ ] **FRONT-01**: Device family picker appears at the start of conversation (before first user message)
 - [ ] **FRONT-02**: Selected device family persists through the entire conversation and generation pipeline
-- [ ] **FRONT-03**: Supabase conversations table has a device column storing the selected device
-- [ ] **FRONT-04**: Legacy conversations without device show the device picker on resume (no silent default)
+- [x] **FRONT-03**: Supabase conversations table has a device column storing the selected device
+- [x] **FRONT-04**: Legacy conversations without device show the device picker on resume (no silent default)
 
 ## Future Requirements
 
@@ -110,8 +110,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | KLAYER-04 | Phase 64 | Pending |
 | FRONT-01 | Phase 66 | Pending |
 | FRONT-02 | Phase 66 | Pending |
-| FRONT-03 | Phase 66 | Pending |
-| FRONT-04 | Phase 66 | Pending |
+| FRONT-03 | Phase 66 | Complete (66-01) |
+| FRONT-04 | Phase 66 | Complete (66-01) |
 
 **Coverage:**
 - v5.0 requirements: 27 total

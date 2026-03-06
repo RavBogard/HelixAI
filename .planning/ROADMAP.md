@@ -10,7 +10,7 @@
 - ✅ **v3.0 Helix Stadium Support** — Phases 31-38 (shipped 2026-03-04)
 - ✅ **v3.2 Infrastructure, Features & Audit Tooling** — Phases 42, 48-51 (shipped 2026-03-05)
 - ✅ **v4.0 Stadium Rebuild + Preset Quality Leap** — Phases 52-60 (shipped 2026-03-05)
-- 🚧 **v5.0 Device-First Architecture** — Phases 61-67 (in progress)
+- 🚧 **v5.0 Device-First Architecture** — Phases 61-68 (in progress)
 
 ## Phases
 
@@ -126,6 +126,7 @@
 - [x] **Phase 65: Device-Specific Prompts** — Create per-family planner and chat prompt templates with only family-appropriate model catalogs and conversation arcs
 - [ ] **Phase 66: Frontend Picker and Database Migration** — Move device picker to conversation start, add device column to Supabase conversations table, handle legacy rows
 - [x] **Phase 67: Stadium Integration Quality** — Fix WAH/VOLUME catalog gap, dual-amp capability mismatch, TODO(Phase62) placeholder in prompt, and add schema/prompt integration tests (completed 2026-03-06)
+- [ ] **Phase 68: Token Control and Prompt Caching** — Reduce API costs without degrading preset quality: optimize token budgets, maximize prompt caching, audit system prompt sizes
 
 ## Phase Details
 
@@ -217,7 +218,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 66-01-PLAN.md — State variables (deviceLocked, needsDevicePicker), DEVICE_OPTIONS constant, null-safe loadConversation, startOver reset, backfill migration SQL documentation
+- [x] 66-01-PLAN.md — State variables (deviceLocked, needsDevicePicker), DEVICE_OPTIONS constant, null-safe loadConversation, startOver reset, backfill migration SQL documentation
 - [ ] 66-02-PLAN.md — Welcome screen device picker, device lock on first message, device in /api/chat POST body, readyToGenerate Generate button, MAINTENANCE_MODE off, human verification
 
 ## Progress
@@ -237,8 +238,9 @@ Plans:
 | 63. Stadium Firmware Params | v5.0 | 2/2 | Complete | 2026-03-06 |
 | 64. Knowledge Layer Guards | v5.0 | 2/2 | Complete | 2026-03-06 |
 | 65. Device-Specific Prompts | v5.0 | 2/2 | Complete | 2026-03-06 |
-| 66. Frontend Picker + DB | v5.0 | 0/2 | Not started | - |
+| 66. Frontend Picker + DB | v5.0 | 1/2 | In progress | - |
 | 67. Stadium Integration Quality | 2/2 | Complete    | 2026-03-06 | - |
+| 68. Token Control + Caching | v5.0 | 0/0 | Not started | - |
 
 ### Phase 67: Stadium Integration Quality
 
@@ -253,8 +255,18 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 67-01-PLAN.md — WAH/VOLUME in Stadium catalog + schema, fix dualAmpSupported to false
-- [ ] 67-02-PLAN.md — Replace TODO placeholder with amp-cab pairing table, cross-family schema/prompt integration tests
+- [x] 67-01-PLAN.md — WAH/VOLUME in Stadium catalog + schema, fix dualAmpSupported to false
+- [x] 67-02-PLAN.md — Replace TODO placeholder with amp-cab pairing table, cross-family schema/prompt integration tests
+
+### Phase 68: Token Control and Prompt Caching
+
+**Goal:** Reduce API costs without degrading preset quality — optimize token usage across planner prompts (per-family prompt token budgets, trim redundant catalog entries from prompt text), maximize Anthropic prompt caching hit rates (measure per-device cache performance via usage-logger.ts, consider shared prompt buckets for low-volume devices like Stadium and Pod Go), audit system prompt sizes across all families, and implement any structural changes needed to keep cost per preset generation low as the device count grows
+**Requirements**: TBD
+**Depends on:** Phase 66 (full pipeline must be wired before measuring token economics)
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 68 to break down)
 
 ---
 *Last updated: 2026-03-06 after planning Phase 66*

@@ -2,26 +2,13 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Device-First Architecture
-status: unknown
-last_updated: "2026-03-06T17:07:45.700Z"
-progress:
-  total_phases: 41
-  completed_phases: 30
-  total_plans: 55
-  completed_plans: 64
----
-
----
-gsd_state_version: 1.0
-milestone: v5.0
-milestone_name: Device-First Architecture
 status: in_progress
 last_updated: "2026-03-06"
 progress:
-  total_phases: 7
+  total_phases: 8
   completed_phases: 6
-  total_plans: 11
-  completed_plans: 11
+  total_plans: 13
+  completed_plans: 12
 ---
 
 # Project State
@@ -31,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-05)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** v5.0 Phases 61-65 complete — Phase 67 (Stadium Integration Quality) next, then Phase 66 (Frontend Picker + DB Migration)
+**Current focus:** v5.0 Phases 61-65 and 67 complete — Phase 66 (Frontend Picker + DB Migration) in progress (Plan 01 done, Plan 02 remaining)
 
 ## Current Position
 
-Phase: 67 of 67 (Phase 67 complete — all plans done; Phase 66 remaining)
-Plan: 11 of 11 plans complete for Phase 67 (Phase 66 remaining)
-Status: Phase 67 complete — Stadium integration quality fixes done
-Last activity: 2026-03-06 — Completed 67-02 (Stadium prompt pairing table + schema integration test)
+Phase: 66 of 67 (Phase 66 in progress — Plan 01 complete, Plan 02 remaining)
+Plan: 1 of 2 plans complete for Phase 66
+Status: Phase 66 in progress — state foundation done, picker UI remaining
+Last activity: 2026-03-06 — Completed 66-01 (DEVICE_OPTIONS constant, deviceLocked/needsDevicePicker state, null-safe loadConversation, backfill SQL documented)
 
-Progress: [████████████████████████████████] 92% (11/12 plans complete including Phase 66)
+Progress: [████████████████████████████████] 92% (12/13 plans complete)
 
 ## Performance Metrics
 
@@ -95,10 +82,14 @@ Progress: [███████████████████████
 - [67-01]: STADIUM_CAPABILITIES.dualAmpSupported set to false — Stadium prompt uses includeSecondAmp: false and the dual-amp path uses HD2-only AMP_MODELS which cannot handle Agoura amp names
 - [67-02]: buildAmpCabPairingTable() generates the amp-cab pairing section from STADIUM_AMPS cabAffinity at prompt build time — no hardcoded text, content stays in sync with catalog automatically
 - [67-02]: STADIUM_AMPS cabAffinity bugs fixed: "4x12 Greenback 25" -> "4x12 Greenback25" (4 entries) and "4x12 Brit T75" -> "4x12 Brit V30" (2 entries) — T75 variant not in CAB_MODELS
+- [66-01]: DEVICE_OPTIONS extracted as module-level const array — avoids re-creation on every render and allows Plan 66-02 to reference it from sibling components without prop drilling
+- [66-01]: loadConversation() sets needsDevicePicker(true) for null/empty device rows instead of defaulting to helix_lt — prevents assertNever crash in resolveFamily() for legacy rows (FRONT-04)
+- [66-01]: startOver() does NOT reset selectedDevice — keeps last-used device pre-selected for UX convenience on new conversations
 
 ### Roadmap Evolution
 
 - Phase 67 added: Stadium Integration Quality — fix WAH/VOLUME catalog gap, dual-amp mismatch, TODO(Phase62) placeholder, schema/prompt integration tests (discovered by post-merge audit)
+- Phase 68 added: Token Control and Prompt Caching — reduce API costs without degrading quality (token budgets, prompt caching hit rates, system prompt audit, structural cost optimizations)
 
 ### Blockers/Concerns
 
@@ -109,6 +100,6 @@ Progress: [███████████████████████
 ## Session Continuity
 
 Last session: 2026-03-06
-Stopped at: Completed 67-02-PLAN.md (Stadium prompt pairing table + cross-family schema integration test)
+Stopped at: Completed 66-01-PLAN.md (DEVICE_OPTIONS constant, deviceLocked/needsDevicePicker state, null-safe loadConversation, backfill SQL documented)
 Resume file: None
-Next command: `/gsd:execute-phase 66` (Phase 66 — Frontend Picker + DB Migration)
+Next command: `/gsd:execute-phase 66` (Phase 66 Plan 02 — Frontend Picker UI)
