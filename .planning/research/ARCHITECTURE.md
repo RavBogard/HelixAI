@@ -1,902 +1,651 @@
 # Architecture Research
 
-**Domain:** Device-first conversation and generation pipeline — HelixTones v5.0
-**Researched:** 2026-03-05
-**Confidence:** HIGH — all integration points verified from direct code inspection of current v4.0 codebase
+**Domain:** AI-powered guitar preset generator (Planner-Executor pipeline with Knowledge Layer)
+**Researched:** 2026-03-06
+**Confidence:** HIGH — based on direct codebase analysis of current v4.0/v5.0 codebase, not inference
 
 ---
 
 ## Context: What This Document Covers
 
-This is the integration architecture document for v5.0. It answers:
+This document answers the four specific integration questions for the new milestone features:
+1. Expression pedal controller assignment — where in the pipeline
+2. Per-model effect guidance — how to flow into AI prompts without bloating tokens
+3. Effect combination logic — where it lives (chain-rules vs param-engine vs prompt)
+4. Per-device craft differences — encoding strategy (code vs prompts vs both)
 
-- How device-first routing integrates with the existing Planner-Executor architecture
-- What the device-family module pattern looks like (new modules vs modified files)
-- How model catalogs get isolated per family to eliminate cross-contamination
-- Which components are NEW vs MODIFIED vs UNCHANGED
-- The build order with dependency rationale (what must exist before what)
-
-The existing v4.0 architecture (all 6 devices, Planner-Executor pipeline, Supabase auth, prompt caching, per-model amp overrides, effect combination logic) is stable and NOT re-researched. Focus is on v5.0 integration points only.
+The existing v4.0 Planner-Executor architecture is the foundation. This document maps new features to existing integration points.
 
 ---
 
-## System Overview — Current v4.0 State (the starting point)
+## System Overview
 
 ```
-+------------------------------------------------------------------+
-|                       Frontend (Next.js)                          |
-|  Chat UI | Device Picker (LATE — after [READY_TO_GENERATE])       |
-+------------------------------------------------------------------+
-                |                        |
-         SSE stream (Gemini)      POST /api/generate
-                |                        |
-+---------------+------------------------+-------------------------+
-|                      API Layer (Vercel Serverless)               |
-|                                                                   |
-|   /api/chat                        /api/generate                 |
-|   Gemini 2.5 Flash / 3.1 Pro       Claude Sonnet 4.6 (Planner)   |
-|   getSystemPrompt()                buildPlannerPrompt(device)     |
-|   [ONE shared prompt, all devices] [ONE prompt w/ conditionals]   |
-+------------------------------------------------------------------+
-                                        |
-                                        | ToneIntent (~15 fields)
-                                        | AMP_NAMES = HD2 + Agoura merged
-                                        v
-+------------------------------------------------------------------+
-|                  Knowledge Layer (Deterministic)                  |
-|                                                                   |
-|  chain-rules.ts: assembleSignalChain(intent, device?)            |
-|    ~17 guard sites: isPodGo/isStadium/isStomp/else               |
-|                                                                   |
-|  param-engine.ts: resolveParameters(chain, intent, device?)      |
-|    AMP fallback: tries STADIUM_AMPS ?? AMP_MODELS                |
-|                                                                   |
-|  snapshot-engine.ts: buildSnapshots(parameterized, snapshots)    |
-|    No device awareness (all devices share same logic)            |
-|                                                                   |
-|  validate.ts: validatePresetSpec(spec, device?)                  |
-|    ~4 device-conditional branches                                 |
-|                                                                   |
-|  Device Builders (separate, clean):                              |
-|    preset-builder.ts   (LT/Floor/Rack — .hlx)                    |
-|    podgo-builder.ts    (Pod Go — .pgp)                            |
-|    stadium-builder.ts  (Stadium — .hsp)                          |
-|    stomp-builder.ts    (Stomp/StompXL — .hlx)                    |
-+------------------------------------------------------------------+
-                |
-    models.ts: AMP_NAMES = [...HD2_amps, ...Agoura_amps]  <-- LEAK
-+------------------------------------------------------------------+
-|  models.ts   param-registry.ts   types.ts   config.ts            |
-|  AMP_MODELS  PARAM_TYPE_REGISTRY DeviceTarget FIRMWARE_CONFIG    |
-|  STADIUM_AMPS (merged into AMP_NAMES — root cause of Agoura leak)|
-+------------------------------------------------------------------+
++-------------------------------------------------------------------------+
+|                         PLANNER LAYER (AI)                               |
+|  +------------------------------------------------------------------+   |
+|  |  callClaudePlanner() in planner.ts                               |   |
+|  |  - getFamilyPlannerPrompt(device, modelList) via prompt-router   |   |
+|  |  - getToneIntentSchema(family) — per-family constrained decoding |   |
+|  |  - zodOutputFormat -> structured output, Zod belt-and-suspenders |   |
+|  |  Output: ToneIntent (~15 fields: ampName, cabName, effects[],   |   |
+|  |          snapshots[], guitarType, genreHint, tempoHint, ...)     |   |
+|  +------------------------------------------------------------------+   |
++--------------------------------------+----------------------------------+
+                                       | ToneIntent
+                                       v
++-------------------------------------------------------------------------+
+|                     KNOWLEDGE LAYER (Deterministic)                      |
+|                                                                          |
+|  +------------------+   +------------------+   +------------------+     |
+|  |  chain-rules.ts  |   |  param-engine.ts |   | snapshot-engine  |     |
+|  |                  |   |                  |   |     .ts          |     |
+|  | assembleSignal   |   | resolveParameters|   | buildSnapshots() |     |
+|  | Chain(intent,    +-->| (chain, intent,  +-->|                  |     |
+|  | caps)            |   | caps)            |   | block states per |     |
+|  |                  |   |                  |   | toneRole, ChVol  |     |
+|  | - Block ordering |   | 4-layer param    |   | volume balancing |     |
+|  | - DSP assignment |   | resolution:      |   |                  |     |
+|  | - Mandatory block|   |  1. defaultParams|   |                  |     |
+|  |   insertion      |   |  2. AMP_DEFAULTS |   |                  |     |
+|  | - Block limits   |   |  3. Topology mid |   |                  |     |
+|  | - Slot ordering  |   |  4. paramOverride|   |                  |     |
+|  |                  |   |  5. Genre profile|   |                  |     |
+|  |                  |   |  6. Tempo sync   |   |                  |     |
+|  +------------------+   +------------------+   +------------------+     |
++------------------------------------------+------------------------------+
+                                           | PresetSpec
+                                           v
++-------------------------------------------------------------------------+
+|                       BUILDER LAYER (Format)                             |
+|                                                                          |
+|  +--------------+  +--------------+  +--------------+  +------------+   |
+|  | preset-      |  | podgo-       |  | stadium-     |  | stomp-     |   |
+|  | builder.ts   |  | builder.ts   |  | builder.ts   |  | builder.ts |   |
+|  |              |  |              |  |              |  |            |   |
+|  | .hlx (JSON)  |  | .pgp (JSON)  |  | .hsp (JSON)  |  | .hlx       |   |
+|  | Helix LT/    |  | Pod Go       |  | Stadium      |  | Stomp/XL   |   |
+|  | Floor        |  |              |  |              |  |            |   |
+|  +--------------+  +--------------+  +--------------+  +------------+   |
+|                                                                          |
+|  Builder responsibilities:                                               |
+|  - DSP block slot grid allocation (sequential blockN keys)               |
+|  - Controller section (snapshot @controller:19, EXP @controller:1/2)    |
+|  - Footswitch section (@fs_enabled, @pedalstate bitmask)                |
+|  - Input/Output system blocks (per-device model IDs)                    |
++-------------------------------------------------------------------------+
 ```
 
-### Current Architecture Problems Being Solved
+### Component Responsibilities
 
-**Problem 1: Agoura Amp Leak.**
-`AMP_NAMES` merges `AMP_MODELS` keys and `STADIUM_AMPS` keys into a single `z.enum()`. The planner schema accepts any name from either catalog regardless of device. The prompt filters the MODEL LIST shown to Claude, but constrained decoding still validates against the full merged enum. Claude can pick Agoura amps for Helix LT. The chain-rules fallback catches this at generation time but it's a bailout, not a prevention.
-
-**Problem 2: Stadium Param Completeness.**
-Stadium .hsp presets have ~27 firmware params per amp/effect block. Current param-engine produces ~12. When a preset loads, the firmware fills missing params from whatever was last in memory — "param bleed" from previously loaded presets. This causes unpredictable tone changes.
-
-**Problem 3: 17+ Guard Sites.**
-`assembleSignalChain()`, `resolveParameters()`, and `validatePresetSpec()` all pattern-match on device using boolean guards (`isPodGo`, `isStadium`, `isStomp`, else-Helix). Each new device requires a manual search of all 17+ sites. No TypeScript exhaustiveness. Manageable at 6 devices; becomes a maintenance liability if device count grows.
-
-**Problem 4: Late Device Selection.**
-Device is selected after `[READY_TO_GENERATE]`. The chat AI uses a single shared prompt with device constraint descriptions embedded as text. Constraints for all 6 devices coexist in one prompt, increasing token usage and reducing prompt caching effectiveness (device-specific sections vary per call).
+| Component | Responsibility | Key Files |
+|-----------|----------------|-----------|
+| `planner.ts` | AI call, structured output, Zod validation | Claude API, ToneIntent schema |
+| `prompt-router.ts` | Device -> family prompt dispatch | families/{helix,stomp,podgo,stadium}/prompt.ts |
+| `families/{f}/prompt.ts` | Per-family system prompt (planner + chat) | Shared sections, model list injection |
+| `families/shared/*.ts` | gain-staging, tone-intent-fields, amp-cab-pairing sections | Pure text functions, cacheable |
+| `chain-rules.ts` | ToneIntent -> ordered BlockSpec[] with DSP assignment | models.ts, device-family.ts |
+| `param-engine.ts` | BlockSpec[] -> BlockSpec[] with all params filled | models.ts defaultParams + paramOverrides |
+| `snapshot-engine.ts` | ToneIntent snapshots -> SnapshotSpec[] with block states | BlockSpec[], intent.snapshots |
+| `validate.ts` | PresetSpec structural validation (strict + auto-fix) | caps, VALID_IDS |
+| `preset-builder.ts` | PresetSpec -> .hlx JSON (Helix LT/Floor) | HlxFile type, CONTROLLERS |
+| `podgo-builder.ts` | PresetSpec -> .pgp JSON | Pod Go-specific controller/snapshot format |
+| `stadium-builder.ts` | PresetSpec -> .hsp JSON | Stadium-specific format |
+| `stomp-builder.ts` | PresetSpec -> .hlx JSON (Stomp-specific) | Stomp block limits |
+| `device-family.ts` | DeviceTarget -> DeviceCapabilities (single source of truth) | All caps consumers |
+| `models.ts` | HelixModel database with defaultParams + paramOverrides + CONTROLLERS | All param resolution |
+| `catalogs/{f}-catalog.ts` | Per-family EFFECT_NAMES, AMP_NAMES, CAB_NAMES tuples | ToneIntent schema enum construction |
+| `tone-intent.ts` | ToneIntent Zod schema factory (per-family) | catalog tuples, constrained decoding |
 
 ---
 
-## Target v5.0 System Overview
+## Specific Integration Answers
 
+### Q1: Expression Pedal Controller Assignment — Where in the Pipeline?
+
+**Answer: Builder layer (preset-builder.ts + sibling builders), gated by `caps.expressionPedalCount`.**
+
+**Rationale from codebase analysis:**
+
+The .hlx controller section already exists and is built by `buildControllerSection()` in `preset-builder.ts`. It currently writes `@controller: 19` (SNAPSHOT) entries. The `CONTROLLERS.EXP_PEDAL_1 = 1` and `CONTROLLERS.EXP_PEDAL_2 = 2` constants in `models.ts` confirm the infrastructure is ready and waiting.
+
+Block key resolution (the `blockN` format required in the controller section) only exists after `buildDsp()` runs — it is a builder-time concept. Attempting EXP assignment in param-engine or chain-rules would require duplicating the block key computation, violating separation of concerns.
+
+Device capability is already encoded: `DeviceCapabilities.expressionPedalCount` is correctly set for all 6 devices:
+- Helix LT/Floor: 3
+- Stomp/XL: 2
+- Pod Go: 1
+- Stadium: 0
+
+**NOT in chain-rules:** Chain-rules handles structural signal chain ordering, not controller binding.
+**NOT in param-engine:** Param-engine resolves parameter values, not controller assignments.
+**NOT in the AI:** The AI does not understand Helix file format controller sections. The AI should express intent (e.g., "assign wah sweep to EXP1"), and the builder converts that intent to the correct `@controller` entry.
+
+**Data flow for EXP assignment:**
 ```
-+------------------------------------------------------------------+
-|                       Frontend (Next.js)                          |
-|  Device Picker (FIRST — before chat starts)                       |
-|  Chat UI | Signal Chain Viz | Preset Card                         |
-+------------------------------------------------------------------+
-         |                              |
-  device selected at start       device flows through
-  stored in frontend state       all API calls
-         |                              |
-+---------------+----------------------+---------------------------+
-|                      API Layer                                    |
-|                                                                   |
-|   /api/chat                        /api/generate                 |
-|   getSystemPrompt(family)          buildPlannerPrompt(family)     |
-|   [PER-FAMILY chat prompt]         [PER-FAMILY planner prompt]    |
-+------------------------------------------------------------------+
-                                        |
-                              DeviceFamily-scoped ToneIntent
-                                        |
-                                        v
-+------------------------------------------------------------------+
-|            Device-Family Knowledge Layer (Deterministic)          |
-|                                                                   |
-|  Family Router (new):                                            |
-|    resolveFamily(device) -> "stadium" | "helix" | "stomp" | "podgo"
-|                                                                   |
-|  Family Modules (new — one per family):                          |
-|    families/stadium/  — Agoura catalog, hsp builder, stadium rules|
-|    families/helix/    — HD2 catalog, hlx builder, dual-amp rules  |
-|    families/stomp/    — HD2 catalog (limited), hlx builder        |
-|    families/podgo/    — HD2 catalog (limited), pgp builder        |
-|                                                                   |
-|  Shared Knowledge Layer (modified — guards removed):             |
-|    chain-rules.ts — accepts DeviceCapabilities, no guards        |
-|    param-engine.ts — accepts DeviceCapabilities, no guards       |
-|    snapshot-engine.ts — unchanged                                |
-|    validate.ts — accepts DeviceCapabilities, no guards           |
-+------------------------------------------------------------------+
-                |
-    Per-family catalogs: no cross-contamination
-+------------------------------------------------------------------+
-|  families/helix/catalog.ts    — HD2 amps only                    |
-|  families/stadium/catalog.ts  — Agoura amps only                 |
-|  families/stomp/catalog.ts    — HD2 amps (subset)               |
-|  families/podgo/catalog.ts    — HD2 amps (subset)               |
-|  models.ts — shared effect catalogs, HelixModel interface        |
-+------------------------------------------------------------------+
+ToneIntent.expPedalAssignments?: [{ effectType, paramName, pedal, minValue, maxValue }]
+    |
+    v (pass-through — chain-rules and param-engine ignore it)
+PresetSpec.expPedalAssignments
+    |
+    v
+buildControllerSection() [all 4 builders]
+    |-- EXISTING: snapshot loop -> @controller: 19
+    +-- NEW: EXP loop -> @controller: 1 or 2
+             gated: caps.expressionPedalCount > 0
+             mapped: findBlockByType(chain, effectType) -> blockKey
+             output: controller[dspKey][blockKey][paramName] = {
+               "@min": minValue, "@max": maxValue,
+               "@controller": pedal === "exp1" ? 1 : 2
+             }
 ```
 
----
+**What changes:**
+1. `tone-intent.ts`: Add optional `expPedalAssignments` array to ToneIntent schema
+2. `types.ts`: Add `expPedalAssignments?: ExpPedalAssignment[]` to `PresetSpec`
+3. All 4 builders: Extend `buildControllerSection()` with EXP pedal loop
+4. `validate.ts`: Validate EXP assignments reference valid block types and pedal <= expressionPedalCount
+5. All 4 family prompts: Add EXP assignment instructions (only when `expressionPedalCount > 0`)
 
-## Device Family Routing
+### Q2: Per-Model Effect Guidance — How to Flow Into AI Prompts Without Bloating Tokens?
 
-### Family Definition
+**Answer: Compact table in a new `families/shared/effect-guidance.ts` section, included in system prompt (cached), not per-request.**
 
-Six devices collapse to four families based on shared behavior. Family determines: prompt template, model catalog, chain rules behavior, builder selection.
+**Rationale from codebase analysis:**
 
-| Family | Devices | File Format | DSP |
-|--------|---------|-------------|-----|
-| `helix` | helix_lt, helix_floor | .hlx | dual-DSP, 2 paths |
-| `stomp` | helix_stomp, helix_stomp_xl | .hlx | single-DSP, 6/9 blocks |
-| `podgo` | pod_go | .pgp | single-DSP, 4 effect limit |
-| `stadium` | helix_stadium | .hsp | single-path, slot grid |
+The system prompt is cached with `cache_control: { type: "ephemeral", ttl: "1h" }` in `planner.ts`. Once written, every call within 1 hour reuses the cached entry. Adding 400 tokens to the system prompt costs nothing after the first call — token cost is amortized entirely.
 
-LT and Floor are in the same family because they share identical format and Knowledge Layer behavior. The only difference is `DEVICE_IDS` — same chain rules, same builder, same prompt.
+The pattern already exists: `families/shared/gain-staging.ts`, `families/shared/tone-intent-fields.ts`, and `families/shared/amp-cab-pairing.ts` are all pure functions returning strings, called by `buildPlannerPrompt()` in each family prompt file.
 
-### Family Router (new module)
+**Token budget:** Current prompts cache at approximately 3,000-5,000 tokens (estimated from prompt length). Per-model effect guidance should add no more than 300-500 tokens. Use markdown table format — scannable by the AI, short per entry, easy to maintain.
+
+**What should be in the guidance table:**
+- Non-obvious pairings (positive: "Adriatic Delay + subtle reverb = dimensional depth")
+- Anti-combinations (negative: "Spring Reverb + heavy low-gain delay = muddy low-end clash")
+- Positional requirements (wah pre-amp only, modulation post-cab only)
+- Genre-specific model selection hints ("Ganymede Reverb = ambient/worship; avoid for metal")
+
+**What should NOT be in the guidance table:**
+- Raw parameter values — the AI doesn't set numeric values; param-engine handles this
+- Exhaustive per-model documentation — already in `models.ts` defaultParams
+- Hardware file format details — irrelevant to creative selection
+
+**Example implementation:**
+```typescript
+// families/shared/effect-guidance.ts — NEW FILE
+export function effectGuidanceSection(): string {
+  return `## Effect Pairing Intelligence
+
+| Effect | Best With | Avoid | Notes |
+|--------|-----------|-------|-------|
+| Simple Delay | Room/Hall Reverb | Spring Reverb (muddy) | Set reverb after delay in chain |
+| Adriatic Delay | Light modulation | Heavy flanger (flutter clash) | Dimensional character |
+| Ganymede Reverb | Subtle delay | Any other reverb | Ambient/worship; avoid metal |
+| Particle Verb | Single delay line | Flangers/phasers | Shimmer character, needs space |
+| Ubiquitous Vibe | Post-cab position | Pre-amp position | Loses character pre-amp |
+| Compressor | Pre-amp position | Post-reverb | Kills reverb tail dynamics |
+| Wah | Always pre-amp | Post-amp | Tonal character only pre-signal |
+`;
+}
+```
+
+**Injection point:** Inside each family's `buildPlannerPrompt()`, after `ampCabPairingSection()` and before the Effect Discipline by Genre section.
+
+### Q3: Effect Combination Logic — Where Does It Live?
+
+**Answer: Split between chain-rules.ts (context detection) and param-engine.ts (param adjustment). NOT in the AI prompt.**
+
+**Rationale from codebase analysis:**
+
+The existing param-engine already has a strong precedent for this pattern: genre profile is computed by `matchGenre()` and applied as Layer 5 (outermost non-tempo layer) in `resolveDefaultParams()`. Tempo sync is Layer 6. Effect combination adjustments become Layer 7 — a natural extension of this established pattern.
+
+Chain-rules is the natural place to detect effect combinations because it already iterates all user effects to classify slots (the `classifyEffectSlot()` function). Building an `EffectCombinationContext` there adds minimal code without changing the function's contract.
+
+**Why NOT in the AI prompt:** The AI doesn't set numeric parameters. Instructing the AI "when you include delay + reverb, reduce reverb Mix" is wrong — the AI cannot act on this. Prompt guidance for combinations should cover model selection ("avoid Spring Reverb with large delay — muddy interaction"), not parameter values.
+
+**Concrete implementation boundary:**
 
 ```typescript
-// src/lib/helix/families/index.ts
+// chain-rules.ts — ADD after classifying user effects
+interface EffectCombinationContext {
+  hasDelay: boolean;
+  hasReverb: boolean;
+  hasModulation: boolean;
+  hasDistortion: boolean;
+  hasCompressor: boolean;
+  delayModel?: string;
+  reverbModel?: string;
+}
 
-export type DeviceFamily = "helix" | "stomp" | "podgo" | "stadium";
+function buildEffectCombinationContext(userEffects: PendingBlock[]): EffectCombinationContext {
+  return {
+    hasDelay: userEffects.some(e => e.blockType === "delay"),
+    hasReverb: userEffects.some(e => e.blockType === "reverb"),
+    hasModulation: userEffects.some(e => e.blockType === "modulation"),
+    hasDistortion: userEffects.some(e => e.blockType === "distortion"),
+    hasCompressor: userEffects.some(e => e.blockType === "dynamics"),
+    delayModel: userEffects.find(e => e.blockType === "delay")?.model.name,
+    reverbModel: userEffects.find(e => e.blockType === "reverb")?.model.name,
+  };
+}
+// Return EffectCombinationContext alongside BlockSpec[] or thread through resolveParameters()
 
-/** Maps any DeviceTarget to its family. Exhaustive — TypeScript errors on missing devices. */
-export function resolveFamily(device: DeviceTarget): DeviceFamily {
-  switch (device) {
-    case "helix_lt":
-    case "helix_floor":
-      return "helix";
-    case "helix_stomp":
-    case "helix_stomp_xl":
-      return "stomp";
-    case "pod_go":
-      return "podgo";
-    case "helix_stadium":
-      return "stadium";
-    // TypeScript: no default — if a 7th device is added to DeviceTarget,
-    // this function produces a compile error at the unreachable case check.
+// param-engine.ts — Layer 7 after genre profile
+function applyEffectCombinationAdjustments(
+  block: BlockSpec,
+  params: Record<string, number | boolean>,
+  context: EffectCombinationContext,
+  ampCategory: AmpCategory,
+): void {
+  // Delay + Reverb coexistence: prevent reverb wash burying the delay
+  if (context.hasDelay && context.hasReverb && block.type === "reverb") {
+    if ("Mix" in params && typeof params.Mix === "number") {
+      params.Mix = Math.max(0.05, params.Mix - 0.05);
+    }
+    if ("PreDelay" in params && typeof params.PreDelay === "number") {
+      params.PreDelay = Math.max(params.PreDelay, 0.025); // 25ms minimum
+    }
+  }
+  // High-gain + Reverb: tighten reverb for crunch/metal context
+  if (ampCategory === "high_gain" && block.type === "reverb") {
+    if ("Mix" in params && typeof params.Mix === "number") {
+      params.Mix = Math.max(0.05, params.Mix - 0.03);
+    }
+  }
+  // Modulation + Delay: prevent flutter feedback buildup
+  if (context.hasModulation && block.type === "delay") {
+    if ("Feedback" in params && typeof params.Feedback === "number") {
+      params.Feedback = Math.max(0.10, params.Feedback - 0.05);
+    }
   }
 }
 ```
 
-The key improvement: `resolveFamily()` is a single exhaustive switch on `DeviceTarget`. Adding a 7th device to the `DeviceTarget` union immediately surfaces as a TypeScript compile error in `resolveFamily()`. This replaces 17+ scattered guard sites with one registration point.
+**Ordered combination rules by quality impact:**
+1. Delay + Reverb: reverb Mix -0.05, reverb PreDelay min 25ms (highest value — most common pairing)
+2. High-gain amp + Reverb: reverb Mix -0.03 (very common in metal/hard rock)
+3. Modulation + Delay: delay Feedback -0.05 (prevents flutter buildup)
+4. High-gain amp + Modulation: modulation Depth -0.05 (tight metal context)
+5. Compressor + Drive: optional; covered by prompt guidance (model selection level)
 
-### DeviceCapabilities (replaces guards in Knowledge Layer)
+### Q4: Per-Device Craft Differences — Code vs Prompts vs Both?
 
-```typescript
-// src/lib/helix/families/capabilities.ts
+**Answer: Both — constraints enforced in code via DeviceCapabilities, creative guidance encoded in per-family prompts.**
 
-export interface DeviceCapabilities {
-  family: DeviceFamily;
-  device: DeviceTarget;
+**In code (DeviceCapabilities — authoritative enforcement, non-negotiable limits):**
 
-  // DSP constraints
-  dualDsp: boolean;           // true for helix only
-  maxBlocksPerDsp: number;    // 8 for helix, N/A for single-dsp
-  maxTotalBlocks: number;     // total block budget
+`device-family.ts` already captures all hardware constraints correctly:
+- `maxBlocksTotal` / `maxBlocksPerDsp` / `maxEffectsPerDsp` — enforced by chain-rules + validate.ts
+- `expressionPedalCount` — gates EXP controller injection in builders
+- `mandatoryBlockTypes` — determines EQ + Gain Block insertion in chain-rules
+- `dualAmpSupported` — gates secondAmpName/secondCabName processing
+- `availableBlockTypes` — Pod Go excludes pitch/send_return
 
-  // Feature flags
-  supportsDualAmp: boolean;
-  supportsVariax: boolean;
-  supportsSnapshots: boolean;
-  maxSnapshots: number;
+No new DeviceCapabilities fields are needed for the new milestone features. The existing fields cover all constraints.
 
-  // Mandatory block insertion flags
-  insertParametricEq: boolean;
-  insertGainBlock: boolean;
+**In prompts (per-family prompt.ts — creative guidance for optimal model selection):**
 
-  // Builder identity
-  fileExtension: ".hlx" | ".pgp" | ".hsp";
-}
+| Device Family | Craft Differences to Add in Prompt |
+|---------------|-------------------------------------|
+| Helix LT/Floor | EXP1 available for wah sweep/volume; EXP2 for modulation speed/reverb mix. 3 pedals total. Specific assignment guidance. |
+| HX Stomp | No EXP unless external pedal connected — omit expPedalAssignments for safety. 2-5 effects max (already in prompt). |
+| Pod Go | One EXP pedal. Most useful: volume block or wah. Avoid assigning EXP to modulation speed (no instant revert). |
+| Stadium | No EXP pedal (expressionPedalCount: 0) — never suggest expPedalAssignments in Stadium prompt. |
 
-/** Build a capabilities object for any device. Single source of truth for device behavior. */
-export function getCapabilities(device: DeviceTarget): DeviceCapabilities {
-  const family = resolveFamily(device);
-  // ... per-family capability definitions
-}
-```
-
-`chain-rules.ts`, `param-engine.ts`, and `validate.ts` all accept `DeviceCapabilities` instead of `device?: DeviceTarget`. The guard pattern `isPodGo(device) ? ... : isStadium(device) ? ... : ...` becomes `caps.family === "podgo" ? ... : caps.family === "stadium" ? ...` — still branching, but now the branching is on a discriminated union value rather than a set of boolean guards, and adding a new family causes TypeScript to surface it via exhaustiveness checking.
+**Why both code AND prompts are necessary:**
+- Code enforces hard limits: even if the AI generates `expPedalAssignments: [{ pedal: "exp2" }]` for a Pod Go (which has 1 EXP), validate.ts catches it and the builder guard skips the invalid entry.
+- Prompts enable intelligent selection: "choose 2-3 effects that matter most for Stomp" — the AI makes better selections when it understands the constraint rationale, not just the raw number. A prompt that says "max 2 effects" without rationale produces worse choices than one that explains "Stomp has 6 blocks total including amp+cab, leaving 4 for user effects but 2 is optimal for performance use."
+- Prompts without code enforcement = guidelines the AI can violate. Code without prompt guidance = correct structure with suboptimal creative choices.
 
 ---
 
-## Module Organization Pattern
-
-### File Structure
+## Recommended Project Structure for New Features
 
 ```
-src/lib/helix/
+src/lib/
+├── helix/
+│   ├── chain-rules.ts         MODIFIED — buildEffectCombinationContext() added
+│   ├── param-engine.ts        MODIFIED — Layer 7 applyEffectCombinationAdjustments()
+│   ├── models.ts              UNCHANGED — CONTROLLERS.EXP_PEDAL_1/2 already defined
+│   ├── tone-intent.ts         MODIFIED — expPedalAssignments optional field
+│   ├── device-family.ts       UNCHANGED — expressionPedalCount already correct
+│   ├── validate.ts            MODIFIED — EXP assignment validation rule
+│   ├── preset-builder.ts      MODIFIED — EXP pedal loop in buildControllerSection()
+│   ├── podgo-builder.ts       MODIFIED — same EXP extension, 1 pedal only
+│   ├── stomp-builder.ts       MODIFIED — same EXP extension, 2 pedals
+│   ├── stadium-builder.ts     UNCHANGED — expressionPedalCount=0, guard skips
+│   ├── snapshot-engine.ts     UNCHANGED — snapshot volume balancing unaffected
+│   └── catalogs/
+│       └── {family}-catalog.ts  UNCHANGED — effect names stay per-family
 ├── families/
-│   ├── index.ts              NEW — DeviceFamily type, resolveFamily(), getCapabilities()
+│   ├── shared/
+│   │   ├── gain-staging.ts       UNCHANGED
+│   │   ├── amp-cab-pairing.ts    UNCHANGED
+│   │   ├── tone-intent-fields.ts MODIFIED — document expPedalAssignments field
+│   │   └── effect-guidance.ts    NEW — per-model effect pairing table
 │   ├── helix/
-│   │   ├── catalog.ts        NEW — HD2 amp catalog (extracted from models.ts)
-│   │   ├── prompt.ts         NEW — Helix-specific chat + planner prompt templates
-│   │   └── index.ts          NEW — barrel: exports catalog, prompt, family constants
-│   ├── stadium/
-│   │   ├── catalog.ts        NEW — Agoura amp catalog (extracted from models.ts)
-│   │   ├── prompt.ts         NEW — Stadium-specific chat + planner prompt templates
-│   │   ├── params.ts         NEW — 27-param firmware completeness table
-│   │   └── index.ts          NEW — barrel: exports catalog, prompt, params
+│   │   └── prompt.ts             MODIFIED — EXP assignment guidance, effect-guidance section
+│   ├── podgo/
+│   │   └── prompt.ts             MODIFIED — single EXP pedal guidance, effect-guidance section
 │   ├── stomp/
-│   │   ├── catalog.ts        NEW — HD2 amp catalog (stomp-compatible subset)
-│   │   ├── prompt.ts         NEW — Stomp-specific chat + planner prompt templates
-│   │   └── index.ts          NEW — barrel
-│   └── podgo/
-│       ├── catalog.ts        NEW — HD2 amp catalog (pod go-compatible subset)
-│       ├── prompt.ts         NEW — Pod Go-specific chat + planner prompt templates
-│       └── index.ts          NEW — barrel
-│
-├── models.ts                 MODIFY — remove STADIUM_AMPS, remove AMP_NAMES merged enum
-│                             Keep: effect catalogs, HelixModel interface, CAB_MODELS
-├── tone-intent.ts            MODIFY — AMP_NAMES/EFFECT_NAMES sourced per-family, not merged
-├── chain-rules.ts            MODIFY — accept DeviceCapabilities, remove ~10 guard sites
-├── param-engine.ts           MODIFY — accept DeviceCapabilities, remove ~3 guard sites
-├── validate.ts               MODIFY — accept DeviceCapabilities, remove ~4 guard sites
-├── config.ts                 NO CHANGE — config constants stay, consumed by capabilities
-├── types.ts                  MODIFY — add DeviceFamily type (or import from families/)
-├── param-registry.ts         NO CHANGE
-├── preset-builder.ts         NO CHANGE — .hlx format unchanged
-├── podgo-builder.ts          NO CHANGE — .pgp format unchanged
-├── stadium-builder.ts        MODIFY — add 27-param completeness from stadium/params.ts
-├── stomp-builder.ts          NO CHANGE — .hlx format unchanged
-├── snapshot-engine.ts        NO CHANGE — no device awareness needed
-└── index.ts                  MODIFY — export families/ barrel exports
+│   │   └── prompt.ts             MODIFIED — EXP availability note, effect-guidance section
+│   └── stadium/
+│       └── prompt.ts             MODIFIED — effect-guidance section (no EXP guidance)
+└── planner.ts                    UNCHANGED — orchestration layer unaffected
 ```
-
-### Per-Family Catalog Pattern
-
-Each family module owns its amp catalog. The catalog exports the amp `Record`, the amp `Names` enum tuple, and the per-model `cabAffinity` data used by the planner prompt.
-
-```typescript
-// src/lib/helix/families/stadium/catalog.ts
-
-import { BLOCK_TYPES } from "../../models";
-import type { HelixModel } from "../../models";
-
-/** Stadium amp catalog — Agoura_* IDs only. NOT exported from root models.ts. */
-export const STADIUM_AMPS: Record<string, HelixModel> = {
-  "Agoura German Xtra Red": { ... },
-  "Agoura Brit 2203 MV": { ... },
-  // ... all 18 Agoura amps
-};
-
-/** Valid amp names for Stadium ToneIntent schema — Stadium devices only. */
-export const STADIUM_AMP_NAMES = Object.keys(STADIUM_AMPS) as [string, ...string[]];
-```
-
-```typescript
-// src/lib/helix/families/helix/catalog.ts
-
-import { BLOCK_TYPES } from "../../models";
-import type { HelixModel } from "../../models";
-
-/** HD2 amp catalog — for Helix LT, Floor, Stomp, and Pod Go. */
-export const HD2_AMPS: Record<string, HelixModel> = {
-  "US Deluxe Nrm": { id: "HD2_AmpUSDeluxeNrm", ... },
-  // ... all HD2 amps
-};
-
-/** Valid amp names for Helix/Stomp/PodGo ToneIntent schema. */
-export const HD2_AMP_NAMES = Object.keys(HD2_AMPS) as [string, ...string[]];
-```
-
-By splitting catalogs into separate files, the Zod schema for each family's `ToneIntent` sources its `ampName` enum from the family-specific catalog. A Stadium request gets a schema that ONLY allows Agoura names. A Helix request gets a schema that ONLY allows HD2 names. No merged enum, no constrained-decoding escape.
-
-### Per-Family ToneIntent Schema
-
-```typescript
-// src/lib/helix/families/stadium/index.ts
-
-import { STADIUM_AMP_NAMES } from "./catalog";
-import { CAB_NAMES, EFFECT_NAMES } from "../../models";
-import { z } from "zod";
-
-/** ToneIntent schema scoped to Stadium devices. ampName validates against Agoura catalog only. */
-export const StadiumToneIntentSchema = z.object({
-  ampName: z.enum(STADIUM_AMP_NAMES),
-  cabName: z.enum(CAB_NAMES),
-  // NO secondAmpName — Stadium is single-path
-  guitarType: z.enum(["single_coil", "humbucker", "p90"]),
-  effects: z.array(EffectIntentSchema).max(4), // Stadium: tighter budget
-  snapshots: z.array(SnapshotIntentSchema).min(3).max(8),
-  // ... shared fields
-});
-```
-
-```typescript
-// src/lib/helix/families/helix/index.ts
-
-import { HD2_AMP_NAMES } from "./catalog";
-
-/** ToneIntent schema scoped to Helix LT/Floor devices. Includes dual-amp support. */
-export const HelixToneIntentSchema = z.object({
-  ampName: z.enum(HD2_AMP_NAMES),
-  secondAmpName: z.enum(HD2_AMP_NAMES).optional(),  // dual-amp
-  // ...
-});
-```
-
-This is the structural fix to the Agoura leak. Claude's constrained decoding validates against the family-scoped schema. Agoura names are not valid tokens for non-Stadium requests at the token level.
 
 ---
 
-## Chat System Prompt Isolation
+## Data Flow
 
-### Current State (one shared prompt)
+### Current Pipeline (Full)
 
-`gemini.ts` exports `getSystemPrompt()` with no parameters. It contains inline text describing all 6 devices with their constraints. Prompt caching is applied globally — the same prompt hash is used for all devices because the prompt content doesn't change per device.
-
-### v5.0 Target (per-family prompt)
-
-```typescript
-// gemini.ts (modified)
-
-export function getSystemPrompt(family: DeviceFamily): string {
-  const familyPrompt = getFamilyPromptSection(family);
-  return `${SHARED_PREAMBLE}
-
-${familyPrompt}
-
-${SHARED_CLOSING}`;
-}
+```
+User message
+    |
+    v
+chat/route.ts (API route)
+    |  conversation history
+    v
+callClaudePlanner(messages, device, family)
+    |-- getFamilyPlannerPrompt(device, modelList) -> system prompt (cached ~1hr)
+    |-- getToneIntentSchema(family) -> zodOutputFormat (constrained decoding)
+    +-- Claude API call -> ToneIntent (JSON, ~15 fields)
+         |
+         v ToneIntent
+assembleSignalChain(intent, caps)       [chain-rules.ts]
+    +-- -> BlockSpec[] (type, modelId, modelName, dsp, position, path, params:{})
+         |
+         v BlockSpec[] (empty params)
+resolveParameters(chain, intent, caps)  [param-engine.ts]
+    +-- -> BlockSpec[] (all params filled via 6-layer lookup)
+         |
+         v BlockSpec[] + intent.snapshots
+buildSnapshots(chain, intent.snapshots) [snapshot-engine.ts]
+    +-- -> SnapshotSpec[] (block states, ChVol, LED colors, parameterOverrides)
+         |
+         v PresetSpec (signalChain + snapshots + name + tempo)
+validatePresetSpec(spec, caps)          [validate.ts]
+    +-- -> void (throws on structural error)
+         |
+         v PresetSpec (validated)
+buildHlxFile(spec, device) OR          [builder layer — device-specific]
+buildPgpFile(spec) OR
+buildHspFile(spec)
+    |-- buildDsp() — block grid (blockN keys, sequential per DSP)
+    |-- buildControllerSection() — snapshot @controller:19 entries
+    |                            + [NEW] EXP @controller:1/2 entries
+    |-- buildFootswitchSection() — @fs_enabled, @pedalstate bitmask
+    +-- -> HlxFile | PgpFile | HspFile (JSON serializable)
+         |
+         v JSON
+Download response -> .hlx/.pgp/.hsp file
 ```
 
-Prompt caching continues to work because `family` is resolved before the first message and stays constant for the session. A Stadium session always hits the Stadium prompt cache. A Helix session always hits the Helix prompt cache. Cache hit rates improve because the family-scoped prompt is shorter and the hash is consistent within a family.
+### New Feature: Expression Pedal Assignment
 
-The family prompt sections are stored in `families/{family}/prompt.ts`:
-
-```typescript
-// src/lib/helix/families/stadium/prompt.ts
-
-export const STADIUM_CHAT_PROMPT = `
-## Your Device: Helix Stadium
-
-The user has a Helix Stadium — Line 6's arena-grade amp modeler. Stadium uses the
-Agoura amp library (different from standard Helix). It does NOT support:
-- Dual-amp presets (single signal path only)
-- Variax VDI input
-- More than 4 user effects (DSP budget)
-
-When discussing amp choices, reference Agoura models by their descriptive names:
-- Agoura German Xtra Red (Mesa Dual Rectifier character)
-- Agoura Brit 2203 MV (Marshall JCM800 character)
-- [... per-model descriptions]
-`;
-
-export const STADIUM_PLANNER_PROMPT_CONSTRAINTS = `
-**DEVICE RESTRICTION — Helix Stadium:**
-- Use ONLY amps from the AMPS list above (Agoura_* models)
-- Maximum 4 user effects (amp+cab+boost+gate+eq+gain = 6 mandatory slots)
-- No secondAmpName / secondCabName — Stadium is series-only
-- Generate exactly 4-8 snapshots
-`;
+```
+ToneIntent.expPedalAssignments?: [{
+  effectType: "wah" | "volume" | "modulation" | "delay" | "reverb",
+  paramName: string,   // e.g., "Mix", "Speed", "Depth"
+  pedal: "exp1" | "exp2",
+  minValue: number,    // 0.0 to 1.0
+  maxValue: number,    // 0.0 to 1.0
+}]
+    |
+    v (pass-through — chain-rules and param-engine ignore expPedalAssignments)
+PresetSpec.expPedalAssignments (same structure)
+    |
+    v
+buildControllerSection() in preset-builder.ts / podgo-builder.ts / stomp-builder.ts
+    GUARD: if (!caps.expressionPedalCount) return; // Stadium skips entirely
+    LOOP: for each expPedalAssignment
+      1. Find the block matching effectType in spec.signalChain
+      2. Resolve block key (blockN format via buildBlockKeyMap())
+      3. Determine controllerNum: exp1 -> 1, exp2 -> 2
+      4. Write: controller[dspKey][blockKey][paramName] = {
+           "@min": minValue, "@max": maxValue,
+           "@controller": controllerNum
+         }
 ```
 
-### Device Propagation Through Chat API
+### New Feature: Effect Combination Logic
 
-Currently `device` is sent only to `/api/generate`. In v5.0, it is also sent to `/api/chat`:
-
-```typescript
-// /api/chat/route.ts (modified)
-
-const { messages, premiumKey, conversationId, device } = await req.json();
-const family = device ? resolveFamily(device) : "helix"; // default
-
-const chat = ai.chats.create({
-  model: modelId,
-  config: {
-    systemInstruction: getSystemPrompt(family),  // family-scoped
-    tools: [{ googleSearch: {} }],
-  },
-  history,
-});
+```
+ToneIntent.effects[] (e.g., [Adriatic Delay, Ganymede Reverb])
+    |
+    v
+chain-rules.ts — assembleSignalChain()
+    EXISTING: iterate effects -> classify slots -> resolve DSP -> build PendingBlock[]
+    NEW: buildEffectCombinationContext(userEffects)
+         -> EffectCombinationContext { hasDelay, hasReverb, hasModulation, ... }
+         Passed to resolveParameters() as additional parameter
+    |
+    v BlockSpec[] + EffectCombinationContext
+param-engine.ts — resolveParameters(chain, intent, caps, effectContext)
+    EXISTING Layers 1-6: model defaults -> category -> topology -> overrides -> genre -> tempo
+    NEW Layer 7: applyEffectCombinationAdjustments(block, params, effectContext, ampCategory)
+         Applied after genre (Layer 5) but before return
+         Rules: delay+reverb -> reverb Mix-0.05, reverb PreDelay min 25ms
+                high_gain+reverb -> reverb Mix-0.03
+                modulation+delay -> delay Feedback-0.05
 ```
 
-Frontend stores `device` in state from the first user interaction (device picker) and sends it on every chat message. The chat AI receives a focused, device-appropriate system prompt from message one.
+### New Feature: Per-Model Effect Guidance in Prompts
+
+```
+families/shared/effect-guidance.ts [NEW — pure function]
+    effectGuidanceSection() -> compact markdown table string (300-500 tokens)
+         |
+         v (included once in system prompt — same for all calls, fully cached)
+families/{family}/prompt.ts [MODIFIED]
+    buildPlannerPrompt(device, modelList):
+      + effectGuidanceSection() after ampCabPairingSection()
+    Injection position: after amp-cab pairing, before Effect Discipline by Genre
+         |
+         v (system prompt cached at ~3,000-5,500 tokens total)
+Claude Planner reads guidance table
+    -> Selects effects that pair well together (evidence-based)
+    -> Avoids anti-combinations
+    -> Sets expPedalAssignments for wah/volume/modulation when device has pedal
+```
 
 ---
 
-## Planner Prompt Isolation
-
-### Current State
-
-`buildPlannerPrompt(modelList, device?)` in `planner.ts` handles all 6 devices with conditional string interpolation. Device-specific constraint notes are injected as template literals. Prompt caching works but the prompt is monolithic — one function produces all variants.
-
-### v5.0 Target
-
-`buildPlannerPrompt(family, device)` — `family` drives the structural template, `device` provides sub-variant constants (Stomp vs StompXL max blocks).
-
-```typescript
-// src/lib/planner.ts (modified)
-
-export function buildPlannerPrompt(family: DeviceFamily, device: DeviceTarget): string {
-  const catalog = getFamilyCatalog(family);     // family-specific catalog
-  const modelList = buildModelList(catalog);    // format catalog for prompt
-  const constraints = getFamilyConstraints(family, device); // from prompt.ts
-
-  return `${SHARED_PLANNER_PREAMBLE}
-
-## Valid Model Names
-
-${modelList}
-
-${SHARED_CREATIVE_GUIDELINES}
-
-${constraints}
-
-Based on the conversation below, generate a ToneIntent:`;
-}
-```
-
-The model list section is generated entirely from the family catalog — Stadium sees only Agoura amps, Helix sees only HD2 amps. The constraints section comes from `families/{family}/prompt.ts`. Shared sections (creative guidelines, cab pairing table, effect discipline) remain in the main `planner.ts`.
-
----
-
-## Stadium Firmware Parameter Completeness
-
-### The 12-vs-27 Problem
-
-Stadium amp blocks in real .hsp files contain 27 parameters per block. The current param-engine produces 12. Missing params (`AmpCabPeak*`, `AmpCabShelf*`, `Aggression`, `Bright`, `Contour`, `Depth`, `Fat`, `Hype`) are filled from the device's previous preset state — this is param bleed.
-
-### Solution: Stadium Firmware Param Table
-
-A new module in `families/stadium/params.ts` provides the complete 27-param set per amp model, sourced from real .hsp file corpus inspection:
-
-```typescript
-// src/lib/helix/families/stadium/params.ts
-
-/** Complete 27-param firmware defaults for each Agoura amp model.
- *  Values sourced from real .hsp file corpus (11 presets, 2026-03-05).
- *  These are the FIRMWARE-LEVEL params that must be present in every Stadium preset.
- *  param-engine uses these to supplement the 12-param production values.
- */
-export const STADIUM_AMP_FIRMWARE_PARAMS: Record<string, Record<string, number>> = {
-  "Agoura_AmpGermanXtraRed": {
-    // Standard amp params (already in param-engine output)
-    Drive: 0.65, Bass: 0.50, Mid: 0.45, Treble: 0.55, Master: 0.45, ChVol: 0.80,
-    // Firmware-required params — currently missing, causing param bleed
-    Aggression: 0.50,
-    Bright: 0.0,
-    Contour: 0.50,
-    Depth: 0.50,
-    Fat: 0.50,
-    Hype: 0.50,
-    AmpCabPeakFreq: 0.50,
-    AmpCabPeakGain: 0.50,
-    AmpCabPeakQ: 0.50,
-    AmpCabShelfFreq: 0.50,
-    AmpCabShelfGain: 0.50,
-    // ... remaining 10 params
-  },
-  // ... other Agoura amps
-};
-```
-
-The `stadium-builder.ts` merges the param-engine output with `STADIUM_AMP_FIRMWARE_PARAMS` to ensure all 27 params are present:
-
-```typescript
-// stadium-builder.ts (modified)
-
-function buildAmpBlock(block: BlockSpec): StadiumBlock {
-  const firmwareDefaults = STADIUM_AMP_FIRMWARE_PARAMS[block.modelId] ?? {};
-  const mergedParams = {
-    ...firmwareDefaults,          // all 27 params with firmware defaults
-    ...block.parameters,          // override with param-engine values (12 params)
-  };
-  // Encode as { value: X } pairs
-}
-```
-
-The merge order is intentional: firmware defaults first, param-engine values win on overlap. This guarantees all 27 params are always present while preserving the Knowledge Layer's tuned values for the 12 params it sets.
-
-### Research Required: Complete Param Table
-
-The 27-param firmware table must be built from real .hsp corpus inspection. Phase 1 of Stadium work must extract and document all parameter keys and their default values for each Agoura model. This is the highest-priority research task for Stadium.
-
----
-
-## Data Flow Changes
-
-### v5.0 Preset Generation Data Flow
-
-```
-User selects device in UI (FIRST INTERACTION — before chat)
-        |
-        | device stored in frontend state
-        |
-        v
-POST /api/chat { messages, device: "helix_stadium", ... }
-        |
-        | resolveFamily("helix_stadium") -> "stadium"
-        | getSystemPrompt("stadium") -> Stadium-scoped chat prompt
-        | Gemini 2.5 Flash with Stadium-focused interview constraints
-        |
-        v (chat continues until [READY_TO_GENERATE])
-        |
-        v
-POST /api/generate { messages, device: "helix_stadium", ... }
-        |
-        | resolveFamily("helix_stadium") -> "stadium"
-        | getFamilyCatalog("stadium") -> STADIUM_AMPS only
-        | buildPlannerPrompt("stadium", "helix_stadium")
-        |    -> model list: Agoura amps only
-        |    -> constraints: Stadium-specific
-        |
-        v
-Claude Sonnet 4.6 structured output
-        |
-        | StadiumToneIntentSchema (z.enum(STADIUM_AMP_NAMES) — Agoura names only)
-        | constrained decoding: "Brit Marshall" resolves to "Agoura Brit 2203 MV"
-        |                        NOT to "Brit Silver" (HD2 model name)
-        |
-        v ToneIntent { ampName: "Agoura Brit 2203 MV", ... }
-        |
-        v
-getCapabilities("helix_stadium") -> caps
-assembleSignalChain(intent, caps)   [MODIFIED — caps replaces device guards]
-        |
-        v
-resolveParameters(chain, intent, caps)   [MODIFIED — caps replaces device guards]
-        | Stadium path: merge STADIUM_AMP_FIRMWARE_PARAMS (all 27 params)
-        |
-        v
-buildSnapshots(parameterized, intents)   [UNCHANGED]
-        |
-        v
-validatePresetSpec(spec, caps)   [MODIFIED — caps replaces device guards]
-        |
-        v
-buildHspFile(presetSpec)   [MODIFIED — uses firmware param table for completeness]
-        |
-        v
-JSON response { preset: hspFile.json, fileExtension: ".hsp", ... }
-```
-
-### Frontend Device Picker Flow Change
-
-```
-Current:
-  User → chat → AI interview → [READY_TO_GENERATE] → device picker appears → Generate
-
-v5.0:
-  User → device picker (first thing) → chat with device-scoped AI → Generate
-```
-
-Frontend stores `selectedDevice` in component state from the very first render. The device picker is rendered before the chat input — it is a prerequisite for starting the conversation, not a post-hoc choice.
-
-The chat message `POST /api/chat` must include `device`. This is additive — `device` already goes to `/api/generate`, it simply needs to also go to `/api/chat`.
-
----
-
-## Component Integration Map for v5.0
+## Integration Points: New vs Modified Components
 
 ### New Components
 
-| Component | File | Purpose |
-|-----------|------|---------|
-| Family Router | `families/index.ts` | `resolveFamily()`, `getCapabilities()`, `DeviceFamily` type |
-| Stadium Catalog | `families/stadium/catalog.ts` | Agoura amps extracted from `models.ts` |
-| Stadium Prompt | `families/stadium/prompt.ts` | Stadium chat + planner prompt sections |
-| Stadium Firmware Params | `families/stadium/params.ts` | 27-param completeness table (from corpus) |
-| Helix Catalog | `families/helix/catalog.ts` | HD2 amps (currently in `models.ts`) |
-| Helix Prompt | `families/helix/prompt.ts` | Helix chat + planner prompt sections |
-| Stomp Catalog | `families/stomp/catalog.ts` | HD2 amps (stomp-compatible subset) |
-| Stomp Prompt | `families/stomp/prompt.ts` | Stomp chat + planner prompt sections |
-| Pod Go Catalog | `families/podgo/catalog.ts` | HD2 amps (pod go-compatible subset) |
-| Pod Go Prompt | `families/podgo/prompt.ts` | Pod Go chat + planner prompt sections |
+| Component | Location | Purpose | Dependencies |
+|-----------|----------|---------|--------------|
+| `effect-guidance.ts` | `src/lib/families/shared/` | Compact per-model effect pairing table. Pure function, no side effects, cacheable in system prompt. | None — pure function |
 
-### Modified Components
+### Modified Components (in dependency order)
 
-| Component | File | What Changes |
-|-----------|------|-------------|
-| `models.ts` | `models.ts` | Remove `STADIUM_AMPS`, remove merged `AMP_NAMES` enum. Keep effect catalogs, `HelixModel` interface, `CAB_MODELS`, `BLOCK_TYPES`. |
-| `tone-intent.ts` | `tone-intent.ts` | Remove single global `ToneIntentSchema`. Export per-family schemas (or a schema factory). `AMP_NAMES` sourced per-family. |
-| `chain-rules.ts` | `chain-rules.ts` | Accept `DeviceCapabilities` instead of `device?: DeviceTarget`. Replace ~10 boolean guard sites with `caps.family` or `caps.supportsDualAmp` etc. |
-| `param-engine.ts` | `param-engine.ts` | Accept `DeviceCapabilities`. Remove `MODEL_LOOKUPS` amp entry — family catalogs are the source. Stadium path: merge firmware param table. |
-| `validate.ts` | `validate.ts` | Accept `DeviceCapabilities`. Remove ~4 guard-based branches. |
-| `stadium-builder.ts` | `stadium-builder.ts` | Import and apply `STADIUM_AMP_FIRMWARE_PARAMS` for 27-param completeness. |
-| `planner.ts` | `planner.ts` | `buildPlannerPrompt(family, device)` — family determines catalog and constraints. |
-| `gemini.ts` | `gemini.ts` | `getSystemPrompt(family)` — family determines device-specific chat instructions. |
-| `/api/chat/route.ts` | `route.ts` | Accept `device` in request body. Pass family to `getSystemPrompt()`. |
-| `/api/generate/route.ts` | `route.ts` | Pass family to `buildPlannerPrompt()`. Use family-scoped ToneIntent schema. |
-| `index.ts` | `index.ts` | Export families barrel, per-family schemas. Remove merged `AMP_NAMES`. |
-| Frontend `page.tsx` / `ChatUI.tsx` | Frontend | Move device picker to first render, before chat. Send `device` on every chat message. |
+| Component | Change | Downstream Impact |
+|-----------|--------|-------------------|
+| `types.ts` | Add `ExpPedalAssignment` interface; add optional `expPedalAssignments` to `PresetSpec` | Builders read from PresetSpec — they need this type |
+| `tone-intent.ts` | Add optional `expPedalAssignments` Zod array field to ToneIntent schema | Optional field — no breakage. Builders receive it via PresetSpec. |
+| `families/shared/tone-intent-fields.ts` | Document `expPedalAssignments` field in prompt text | Prompt text only — no runtime impact |
+| `families/shared/effect-guidance.ts` | NEW FILE | Must exist before family prompts include it |
+| `families/helix/prompt.ts` | Add `effectGuidanceSection()` call; add EXP pedal guidance (3 pedals) | System prompt token count increases ~400 tokens; fully cached |
+| `families/podgo/prompt.ts` | Add `effectGuidanceSection()` call; add EXP1 guidance (1 pedal, volume/wah best) | Same token impact, cached |
+| `families/stomp/prompt.ts` | Add `effectGuidanceSection()` call; add EXP availability note | Same token impact, cached |
+| `families/stadium/prompt.ts` | Add `effectGuidanceSection()` call; NO EXP guidance | Same token impact, cached |
+| `chain-rules.ts` | Add `buildEffectCombinationContext()`. Thread context to return value or new param. | `resolveParameters()` signature gains `effectContext` param |
+| `param-engine.ts` | Accept `EffectCombinationContext`; add Layer 7 `applyEffectCombinationAdjustments()` | `resolveParameters()` signature change — all callers must update |
+| `preset-builder.ts` | Extend `buildControllerSection()` with EXP pedal loop | .hlx files gain `@controller: 1/2` entries for EXP-assigned blocks |
+| `podgo-builder.ts` | Same EXP extension, single pedal only | .pgp files gain EXP entries (expressionPedalCount: 1) |
+| `stomp-builder.ts` | Same EXP extension, dual pedal support | .hlx Stomp files gain EXP entries |
+| `stadium-builder.ts` | No EXP change needed | expressionPedalCount: 0 — guard skips entirely |
+| `validate.ts` | Add EXP assignment validation: effectType in chain, pedal <= expressionPedalCount | New validation rule, non-breaking |
 
 ### Unchanged Components
 
-| Component | File | Why Unchanged |
-|-----------|------|--------------|
-| `preset-builder.ts` | `preset-builder.ts` | .hlx format unchanged; receives `PresetSpec` same as before |
-| `podgo-builder.ts` | `podgo-builder.ts` | .pgp format unchanged; receives `PresetSpec` same as before |
-| `stomp-builder.ts` | `stomp-builder.ts` | .hlx format unchanged; receives `PresetSpec` same as before |
-| `snapshot-engine.ts` | `snapshot-engine.ts` | No device awareness needed; SnapshotSpec format is device-agnostic |
-| `config.ts` | `config.ts` | Constants consumed by capabilities, not modified |
-| `param-registry.ts` | `param-registry.ts` | Encoding types are device-agnostic |
-| `rig-intent.ts` | `rig-intent.ts` | Rig emulation types are device-agnostic |
-| Supabase layer | `supabase/` | Auth, DB, storage — no change |
+| Component | Reason |
+|-----------|--------|
+| `device-family.ts` | `expressionPedalCount` already correctly set for all 6 devices |
+| `models.ts` | `CONTROLLERS.EXP_PEDAL_1 = 1`, `CONTROLLERS.EXP_PEDAL_2 = 2` already defined |
+| `snapshot-engine.ts` | Volume balancing and snapshot structure unaffected |
+| `planner.ts` | Orchestration unchanged — ToneIntent schema change is transparent |
+| `prompt-router.ts` | Dispatch logic unchanged |
+| `catalogs/*.ts` | Effect name tuples unchanged |
 
 ---
 
-## Build Order
+## Architectural Patterns
 
-Dependencies flow as: catalog isolation → schema isolation → capability object → Knowledge Layer guard removal → prompts → frontend picker.
+### Pattern 1: Capability-Gated Feature Injection
 
-The catalog and schema isolation work MUST precede the Knowledge Layer guard removal, because the Knowledge Layer's `resolveFamily()` call requires that family-scoped catalogs exist. Prompt isolation is independent of Knowledge Layer work but depends on catalogs existing for model list generation.
+**What:** Every device-specific behavior gates on `DeviceCapabilities` (caps), not on device name strings. `expressionPedalCount` is already defined and correctly populated.
 
-### Phase 1: Family Router + Capability Object
+**When to use:** Any behavior that varies by hardware capability. EXP pedal assignment is canonical — Stadium has 0 pedals, PodGo has 1, Helix has 3.
 
-**Goal:** Create the `families/` directory and its core types. No existing files modified yet. Tests can run.
+**Trade-offs:** Compile-time exhaustiveness (exhaustive switch + assertNever) forces updates when new devices are added. More explicit than device name string checks.
 
-**Files:** `src/lib/helix/families/index.ts` (new)
-
-**Tasks:**
-1. Define `DeviceFamily` type
-2. Implement `resolveFamily(device)` — exhaustive switch
-3. Implement `getCapabilities(device)` — returns `DeviceCapabilities` per device
-4. Export from `families/index.ts`
-
-**Depends on:** Nothing — pure addition
-
-**Output:** `resolveFamily()` and `getCapabilities()` are importable. All 6 devices map to 4 families. TypeScript exhaustiveness enforced.
-
----
-
-### Phase 2: Catalog Extraction
-
-**Goal:** Extract per-family amp catalogs from `models.ts` into `families/{family}/catalog.ts`. Make `models.ts` not export amp catalogs. This is the structural fix to the Agoura leak.
-
-**Files:** `families/stadium/catalog.ts`, `families/helix/catalog.ts`, `families/stomp/catalog.ts`, `families/podgo/catalog.ts` (all new). `models.ts` (modified — remove STADIUM_AMPS, AMP_MODELS).
-
-**Tasks:**
-1. Create `families/stadium/catalog.ts` — move `STADIUM_AMPS` from `models.ts`; add `STADIUM_AMP_NAMES`
-2. Create `families/helix/catalog.ts` — move `AMP_MODELS` from `models.ts`; add `HD2_AMP_NAMES`
-3. Stomp and Pod Go share HD2 amps but with exclusion lists — create filtered re-exports or subsets in their catalog files
-4. Remove `STADIUM_AMPS`, `AMP_MODELS`, merged `AMP_NAMES` from `models.ts`
-5. Update all import sites that currently reference `models.ts` amp catalogs
-
-**Depends on:** Phase 1 (family types must exist before catalog files can reference them)
-
-**Output:** Each family has its own amp catalog. `models.ts` retains effect catalogs, `CAB_MODELS`, `HelixModel` interface, `BLOCK_TYPES` only. Merged `AMP_NAMES` is gone.
-
-**Risk:** This is the highest-risk phase. `AMP_MODELS` and `STADIUM_AMPS` are imported by `chain-rules.ts`, `param-engine.ts`, and `validate.ts`. All import sites must be updated. Run full test suite before proceeding to Phase 3.
-
----
-
-### Phase 3: Per-Family ToneIntent Schemas
-
-**Goal:** Replace single global `ToneIntentSchema` with family-scoped schemas. Eliminate the merged `AMP_NAMES` enum from Zod validation.
-
-**Files:** `families/stadium/index.ts`, `families/helix/index.ts`, `families/stomp/index.ts`, `families/podgo/index.ts` (new). `tone-intent.ts` (modified — exports schema factory or per-family schemas).
-
-**Tasks:**
-1. Create `StadiumToneIntentSchema` using `STADIUM_AMP_NAMES`
-2. Create `HelixToneIntentSchema` using `HD2_AMP_NAMES` — includes `secondAmpName`
-3. Create `StompToneIntentSchema` using `HD2_AMP_NAMES` (stomp subset) — no `secondAmpName`
-4. Create `PodGoToneIntentSchema` using `HD2_AMP_NAMES` (podgo subset) — no `secondAmpName`
-5. Export a `getToneIntentSchema(family)` factory function from `tone-intent.ts`
-6. Update `planner.ts` to call `getToneIntentSchema(family)` for structured output
-
-**Depends on:** Phase 2 (family catalogs must exist to source `AMP_NAMES` enums)
-
-**Output:** Claude's constrained decoding validates against family-specific amp names. Agoura-to-Helix bleed is structurally impossible. The `ToneIntent` type continues to be the shared TypeScript interface consumed by the Knowledge Layer.
-
-**Note on backward compatibility:** The `ToneIntent` TypeScript type (the inferred type from the schema) remains the same interface used by `chain-rules.ts`, `param-engine.ts`, etc. Only the Zod schema (validation) changes. Knowledge Layer code does not need to change to handle the schema refactor.
-
----
-
-### Phase 4: Knowledge Layer Guard Removal
-
-**Goal:** Replace all 17+ guard sites in `chain-rules.ts`, `param-engine.ts`, and `validate.ts` with `DeviceCapabilities` lookups.
-
-**Files:** `chain-rules.ts` (modified), `param-engine.ts` (modified), `validate.ts` (modified)
-
-**Tasks:**
-1. Change `assembleSignalChain(intent, device?)` to `assembleSignalChain(intent, caps: DeviceCapabilities)`
-2. Replace ~10 boolean guard sites in `assembleSignalChain()` with capability fields
-3. Change `resolveParameters(chain, intent, device?)` to accept `caps: DeviceCapabilities`
-4. Replace ~3 guard sites in `resolveParameters()` with capability fields
-5. Change `validatePresetSpec(spec, device?)` to accept `caps: DeviceCapabilities`
-6. Replace ~4 guard sites in `validatePresetSpec()` with capability fields
-7. Update `generate/route.ts` to call `getCapabilities(device)` and pass `caps` through pipeline
-
-**Depends on:** Phase 1 (capabilities object must exist). Phases 2 and 3 can be complete but are not required — the Knowledge Layer consumes `ToneIntent` (unchanged type), not the Zod schema.
-
-**Output:** No boolean guard sites in Knowledge Layer. Adding a 7th device requires only (a) adding it to `DeviceTarget` union, (b) handling it in `resolveFamily()`, (c) defining its capabilities. No Knowledge Layer searches.
-
----
-
-### Phase 5: Stadium Firmware Parameter Completeness
-
-**Goal:** Build the 27-param firmware table from real .hsp corpus. Apply it in `stadium-builder.ts`.
-
-**Files:** `families/stadium/params.ts` (new — requires corpus research), `stadium-builder.ts` (modified)
-
-**Tasks:**
-1. Extract all parameter keys and default values from real Stadium .hsp files for each Agoura amp model
-2. Build `STADIUM_AMP_FIRMWARE_PARAMS` table in `params.ts`
-3. Import and apply in `stadium-builder.ts` — merge firmware defaults with param-engine output
-4. Test: generate Stadium presets, verify all 27 params present in .hsp output
-5. Hardware verification: load generated .hsp on Stadium hardware or in HX Edit, confirm no param bleed
-
-**Depends on:** Phase 2 (catalog isolation must be complete first — Stadium catalog is the source of amp model IDs for the table). Does NOT depend on Phases 3 or 4.
-
-**Output:** Stadium presets include all 27 firmware params. Param bleed eliminated.
-
-**Note:** This phase requires corpus research — inspecting real .hsp files for each Agoura amp. The param table cannot be inferred; it must be observed. Flag this phase for deep research before implementation.
-
----
-
-### Phase 6: Prompt Isolation
-
-**Goal:** Create per-family prompt templates. Wire `getSystemPrompt(family)` and `buildPlannerPrompt(family, device)`.
-
-**Files:** `families/{family}/prompt.ts` (4 new files), `gemini.ts` (modified), `planner.ts` (modified)
-
-**Tasks:**
-1. Write Stadium chat prompt section — Agoura amp descriptions, single-path constraint, 8-snapshot capability
-2. Write Helix chat prompt section — dual-amp capability, DSP split, LT vs Floor distinction
-3. Write Stomp chat prompt section — block budget, 3/4 snapshots, series-only
-4. Write Pod Go chat prompt section — 4-effect limit, series-only, .pgp format
-5. Modify `getSystemPrompt(family)` in `gemini.ts` to use family sections
-6. Modify `buildPlannerPrompt(family, device)` in `planner.ts` to use family constraints
-7. Verify prompt caching: same family = same prompt hash = cache hit
-
-**Depends on:** Phase 2 (catalogs must exist for model list generation in planner prompt). Phases 3 and 4 not required.
-
-**Can run in parallel with:** Phase 5 (firmware params)
-
-**Output:** Each device family gets a focused prompt containing only its device constraints and model catalog. Prompt token count per call is reduced. Cache hit rate improves within each family.
-
----
-
-### Phase 7: Frontend Device Picker Relocation
-
-**Goal:** Move device picker to the start of conversation. Send `device` on every `/api/chat` call.
-
-**Files:** Frontend component files (page.tsx, ChatUI.tsx, or equivalent)
-
-**Tasks:**
-1. Render device picker as the first UI element — block chat input until device is selected
-2. Store `selectedDevice` in component state from first render
-3. Include `device` in every `/api/chat` POST body
-4. Modify `/api/chat/route.ts` to accept `device`, call `resolveFamily()`, pass to `getSystemPrompt()`
-5. Remove the "device picker appears after [READY_TO_GENERATE]" logic from chat UI
-
-**Depends on:** Phase 6 (family-scoped chat prompts must exist before `/api/chat` can use family routing)
-
-**Output:** User picks device first. Chat AI knows device constraints from message one. No late-binding device selection.
-
----
-
-### Dependency Graph
-
-```
-Phase 1: Family Router + Capabilities
-    |
-    v
-Phase 2: Catalog Extraction  ——————————————+
-    |                                       |
-    v                                       |
-Phase 3: Per-Family ToneIntent Schemas      |
-    |                                       |
-    v                                       v
-Phase 4: Knowledge Layer Guard Removal   Phase 5: Stadium Firmware Params
-                                            |
-                                         (hardware verification)
-                                            |
-Phase 6: Prompt Isolation  ←—————————————  |
-    |    [depends on Phase 2 catalogs]       |
-    v                                       |
-Phase 7: Frontend Picker Relocation
-
-All Phases → Full v5.0 System
+**Example:**
+```typescript
+// In buildControllerSection() — capability-gated EXP injection
+if (caps.expressionPedalCount > 0) {
+  for (const assignment of spec.expPedalAssignments ?? []) {
+    const controllerNum = assignment.pedal === "exp1"
+      ? CONTROLLERS.EXP_PEDAL_1   // 1
+      : CONTROLLERS.EXP_PEDAL_2;  // 2
+    // Pod Go only has exp1 — skip exp2 if pedal count is 1
+    if (assignment.pedal === "exp2" && caps.expressionPedalCount < 2) continue;
+    const blockKey = findBlockByEffectType(spec.signalChain, assignment.effectType);
+    if (!blockKey) continue;
+    controller[dspKey][blockKey][assignment.paramName] = {
+      "@min": assignment.minValue,
+      "@max": assignment.maxValue,
+      "@controller": controllerNum,
+    };
+  }
+}
 ```
 
-**Critical path:** 1 → 2 → 3 → 4 → 6 → 7 (sequential dependency chain)
-**Parallel track:** 5 can run after Phase 2, in parallel with 3 and 4.
+### Pattern 2: Layered Parameter Resolution (Extend, Don't Replace)
+
+**What:** param-engine.ts resolves parameters in 6 deterministic layers. New intelligence adds as Layer 7 — never replaces existing layers.
+
+**Current layer stack (verified from codebase):**
+1. `model.defaultParams` — model-specific baseline
+2. `AMP_DEFAULTS[ampCategory]` — category level (HD2 amps only)
+3. `TOPOLOGY_MID` — topology-specific mid (HD2 high-gain only)
+4. `model.paramOverrides` — per-model wins over all shared layers
+5. `GENRE_EFFECT_DEFAULTS[genre]` — genre profile (outermost non-tempo)
+6. Tempo sync — delay Time computed from BPM + subdivision
+
+**Layer 7 — Effect combination adjustments (new):**
+- Applied after genre profile (Layer 5), before final return
+- Adjustments are small deltas (-0.03 to -0.05), never absolute overrides
+- Only applies to blocks where the relevant params exist (`"Mix" in params`)
+
+**Trade-offs:** Layer ordering matters — tempo must override genre delay Time. Combination adjustments must not override tempo sync. Document the order explicitly.
+
+### Pattern 3: Shared Prompt Sections (Token Budget Control)
+
+**What:** Device-agnostic knowledge lives in `families/shared/*.ts` as pure functions. All family prompts include these sections. The system prompt cache amortizes token cost — added once per cache TTL (1 hour), not per request.
+
+**Token budget principle:** Keep per-model effect guidance under 500 tokens total. Use markdown tables (scannable, compact) not prose descriptions. Each row: model name, best pairing, what to avoid, one-line note.
+
+**When to NOT add guidance:** Don't add guidance for effects where the optimal choice is obvious from the effect's name and category alone. Focus on non-obvious interactions (spring reverb + delay low-end clash; particle reverb needing space).
+
+### Pattern 4: Builder-Level Controller Sections
+
+**What:** The .hlx controller section maps parameters to hardware controllers (`@controller` value). Both snapshot-controlled (19) and EXP-controlled (1, 2) parameters write into the same section structure. The builder computes this after block positions are finalized.
+
+**Key insight from codebase:** `buildControllerSection()` already uses `buildBlockKeyMap()` to translate block keys from `PresetSpec` references to the final `dspN.blockN` format used in the file. EXP assignment reuses this same mapping mechanism — finding the block by effect type, resolving its final key, then writing the controller entry.
 
 ---
 
 ## Anti-Patterns
 
-### Anti-Pattern 1: Merged Amp Enum with Runtime Filtering
+### Anti-Pattern 1: EXP Assignment in param-engine.ts
 
-**What people do:** Keep `AMP_NAMES = [...HD2_amps, ...Agoura_amps]` as a merged enum and rely on the planner prompt to show only the relevant subset to Claude.
+**What people do:** Encode EXP controller ranges as part of parameter resolution, outputting `@controller` annotations from param-engine.
 
-**Why it's wrong:** Claude's constrained decoding validates against the Zod schema, not the prompt content. The prompt says "only use Agoura amps" but the schema allows all names. In practice, Claude respects the prompt most of the time, but constrained decoding can and does select from the full valid token set when the requested token has low probability. The Agoura leak confirmed in v4.0 post-triage is caused exactly by this pattern.
+**Why it's wrong:** param-engine returns `Record<string, number | boolean>` — a flat parameter map. `@controller` is a file-format-level concept that belongs in the controller section structure, built at builder time. param-engine would need to understand builder output format, violating separation of concerns.
 
-**Do this instead:** Per-family ToneIntent schemas (Phase 3). Agoura names must not be valid tokens in the Helix schema. This is a structural fix, not a prompt fix.
+**Do this instead:** Pass `expPedalAssignments` from ToneIntent through PresetSpec to the builder. Let the builder write controller entries after block positions are finalized.
 
----
+### Anti-Pattern 2: Effect Combination Logic as AI Instructions
 
-### Anti-Pattern 2: Capability Registry as Deep Module
+**What people do:** Write prompt text like "when you include delay and reverb, note that reverb mix should be lower to avoid wash."
 
-**What people do:** Create a `DeviceCapabilityRegistry` as a full module with registration functions, observers, and dynamic lookup — treating capability detection as a runtime concern.
+**Why it's wrong:** The AI does not set numeric parameters. The prompt correctly states: "Do NOT generate Drive, Master, Bass, Mid... or ANY numeric parameter values." Instructing the AI about numeric adjustments creates prompt-reality mismatch.
 
-**Why it's wrong:** Device capabilities in HelixTones are compile-time constants. The set of devices never changes at runtime. A deeply structured registry adds abstraction overhead without benefit. The `getCapabilities(device)` function with a switch statement is the correct level of abstraction — it is type-safe via TypeScript exhaustiveness, zero runtime overhead, and readable.
+**Do this instead:** Put model selection guidance in the prompt ("avoid Spring Reverb with large delay — low-end frequencies clash"). Put numeric adjustments as deterministic Layer 7 in param-engine.
 
-**Do this instead:** A simple function with a switch statement in `families/index.ts`. Capabilities object is a plain interface. The value is the TypeScript compile-time guarantee, not runtime infrastructure.
+### Anti-Pattern 3: Device Name String Guards
 
----
+**What people do:** `if (device === "helix_lt" || device === "helix_floor") { /* EXP */ }` — hardcoded device name strings.
 
-### Anti-Pattern 3: Migrating Chain Rules Before Catalog Isolation
+**Why it's wrong:** The PROJECT.md identifies 17+ guard sites as technical debt that v5.0 is eliminating. Adding more device name guards is anti-pattern in the v5.0 direction. New guards require updating every time a device is added.
 
-**What people do:** Try to remove guard sites in `chain-rules.ts` first because it seems like the obvious starting point.
+**Do this instead:** `if (caps.expressionPedalCount > 0)` for EXP guards. `if (caps.dualAmpSupported)` for dual-amp guards. `if (caps.mandatoryBlockTypes.includes("eq"))` for EQ insertion guards.
 
-**Why it's wrong:** `chain-rules.ts` currently imports `STADIUM_AMPS` and `AMP_MODELS` directly. Removing guards without first extracting catalogs means the guard removal refactor is tangled with the catalog split. The dependency order exists for a reason: catalog isolation (Phase 2) must precede guard removal (Phase 4).
+### Anti-Pattern 4: Bloated Per-Model Effect Table
 
-**Do this instead:** Follow the build order. Phase 2 extracts catalogs so that Phase 4 can import from `families/{family}/catalog.ts` cleanly. The import sites change and the guards change in the same Phase 4 commit — no intermediate broken state.
+**What people do:** Build a comprehensive per-model table listing all parameters, ranges, and interaction notes for every effect model.
 
----
+**Why it's wrong:** 50+ effect models at 5 lines each = 1,000+ tokens added to every prompt. Even if cached, this pushes toward context limits on long conversations and increases cache storage cost.
 
-### Anti-Pattern 4: Per-Family ToneIntent Types (not just schemas)
-
-**What people do:** Create separate TypeScript types for each family's ToneIntent (StadiumToneIntent, HelixToneIntent, etc.) and thread these through the Knowledge Layer.
-
-**Why it's wrong:** The Knowledge Layer (chain-rules, param-engine, snapshot-engine) doesn't need to know which family's schema produced the intent. It processes `ampName`, `cabName`, `effects[]`, `snapshots[]` — all of which are present in every family's intent. Creating separate types for the same shape adds generics or union types throughout the Knowledge Layer without benefit.
-
-**Do this instead:** Per-family Zod schemas for validation and constrained decoding. Single shared `ToneIntent` TypeScript type for the Knowledge Layer. The schema validates; the type provides structure. These are separate concerns.
+**Do this instead:** Cover only non-obvious pairings (15-20 entries max). Skip models where the optimal behavior is self-evident. Target 300-500 tokens. The AI already understands reverb goes after amp — don't document the obvious.
 
 ---
 
-## Integration Points
+## Build Order (with dependency rationale)
 
-### External Service Boundaries (No Changes)
+The following order minimizes blocked work and enables independent parallel execution where possible.
 
-| Service | Integration | v5.0 Change |
-|---------|-------------|-------------|
-| Claude API | Anthropic SDK, structured output, prompt caching | Schema becomes family-scoped; caching still works |
-| Gemini API | Google AI SDK, SSE streaming, Google Search | System prompt becomes family-scoped; model unchanged |
-| Supabase | Auth, Postgres, Storage | No change |
-| Vercel | Serverless functions, static Next.js | No new routes |
+**Phase A — Foundation (no dependencies, can start immediately):**
+1. `families/shared/effect-guidance.ts` — NEW file, pure function, zero deps
+2. `families/shared/tone-intent-fields.ts` — add `expPedalAssignments` field documentation
 
-### Internal Module Boundaries
+**Phase B — Type layer (depends on: nothing; blocks: all downstream):**
+3. `types.ts` — add `ExpPedalAssignment` interface, `expPedalAssignments` on `PresetSpec`
+4. `tone-intent.ts` — add optional `expPedalAssignments` Zod field to ToneIntent schema
 
-| Boundary | Communication | v5.0 Impact |
-|----------|---------------|-------------|
-| Frontend → `/api/chat` | `{ messages, device, ... }` | ADD `device` to every chat request |
-| `/api/chat` → `gemini.ts` | `getSystemPrompt(family)` | CHANGE: was no-arg, now family-scoped |
-| `/api/generate` → `planner.ts` | `buildPlannerPrompt(family, device)` | CHANGE: was `(modelList, device?)` |
-| `planner.ts` → Claude API | family-scoped `ToneIntentSchema` | CHANGE: per-family Zod schema |
-| `chain-rules.ts` → `param-engine.ts` | `BlockSpec[]` (unchanged) | NO CHANGE — interface stable |
-| `param-engine.ts` → `stadium-builder.ts` | `BlockSpec[]` with 12 params | CHANGE: builder now merges with 27-param table |
-| `families/stadium/catalog.ts` → `chain-rules.ts` | Agoura amp catalog | NEW import path (was `models.ts`) |
-| `families/helix/catalog.ts` → `chain-rules.ts` | HD2 amp catalog | NEW import path (was `models.ts`) |
+**Phase C — Knowledge layer (depends on: Phase B types; parallel with Phase D):**
+5. `chain-rules.ts` — add `buildEffectCombinationContext()`, thread to resolveParameters
+6. `param-engine.ts` — add `effectContext` parameter, add Layer 7 combination adjustments
+
+**Phase D — Prompt layer (depends on: Phase A; parallel with Phase C):**
+7. `families/helix/prompt.ts` — add effectGuidanceSection(), EXP assignment guidance
+8. `families/podgo/prompt.ts` — add effectGuidanceSection(), EXP1 guidance (volume/wah)
+9. `families/stomp/prompt.ts` — add effectGuidanceSection(), EXP availability note
+10. `families/stadium/prompt.ts` — add effectGuidanceSection() only (no EXP)
+
+**Phase E — Builder layer (depends on: Phase B types; parallel with C and D):**
+11. `preset-builder.ts` — extend `buildControllerSection()` with EXP pedal loop
+12. `podgo-builder.ts` — same EXP extension (single pedal guard)
+13. `stomp-builder.ts` — same EXP extension (dual pedal support)
+14. `stadium-builder.ts` — no change needed (expressionPedalCount: 0 guard skips)
+
+**Phase F — Validation (depends on: all above; always last):**
+15. `validate.ts` — add EXP assignment validation (effectType in chain, pedal count guard)
+
+**Rationale:**
+- Phases C and D are independent and can run in parallel after B
+- Phase E can start after B (types) without waiting for C or D
+- Phase F validates output of all phases — must be last
 
 ---
 
 ## Sources
 
-- Direct code inspection: all files in `src/lib/helix/` and `src/lib/` (v4.0, 2026-03-05)
-- `.planning/architecture-audit-v4.md` — 17 guard site count, fragility analysis
-- `.planning/PROJECT.md` — v5.0 milestone goals, current state description
-- Post-v4.0 bug triage findings: Agoura leak root cause, Stadium 12-vs-27 param bleed
+- Direct codebase inspection of all files in `src/lib/helix/` and `src/lib/families/` (2026-03-06)
+- `device-family.ts`: DeviceCapabilities interface, `expressionPedalCount` per device
+- `models.ts`: `CONTROLLERS.EXP_PEDAL_1 = 1`, `CONTROLLERS.EXP_PEDAL_2 = 2` constants confirmed
+- `types.ts`: `HlxControllerAssignment` interface (`@controller: number` field)
+- `preset-builder.ts`: `buildControllerSection()` pattern, `buildBlockKeyMap()` utility
+- `param-engine.ts`: 4-layer resolution + genre profile (Layer 5) + tempo sync (Layer 6) pattern
+- `chain-rules.ts`: `classifyEffectSlot()`, `buildEffectCombinationContext()` integration point
+- `families/shared/*.ts`: shared prompt section pattern (pure functions, cacheable)
+- `planner.ts`: `cache_control: { type: "ephemeral", ttl: "1h" }` system prompt caching
+- `.planning/PROJECT.md`: v5.0 goals, deferred effect combination note, 17+ guard site debt
 
 ---
-
-*Architecture research for: HelixTones v5.0 — Device-First Architecture*
-*Researched: 2026-03-05*
+*Architecture research for: HelixTones preset quality milestone — expression pedal, per-model effect intelligence, effect combination logic, per-device craft*
+*Researched: 2026-03-06*
