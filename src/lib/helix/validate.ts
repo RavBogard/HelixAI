@@ -126,6 +126,14 @@ export function validatePresetSpec(spec: PresetSpec, caps: DeviceCapabilities): 
         continue;
       }
 
+      // Delay Taps: integer parameter (e.g., Multi Pass uses 1-4 taps)
+      if (block.type === "delay" && key === "Taps") {
+        if (value < 1 || value > 16 || !Number.isInteger(value)) {
+          throw new Error(`Parameter '${key}' value ${value} out of range for block '${block.modelName}' (expected integer 1-16)`);
+        }
+        continue;
+      }
+
       // Stadium amp blocks: firmware params use raw Hz/dB/integer values — skip 0-1 check
       // (corpus-verified tables contain AmpCabPeak2Fc: 1000, Level: -10, Channel: 1, etc.)
       if (block.type === "amp" && STADIUM_AMPS[block.modelName]) {
