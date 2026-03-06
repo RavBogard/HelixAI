@@ -1,8 +1,9 @@
 // Comprehensive database of Helix LT amp, cab, and effect models
 // Model IDs match the HD2_* naming convention used in .hlx files
 
-import type { AmpCategory, AmpFamily, TopologyTag, DeviceTarget } from "./types";
-import { BLOCK_TYPES_PODGO, isPodGo, isStadium } from "./types";
+import type { AmpCategory, AmpFamily, TopologyTag } from "./types";
+import { BLOCK_TYPES_PODGO } from "./types";
+import type { DeviceCapabilities } from "./device-family";
 
 export interface HelixModel {
   id: string;
@@ -1621,10 +1622,10 @@ export function getAllModels(): Record<string, HelixModel> {
 }
 
 // Build a condensed model list string for the system prompt
-// Accepts optional device parameter to filter models for Pod Go or Stadium (STAD-03)
-export function getModelListForPrompt(device?: DeviceTarget): string {
-  // Stadium path: return Stadium-specific catalog (Agoura amps + HD2 effects + Stadium EQ)
-  if (device && isStadium(device)) {
+// Uses DeviceCapabilities to determine which catalog to serve
+export function getModelListForPrompt(caps: DeviceCapabilities): string {
+  // Agoura-era path: return Stadium-specific catalog (Agoura amps + HD2 effects + Stadium EQ)
+  if (caps.ampCatalogEra === "agoura") {
     const sections = [
       { title: "AMPS", models: STADIUM_AMPS },
       { title: "CABS", models: CAB_MODELS },
@@ -1645,14 +1646,14 @@ export function getModelListForPrompt(device?: DeviceTarget): string {
     }).join("\n\n");
   }
 
-  // Helix LT/Floor/Pod Go path: exclude stadiumOnly models, apply Pod Go exclusion list
+  // HD2-era path: exclude stadiumOnly models, apply Pod Go exclusion list
   const filterModels = (models: Record<string, HelixModel>): Record<string, HelixModel> => {
     const filtered: Record<string, HelixModel> = {};
     for (const [name, model] of Object.entries(models)) {
-      // Exclude Stadium-only (Agoura) models from non-Stadium devices
+      // Exclude Stadium-only (Agoura) models from HD2-era devices
       if (model.stadiumOnly) continue;
-      // Exclude Pod Go excluded models
-      if (device && isPodGo(device) && POD_GO_EXCLUDED_MODELS.has(name)) continue;
+      // Exclude Pod Go excluded models (Pod Go uses .pgp file format)
+      if (caps.fileFormat === "pgp" && POD_GO_EXCLUDED_MODELS.has(name)) continue;
       filtered[name] = model;
     }
     return filtered;
@@ -1726,10 +1727,10 @@ const POD_GO_EFFECT_SUFFIX: Record<string, "Mono" | "Stereo"> = {
 export function getModelIdForDevice(
   model: HelixModel,
   blockType: string,
-  device: DeviceTarget,
+  caps: DeviceCapabilities,
 ): string {
-  // Helix devices use model IDs as-is
-  if (!isPodGo(device)) return model.id;
+  // Non-Pod Go devices use model IDs as-is
+  if (caps.fileFormat !== "pgp") return model.id;
 
   // Amp IDs are identical between Pod Go and Helix (PGMOD-02)
   if (model.id.startsWith("HD2_Amp")) return model.id;
@@ -1752,9 +1753,9 @@ export function getModelIdForDevice(
 export function getBlockTypeForDevice(
   blockType: string,
   modelId: string,
-  device: DeviceTarget,
+  caps: DeviceCapabilities,
 ): number {
-  if (!isPodGo(device)) {
+  if (caps.fileFormat !== "pgp") {
     // Helix block type mapping (existing logic)
     switch (blockType) {
       case "amp": return 3; // AMP_WITH_CAB for standard presets
@@ -1801,10 +1802,10 @@ export function getBlockTypeForDevice(
  */
 export function isModelAvailableForDevice(
   modelName: string,
-  device: DeviceTarget,
+  caps: DeviceCapabilities,
 ): boolean {
-  // Stadium: check if model is in Stadium catalog (Agoura amps + all HD2_ effects)
-  if (isStadium(device)) {
+  // Agoura-era devices: check if model is in Stadium catalog (Agoura amps + all HD2_ effects)
+  if (caps.ampCatalogEra === "agoura") {
     // Stadium-specific Agoura amps are available
     if (modelName in STADIUM_AMPS) return true;
     // Stadium-specific EQ is available
@@ -1822,7 +1823,7 @@ export function isModelAvailableForDevice(
     if (allStadium[modelName]?.stadiumOnly) return false;
   }
 
-  // Pod Go exclusion list
-  if (!isPodGo(device)) return true;
+  // Pod Go exclusion list (Pod Go uses .pgp file format)
+  if (caps.fileFormat !== "pgp") return true;
   return !POD_GO_EXCLUDED_MODELS.has(modelName);
 }

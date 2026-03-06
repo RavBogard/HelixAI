@@ -3,8 +3,12 @@
 
 import { describe, it, expect } from "vitest";
 import { assembleSignalChain } from "./chain-rules";
+import { getCapabilities } from "./device-family";
 import type { ToneIntent } from "./tone-intent";
 import type { BlockSpec } from "./types";
+
+// Default capabilities (Helix Floor) for tests that don't specify a device
+const HELIX_CAPS = getCapabilities("helix_floor");
 
 // Helper: minimal clean ToneIntent
 function cleanIntent(overrides: Partial<ToneIntent> = {}): ToneIntent {
@@ -60,7 +64,7 @@ function crunchIntent(overrides: Partial<ToneIntent> = {}): ToneIntent {
 describe("assembleSignalChain", () => {
   // Test 1: Clean amp with no effects returns correct blocks in correct order
   it("returns blocks in order: boost (Minotaur) > amp > cab > EQ > gain block for clean amp with no effects", () => {
-    const chain = assembleSignalChain(cleanIntent());
+    const chain = assembleSignalChain(cleanIntent(), HELIX_CAPS);
 
     const names = chain.map((b) => b.modelName);
     expect(names).toEqual([
@@ -89,7 +93,7 @@ describe("assembleSignalChain", () => {
 
   // Test 2: High-gain amp returns correct blocks with Scream 808 and Horizon Gate
   it("returns blocks: Scream 808 > amp > cab > Horizon Gate > EQ > gain block for high-gain amp", () => {
-    const chain = assembleSignalChain(highGainIntent());
+    const chain = assembleSignalChain(highGainIntent(), HELIX_CAPS);
 
     const names = chain.map((b) => b.modelName);
     expect(names).toEqual([
@@ -111,7 +115,8 @@ describe("assembleSignalChain", () => {
           { modelName: "Hall", role: "toggleable" },
           { modelName: "70s Chorus", role: "toggleable" },
         ],
-      })
+      }),
+      HELIX_CAPS
     );
 
     const dsp1Names = chain
@@ -133,7 +138,8 @@ describe("assembleSignalChain", () => {
     const chain = assembleSignalChain(
       cleanIntent({
         effects: [{ modelName: "Minotaur", role: "always_on" }],
-      })
+      }),
+      HELIX_CAPS
     );
 
     const minotaurBlocks = chain.filter((b) => b.modelName === "Minotaur");
@@ -148,7 +154,7 @@ describe("assembleSignalChain", () => {
 
   // Test 5: Crunch amp uses Minotaur boost (not Scream 808)
   it("uses Minotaur boost for crunch amp", () => {
-    const chain = assembleSignalChain(crunchIntent());
+    const chain = assembleSignalChain(crunchIntent(), HELIX_CAPS);
 
     const boostBlock = chain.find(
       (b) => b.modelName === "Minotaur" || b.modelName === "Scream 808"
@@ -170,7 +176,8 @@ describe("assembleSignalChain", () => {
           { modelName: "Deluxe Comp", role: "toggleable" },
           { modelName: "UK Wah 846", role: "toggleable" },
         ],
-      })
+      }),
+      HELIX_CAPS
     );
 
     const dsp0NonCab = chain.filter(
@@ -186,7 +193,7 @@ describe("assembleSignalChain", () => {
 
   // Test 7: Cab block has type "cab" and is on DSP0
   it("cab block has type 'cab' and is on DSP0", () => {
-    const chain = assembleSignalChain(cleanIntent());
+    const chain = assembleSignalChain(cleanIntent(), HELIX_CAPS);
 
     const cabBlock = chain.find((b) => b.type === "cab");
     expect(cabBlock).toBeDefined();
@@ -202,7 +209,8 @@ describe("assembleSignalChain", () => {
           { modelName: "Simple Delay", role: "toggleable" },
           { modelName: "Hall", role: "toggleable" },
         ],
-      })
+      }),
+      HELIX_CAPS
     );
 
     for (const block of chain) {
@@ -218,7 +226,8 @@ describe("assembleSignalChain", () => {
           { modelName: "Simple Delay", role: "toggleable" },
           { modelName: "Hall", role: "toggleable" },
         ],
-      })
+      }),
+      HELIX_CAPS
     );
 
     for (const block of chain) {
@@ -234,7 +243,8 @@ describe("assembleSignalChain", () => {
           { modelName: "Simple Delay", role: "toggleable" },
           { modelName: "Hall", role: "toggleable" },
         ],
-      })
+      }),
+      HELIX_CAPS
     );
 
     for (const block of chain) {
@@ -251,14 +261,14 @@ describe("assembleSignalChain", () => {
   // Test 11: Unknown amp name throws error
   it("throws error for unknown amp name", () => {
     expect(() =>
-      assembleSignalChain(cleanIntent({ ampName: "NonExistent Amp" }))
+      assembleSignalChain(cleanIntent({ ampName: "NonExistent Amp" }), HELIX_CAPS)
     ).toThrow(/unknown amp model/i);
   });
 
   // Test 12: Unknown cab name throws error
   it("throws error for unknown cab name", () => {
     expect(() =>
-      assembleSignalChain(cleanIntent({ cabName: "NonExistent Cab" }))
+      assembleSignalChain(cleanIntent({ cabName: "NonExistent Cab" }), HELIX_CAPS)
     ).toThrow(/unknown cab model/i);
   });
 
@@ -268,7 +278,8 @@ describe("assembleSignalChain", () => {
       assembleSignalChain(
         cleanIntent({
           effects: [{ modelName: "NonExistent Effect", role: "toggleable" }],
-        })
+        }),
+        HELIX_CAPS
       )
     ).toThrow(/unknown effect model/i);
   });
@@ -282,7 +293,8 @@ describe("assembleSignalChain", () => {
           { modelName: "Hall", role: "toggleable" },
           { modelName: "70s Chorus", role: "toggleable" },
         ],
-      })
+      }),
+      HELIX_CAPS
     );
 
     // DSP0 non-cab blocks should have sequential positions starting at 0
@@ -308,7 +320,7 @@ describe("assembleSignalChain", () => {
 
   // Additional: high-gain with effects confirms Horizon Gate placement
   it("Horizon Gate is placed after cab and before EQ for high-gain amps", () => {
-    const chain = assembleSignalChain(highGainIntent());
+    const chain = assembleSignalChain(highGainIntent(), HELIX_CAPS);
 
     const names = chain.map((b) => b.modelName);
     const cabIndex = names.indexOf("4x12 Cali V30");
@@ -324,7 +336,8 @@ describe("assembleSignalChain", () => {
     const chain = assembleSignalChain(
       highGainIntent({
         effects: [{ modelName: "Scream 808", role: "always_on" }],
-      })
+      }),
+      HELIX_CAPS
     );
 
     const screamBlocks = chain.filter((b) => b.modelName === "Scream 808");
@@ -333,7 +346,7 @@ describe("assembleSignalChain", () => {
 
   // Additional: enabled is true for all blocks
   it("all blocks have enabled: true", () => {
-    const chain = assembleSignalChain(cleanIntent());
+    const chain = assembleSignalChain(cleanIntent(), HELIX_CAPS);
     for (const block of chain) {
       expect(block.enabled).toBe(true);
     }
@@ -341,7 +354,7 @@ describe("assembleSignalChain", () => {
 
   // Additional: stereo is false for all blocks
   it("all blocks have stereo: false", () => {
-    const chain = assembleSignalChain(cleanIntent());
+    const chain = assembleSignalChain(cleanIntent(), HELIX_CAPS);
     for (const block of chain) {
       expect(block.stereo).toBe(false);
     }
@@ -355,7 +368,8 @@ describe("assembleSignalChain", () => {
           { modelName: "UK Wah 846", role: "toggleable" },
           { modelName: "Deluxe Comp", role: "toggleable" },
         ],
-      })
+      }),
+      HELIX_CAPS
     );
 
     const dsp0Names = chain
@@ -376,7 +390,8 @@ describe("assembleSignalChain", () => {
     const chain = assembleSignalChain(
       cleanIntent({
         effects: [{ modelName: "Teemah!", role: "toggleable" }],
-      })
+      }),
+      HELIX_CAPS
     );
 
     const dsp0Names = chain
@@ -405,7 +420,8 @@ describe("assembleSignalChain", () => {
             { modelName: "Vermin Dist", role: "toggleable" },
             { modelName: "Arbitrator Fuzz", role: "toggleable" },
           ],
-        })
+        }),
+        HELIX_CAPS
       )
     ).toThrow(/DSP0 block limit exceeded.*non-cab blocks.*max 8/);
   });
@@ -424,7 +440,7 @@ describe("assembleSignalChain", () => {
           { name: "Ambient", toneRole: "ambient" },
         ],
       }),
-      "helix_stadium"
+      getCapabilities("helix_stadium")
     );
     const ampBlock = chain.find((b) => b.type === "amp");
     expect(ampBlock).toBeDefined();
@@ -435,7 +451,7 @@ describe("assembleSignalChain", () => {
     // "US Double Nrm" is an HD2 clean amp — should fallback to an Agoura clean amp
     const chain = assembleSignalChain(
       cleanIntent({ ampName: "US Double Nrm" }),
-      "helix_stadium"
+      getCapabilities("helix_stadium")
     );
     const ampBlock = chain.find((b) => b.type === "amp");
     expect(ampBlock).toBeDefined();
@@ -445,7 +461,7 @@ describe("assembleSignalChain", () => {
   it("Stadium preset with HD2 Plexi falls back to Agoura Brit Plexi (basedOn match)", () => {
     const chain = assembleSignalChain(
       cleanIntent({ ampName: "Brit Plexi Jump" }),
-      "helix_stadium"
+      getCapabilities("helix_stadium")
     );
     const ampBlock = chain.find((b) => b.type === "amp");
     expect(ampBlock).toBeDefined();
@@ -453,7 +469,7 @@ describe("assembleSignalChain", () => {
   });
 
   it("Helix LT preset with valid HD2 amp produces HD2_* model IDs", () => {
-    const chain = assembleSignalChain(cleanIntent(), "helix_lt");
+    const chain = assembleSignalChain(cleanIntent(), getCapabilities("helix_lt"));
     const ampBlock = chain.find((b) => b.type === "amp");
     expect(ampBlock).toBeDefined();
     expect(ampBlock!.modelId).toMatch(/^HD2_/);
@@ -463,7 +479,7 @@ describe("assembleSignalChain", () => {
     // "Agoura Brit Plexi" is Stadium-only — should fallback to closest HD2 amp for Stomp XL
     const chain = assembleSignalChain(
       cleanIntent({ ampName: "Agoura Brit Plexi" }),
-      "helix_stomp_xl"
+      getCapabilities("helix_stomp_xl")
     );
     const ampBlock = chain.find((b) => b.type === "amp");
     expect(ampBlock).toBeDefined();
@@ -475,7 +491,7 @@ describe("assembleSignalChain", () => {
     // "Agoura US Clean" is Stadium-only — should map to a Fender clean HD2 amp
     const chain = assembleSignalChain(
       cleanIntent({ ampName: "Agoura US Clean" }),
-      "helix_floor"
+      getCapabilities("helix_floor")
     );
     const ampBlock = chain.find((b) => b.type === "amp");
     expect(ampBlock).toBeDefined();
