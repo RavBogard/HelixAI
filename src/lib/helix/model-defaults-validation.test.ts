@@ -83,10 +83,10 @@ function buildSpecForBlock(block: BlockSpec, isStadium: boolean): PresetSpec {
     snapshots: [
       {
         name: "Snapshot 1",
-        index: 0,
-        blocks: {},
-        tempo: 120,
-        bypassState: {},
+        description: "",
+        ledColor: 0,
+        blockStates: {},
+        parameterOverrides: {},
       },
     ],
   };
