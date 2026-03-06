@@ -16,8 +16,9 @@ import {
   isPodGo,
   isStadium,
   isStomp,
+  resolveFamily,
 } from "@/lib/helix";
-import type { PresetSpec, DeviceTarget, SubstitutionMap } from "@/lib/helix";
+import type { PresetSpec, DeviceTarget, SubstitutionMap, DeviceFamily } from "@/lib/helix";
 import type { RigIntent } from "@/lib/helix";
 import { mapRigToSubstitutions, parseRigText } from "@/lib/rig-mapping";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -41,6 +42,12 @@ export async function POST(req: NextRequest) {
     } else {
       deviceTarget = "helix_lt";
     }
+
+    // Resolve device family at pipeline entry (Phase 61).
+    // deviceFamily is ready for downstream phases (62-65) to consume.
+    // Note: helix_rack, pod_go_xl, helix_stadium_xl fall through to defaults above — acceptable
+    // because their builders don't ship until v5.1.
+    const deviceFamily: DeviceFamily = resolveFamily(deviceTarget);
 
     if (!messages || messages.length === 0) {
       return NextResponse.json(

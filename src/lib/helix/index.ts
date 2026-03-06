@@ -27,3 +27,6 @@ export { buildStompFile, summarizeStompPreset } from "./stomp-builder";
 // Rig Emulation schemas (Phase 17)
 export { PhysicalPedalSchema, RigIntentSchema, SubstitutionEntrySchema, SubstitutionMapSchema } from "./rig-intent";
 export type { PhysicalPedal, RigIntent, SubstitutionEntry, SubstitutionMap } from "./rig-intent";
+// Device family routing (Phase 61)
+export { resolveFamily, getCapabilities } from "./device-family";
+export type { DeviceFamily, DeviceCapabilities } from "./device-family";
