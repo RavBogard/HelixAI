@@ -120,7 +120,7 @@
 #### Phase Summary
 
 - [x] **Phase 61: Family Router and Capabilities** — Define DeviceFamily type, resolveFamily(), and DeviceCapabilities — the type-system foundation all other phases depend on
-- [ ] **Phase 62: Catalog Isolation** — Extract per-family amp and effect catalogs, eliminate merged AMP_NAMES, close the Agoura leak at the structural level
+- [x] **Phase 62: Catalog Isolation** — Extract per-family amp and effect catalogs, eliminate merged AMP_NAMES, close the Agoura leak at the structural level
 - [ ] **Phase 63: Stadium Firmware Parameter Completeness** — Extract all 27+ firmware params from real .hsp corpus and emit them on every Stadium amp block
 - [ ] **Phase 64: Knowledge Layer Guard Removal** — Replace 17+ boolean guard sites in chain-rules.ts, param-engine.ts, and validate.ts with DeviceCapabilities-driven dispatch
 - [ ] **Phase 65: Device-Specific Prompts** — Create per-family planner and chat prompt templates with only family-appropriate model catalogs and conversation arcs
@@ -155,8 +155,8 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 62-01: Per-family catalog modules (stadium/catalog.ts, helix/catalog.ts, stomp/catalog.ts, podgo/catalog.ts)
-- [ ] 62-02: Per-family ToneIntent schemas and getToneIntentSchema() factory, eliminate global AMP_NAMES
+- [x] 62-01: Per-family catalog modules (stadium/catalog.ts, helix/catalog.ts, stomp/catalog.ts, podgo/catalog.ts)
+- [x] 62-02: Per-family ToneIntent schemas and getToneIntentSchema() factory, eliminate global AMP_NAMES
 
 ### Phase 63: Stadium Firmware Parameter Completeness
 **Goal**: Every Stadium preset emits all 27+ firmware parameters per amp block, sourced from real .hsp corpus extraction — param bleed from previously loaded presets on hardware is eliminated
@@ -232,12 +232,12 @@ Plans:
 | 42,48-51 | v3.2 | 8 | Complete | 2026-03-05 |
 | 52-60 | v4.0 | 13 | Complete | 2026-03-05 |
 | 61. Family Router | v5.0 | Complete    | 2026-03-06 | 2026-03-06 |
-| 62. Catalog Isolation | 1/2 | In Progress|  | - |
+| 62. Catalog Isolation | v5.0 | 2/2 | Complete | 2026-03-06 |
 | 63. Stadium Firmware Params | v5.0 | 0/2 | Not started | - |
 | 64. Knowledge Layer Guards | v5.0 | 0/2 | Not started | - |
 | 65. Device-Specific Prompts | v5.0 | 0/2 | Not started | - |
 | 66. Frontend Picker + DB | v5.0 | 0/2 | Not started | - |
 
 ---
-*Last updated: 2026-03-06 after Phase 61 completion (Family Router and Capabilities)*
+*Last updated: 2026-03-06 after Phase 62 completion (Catalog Isolation)*
 *Full phase details for completed milestones archived in `.planning/milestones/`*
