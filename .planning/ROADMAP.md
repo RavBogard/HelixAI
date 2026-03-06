@@ -126,7 +126,7 @@
 - [x] **Phase 65: Device-Specific Prompts** — Create per-family planner and chat prompt templates with only family-appropriate model catalogs and conversation arcs
 - [x] **Phase 66: Frontend Picker and Database Migration** — Move device picker to conversation start, add device column to Supabase conversations table, handle legacy rows
 - [x] **Phase 67: Stadium Integration Quality** — Fix WAH/VOLUME catalog gap, dual-amp capability mismatch, TODO(Phase62) placeholder in prompt, and add schema/prompt integration tests (completed 2026-03-06)
-- [ ] **Phase 68: Token Control and Prompt Caching** — Reduce API costs without degrading preset quality: optimize token budgets, maximize prompt caching, audit system prompt sizes
+- [x] **Phase 68: Token Control and Prompt Caching** — Reduce API costs without degrading preset quality: optimize token budgets, maximize prompt caching, audit system prompt sizes (completed 2026-03-06)
 
 ## Phase Details
 
@@ -240,7 +240,7 @@ Plans:
 | 65. Device-Specific Prompts | v5.0 | 2/2 | Complete | 2026-03-06 |
 | 66. Frontend Picker + DB | v5.0 | Complete    | 2026-03-06 | 2026-03-06 |
 | 67. Stadium Integration Quality | 2/2 | Complete    | 2026-03-06 | - |
-| 68. Token Control + Caching | 1/2 | In Progress|  | - |
+| 68. Token Control + Caching | 2/2 | Complete   | 2026-03-06 | - |
 
 ### Phase 67: Stadium Integration Quality
 
@@ -263,7 +263,7 @@ Plans:
 **Goal:** Reduce API costs without degrading preset quality — optimize token usage across planner prompts (per-family prompt token budgets, trim redundant catalog entries from prompt text), maximize Anthropic prompt caching hit rates (measure per-device cache performance via usage-logger.ts, consider shared prompt buckets for low-volume devices like Stadium and Pod Go), audit system prompt sizes across all families, and implement any structural changes needed to keep cost per preset generation low as the device count grows
 **Requirements**: TBD (no formal requirement IDs — cost optimization phase)
 **Depends on:** Phase 66 (full pipeline must be wired before measuring token economics)
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] 68-01-PLAN.md — Fix cache write pricing bug ($3.75 -> $6.00 for 1h TTL), per-device cache statistics breakdown, prompt token measurement script

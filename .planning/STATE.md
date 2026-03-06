@@ -6,9 +6,9 @@ status: in_progress
 last_updated: "2026-03-06"
 progress:
   total_phases: 8
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 15
-  completed_plans: 14
+  completed_plans: 15
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-05)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** v5.0 Phases 61-67 complete. Phase 68 (Token Control and Prompt Caching) in progress — Plan 02 complete, Plan 01 remaining.
+**Current focus:** v5.0 Phases 61-68 complete — all phases done. Phase 68 (Token Control and Prompt Caching) complete.
 
 ## Current Position
 
-Phase: Phase 68 in progress — 1 of 2 plans complete (68-02 done, 68-01 remaining)
-Plan: 68-02 complete — Stomp cache unification (byte-identical system prompt for both variants)
-Status: Phase 68 in progress — Stomp family cache unification shipped
-Last activity: 2026-03-06 — Completed 68-02 (unified stomp planner prompt, stompVariantRestriction in planner.ts)
+Phase: Phase 68 complete — all 2 plans done
+Plan: 68-01 complete — cache write pricing fix, per-device cache stats, prompt token measurement script
+Status: Phase 68 COMPLETE — all v5.0 phases done
+Last activity: 2026-03-06 — Completed 68-01 (CLAUDE_SONNET_PRICE fix $3.75->$6.00, parseCacheReportByDevice(), measure-prompt-sizes.ts)
 
-Progress: [███████████████████████████████░] 93% (14/15 plans complete)
+Progress: [████████████████████████████████] 100% (15/15 plans complete)
 
 ## Performance Metrics
 
@@ -48,6 +48,7 @@ Progress: [███████████████████████
 | 67-02 (Stadium Prompt + Integration Test) | 1 | ~3 min | ~3 min |
 | 66 (Frontend Picker + DB Migration) | 2 | ~18 min | ~9 min |
 | 68-02 (Stomp Cache Unification) | 1 | ~4 min | ~4 min |
+| 68-01 (Token Control and Prompt Caching) | 1 | ~4 min | ~4 min |
 
 *Updated after each plan completion*
 
@@ -93,6 +94,9 @@ Progress: [███████████████████████
 - [68-02]: Stomp planner prompt unified to byte-identical text for helix_stomp and helix_stomp_xl — device restriction moved to user message via stompRestriction in planner.ts, matching Helix LT/Floor cache unification pattern
 - [68-02]: Conservative system prompt values (6 blocks, 3 snapshots) used as unified reference; stompRestriction in user message overrides with exact per-device values
 - [68-02]: _device parameter prefix in buildPlannerPrompt signals intentionally unused while preserving type-contract with prompt-router.ts
+- [68-01]: cache_write_per_mtok corrected from 3.75 to 6.0 — 1h TTL uses 2x input price ($6.00/MTok), not 1.25x (5-min price $3.75/MTok); bug existed since Phase 42
+- [68-01]: parseCacheReportByDevice() composes existing parseCacheReport() per device group — no new computation logic, groups by record.device ?? "unknown"
+- [68-01]: measure-prompt-sizes.ts is a manual diagnostic only — uses countTokens API (free, no generation charge), excluded from automated test suite
 
 ### Roadmap Evolution
 
@@ -102,12 +106,12 @@ Progress: [███████████████████████
 ### Blockers/Concerns
 
 - ~~**Phase 63 pre-work:** Firmware param extraction script must run against corpus before Phase 63 implementation begins~~ (RESOLVED: Phase 63 complete, all 18 amps have full firmware param tables)
-- **Phase 65 cache economics:** Measure per-device request volume via usage-logger.ts before splitting planner prompts. Low-volume devices (Stadium, Pod Go) may need shared "constrained-device" prompt bucket to sustain cache hits.
+- ~~**Phase 65 cache economics:** Measure per-device request volume via usage-logger.ts before splitting planner prompts. Low-volume devices (Stadium, Pod Go) may need shared "constrained-device" prompt bucket to sustain cache hits.~~ (RESOLVED: parseCacheReportByDevice() added in 68-01, measure-prompt-sizes.ts ready for token auditing; Stomp variants unified in 68-02)
 - **HX Edit Stadium verification:** Stadium presets unblocked but HX Edit import not verified across varied tone goals — required as success criterion for Phase 63.
 
 ## Session Continuity
 
 Last session: 2026-03-06
-Stopped at: Completed 68-02-PLAN.md (stomp cache unification, device restriction moved to user message — Phase 68 Plan 02 COMPLETE)
+Stopped at: Completed 68-01-PLAN.md (cache write pricing fix, parseCacheReportByDevice, measure-prompt-sizes.ts — Phase 68 COMPLETE, all v5.0 phases done)
 Resume file: None
-Next command: `/gsd:execute-phase 68` (Phase 68 Plan 01 — token budget controls remaining)
+Next command: None — all v5.0 phases complete
