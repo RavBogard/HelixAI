@@ -53,17 +53,25 @@ const STOMP_AMP_CAB_PAIRINGS = [
 /**
  * Build the Stomp family planner system prompt.
  *
- * Uses STOMP_CONFIG constants for block and snapshot limits — NOT hardcoded numbers.
- * Structure: static sections first for cache stability, device restrictions at end.
+ * Produces BYTE-IDENTICAL text for both helix_stomp and helix_stomp_xl so both
+ * variants share a single Anthropic prompt cache entry (one cold-write cost).
+ *
+ * Device-specific restrictions (block count, snapshot count, device name) are
+ * intentionally NOT included here — they are appended to the user message in
+ * planner.ts (see stompVariantRestriction). This matches the Helix family pattern
+ * where helix_lt and helix_floor share one cache entry.
+ *
+ * The _device parameter is kept for type-contract compatibility with prompt-router.ts
+ * (getFamilyPlannerPrompt calls buildPlannerPrompt(device, modelList)) but is unused.
  */
-export function buildPlannerPrompt(device: DeviceTarget, modelList: string): string {
-  const isXL = device === "helix_stomp_xl";
-  const deviceName = isXL ? "HX Stomp XL" : "HX Stomp";
-  const maxBlocks = isXL ? STOMP_CONFIG.STOMP_XL_MAX_BLOCKS : STOMP_CONFIG.STOMP_MAX_BLOCKS;
-  const maxSnapshots = isXL ? STOMP_CONFIG.STOMP_XL_MAX_SNAPSHOTS : STOMP_CONFIG.STOMP_MAX_SNAPSHOTS;
-  const maxEffects = isXL ? 6 : 4;
+export function buildPlannerPrompt(_device: DeviceTarget, modelList: string): string {
+  // Use conservative (more constrained) values as the unified reference.
+  // The exact device restriction will be in the user message via planner.ts.
+  const maxEffects = 4; // STOMP conservative value (XL allows 6, but user message clarifies)
+  const maxSnapshots = STOMP_CONFIG.STOMP_MAX_SNAPSHOTS; // 3 (conservative; XL is 4)
+  const maxBlocks = STOMP_CONFIG.STOMP_MAX_BLOCKS; // 6 (conservative; XL is 9)
 
-  return `You are HelixTones' Planner. You choose creative model selections for ${deviceName} presets.
+  return `You are HelixTones' Planner. You choose creative model selections for HX Stomp family presets.
 
 ## Your Role
 
@@ -94,9 +102,9 @@ ${gainStagingSection()}
 
 ${ampCabPairingSection(STOMP_AMP_CAB_PAIRINGS)}
 
-## Effect Discipline by Genre (${deviceName} — ${maxBlocks} block budget)
+## Effect Discipline by Genre (HX Stomp family — ${maxBlocks} block slots)
 
-${deviceName} has ${maxBlocks} total block slots (including amp + cab). Every effect competes for limited slots. Choose effects that earn their slot:
+HX Stomp family has ${maxBlocks} block slots total (including amp + cab). Every effect competes for limited slots. Choose effects that earn their slot:
 
 - **Metal / hard rock**: Maximum 2 effects. Drive is mandatory; optional tight delay at low mix. Do NOT include reverb or modulation — save slots for the essentials.
   Priority: drive > delay > mod
@@ -109,13 +117,11 @@ ${deviceName} has ${maxBlocks} total block slots (including amp + cab). Every ef
 
 ## Genre-Based Priority When Over Budget
 
-When the user's tone requires more effects than ${deviceName} can fit:
+When the user's tone requires more effects than HX Stomp family can fit:
 - **Metal**: drive > delay > mod (cut modulation first, then delay)
 - **Ambient**: reverb > delay > mod > drive (cut drive first)
 - **Blues/Rock**: delay > reverb > drive (cut drive if it's just a boost)
 - **General rule**: Cut the effect whose absence changes the tone the least
-
-**DEVICE RESTRICTION: This is an ${deviceName} preset. ${deviceName} is a single-DSP, series-only device. Do NOT populate secondAmpName or secondCabName. Generate exactly ${maxSnapshots} snapshots (not 4, not 8).${!isXL ? ` Keep effects to 2-4 maximum — HX Stomp has limited DSP and only ${maxBlocks} block slots total (including amp + cab).` : ` Keep effects to 4-6 maximum — HX Stomp XL has ${maxBlocks} block slots total.`}**
 
 Based on the conversation below, generate a ToneIntent:`;
 }

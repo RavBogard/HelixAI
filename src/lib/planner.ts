@@ -50,6 +50,22 @@ export async function callClaudePlanner(
     ? `${conversationText}\n\n---\n\n${toneContext}`
     : conversationText;
 
+  // Stomp cache unification: device-specific restriction goes in user message
+  // so helix_stomp and helix_stomp_xl share a single system prompt cache entry.
+  // The system prompt uses conservative values (6 blocks, 3 snapshots) as reference;
+  // this restriction overrides with exact per-device values.
+  const resolvedFamily = family ?? "helix";
+  let stompRestriction = "";
+  if (resolvedFamily === "stomp") {
+    const isXL = effectiveDevice === "helix_stomp_xl";
+    const deviceLabel = isXL ? "HX Stomp XL" : "HX Stomp";
+    const blocks = isXL ? 9 : 6;
+    const snaps = isXL ? 4 : 3;
+    const maxFx = isXL ? 6 : 4;
+    stompRestriction = `\n\nDEVICE RESTRICTION: This is an ${deviceLabel} preset. ${deviceLabel} is a single-DSP, series-only device. Do NOT populate secondAmpName or secondCabName. Generate exactly ${snaps} snapshots (not ${snaps === 3 ? "4" : "3"}, not 8). Keep effects to ${maxFx} maximum — ${deviceLabel} has ${blocks} block slots total (including amp + cab).`;
+  }
+  const finalUserContent = userContent + stompRestriction;
+
   const response = await client.messages.create({
     model: "claude-sonnet-4-6",
     max_tokens: 4096,
@@ -60,7 +76,7 @@ export async function callClaudePlanner(
         cache_control: { type: "ephemeral" as const, ttl: "1h" },
       },
     ],
-    messages: [{ role: "user", content: userContent }],
+    messages: [{ role: "user", content: finalUserContent }],
     output_config: {
       format: zodOutputFormat(getToneIntentSchema(family ?? "helix")),
     },
