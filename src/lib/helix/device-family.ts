@@ -45,6 +45,15 @@ export interface DeviceCapabilities {
   ampCatalogEra: "hd2" | "agoura";
   /** Block types valid for this device */
   availableBlockTypes: ReadonlyArray<BlockSpec["type"]>;
+  /** Max user-assignable effect blocks per DSP. Use Infinity for devices with no explicit effect cap. */
+  maxEffectsPerDsp: number;
+  /** Block types auto-inserted as mandatory blocks during chain assembly.
+   * Helix/Stadium: ['eq', 'volume'] (Parametric EQ + Gain Block).
+   * Pod Go/Stomp: [] (block budget too tight for mandatory inserts). */
+  mandatoryBlockTypes: ReadonlyArray<"eq" | "volume">;
+  /** Model ID suffix for this device (reserved — currently null for all devices).
+   * Pod Go suffix routing is per-block-type via POD_GO_EFFECT_SUFFIX in models.ts. */
+  modelSuffix: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -106,6 +115,9 @@ const HELIX_CAPABILITIES: DeviceCapabilities = {
   fileFormat: "hlx",
   ampCatalogEra: "hd2",
   availableBlockTypes: ALL_BLOCK_TYPES,
+  maxEffectsPerDsp: Infinity,
+  mandatoryBlockTypes: ["eq", "volume"] as const,
+  modelSuffix: null,
 } as const;
 
 const STOMP_CAPABILITIES: DeviceCapabilities = {
@@ -122,6 +134,9 @@ const STOMP_CAPABILITIES: DeviceCapabilities = {
   fileFormat: "hlx",
   ampCatalogEra: "hd2",
   availableBlockTypes: ALL_BLOCK_TYPES,
+  maxEffectsPerDsp: 2,
+  mandatoryBlockTypes: [] as const,
+  modelSuffix: null,
 } as const;
 
 const STOMP_XL_CAPABILITIES: DeviceCapabilities = {
@@ -138,6 +153,9 @@ const STOMP_XL_CAPABILITIES: DeviceCapabilities = {
   fileFormat: "hlx",
   ampCatalogEra: "hd2",
   availableBlockTypes: ALL_BLOCK_TYPES,
+  maxEffectsPerDsp: 5,
+  mandatoryBlockTypes: [] as const,
+  modelSuffix: null,
 } as const;
 
 const POD_GO_CAPABILITIES: DeviceCapabilities = {
@@ -154,6 +172,9 @@ const POD_GO_CAPABILITIES: DeviceCapabilities = {
   fileFormat: "pgp",
   ampCatalogEra: "hd2",
   availableBlockTypes: POD_GO_BLOCK_TYPES,
+  maxEffectsPerDsp: 4,
+  mandatoryBlockTypes: [] as const,
+  modelSuffix: null,
 } as const;
 
 // Stadium and Stadium XL share capabilities.
@@ -173,6 +194,9 @@ const STADIUM_CAPABILITIES: DeviceCapabilities = {
   fileFormat: "hsp",
   ampCatalogEra: "agoura",
   availableBlockTypes: ALL_BLOCK_TYPES,
+  maxEffectsPerDsp: 4,
+  mandatoryBlockTypes: ["eq", "volume"] as const,
+  modelSuffix: null,
 } as const;
 
 // ---------------------------------------------------------------------------
