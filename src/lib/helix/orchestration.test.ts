@@ -571,3 +571,33 @@ describe("HX Stomp end-to-end pipeline (STOMP-06 simulation)", () => {
     expect(() => mapRigToSubstitutions(mockRigIntent, "helix_stomp_xl")).not.toThrow();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Controller section DSP mapping
+// ---------------------------------------------------------------------------
+
+describe("Controller section DSP mapping", () => {
+  it("gain block controller entry is on dsp1, not dsp0", () => {
+    // High-gain preset has a gain block on dsp1 with snapshot-varying Gain parameter.
+    // The controller section must place the Gain min/max on dsp1.blockN, not dsp0.
+    const intent = highGainIntent();
+    const spec = buildPresetSpec(intent);
+    validatePresetSpec(spec);
+    const hlx = buildHlxFile(spec);
+
+    const controller = hlx.data.tone.controller as Record<string, Record<string, Record<string, unknown>>>;
+
+    // Gain block's Gain parameter should NOT appear under dsp0
+    for (const [blockKey, params] of Object.entries(controller.dsp0 || {})) {
+      expect(params).not.toHaveProperty("Gain",
+        expect.objectContaining({ "@controller": 19 }));
+    }
+
+    // Gain block's Gain parameter SHOULD appear under dsp1
+    const dsp1Blocks = controller.dsp1 || {};
+    const hasGainController = Object.values(dsp1Blocks).some(
+      (params: Record<string, unknown>) => params["Gain"] !== undefined
+    );
+    expect(hasGainController).toBe(true);
+  });
+});

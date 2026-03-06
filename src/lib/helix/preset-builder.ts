@@ -423,38 +423,39 @@ function buildControllerSection(spec: PresetSpec) {
 
   const blockKeyMap = buildBlockKeyMap(spec.signalChain);
 
-  // Collect all parameters that vary across snapshots and register them as snapshot-controlled
+  // Collect all parameters that vary across snapshots and register them as snapshot-controlled.
+  // Key by ORIGINAL blockKey (not resolved) so blockKeyMap lookup works correctly later.
   const paramVariations = new Map<string, Map<string, Set<number>>>();
 
   for (const snapshot of spec.snapshots) {
     for (const [blockKey, params] of Object.entries(snapshot.parameterOverrides)) {
-      const mapping = blockKeyMap.get(blockKey);
-      const resolvedKey = mapping ? mapping.perDspKey : blockKey;
-
-      if (!paramVariations.has(resolvedKey)) {
-        paramVariations.set(resolvedKey, new Map());
+      if (!paramVariations.has(blockKey)) {
+        paramVariations.set(blockKey, new Map());
       }
       for (const [paramName, value] of Object.entries(params)) {
-        if (!paramVariations.get(resolvedKey)!.has(paramName)) {
-          paramVariations.get(resolvedKey)!.set(paramName, new Set());
+        if (!paramVariations.get(blockKey)!.has(paramName)) {
+          paramVariations.get(blockKey)!.set(paramName, new Set());
         }
-        paramVariations.get(resolvedKey)!.get(paramName)!.add(value);
+        paramVariations.get(blockKey)!.get(paramName)!.add(value);
       }
     }
   }
 
-  // Only register parameters that actually vary across snapshots
+  // Only register parameters that actually vary across snapshots.
+  // Use mapping.perDspKey for the output key (matching per-snapshot controller pattern).
   for (const [blockKey, params] of paramVariations.entries()) {
     const mapping = blockKeyMap.get(blockKey);
-    const dspKey = mapping?.dsp === 1 ? "dsp1" : "dsp0";
+    if (!mapping) continue;
+    const dspKey = mapping.dsp === 1 ? "dsp1" : "dsp0";
+    const resolvedKey = mapping.perDspKey;
 
     for (const [paramName, values] of params.entries()) {
       if (values.size > 1) {
-        if (!controller[dspKey][blockKey]) {
-          controller[dspKey][blockKey] = {};
+        if (!controller[dspKey][resolvedKey]) {
+          controller[dspKey][resolvedKey] = {};
         }
         const allValues = Array.from(values);
-        controller[dspKey][blockKey][paramName] = {
+        controller[dspKey][resolvedKey][paramName] = {
           "@min": Math.min(...allValues),
           "@max": Math.max(...allValues),
           "@controller": CONTROLLERS.SNAPSHOT,
