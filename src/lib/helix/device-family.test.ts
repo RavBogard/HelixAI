@@ -168,8 +168,8 @@ describe("getCapabilities", () => {
       expect(getCapabilities("helix_stadium").ampCatalogEra).toBe("agoura");
     });
 
-    it("dualAmpSupported === true", () => {
-      expect(getCapabilities("helix_stadium").dualAmpSupported).toBe(true);
+    it("dualAmpSupported === false", () => {
+      expect(getCapabilities("helix_stadium").dualAmpSupported).toBe(false);
     });
 
     it("maxSnapshots === 8", () => {
@@ -184,6 +184,10 @@ describe("getCapabilities", () => {
 
     it('fileFormat === "hsp"', () => {
       expect(getCapabilities("helix_stadium_xl").fileFormat).toBe("hsp");
+    });
+
+    it("dualAmpSupported === false", () => {
+      expect(getCapabilities("helix_stadium_xl").dualAmpSupported).toBe(false);
     });
   });
 
