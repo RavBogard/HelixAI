@@ -6,6 +6,7 @@ import {
 } from "./stadium-catalog";
 import { HELIX_AMP_NAMES } from "./helix-catalog";
 import { WAH_MODELS, VOLUME_MODELS } from "../models";
+import { getToneIntentSchema } from "../tone-intent";
 
 describe("stadium-catalog", () => {
   describe("STADIUM_AMP_NAMES", () => {
@@ -45,20 +46,52 @@ describe("stadium-catalog", () => {
       expect(STADIUM_EFFECT_NAMES).toContain("10 Band Graphic");
     });
 
-    it("has no overlap with WAH_MODELS keys", () => {
-      const wahKeys = Object.keys(WAH_MODELS);
-      const overlap = STADIUM_EFFECT_NAMES.filter((name) =>
-        wahKeys.includes(name),
-      );
-      expect(overlap).toEqual([]);
+    it("contains all WAH_MODELS keys", () => {
+      for (const key of Object.keys(WAH_MODELS)) {
+        expect(STADIUM_EFFECT_NAMES).toContain(key);
+      }
     });
 
-    it("has no overlap with VOLUME_MODELS keys", () => {
-      const volumeKeys = Object.keys(VOLUME_MODELS);
-      const overlap = STADIUM_EFFECT_NAMES.filter((name) =>
-        volumeKeys.includes(name),
-      );
-      expect(overlap).toEqual([]);
+    it("contains all VOLUME_MODELS keys", () => {
+      for (const key of Object.keys(VOLUME_MODELS)) {
+        expect(STADIUM_EFFECT_NAMES).toContain(key);
+      }
+    });
+  });
+
+  describe("getToneIntentSchema('stadium') accepts WAH and VOLUME effect names", () => {
+    const schema = getToneIntentSchema("stadium");
+    const wahKey = Object.keys(WAH_MODELS)[0];
+    const volumeKey = Object.keys(VOLUME_MODELS)[0];
+
+    it("accepts a wah model name as effectName", () => {
+      const result = schema.safeParse({
+        ampName: STADIUM_AMP_NAMES[0],
+        cabName: STADIUM_CAB_NAMES[0],
+        guitarType: "humbucker",
+        effects: [{ modelName: wahKey, role: "toggleable" }],
+        snapshots: [
+          { name: "Clean", toneRole: "clean" },
+          { name: "Crunch", toneRole: "crunch" },
+          { name: "Lead", toneRole: "lead" },
+        ],
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("accepts a volume model name as effectName", () => {
+      const result = schema.safeParse({
+        ampName: STADIUM_AMP_NAMES[0],
+        cabName: STADIUM_CAB_NAMES[0],
+        guitarType: "humbucker",
+        effects: [{ modelName: volumeKey, role: "always_on" }],
+        snapshots: [
+          { name: "Clean", toneRole: "clean" },
+          { name: "Crunch", toneRole: "crunch" },
+          { name: "Lead", toneRole: "lead" },
+        ],
+      });
+      expect(result.success).toBe(true);
     });
   });
 });
