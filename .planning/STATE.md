@@ -5,10 +5,10 @@ milestone_name: Device-First Architecture
 status: in_progress
 last_updated: "2026-03-06"
 progress:
-  total_phases: 6
+  total_phases: 7
   completed_phases: 5
   total_plans: 11
-  completed_plans: 9
+  completed_plans: 10
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-05)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** v5.0 Phases 61-65 complete — ready for Phase 66 (Frontend Picker + DB Migration)
+**Current focus:** v5.0 Phases 61-65 complete — Phase 67 (Stadium Integration Quality) next, then Phase 66 (Frontend Picker + DB Migration)
 
 ## Current Position
 
-Phase: 65 of 66 (all complete through Phase 65)
-Plan: 9 of 11 plans complete (Phase 66 remaining: 2 plans)
-Status: Phases 61-65 merged — ready for Phase 66
-Last activity: 2026-03-06 — Merged parallel branches (61-64 from heuristic-taussig + 65 from condescending-khorana)
+Phase: 67 of 67 (Phase 67 in progress — Plan 01 complete)
+Plan: 10 of 11+ plans complete (Phase 67 Plan 02 + Phase 66 remaining)
+Status: Phase 67 Plan 01 complete — WAH/VOLUME catalog gap and dual-amp crash path fixed
+Last activity: 2026-03-06 — Completed 67-01 (Stadium catalog and capabilities quality fixes)
 
-Progress: [█████████████████████████░░░░░] 82% (9/11 plans complete)
+Progress: [██████████████████████████░░░░] 85% (10/11 plans complete)
 
 ## Performance Metrics
 
@@ -44,6 +44,7 @@ Progress: [███████████████████████
 | 63-stadium-firmware-parameter-completeness | 2 | ~30min | 15min |
 | 64-knowledge-layer-guard-removal | 2 | ~25min | 12min |
 | 65 (Device-Specific Prompts) | 2 | ~22 min | ~11 min |
+| 67-01 (Stadium Catalog Quality) | 1 | ~2 min | ~2 min |
 
 *Updated after each plan completion*
 
@@ -61,7 +62,7 @@ Progress: [███████████████████████
 - [61-01]: Stadium and Stadium XL share STADIUM_CAPABILITIES using conservative values — split if per-device precision needed
 - [61-01]: helix_rack/pod_go_xl/helix_stadium_xl device IDs are placeholders — UNVERIFIED pending real hardware exports
 - [62-01]: Per-family catalogs live in src/lib/helix/catalogs/{family}-catalog.ts — each exports {FAMILY}_AMP_NAMES, {FAMILY}_CAB_NAMES, {FAMILY}_EFFECT_NAMES as const tuples
-- [62-01]: EQ, WAH, VOLUME block types excluded from all EFFECT_NAMES tuples — handled silently by Knowledge Layer chain-rules
+- [62-01]: EQ, WAH, VOLUME block types excluded from all EFFECT_NAMES tuples — handled silently by Knowledge Layer chain-rules (Stadium overrides WAH/VOLUME exclusion per [67-01])
 - [62-02]: getToneIntentSchema(family) is the single factory for per-family Zod schemas — all constrained decoding goes through this
 - [62-02]: POD_GO_EFFECT_SUFFIX kept as private copy in models.ts due to circular import (models.ts <-> podgo-catalog.ts); canonical source is PODGO_EFFECT_SUFFIX in podgo-catalog.ts
 - [62-02]: ToneIntentSchema kept as @deprecated backwards-compat shim using helix catalog; no internal consumers remain
@@ -76,6 +77,12 @@ Progress: [███████████████████████
 - [v5.0/P65]: Helix Floor/LT produce byte-identical prompts (single cache entry) — device name variation goes in user message only
 - [v5.0/P65]: Stadium amp-cab pairing uses TODO(Phase62) placeholder until Agoura catalog ships
 - [v5.0/P65]: Inline resolveFamily() in prompt-router until Phase 61 ships canonical version
+- [67-01]: WAH_MODELS and VOLUME_MODELS spread into STADIUM_EFFECT_NAMES — Stadium overrides [62-01] exclusion because dualAmpSupported: false blocks the AMP_MODELS crash path; other families unchanged
+- [67-01]: STADIUM_CAPABILITIES.dualAmpSupported set to false — Stadium prompt uses includeSecondAmp: false and the dual-amp path uses HD2-only AMP_MODELS which cannot handle Agoura amp names
+
+### Roadmap Evolution
+
+- Phase 67 added: Stadium Integration Quality — fix WAH/VOLUME catalog gap, dual-amp mismatch, TODO(Phase62) placeholder, schema/prompt integration tests (discovered by post-merge audit)
 
 ### Blockers/Concerns
 
@@ -86,6 +93,6 @@ Progress: [███████████████████████
 ## Session Continuity
 
 Last session: 2026-03-06
-Stopped at: Merged parallel branches — all 5 phases (61-65) integrated
+Stopped at: Completed 67-01-PLAN.md (Stadium catalog and capabilities quality fixes)
 Resume file: None
-Next command: `/gsd:plan-phase 66`
+Next command: `/gsd:execute-phase 67` (plan 02 — remaining Stadium quality fixes)
