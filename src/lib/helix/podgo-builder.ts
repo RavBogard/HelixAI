@@ -263,7 +263,7 @@ function buildPgpSnapshot(
         controllers[mapping] = {};
       }
       for (const [paramName, value] of Object.entries(params)) {
-        controllers[mapping][paramName] = { "@fs_enabled": false, "@value": value };
+        controllers[mapping][paramName] = { "@fs_enabled": false, "@value": value as number };
       }
     }
   }
@@ -362,7 +362,7 @@ function buildPgpControllerSection(spec: PresetSpec): Record<string, unknown> {
         if (!paramVariations.get(resolvedKey)!.has(paramName)) {
           paramVariations.get(resolvedKey)!.set(paramName, new Set());
         }
-        paramVariations.get(resolvedKey)!.get(paramName)!.add(value);
+        paramVariations.get(resolvedKey)!.get(paramName)!.add(value as number);
       }
     }
   }

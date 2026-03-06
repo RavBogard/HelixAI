@@ -249,7 +249,7 @@ export function validateAndFixPresetSpec(spec: PresetSpec): ValidationResult {
   // 3. Fix snapshot block references to use correct per-DSP block keys
   for (const snapshot of fixedSpec.snapshots) {
     const newBlockStates: Record<string, boolean> = {};
-    const newParamOverrides: Record<string, Record<string, number>> = {};
+    const newParamOverrides: Record<string, Record<string, number | boolean>> = {};
 
     // Map block keys correctly for each DSP
     for (const [blockKey, enabled] of Object.entries(snapshot.blockStates)) {

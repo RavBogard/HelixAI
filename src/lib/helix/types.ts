@@ -300,7 +300,7 @@ export interface BlockSpec {
   enabled: boolean;
   stereo: boolean;
   trails?: boolean;
-  parameters: Record<string, number>;
+  parameters: Record<string, number | boolean>;
   intentRole?: "always_on" | "toggleable" | "ambient"; // From EffectIntent — used by snapshot engine for role-aware toggling
 }
 
@@ -309,5 +309,5 @@ export interface SnapshotSpec {
   description: string;
   ledColor: number;
   blockStates: Record<string, boolean>; // blockKey -> enabled
-  parameterOverrides: Record<string, Record<string, number>>; // blockKey -> paramName -> value
+  parameterOverrides: Record<string, Record<string, number | boolean>>; // blockKey -> paramName -> value
 }

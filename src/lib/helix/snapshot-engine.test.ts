@@ -331,8 +331,8 @@ describe("FX-04: snapshot ChVol balance", () => {
     expect(ampBlock).toBeDefined();
     const ampKey = findBlockKey(chain, ampBlock!);
 
-    const leadChVol = result[2].parameterOverrides[ampKey].ChVol;  // lead
-    const cleanChVol = result[0].parameterOverrides[ampKey].ChVol; // clean
+    const leadChVol = result[2].parameterOverrides[ampKey].ChVol as number;  // lead
+    const cleanChVol = result[0].parameterOverrides[ampKey].ChVol as number; // clean
 
     // FX-04 core assertion: lead must be louder than clean
     expect(leadChVol).toBeGreaterThan(cleanChVol);

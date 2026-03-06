@@ -77,15 +77,15 @@ function buildStompDsp(blocks: BlockSpec[], useVariaxInput?: boolean): HlxDsp {
   for (const block of blocks) {
     if (block.type === "cab") {
       const cabKey = `cab${cabIndex}`;
-      const mic = block.parameters["Mic"] ?? 0;
+      const mic = Number(block.parameters["Mic"] ?? 0);
       const cabParams = { ...block.parameters };
       delete cabParams["Mic"];
       dsp[cabKey] = {
         "@model": block.modelId,
         "@enabled": block.enabled,
         "@mic": mic,
-        LowCut: cabParams.LowCut ?? 80.0,
-        HighCut: cabParams.HighCut ?? 8000.0,
+        LowCut: Number(cabParams.LowCut ?? 80.0),
+        HighCut: Number(cabParams.HighCut ?? 8000.0),
         ...cabParams,
       };
       cabIndex++;
@@ -195,7 +195,7 @@ function buildStompSnapshot(
       for (const [paramName, value] of Object.entries(params)) {
         controllers.dsp0![mapping.perDspKey][paramName] = {
           "@fs_enabled": false,
-          "@value": value,
+          "@value": value as number,
         };
       }
     }
@@ -249,7 +249,7 @@ function buildControllerSection(spec: PresetSpec, maxSnapshots: number) {
         if (!paramVariations.get(resolvedKey)!.has(paramName)) {
           paramVariations.get(resolvedKey)!.set(paramName, new Set());
         }
-        paramVariations.get(resolvedKey)!.get(paramName)!.add(value);
+        paramVariations.get(resolvedKey)!.get(paramName)!.add(value as number);
       }
     }
   }

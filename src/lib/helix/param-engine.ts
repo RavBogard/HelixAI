@@ -355,7 +355,7 @@ function resolveBlockParams(
   device?: DeviceTarget,
   tempoHint?: number,
   guitarType?: string,
-): Record<string, number> {
+): Record<string, number | boolean> {
   switch (block.type) {
     case "amp":
       return resolveAmpParams(block, ampCategory, topology);
@@ -388,10 +388,10 @@ function resolveAmpParams(
   block: BlockSpec,
   ampCategory: AmpCategory,
   topology: TopologyTag,
-): Record<string, number> {
+): Record<string, number | boolean> {
   // Layer 1: Start with the model's own defaults
   const model = STADIUM_AMPS[block.modelName] ?? AMP_MODELS[block.modelName];
-  const params: Record<string, number> = model
+  const params: Record<string, number | boolean> = model
     ? { ...model.defaultParams }
     : { ...block.parameters };
 
@@ -465,7 +465,7 @@ function resolveCabParams(ampCategory: AmpCategory, device?: DeviceTarget): Reco
 function resolveDistortionParams(
   block: BlockSpec,
   ampCategory: AmpCategory,
-): Record<string, number> {
+): Record<string, number | boolean> {
   // Minotaur (Klon) — category-specific boost values
   if (block.modelId === "HD2_DistMinotaur") {
     return { ...MINOTAUR_PARAMS[ampCategory] };
@@ -489,7 +489,7 @@ function resolveEqParams(
   block: BlockSpec,
   ampCategory: AmpCategory,
   guitarType?: string,
-): Record<string, number> {
+): Record<string, number | boolean> {
   // Parametric EQ: use category-specific expert values with optional guitar-type adjustment
   if (block.modelId === "HD2_EQParametric") {
     const base = { ...EQ_PARAMS[ampCategory] };
@@ -511,7 +511,7 @@ function resolveEqParams(
 /**
  * Dynamics parameter resolution — gate-specific tables.
  */
-function resolveDynamicsParams(block: BlockSpec): Record<string, number> {
+function resolveDynamicsParams(block: BlockSpec): Record<string, number | boolean> {
   // Horizon Gate: expert-tuned gate values
   if (block.modelId === "HD2_GateHorizonGate") {
     return { ...HORIZON_GATE_PARAMS };
@@ -524,7 +524,7 @@ function resolveDynamicsParams(block: BlockSpec): Record<string, number> {
 /**
  * Volume block parameter resolution — Gain Block uses dB value.
  */
-function resolveVolumeParams(block: BlockSpec): Record<string, number> {
+function resolveVolumeParams(block: BlockSpec): Record<string, number | boolean> {
   // Gain Block: 0.0 dB (unity gain)
   if (block.modelId === "HD2_VolPanGain") {
     return { ...GAIN_BLOCK_PARAMS };
@@ -546,7 +546,7 @@ function resolveDefaultParams(
   block: BlockSpec,
   genreProfile?: GenreEffectProfile,
   tempoHint?: number,
-): Record<string, number> {
+): Record<string, number | boolean> {
   const model = findModel(block.modelName, block.type);
   const params = model ? { ...model.defaultParams } : { ...block.parameters };
 

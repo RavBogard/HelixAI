@@ -13,8 +13,8 @@ export interface HelixModel {
   topology?: TopologyTag;     // cathode_follower | plate_fed | solid_state | not_applicable — amp models only
   cabAffinity?: string[];     // preferred cab names (keys in CAB_MODELS) — amp models only
   ampFamily?: AmpFamily;                      // Manufacturer family for per-model grouping (AMP-01)
-  paramOverrides?: Record<string, number>;     // Layer 4: per-model overrides applied after category defaults (AMP-02)
-  defaultParams: Record<string, number>;
+  paramOverrides?: Record<string, number | boolean>;     // Layer 4: per-model overrides applied after category defaults (AMP-02)
+  defaultParams: Record<string, number | boolean>;
   blockType: number; // @type value in .hlx
   stadiumOnly?: boolean;      // true for Agoura_* models — excluded from Helix LT/Floor/Pod Go catalogs (STAD-03)
 }

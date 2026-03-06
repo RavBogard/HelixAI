@@ -323,7 +323,7 @@ describe("resolveParameters", () => {
     const hgResult = resolveParameters([{ ...eqBlock, parameters: {} }], hgIntent);
 
     // High-gain should have lower LowGain (more cut) than clean
-    expect(hgResult[0].parameters.LowGain).toBeLessThan(cleanResult[0].parameters.LowGain);
+    expect(hgResult[0].parameters.LowGain).toBeLessThan(cleanResult[0].parameters.LowGain as number);
   });
 
   // Test: Layer 4 paramOverrides mechanism (AMP-02)
@@ -614,9 +614,9 @@ describe("FX-01: guitar-type EQ shaping", () => {
     const sc = resolveParameters(makeEqChain(), makeIntent({ ampName: "US Deluxe Nrm", guitarType: "single_coil" }));
     const hb = resolveParameters(makeEqChain(), makeIntent({ ampName: "US Deluxe Nrm", guitarType: "humbucker" }));
     const p9 = resolveParameters(makeEqChain(), makeIntent({ ampName: "US Deluxe Nrm", guitarType: "p90" }));
-    const scHighGain = sc[1].parameters.HighGain;
-    const hbHighGain = hb[1].parameters.HighGain;
-    const p90HighGain = p9[1].parameters.HighGain;
+    const scHighGain = sc[1].parameters.HighGain as number;
+    const hbHighGain = hb[1].parameters.HighGain as number;
+    const p90HighGain = p9[1].parameters.HighGain as number;
     // p90 must be strictly between single_coil (lower) and humbucker (higher)
     expect(p90HighGain).toBeGreaterThan(scHighGain);
     expect(p90HighGain).toBeLessThan(hbHighGain);
