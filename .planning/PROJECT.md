@@ -81,8 +81,12 @@ Generated presets must sound professional enough to compete with custom presets 
 
 ### Active
 
-- [ ] Effect combination logic (interaction params, genre substitution, cross-device validation)
-- [ ] Cost-aware model routing (evidence-based Haiku chat vs. Sonnet generation)
+- [ ] Device-first conversation architecture — device picker moves to start of flow, separate prompt/model/chain paths per device — v5.0
+- [ ] Stadium firmware parameter completeness — extract all 27+ params from real .hsp corpus, eliminate param bleed between presets — v5.0
+- [ ] Device-specific planner prompts — each device gets its own prompt with only its model catalog, constraints, and capabilities — v5.0
+- [ ] Device-specific model catalogs — Stadium sees only Agoura amps, HD2 devices see only HD2 amps, no cross-contamination — v5.0
+- [ ] Effect combination logic (interaction params, genre substitution, cross-device validation) — deferred from v4.0
+- [ ] Cost-aware model routing (evidence-based Haiku chat vs. Sonnet generation) — deferred from v4.0
 
 ### Out of Scope
 
@@ -91,11 +95,22 @@ Generated presets must sound professional enough to compete with custom presets 
 - Multi-provider comparison UI — going single provider for quality focus
 - Full pedalboard OCR (auto-detect all pedals from a single board photo) — too unreliable, per-pedal photos are the baseline
 - Parallel wet/dry routing (split/join paths) — deferred
-- Device abstraction rewrite — evolutionary approach, guard-based branching functional at 6 devices (v4.0 audit)
+
+## Current Milestone: v5.0 — Device-First Architecture
+
+**Goal:** Rearchitect the conversation and generation pipeline so the user selects their device first, then follows a fully device-specific path — separate prompts, model catalogs, chain rules, and conversation arcs per device. Stadium gets full firmware parameter completeness (27+ params per amp, eliminating param bleed). Eliminates cross-device model contamination (Agoura leak) by design.
+
+**Target features:**
+- Device picker moves to the very start of the conversation flow
+- Each device gets its own planner prompt with only its model catalog
+- Stadium firmware parameter completeness (all hidden/internal params)
+- Device-specific conversation arcs (Stadium: dual-DSP routing, Stomp: constraint management, Pod Go: tight budget)
+- Device-specific chain rules and validation without guard-based branching
+- Clean device module architecture replacing 17+ guard sites
 
 ## Current State
 
-All 6 devices fully supported and unblocked. The app is rebranded to **HelixTones** and supports: Helix LT, Helix Floor, Pod Go, Helix Stadium, HX Stomp, and HX Stomp XL. v4.0 delivered a major preset quality improvement through enriched prompts, per-model amp overrides, and effect intelligence.
+All 6 devices fully supported and unblocked. The app is rebranded to **HelixTones** and supports: Helix LT, Helix Floor, Pod Go, Helix Stadium, HX Stomp, and HX Stomp XL. v4.0 delivered a major preset quality improvement through enriched prompts, per-model amp overrides, and effect intelligence. Post-v4.0 bug triage revealed Stadium presets have incomplete firmware parameter sets (12 vs 27 params) causing param bleed, and Agoura amp names leak to non-Stadium devices — both architectural issues that v5.0's device-first approach solves by design.
 
 **Shipped milestones:**
 - v1.0: Full Rebuild — planner-executor engine, LT/Floor support
@@ -130,6 +145,8 @@ v3.2 added token usage audit tooling (usage-logger.ts, baseline generator, cache
 
 v4.0 rebuilt the Stadium .hsp builder from real preset corpus (11 reference presets), fixing 5 structural format bugs (param encoding, slot-grid allocation, fx types, cab params, device version). Also delivered a major preset quality improvement: planner prompt enriched with gain-staging intelligence, amp-to-cab pairing, and genre effect discipline; per-model amp parameter overrides with AmpFamily classification and Layer 4 mechanism; effect intelligence with genre PreDelay, tempo-synced delay, and guitar-type EQ shaping. Architecture audit confirmed device abstraction is functional at 6 devices. Helix Floor error 8309 fixed (device ID corrected). Tech debt cleanup closed remaining integration gaps.
 
+Post-v4.0 bug triage (2026-03-05) revealed three architectural issues: (1) Stadium presets only include 12 of 27 firmware params per amp — missing hidden params like AmpCabPeak*, AmpCabShelf*, Aggression, Bright, Contour, Depth, Fat, Hype cause param state to bleed from previously loaded presets; (2) AMP_NAMES includes both HD2 and Agoura names globally, letting the planner pick Agoura amps for non-Stadium devices; (3) the late device-selection pattern means all prompts, models, and chain rules must handle every device with guard-based branching. v5.0 addresses all three by moving device selection to the start of the flow and creating fully device-specific paths.
+
 ## Constraints
 
 - **Hardware**: Line 6 Helix LT, Helix Floor, Pod Go, Helix Stadium, HX Stomp, HX Stomp XL — file formats: .hlx (LT/Floor/Stomp/StompXL), .pgp (Pod Go), .hsp (Stadium)
@@ -162,7 +179,7 @@ v4.0 rebuilt the Stadium .hsp builder from real preset corpus (11 reference pres
 | Variax as input config, not signal chain block | Variax is @input:3 (Multi), not a separate block — matches real hardware behavior | ✓ Good |
 | Reactive-only Variax detection | Chat AI never asks about Variax unprompted — only responds when user mentions it | ✓ Good |
 | Rename shipped v4.0 to v3.2 | Core quality phases (43-47) weren't started; reserve v4.0 for the real quality leap + Stadium rebuild | ✓ Good |
-| **[v4.0] Architecture refactor: DEFERRED** | v4.0 architecture audit (Phase 58) found device/model abstraction layer is functional and maintainable at 6 devices. Guard-based branching in chain-rules.ts, param-engine.ts, and validate.ts has no compiler-enforced exhaustiveness (~17 guard sites), but sites are searchable and well-tested. Full capability registry refactor deferred until a 7th device is planned. See: `.planning/architecture-audit-v4.md` | ✓ Recorded |
+| **[v4.0] Architecture refactor: DEFERRED → v5.0** | v4.0 audit found 17+ guard sites functional at 6 devices. Now superseded by v5.0 device-first architecture which eliminates guards by routing to device-specific modules from conversation start | ✓ Superseded |
 | **[v4.0] Stadium builder: rebuild from corpus** | Real .hsp files revealed 5 format bugs in original builder (wrong param encoding, sequential block keys, missing cab params). Corpus-driven development > implementation-by-analogy | ✓ Good |
 | **[v4.0] Per-model amp overrides: Layer 4 mechanism** | paramOverrides on HelixModel entries apply after category defaults — per-model values win unconditionally. 18 amps populated with verified values | ✓ Good |
 | **[v4.0] Effect combination logic: DEFERRED to v4.1** | Requires context-passing architectural decision (comp→drive, mod→reverb interactions). Core quality levers shipped first | — Pending |
@@ -170,4 +187,4 @@ v4.0 rebuilt the Stadium .hsp builder from real preset corpus (11 reference pres
 | **[v4.0] Stadium I/O model constants: COMPLETED** | Phase 60 moved Stadium I/O model IDs from string literals to STADIUM_CONFIG constants and centralized Helix/PodGo system model IDs | ✓ Good |
 
 ---
-*Last updated: 2026-03-05 after v4.0 milestone*
+*Last updated: 2026-03-05 after v5.0 milestone start*
