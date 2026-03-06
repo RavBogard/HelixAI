@@ -125,7 +125,7 @@
 - [x] **Phase 64: Knowledge Layer Guard Removal** — Replace 17+ boolean guard sites in chain-rules.ts, param-engine.ts, and validate.ts with DeviceCapabilities-driven dispatch
 - [x] **Phase 65: Device-Specific Prompts** — Create per-family planner and chat prompt templates with only family-appropriate model catalogs and conversation arcs
 - [ ] **Phase 66: Frontend Picker and Database Migration** — Move device picker to conversation start, add device column to Supabase conversations table, handle legacy rows
-- [ ] **Phase 67: Stadium Integration Quality** — Fix WAH/VOLUME catalog gap, dual-amp capability mismatch, TODO(Phase62) placeholder in prompt, and add schema/prompt integration tests
+- [x] **Phase 67: Stadium Integration Quality** — Fix WAH/VOLUME catalog gap, dual-amp capability mismatch, TODO(Phase62) placeholder in prompt, and add schema/prompt integration tests (completed 2026-03-06)
 
 ## Phase Details
 
@@ -238,7 +238,7 @@ Plans:
 | 64. Knowledge Layer Guards | v5.0 | 2/2 | Complete | 2026-03-06 |
 | 65. Device-Specific Prompts | v5.0 | 2/2 | Complete | 2026-03-06 |
 | 66. Frontend Picker + DB | v5.0 | 0/2 | Not started | - |
-| 67. Stadium Integration Quality | 1/2 | In Progress|  | - |
+| 67. Stadium Integration Quality | 2/2 | Complete   | 2026-03-06 | - |
 
 ### Phase 67: Stadium Integration Quality
 

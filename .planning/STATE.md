@@ -6,9 +6,9 @@ status: in_progress
 last_updated: "2026-03-06"
 progress:
   total_phases: 7
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 11
-  completed_plans: 10
+  completed_plans: 11
 ---
 
 # Project State
@@ -22,12 +22,12 @@ See: .planning/PROJECT.md (updated 2026-03-05)
 
 ## Current Position
 
-Phase: 67 of 67 (Phase 67 in progress — Plan 01 complete)
-Plan: 10 of 11+ plans complete (Phase 67 Plan 02 + Phase 66 remaining)
-Status: Phase 67 Plan 01 complete — WAH/VOLUME catalog gap and dual-amp crash path fixed
-Last activity: 2026-03-06 — Completed 67-01 (Stadium catalog and capabilities quality fixes)
+Phase: 67 of 67 (Phase 67 complete — all plans done; Phase 66 remaining)
+Plan: 11 of 11 plans complete for Phase 67 (Phase 66 remaining)
+Status: Phase 67 complete — Stadium integration quality fixes done
+Last activity: 2026-03-06 — Completed 67-02 (Stadium prompt pairing table + schema integration test)
 
-Progress: [██████████████████████████░░░░] 85% (10/11 plans complete)
+Progress: [████████████████████████████████] 92% (11/12 plans complete including Phase 66)
 
 ## Performance Metrics
 
@@ -45,6 +45,7 @@ Progress: [███████████████████████
 | 64-knowledge-layer-guard-removal | 2 | ~25min | 12min |
 | 65 (Device-Specific Prompts) | 2 | ~22 min | ~11 min |
 | 67-01 (Stadium Catalog Quality) | 1 | ~2 min | ~2 min |
+| 67-02 (Stadium Prompt + Integration Test) | 1 | ~3 min | ~3 min |
 
 *Updated after each plan completion*
 
@@ -75,10 +76,12 @@ Progress: [███████████████████████
 - [64-02]: STADIUM_AMPS[block.modelName] lookups in param-engine.ts and validate.ts are MODEL-based (not device-based) — preserved as-is since they answer "is this block an Agoura amp?" not "is the device a Stadium"
 - [64-02]: isPodGo/isStadium/isStomp helpers kept in route.ts for builder routing and planner.ts for prompt construction — these are outside Knowledge Layer scope and remain valid for builder dispatch
 - [v5.0/P65]: Helix Floor/LT produce byte-identical prompts (single cache entry) — device name variation goes in user message only
-- [v5.0/P65]: Stadium amp-cab pairing uses TODO(Phase62) placeholder until Agoura catalog ships
+- [v5.0/P65]: Stadium amp-cab pairing TODO(Phase62) placeholder replaced by generated pairing table from STADIUM_AMPS cabAffinity (Phase 67-02)
 - [v5.0/P65]: Inline resolveFamily() in prompt-router until Phase 61 ships canonical version
 - [67-01]: WAH_MODELS and VOLUME_MODELS spread into STADIUM_EFFECT_NAMES — Stadium overrides [62-01] exclusion because dualAmpSupported: false blocks the AMP_MODELS crash path; other families unchanged
 - [67-01]: STADIUM_CAPABILITIES.dualAmpSupported set to false — Stadium prompt uses includeSecondAmp: false and the dual-amp path uses HD2-only AMP_MODELS which cannot handle Agoura amp names
+- [67-02]: buildAmpCabPairingTable() generates the amp-cab pairing section from STADIUM_AMPS cabAffinity at prompt build time — no hardcoded text, content stays in sync with catalog automatically
+- [67-02]: STADIUM_AMPS cabAffinity bugs fixed: "4x12 Greenback 25" -> "4x12 Greenback25" (4 entries) and "4x12 Brit T75" -> "4x12 Brit V30" (2 entries) — T75 variant not in CAB_MODELS
 
 ### Roadmap Evolution
 
@@ -93,6 +96,6 @@ Progress: [███████████████████████
 ## Session Continuity
 
 Last session: 2026-03-06
-Stopped at: Completed 67-01-PLAN.md (Stadium catalog and capabilities quality fixes)
+Stopped at: Completed 67-02-PLAN.md (Stadium prompt pairing table + cross-family schema integration test)
 Resume file: None
-Next command: `/gsd:execute-phase 67` (plan 02 — remaining Stadium quality fixes)
+Next command: `/gsd:execute-phase 66` (Phase 66 — Frontend Picker + DB Migration)
