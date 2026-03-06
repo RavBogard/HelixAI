@@ -7,13 +7,27 @@
 
 import { gainStagingSection } from "../shared/gain-staging";
 import { toneIntentFieldsSection } from "../shared/tone-intent-fields";
+import { STADIUM_AMPS } from "@/lib/helix/models";
 import type { DeviceTarget } from "@/lib/helix/types";
+
+/**
+ * Generate an amp-to-cab pairing table from STADIUM_AMPS cabAffinity data.
+ *
+ * Called at prompt build time. Every entry is guaranteed to reference only
+ * valid CAB_MODELS keys (enforced by prompt.test.ts data integrity test).
+ */
+function buildAmpCabPairingTable(): string {
+  return Object.entries(STADIUM_AMPS)
+    .filter(([, model]) => model.cabAffinity && model.cabAffinity.length > 0)
+    .map(([name, model]) => `- **${name}**: ${model.cabAffinity!.join(", ")}`)
+    .join("\n");
+}
 
 /**
  * Build the Stadium family planner system prompt.
  *
  * Uses Agoura-native vocabulary. Model list comes from modelList parameter (runtime injected).
- * Amp-to-cab pairing table is a TODO placeholder until Phase 62 ships Agoura catalog.
+ * Amp-to-cab pairing table is generated from STADIUM_AMPS cabAffinity data at build time.
  * Structure: static sections first for cache stability.
  */
 export function buildPlannerPrompt(device: DeviceTarget, modelList: string): string {
@@ -49,11 +63,11 @@ ${gainStagingSection()}
 
 ## Amp-to-Cab Pairing
 
-// TODO(Phase62): populate Agoura amp-to-cab pairing table from per-family catalog.
-// Stadium uses Agoura_* amps with Stadium-specific cab models.
-// Pairing data will be added when the Phase 62 Agoura catalog is finalized.
+Pair each Agoura amp with its natural cabinet. These pairings match the speaker voicing for which each amp was designed:
 
-For now: choose a cab with matching era and speaker voicing for the selected amp.
+${buildAmpCabPairingTable()}
+
+Choosing the recommended cab improves FOH translation and ensures the amp's character is preserved.
 
 ## Stadium-Specific Features
 

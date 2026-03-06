@@ -1122,7 +1122,7 @@ export const STADIUM_AMPS: Record<string, HelixModel> = {
     category: "crunch",
     ampCategory: "crunch" as const,
     topology: "plate_fed" as const,
-    cabAffinity: ["4x12 Greenback 25", "2x12 Double C12N"],
+    cabAffinity: ["4x12 Greenback25", "2x12 Double C12N"],
     defaultParams: {
       // 14 universal hidden/firmware params
       AmpCabPeak2Fc: 1000, AmpCabPeak2G: 0, AmpCabPeak2Q: 0.707,
@@ -1222,7 +1222,7 @@ export const STADIUM_AMPS: Record<string, HelixModel> = {
     category: "high_gain",
     ampCategory: "high_gain" as const,
     topology: "plate_fed" as const,
-    cabAffinity: ["4x12 Uber V30", "4x12 Brit T75"],
+    cabAffinity: ["4x12 Uber V30", "4x12 Brit V30"],
     defaultParams: {
       // 14 universal hidden/firmware params
       AmpCabPeak2Fc: 1000, AmpCabPeak2G: 0, AmpCabPeak2Q: 0.707,
@@ -1275,7 +1275,7 @@ export const STADIUM_AMPS: Record<string, HelixModel> = {
     category: "crunch",
     ampCategory: "crunch" as const,
     topology: "plate_fed" as const,
-    cabAffinity: ["4x12 Greenback 25"],
+    cabAffinity: ["4x12 Greenback25"],
     defaultParams: {
       // 14 universal hidden/firmware params
       AmpCabPeak2Fc: 1000, AmpCabPeak2G: 0, AmpCabPeak2Q: 0.707,
@@ -1327,7 +1327,7 @@ export const STADIUM_AMPS: Record<string, HelixModel> = {
     category: "high_gain",
     ampCategory: "high_gain" as const,
     topology: "plate_fed" as const,
-    cabAffinity: ["4x12 Greenback 25"],
+    cabAffinity: ["4x12 Greenback25"],
     defaultParams: {
       // 14 universal hidden/firmware params
       AmpCabPeak2Fc: 1000, AmpCabPeak2G: 0, AmpCabPeak2Q: 0.707,
@@ -1435,7 +1435,7 @@ export const STADIUM_AMPS: Record<string, HelixModel> = {
     category: "crunch",
     ampCategory: "crunch" as const,
     topology: "plate_fed" as const,
-    cabAffinity: ["4x12 Greenback 25", "4x12 Brit T75"],
+    cabAffinity: ["4x12 Greenback25", "4x12 Brit V30"],
     defaultParams: {
       // 14 universal hidden/firmware params
       AmpCabPeak2Fc: 1000, AmpCabPeak2G: 0, AmpCabPeak2Q: 0.707,
