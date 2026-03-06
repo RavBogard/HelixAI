@@ -17,7 +17,7 @@ Depends on Phase 62 (per-family catalogs must exist to source model lists).
 
 ### Chat Conversation Arc
 - Dream-then-trim flow for constrained devices: let the user describe their ideal tone first, then surface block-budget limits organically when the plan exceeds what's available
-- Helix Floor/LT chat proactively suggests dual-amp when user describes two different tones (e.g., "clean Fender and heavy Mesa" → offer split/join topology)
+- Helix Floor/LT chat does NOT proactively suggest dual-amp — only offers it when the user explicitly asks for two amps. However, when dual-amp IS requested, the planner prompt must include explicit, correct dual-DSP routing instructions (split → amp2 + cab2 → join, DSP0↔DSP1 connection). The old version had a bug where dual-DSP paths wouldn't connect properly, making dual-amp presets useless
 - Pod Go chat uses upfront transparency about constraints: "Pod Go gives you 4 effect slots — let's make every one count"
 - Stadium chat has a distinct arena-grade personality: references live sound, FOH mixing, stage volume — different demographic (pro touring) from the home/gigging Helix user
 - Stomp/PodGo chat surfaces explicit trade-off questions when the user's described tone exceeds the slot budget: "That's 8 blocks but HX Stomp allows 6. Which matters more: the boost or the chorus?"
@@ -53,7 +53,7 @@ Depends on Phase 62 (per-family catalogs must exist to source model lists).
 - Stadium chat personality should feel "arena-grade" — references to FOH (Front of House), stage volume, monitor mixes, live sound engineering vocabulary
 - Stomp trade-off conversations should feel like a knowledgeable friend helping prioritize, not a system rejecting requests
 - Pod Go transparency should be empowering ("4 slots is plenty for a killer tone") not limiting
-- Helix dual-amp suggestion should sound exciting ("Since you're on Helix Floor, we can load BOTH amps and switch between them with snapshots!")
+- Helix dual-amp routing must be bulletproof when requested — the planner prompt needs explicit split/join topology instructions so DSP0 and DSP1 actually connect (old version failed here)
 - Each family's planner prompt imports ONLY its own catalog module — a grep for cross-family model names in any single prompt file must return zero results (success criterion from roadmap)
 
 </specifics>
