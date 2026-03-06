@@ -5,8 +5,11 @@ import { describe, it, expect } from "vitest";
 import { buildSnapshots } from "./snapshot-engine";
 import { assembleSignalChain } from "./chain-rules";
 import { resolveParameters } from "./param-engine";
+import { getCapabilities } from "./device-family";
 import type { BlockSpec, SnapshotSpec } from "./types";
 import type { ToneIntent, SnapshotIntent } from "./tone-intent";
+
+const defaultCaps = getCapabilities("helix_floor");
 
 // Helper: create a minimal clean ToneIntent
 function cleanIntent(overrides: Partial<ToneIntent> = {}): ToneIntent {
@@ -44,8 +47,8 @@ function highGainIntent(overrides: Partial<ToneIntent> = {}): ToneIntent {
 
 // Helper: build a fully parameterized chain from an intent
 function buildChain(intent: ToneIntent): BlockSpec[] {
-  const chain = assembleSignalChain(intent);
-  return resolveParameters(chain, intent);
+  const chain = assembleSignalChain(intent, defaultCaps);
+  return resolveParameters(chain, intent, defaultCaps);
 }
 
 // Helper: get the standard 4 snapshot intents
@@ -331,8 +334,8 @@ describe("FX-04: snapshot ChVol balance", () => {
     expect(ampBlock).toBeDefined();
     const ampKey = findBlockKey(chain, ampBlock!);
 
-    const leadChVol = result[2].parameterOverrides[ampKey].ChVol;  // lead
-    const cleanChVol = result[0].parameterOverrides[ampKey].ChVol; // clean
+    const leadChVol = result[2].parameterOverrides[ampKey].ChVol as number;  // lead
+    const cleanChVol = result[0].parameterOverrides[ampKey].ChVol as number; // clean
 
     // FX-04 core assertion: lead must be louder than clean
     expect(leadChVol).toBeGreaterThan(cleanChVol);

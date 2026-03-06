@@ -3,7 +3,7 @@
 
 import { describe, it, expect } from "vitest";
 import type { PlannerUsageRecord } from "@/lib/usage-logger";
-import { parseCacheReport, getRecommendation } from "./cache-hit-report";
+import { parseCacheReport, getRecommendation, parseCacheReportByDevice, formatReportByDevice } from "./cache-hit-report";
 
 // ---------------------------------------------------------------------------
 // Test data factory
@@ -143,6 +143,102 @@ describe("parseCacheReport", () => {
 
     // Only 2 generate records should be counted
     expect(stats.totalCalls).toBe(2);
+  });
+});
+
+describe("parseCacheReportByDevice", () => {
+  it("Test D1: returns Map with 3 entries for records spanning 3 devices", () => {
+    const records: PlannerUsageRecord[] = [
+      makeColdRecord(5000, 0.027),
+      makeCachedRecord(5000, 0.005),
+      { ...makeColdRecord(5000, 0.027), device: "helix_stomp" },
+      { ...makeCachedRecord(5000, 0.005), device: "helix_stomp" },
+      { ...makeColdRecord(5000, 0.027), device: "pod_go" },
+      { ...makeCachedRecord(5000, 0.005), device: "pod_go" },
+    ].map((r, i) => ({
+      ...r,
+      device: i < 2 ? "helix_lt" : r.device,
+    }));
+
+    const result = parseCacheReportByDevice(records);
+
+    expect(result.size).toBe(3);
+    expect(result.has("helix_lt")).toBe(true);
+    expect(result.has("helix_stomp")).toBe(true);
+    expect(result.has("pod_go")).toBe(true);
+  });
+
+  it("Test D2: records without device field are grouped under 'unknown'", () => {
+    const records: PlannerUsageRecord[] = [
+      makeColdRecord(5000, 0.027), // no device field
+      makeCachedRecord(5000, 0.005), // no device field
+      { ...makeColdRecord(5000, 0.027), device: "helix_stomp" },
+    ];
+
+    const result = parseCacheReportByDevice(records);
+
+    expect(result.has("unknown")).toBe(true);
+    const unknownStats = result.get("unknown")!;
+    expect(unknownStats.totalCalls).toBe(2);
+  });
+
+  it("Test D3: single-device records return Map with 1 entry matching parseCacheReport", () => {
+    const records: PlannerUsageRecord[] = [
+      { ...makeColdRecord(5000, 0.030), device: "helix_lt" },
+      { ...makeCachedRecord(5000, 0.005), device: "helix_lt" },
+    ];
+
+    const result = parseCacheReportByDevice(records);
+    const aggregateStats = parseCacheReport(records);
+
+    expect(result.size).toBe(1);
+    const deviceStats = result.get("helix_lt")!;
+    expect(deviceStats.totalCalls).toBe(aggregateStats.totalCalls);
+    expect(deviceStats.hitRate).toBeCloseTo(aggregateStats.hitRate, 4);
+    expect(deviceStats.totalCost).toBeCloseTo(aggregateStats.totalCost, 6);
+  });
+
+  it("Test D4: per-device stats are correct (each device computed independently)", () => {
+    const records: PlannerUsageRecord[] = [
+      // helix_lt: 1 cold, 3 cached -> 75% hit rate
+      { ...makeColdRecord(5000, 0.030), device: "helix_lt" },
+      { ...makeCachedRecord(5000, 0.005), device: "helix_lt" },
+      { ...makeCachedRecord(5000, 0.005), device: "helix_lt" },
+      { ...makeCachedRecord(5000, 0.005), device: "helix_lt" },
+      // pod_go: 2 cold, 0 cached -> 0% hit rate
+      { ...makeColdRecord(5000, 0.030), device: "pod_go" },
+      { ...makeColdRecord(5000, 0.030), device: "pod_go" },
+    ];
+
+    const result = parseCacheReportByDevice(records);
+
+    const ltStats = result.get("helix_lt")!;
+    expect(ltStats.totalCalls).toBe(4);
+    expect(ltStats.hitRate).toBeCloseTo(0.75, 2);
+
+    const podGoStats = result.get("pod_go")!;
+    expect(podGoStats.totalCalls).toBe(2);
+    expect(podGoStats.hitRate).toBe(0);
+  });
+});
+
+describe("formatReportByDevice", () => {
+  it("produces human-readable per-device breakdown", () => {
+    const records: PlannerUsageRecord[] = [
+      { ...makeColdRecord(5000, 0.030), device: "helix_lt" },
+      { ...makeCachedRecord(5000, 0.005), device: "helix_lt" },
+      { ...makeColdRecord(5000, 0.030), device: "helix_stomp" },
+    ];
+
+    const deviceStats = parseCacheReportByDevice(records);
+    const output = formatReportByDevice(deviceStats);
+
+    expect(output).toContain("helix_lt");
+    expect(output).toContain("helix_stomp");
+    // Should include hit rate info
+    expect(output).toContain("%");
+    // Should include call counts
+    expect(output).toContain("2");
   });
 });
 

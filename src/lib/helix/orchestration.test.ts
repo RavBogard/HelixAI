@@ -12,9 +12,12 @@ import { buildStompFile, summarizeStompPreset } from "./stomp-builder";
 import { validatePresetSpec } from "./validate";
 import { DEVICE_IDS, isStomp } from "./types";
 import { STOMP_CONFIG } from "./config";
+import { getCapabilities } from "./device-family";
 import type { PresetSpec, BlockSpec, DeviceTarget, HlxFile } from "./types";
 import type { ToneIntent, SnapshotIntent } from "./tone-intent";
 import { mapRigToSubstitutions } from "../rig-mapping";
+
+const defaultCaps = getCapabilities("helix_floor");
 
 // ---------------------------------------------------------------------------
 // Test fixtures
@@ -59,8 +62,8 @@ function highGainIntent(overrides: Partial<ToneIntent> = {}): ToneIntent {
 
 /** Build a full PresetSpec from a ToneIntent through the Knowledge Layer pipeline */
 function buildPresetSpec(intent: ToneIntent): PresetSpec {
-  const chain = assembleSignalChain(intent);
-  const parameterized = resolveParameters(chain, intent);
+  const chain = assembleSignalChain(intent, defaultCaps);
+  const parameterized = resolveParameters(chain, intent, defaultCaps);
   const snapshots = buildSnapshots(parameterized, intent.snapshots);
 
   return {
@@ -80,7 +83,7 @@ function buildPresetSpec(intent: ToneIntent): PresetSpec {
 describe("HLX-01/02: Device target", () => {
   it("buildHlxFile with default device produces .hlx with device=2162692 (Helix LT)", () => {
     const spec = buildPresetSpec(cleanIntent());
-    validatePresetSpec(spec);
+    validatePresetSpec(spec, defaultCaps);
     const hlx = buildHlxFile(spec);
 
     expect(hlx.data.device).toBe(DEVICE_IDS.helix_lt);
@@ -89,7 +92,7 @@ describe("HLX-01/02: Device target", () => {
 
   it("buildHlxFile with device='helix_floor' produces .hlx with device=2162689", () => {
     const spec = buildPresetSpec(cleanIntent());
-    validatePresetSpec(spec);
+    validatePresetSpec(spec, defaultCaps);
     const hlx = buildHlxFile(spec, "helix_floor");
 
     expect(hlx.data.device).toBe(DEVICE_IDS.helix_floor);
@@ -99,7 +102,7 @@ describe("HLX-01/02: Device target", () => {
   it("full pipeline produces valid .hlx JSON structure with correct top-level fields", () => {
     const intent = highGainIntent();
     const spec = buildPresetSpec(intent);
-    validatePresetSpec(spec);
+    validatePresetSpec(spec, defaultCaps);
     const hlx = buildHlxFile(spec);
 
     // Top-level structure
@@ -143,21 +146,21 @@ describe("HLX-03: Strict validation", () => {
     const spec = buildPresetSpec(cleanIntent());
     spec.signalChain = [];
 
-    expect(() => validatePresetSpec(spec)).toThrow("empty signal chain");
+    expect(() => validatePresetSpec(spec, defaultCaps)).toThrow("empty signal chain");
   });
 
   it("validatePresetSpec throws for PresetSpec missing amp block", () => {
     const spec = buildPresetSpec(cleanIntent());
     spec.signalChain = spec.signalChain.filter(b => b.type !== "amp");
 
-    expect(() => validatePresetSpec(spec)).toThrow("missing amp block");
+    expect(() => validatePresetSpec(spec, defaultCaps)).toThrow("missing amp block");
   });
 
   it("validatePresetSpec throws for PresetSpec missing cab block", () => {
     const spec = buildPresetSpec(cleanIntent());
     spec.signalChain = spec.signalChain.filter(b => b.type !== "cab");
 
-    expect(() => validatePresetSpec(spec)).toThrow("missing cab block");
+    expect(() => validatePresetSpec(spec, defaultCaps)).toThrow("missing cab block");
   });
 
   it("validatePresetSpec throws for PresetSpec with invalid model ID", () => {
@@ -167,7 +170,7 @@ describe("HLX-03: Strict validation", () => {
     expect(ampBlock).toBeDefined();
     ampBlock!.modelId = "HD2_AmpNonExistent_FakeModel";
 
-    expect(() => validatePresetSpec(spec)).toThrow("Invalid model ID");
+    expect(() => validatePresetSpec(spec, defaultCaps)).toThrow("Invalid model ID");
   });
 
   it("validatePresetSpec throws for PresetSpec with out-of-range normalized parameter", () => {
@@ -177,14 +180,14 @@ describe("HLX-03: Strict validation", () => {
     expect(ampBlock).toBeDefined();
     ampBlock!.parameters["Drive"] = 1.5;
 
-    expect(() => validatePresetSpec(spec)).toThrow("out of range");
+    expect(() => validatePresetSpec(spec, defaultCaps)).toThrow("out of range");
   });
 
   it("validatePresetSpec passes for a valid Knowledge Layer-produced PresetSpec", () => {
     const spec = buildPresetSpec(highGainIntent());
 
     // Should not throw
-    expect(() => validatePresetSpec(spec)).not.toThrow();
+    expect(() => validatePresetSpec(spec, defaultCaps)).not.toThrow();
   });
 });
 
@@ -197,7 +200,7 @@ describe("HLX-04: Snapshot key rebuilding", () => {
     // Use high-gain intent with effects to ensure blocks on both DSPs
     const intent = highGainIntent();
     const spec = buildPresetSpec(intent);
-    validatePresetSpec(spec);
+    validatePresetSpec(spec, defaultCaps);
     const hlx = buildHlxFile(spec);
 
     // Get the first valid snapshot (snapshot0)
@@ -236,8 +239,8 @@ describe("HLX-04: Snapshot key rebuilding", () => {
     // buildBlockKeyMap should remap them to per-DSP keys
 
     const intent = highGainIntent();
-    const chain = assembleSignalChain(intent);
-    const parameterized = resolveParameters(chain, intent);
+    const chain = assembleSignalChain(intent, defaultCaps);
+    const parameterized = resolveParameters(chain, intent, defaultCaps);
     const snapshots = buildSnapshots(parameterized, intent.snapshots);
 
     // Verify that the snapshot engine produces global sequential keys
@@ -255,7 +258,7 @@ describe("HLX-04: Snapshot key rebuilding", () => {
       signalChain: parameterized,
       snapshots,
     };
-    validatePresetSpec(spec);
+    validatePresetSpec(spec, defaultCaps);
     const hlx = buildHlxFile(spec);
 
     // In the HLX output, snapshot blocks should be per-DSP keyed
@@ -303,8 +306,12 @@ describe("HX Stomp + HX Stomp XL (STOMP-01 through STOMP-05, STOMP-10)", () => {
     expect(DEVICE_IDS.helix_stomp).not.toBe(DEVICE_IDS.pod_go);
     expect(DEVICE_IDS.helix_stomp).not.toBe(DEVICE_IDS.helix_stadium);
     expect(DEVICE_IDS.helix_stomp_xl).not.toBe(DEVICE_IDS.helix_stomp);
-    // All IDs must be unique
-    expect(new Set(ids).size).toBe(ids.length);
+    // All verified device IDs must be unique (new entries helix_rack, pod_go_xl, helix_stadium_xl share sibling IDs intentionally)
+    const verifiedIds = [
+      DEVICE_IDS.helix_lt, DEVICE_IDS.helix_floor, DEVICE_IDS.pod_go,
+      DEVICE_IDS.helix_stadium, DEVICE_IDS.helix_stomp, DEVICE_IDS.helix_stomp_xl,
+    ];
+    expect(new Set(verifiedIds).size).toBe(verifiedIds.length);
   });
   it("STOMP-01: isStomp() returns true for both Stomp variants", () => {
     expect(isStomp("helix_stomp")).toBe(true);
@@ -333,8 +340,8 @@ describe("HX Stomp + HX Stomp XL (STOMP-01 through STOMP-05, STOMP-10)", () => {
   // STOMP-03: buildStompFile output structure
   it("STOMP-03: buildStompFile(spec, helix_stomp) has correct device ID", () => {
     const intent = cleanIntent();
-    const chain = assembleSignalChain(intent, "helix_stomp");
-    const parameterized = resolveParameters(chain, intent);
+    const chain = assembleSignalChain(intent, getCapabilities("helix_stomp"));
+    const parameterized = resolveParameters(chain, intent, defaultCaps);
     const snapshots = buildSnapshots(parameterized, intent.snapshots);
     const spec: PresetSpec = {
       name: "Test Stomp",
@@ -350,8 +357,8 @@ describe("HX Stomp + HX Stomp XL (STOMP-01 through STOMP-05, STOMP-10)", () => {
   });
   it("STOMP-03: buildStompFile(spec, helix_stomp_xl) has correct device ID", () => {
     const intent = cleanIntent();
-    const chain = assembleSignalChain(intent, "helix_stomp_xl");
-    const parameterized = resolveParameters(chain, intent);
+    const chain = assembleSignalChain(intent, getCapabilities("helix_stomp_xl"));
+    const parameterized = resolveParameters(chain, intent, defaultCaps);
     const snapshots = buildSnapshots(parameterized, intent.snapshots);
     const spec: PresetSpec = {
       name: "Test Stomp XL",
@@ -366,8 +373,8 @@ describe("HX Stomp + HX Stomp XL (STOMP-01 through STOMP-05, STOMP-10)", () => {
   });
   it("STOMP-03: Stomp output uses HelixStomp_* I/O models (not HD2_App*)", () => {
     const intent = cleanIntent();
-    const chain = assembleSignalChain(intent, "helix_stomp");
-    const parameterized = resolveParameters(chain, intent);
+    const chain = assembleSignalChain(intent, getCapabilities("helix_stomp"));
+    const parameterized = resolveParameters(chain, intent, defaultCaps);
     const snapshots = buildSnapshots(parameterized, intent.snapshots);
     const spec: PresetSpec = { name: "Test", description: "Test", tempo: 120, signalChain: parameterized, snapshots: snapshots.slice(0, 3) };
     const file = buildStompFile(spec, "helix_stomp");
@@ -381,8 +388,8 @@ describe("HX Stomp + HX Stomp XL (STOMP-01 through STOMP-05, STOMP-10)", () => {
   });
   it("STOMP-03: Stomp dsp1 is empty", () => {
     const intent = cleanIntent();
-    const chain = assembleSignalChain(intent, "helix_stomp");
-    const parameterized = resolveParameters(chain, intent);
+    const chain = assembleSignalChain(intent, getCapabilities("helix_stomp"));
+    const parameterized = resolveParameters(chain, intent, defaultCaps);
     const snapshots = buildSnapshots(parameterized, intent.snapshots);
     const spec: PresetSpec = { name: "Test", description: "Test", tempo: 120, signalChain: parameterized, snapshots: snapshots.slice(0, 3) };
     const file = buildStompFile(spec, "helix_stomp");
@@ -391,8 +398,8 @@ describe("HX Stomp + HX Stomp XL (STOMP-01 through STOMP-05, STOMP-10)", () => {
   });
   it("STOMP-03: Stomp has 3 valid snapshots (indices 0-2 @valid:true, 3-7 @valid:false)", () => {
     const intent = cleanIntent();
-    const chain = assembleSignalChain(intent, "helix_stomp");
-    const parameterized = resolveParameters(chain, intent);
+    const chain = assembleSignalChain(intent, getCapabilities("helix_stomp"));
+    const parameterized = resolveParameters(chain, intent, defaultCaps);
     const snapshots = buildSnapshots(parameterized, intent.snapshots);
     const spec: PresetSpec = { name: "Test", description: "Test", tempo: 120, signalChain: parameterized, snapshots: snapshots.slice(0, 3) };
     const file = buildStompFile(spec, "helix_stomp");
@@ -408,8 +415,8 @@ describe("HX Stomp + HX Stomp XL (STOMP-01 through STOMP-05, STOMP-10)", () => {
   });
   it("STOMP-03: Stomp XL has 4 valid snapshots (indices 0-3 @valid:true, 4-7 @valid:false)", () => {
     const intent = cleanIntent();
-    const chain = assembleSignalChain(intent, "helix_stomp_xl");
-    const parameterized = resolveParameters(chain, intent);
+    const chain = assembleSignalChain(intent, getCapabilities("helix_stomp_xl"));
+    const parameterized = resolveParameters(chain, intent, defaultCaps);
     const snapshots = buildSnapshots(parameterized, intent.snapshots);
     const spec: PresetSpec = { name: "Test", description: "Test", tempo: 120, signalChain: parameterized, snapshots: snapshots.slice(0, 4) };
     const file = buildStompFile(spec, "helix_stomp_xl");
@@ -427,59 +434,59 @@ describe("HX Stomp + HX Stomp XL (STOMP-01 through STOMP-05, STOMP-10)", () => {
   // STOMP-04: chain-rules enforces single DSP
   it("STOMP-04: assembleSignalChain forces all Stomp blocks to dsp0", () => {
     const intent = cleanIntent();
-    const chain = assembleSignalChain(intent, "helix_stomp");
+    const chain = assembleSignalChain(intent, getCapabilities("helix_stomp"));
     expect(chain.every(b => b.dsp === 0)).toBe(true);
   });
   it("STOMP-04: assembleSignalChain forces all Stomp XL blocks to dsp0", () => {
     const intent = cleanIntent();
-    const chain = assembleSignalChain(intent, "helix_stomp_xl");
+    const chain = assembleSignalChain(intent, getCapabilities("helix_stomp_xl"));
     expect(chain.every(b => b.dsp === 0)).toBe(true);
   });
 
   // STOMP-05: validate.ts enforces limits
   it("STOMP-05: validatePresetSpec accepts valid Stomp preset", () => {
     const intent = cleanIntent();
-    const chain = assembleSignalChain(intent, "helix_stomp");
-    const parameterized = resolveParameters(chain, intent);
+    const chain = assembleSignalChain(intent, getCapabilities("helix_stomp"));
+    const parameterized = resolveParameters(chain, intent, defaultCaps);
     const snapshots = buildSnapshots(parameterized, intent.snapshots).slice(0, 3);
     const spec: PresetSpec = { name: "Test", description: "Test", tempo: 120, signalChain: parameterized, snapshots };
-    expect(() => validatePresetSpec(spec, "helix_stomp")).not.toThrow();
+    expect(() => validatePresetSpec(spec, getCapabilities("helix_stomp"))).not.toThrow();
   });
   it("STOMP-05: validatePresetSpec accepts valid Stomp XL preset", () => {
     const intent = cleanIntent();
-    const chain = assembleSignalChain(intent, "helix_stomp_xl");
-    const parameterized = resolveParameters(chain, intent);
+    const chain = assembleSignalChain(intent, getCapabilities("helix_stomp_xl"));
+    const parameterized = resolveParameters(chain, intent, defaultCaps);
     const snapshots = buildSnapshots(parameterized, intent.snapshots).slice(0, 4);
     const spec: PresetSpec = { name: "Test", description: "Test", tempo: 120, signalChain: parameterized, snapshots };
-    expect(() => validatePresetSpec(spec, "helix_stomp_xl")).not.toThrow();
+    expect(() => validatePresetSpec(spec, getCapabilities("helix_stomp_xl"))).not.toThrow();
   });
   it("STOMP-05: validatePresetSpec rejects Stomp preset with too many snapshots", () => {
     const intent = cleanIntent();
-    const chain = assembleSignalChain(intent, "helix_stomp");
-    const parameterized = resolveParameters(chain, intent);
+    const chain = assembleSignalChain(intent, getCapabilities("helix_stomp"));
+    const parameterized = resolveParameters(chain, intent, defaultCaps);
     const snapshots = buildSnapshots(parameterized, intent.snapshots); // 4 snapshots from engine
     const spec: PresetSpec = { name: "Test", description: "Test", tempo: 120, signalChain: parameterized, snapshots };
     // 4 snapshots exceeds Stomp's max of 3
-    expect(() => validatePresetSpec(spec, "helix_stomp")).toThrow(/snapshot limit exceeded/);
+    expect(() => validatePresetSpec(spec, getCapabilities("helix_stomp"))).toThrow(/[Ss]napshot limit exceeded/);
   });
 
   // STOMP-10: Regression — existing devices unaffected
   it("STOMP-10: Helix LT generation still works after Stomp additions", () => {
     const intent = cleanIntent();
-    const chain = assembleSignalChain(intent, "helix_lt");
+    const chain = assembleSignalChain(intent, getCapabilities("helix_lt"));
     // LT uses dual DSP — eq and gain block go to dsp1
     expect(chain.some(b => b.dsp === 1)).toBe(true);
-    const parameterized = resolveParameters(chain, intent);
+    const parameterized = resolveParameters(chain, intent, defaultCaps);
     const snapshots = buildSnapshots(parameterized, intent.snapshots);
     const spec: PresetSpec = { name: "Test LT", description: "Test", tempo: 120, signalChain: parameterized, snapshots };
-    expect(() => validatePresetSpec(spec, "helix_lt")).not.toThrow();
+    expect(() => validatePresetSpec(spec, getCapabilities("helix_lt"))).not.toThrow();
     const file = buildHlxFile(spec, "helix_lt");
     expect(file.data.device).toBe(DEVICE_IDS.helix_lt);
   });
   it("STOMP-10: summarizeStompPreset returns a non-empty string with device info", () => {
     const intent = cleanIntent();
-    const chain = assembleSignalChain(intent, "helix_stomp");
-    const parameterized = resolveParameters(chain, intent);
+    const chain = assembleSignalChain(intent, getCapabilities("helix_stomp"));
+    const parameterized = resolveParameters(chain, intent, defaultCaps);
     const snapshots = buildSnapshots(parameterized, intent.snapshots).slice(0, 3);
     const spec: PresetSpec = { name: "Test", description: "Test", tempo: 120, signalChain: parameterized, snapshots };
     const summary = summarizeStompPreset(spec, "helix_stomp");
@@ -495,8 +502,8 @@ describe("HX Stomp + HX Stomp XL (STOMP-01 through STOMP-05, STOMP-10)", () => {
 describe("HX Stomp end-to-end pipeline (STOMP-06 simulation)", () => {
   it("STOMP-06: Full Stomp pipeline: chain -> params -> snapshots -> validate -> build", () => {
     const intent = cleanIntent();
-    const chain = assembleSignalChain(intent, "helix_stomp");
-    const parameterized = resolveParameters(chain, intent);
+    const chain = assembleSignalChain(intent, getCapabilities("helix_stomp"));
+    const parameterized = resolveParameters(chain, intent, defaultCaps);
     const snaps = buildSnapshots(parameterized, intent.snapshots);
     const spec: PresetSpec = {
       name: "Pipeline Test Stomp",
@@ -506,7 +513,7 @@ describe("HX Stomp end-to-end pipeline (STOMP-06 simulation)", () => {
       snapshots: snaps.slice(0, STOMP_CONFIG.STOMP_MAX_SNAPSHOTS),
     };
 
-    expect(() => validatePresetSpec(spec, "helix_stomp")).not.toThrow();
+    expect(() => validatePresetSpec(spec, getCapabilities("helix_stomp"))).not.toThrow();
 
     const file = buildStompFile(spec, "helix_stomp");
     expect(file.data.device).toBe(2162694);
@@ -517,8 +524,8 @@ describe("HX Stomp end-to-end pipeline (STOMP-06 simulation)", () => {
 
   it("STOMP-06: Full Stomp XL pipeline produces valid output with 4 snapshots", () => {
     const intent = cleanIntent();
-    const chain = assembleSignalChain(intent, "helix_stomp_xl");
-    const parameterized = resolveParameters(chain, intent);
+    const chain = assembleSignalChain(intent, getCapabilities("helix_stomp_xl"));
+    const parameterized = resolveParameters(chain, intent, defaultCaps);
     const snaps = buildSnapshots(parameterized, intent.snapshots);
     const spec: PresetSpec = {
       name: "Pipeline Test Stomp XL",
@@ -527,18 +534,18 @@ describe("HX Stomp end-to-end pipeline (STOMP-06 simulation)", () => {
       signalChain: parameterized,
       snapshots: snaps.slice(0, STOMP_CONFIG.STOMP_XL_MAX_SNAPSHOTS),
     };
-    expect(() => validatePresetSpec(spec, "helix_stomp_xl")).not.toThrow();
+    expect(() => validatePresetSpec(spec, getCapabilities("helix_stomp_xl"))).not.toThrow();
     const file = buildStompFile(spec, "helix_stomp_xl");
     expect(file.data.device).toBe(2162699);
   });
 
   it("STOMP-10: Regression — Helix LT pipeline unaffected by Stomp additions", () => {
     const intent = cleanIntent();
-    const chain = assembleSignalChain(intent, "helix_lt");
-    const parameterized = resolveParameters(chain, intent);
+    const chain = assembleSignalChain(intent, getCapabilities("helix_lt"));
+    const parameterized = resolveParameters(chain, intent, defaultCaps);
     const snaps = buildSnapshots(parameterized, intent.snapshots);
     const spec: PresetSpec = { name: "LT Regression", description: "Test", tempo: 120, signalChain: parameterized, snapshots: snaps };
-    expect(() => validatePresetSpec(spec, "helix_lt")).not.toThrow();
+    expect(() => validatePresetSpec(spec, getCapabilities("helix_lt"))).not.toThrow();
     const file = buildHlxFile(spec, "helix_lt");
     expect(file.data.device).toBe(DEVICE_IDS.helix_lt);
   });
@@ -582,7 +589,7 @@ describe("Controller section DSP mapping", () => {
     // The controller section must place the Gain min/max on dsp1.blockN, not dsp0.
     const intent = highGainIntent();
     const spec = buildPresetSpec(intent);
-    validatePresetSpec(spec);
+    validatePresetSpec(spec, defaultCaps);
     const hlx = buildHlxFile(spec);
 
     const controller = hlx.data.tone.controller as Record<string, Record<string, Record<string, unknown>>>;

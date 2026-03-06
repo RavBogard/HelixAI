@@ -281,7 +281,7 @@ export function buildSnapshots(
           blockStates[entry.key] === true
         ) {
           const baseMix = entry.block.parameters?.Mix;
-          if (baseMix !== undefined) {
+          if (baseMix !== undefined && typeof baseMix === "number") {
             const boostedMix = Math.min(baseMix + AMBIENT_MIX_BOOST, 1.0);
             parameterOverrides[entry.key] = {
               ...(parameterOverrides[entry.key] ?? {}),

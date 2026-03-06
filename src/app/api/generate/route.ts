@@ -16,8 +16,10 @@ import {
   isPodGo,
   isStadium,
   isStomp,
+  resolveFamily,
+  getCapabilities,
 } from "@/lib/helix";
-import type { PresetSpec, DeviceTarget, SubstitutionMap } from "@/lib/helix";
+import type { PresetSpec, DeviceTarget, SubstitutionMap, DeviceFamily } from "@/lib/helix";
 import type { RigIntent } from "@/lib/helix";
 import { mapRigToSubstitutions, parseRigText } from "@/lib/rig-mapping";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -41,6 +43,12 @@ export async function POST(req: NextRequest) {
     } else {
       deviceTarget = "helix_lt";
     }
+
+    // Resolve device family at pipeline entry (Phase 61).
+    // deviceFamily is ready for downstream phases (62-65) to consume.
+    // Note: helix_rack, pod_go_xl, helix_stadium_xl fall through to defaults above — acceptable
+    // because their builders don't ship until v5.1.
+    const deviceFamily: DeviceFamily = resolveFamily(deviceTarget);
 
     if (!messages || messages.length === 0) {
       return NextResponse.json(
@@ -79,12 +87,13 @@ export async function POST(req: NextRequest) {
     // Step 1: Claude Planner generates ToneIntent (creative choices only)
     // Pass device target so planner filters model list for Pod Go (PGMOD-04)
     // Pass toneContext so planner prioritizes rig-matched models (Phase 20)
-    const toneIntent = await callClaudePlanner(messages, deviceTarget, toneContext);
+    const toneIntent = await callClaudePlanner(messages, deviceTarget, deviceFamily, toneContext);
 
     // Step 2: Knowledge Layer pipeline (deterministic)
-    // Pass device target so chain rules apply Pod Go constraints (PGCHAIN-01-03)
-    const chain = assembleSignalChain(toneIntent, deviceTarget);
-    const parameterized = resolveParameters(chain, toneIntent, deviceTarget);
+    // Resolve capabilities once, pass to all Knowledge Layer functions (KLAYER-04)
+    const caps = getCapabilities(deviceTarget);
+    const chain = assembleSignalChain(toneIntent, caps);
+    const parameterized = resolveParameters(chain, toneIntent, caps);
     const snapshots = buildSnapshots(parameterized, toneIntent.snapshots);
 
     // Step 3: Build PresetSpec
@@ -99,8 +108,7 @@ export async function POST(req: NextRequest) {
     };
 
     // Step 4: Strict validation — fail fast on structural errors
-    // Pass device for device-specific validation (Pod Go: all dsp0, 4 snapshots, 10 blocks)
-    validatePresetSpec(presetSpec, deviceTarget);
+    validatePresetSpec(presetSpec, caps);
 
     // Step 5: Build preset file with device target
     if (isStomp(deviceTarget)) {

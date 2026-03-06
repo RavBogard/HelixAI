@@ -6,9 +6,8 @@
 // Public API: assembleSignalChain(intent: ToneIntent): BlockSpec[]
 
 import type { ToneIntent } from "./tone-intent";
-import type { BlockSpec, DeviceTarget } from "./types";
-import { isPodGo, isStadium, isStomp, POD_GO_MAX_USER_EFFECTS } from "./types";
-import { STADIUM_CONFIG, STOMP_CONFIG } from "./config";
+import type { BlockSpec } from "./types";
+import type { DeviceCapabilities } from "./device-family";
 import {
   AMP_MODELS,
   CAB_MODELS,
@@ -29,9 +28,6 @@ import type { HelixModel } from "./models";
 // Constants
 // ---------------------------------------------------------------------------
 
-const MAX_BLOCKS_PER_DSP = 8;
-// Stadium: 12 blocks per path (single path, no dual DSP split) (STAD-04)
-const STADIUM_MAX_BLOCKS_PER_PATH = STADIUM_CONFIG.STADIUM_MAX_BLOCKS_PER_PATH;
 
 // Model name constants for mandatory blocks
 const MINOTAUR = "Minotaur";
@@ -73,10 +69,10 @@ const CATALOG_TO_BLOCK_TYPE: Record<string, BlockType> = {
 // ---------------------------------------------------------------------------
 
 /** Look up an effect model name across all effect catalogs. Throws if not found. */
-function resolveEffectModel(name: string, device?: DeviceTarget): ResolvedEffect {
-  const stadium = device ? isStadium(device) : false;
+function resolveEffectModel(name: string, caps: DeviceCapabilities): ResolvedEffect {
+  const isAgouraEra = caps.ampCatalogEra === "agoura";
 
-  // For Stadium, also search STADIUM_EQ_MODELS (7-band Parametric EQ etc.)
+  // For Agoura-era devices, also search STADIUM_EQ_MODELS (7-band Parametric EQ etc.)
   const catalogs: Array<[Record<string, HelixModel>, string]> = [
     [DISTORTION_MODELS, "DISTORTION_MODELS"],
     [DELAY_MODELS, "DELAY_MODELS"],
@@ -86,7 +82,7 @@ function resolveEffectModel(name: string, device?: DeviceTarget): ResolvedEffect
     [EQ_MODELS, "EQ_MODELS"],
     [WAH_MODELS, "WAH_MODELS"],
     [VOLUME_MODELS, "VOLUME_MODELS"],
-    ...(stadium ? [[STADIUM_EQ_MODELS, "EQ_MODELS"] as [Record<string, HelixModel>, string]] : []),
+    ...(isAgouraEra ? [[STADIUM_EQ_MODELS, "EQ_MODELS"] as [Record<string, HelixModel>, string]] : []),
   ];
 
   for (const [catalog, catalogName] of catalogs) {
@@ -162,13 +158,9 @@ function classifyEffectSlot(resolved: ResolvedEffect, modelName: string): ChainS
   }
 }
 
-function getDspForSlot(slot: ChainSlot, device?: DeviceTarget): 0 | 1 {
-  // Pod Go: single DSP — all blocks on dsp0 (PGCHAIN-03)
-  if (device && isPodGo(device)) return 0;
-  // Stadium: single path — all blocks on dsp0 (STAD-04)
-  if (device && isStadium(device)) return 0;
-  // Stomp: single DSP — all blocks on dsp0 (STOMP-04)
-  if (device && isStomp(device)) return 0;
+function getDspForSlot(slot: ChainSlot, caps: DeviceCapabilities): 0 | 1 {
+  // Single-DSP devices: all blocks on dsp0
+  if (caps.dspCount === 1) return 0;
 
   switch (slot) {
     case "wah":
@@ -256,22 +248,20 @@ function buildBlockSpec(
  * @throws Error if amp, cab, or any effect model name is not found in the database.
  * @throws Error if either DSP would exceed the block limit.
  */
-export function assembleSignalChain(intent: ToneIntent, device?: DeviceTarget): BlockSpec[] {
-  const podGo = device ? isPodGo(device) : false;
-  const stadium = device ? isStadium(device) : false;
-  const stomp = device ? isStomp(device) : false;
+export function assembleSignalChain(intent: ToneIntent, caps: DeviceCapabilities): BlockSpec[] {
+  const isAgouraEra = caps.ampCatalogEra === "agoura";
 
   // 1. Resolve amp model
-  // Stadium uses STADIUM_AMPS (Agoura_* IDs), all others use AMP_MODELS (HD2_* IDs).
-  // Fallback: if the planner returns an HD2 amp name for a Stadium request, find the
+  // Agoura-era devices use STADIUM_AMPS (Agoura_* IDs), all others use AMP_MODELS (HD2_* IDs).
+  // Fallback: if the planner returns an HD2 amp name for an Agoura request, find the
   // closest Agoura equivalent by matching basedOn or ampCategory. This handles LLM
   // hallucinations where the planner picks from training data rather than the provided list.
-  let ampModel: HelixModel | undefined = stadium
+  let ampModel: HelixModel | undefined = isAgouraEra
     ? STADIUM_AMPS[intent.ampName]
     : AMP_MODELS[intent.ampName];
 
-  if (!ampModel && stadium) {
-    // Planner returned an HD2 name for Stadium — attempt cross-catalog fallback.
+  if (!ampModel && isAgouraEra) {
+    // Planner returned an HD2 name for an Agoura-era device — attempt cross-catalog fallback.
     // The Zod schema allows all amp names (HD2 + Agoura) so constrained decoding
     // can't prevent this. Map to closest Agoura equivalent instead of crashing.
     const hd2Model = AMP_MODELS[intent.ampName];
@@ -304,8 +294,8 @@ export function assembleSignalChain(intent: ToneIntent, device?: DeviceTarget): 
     }
   }
 
-  if (!ampModel && !stadium) {
-    // Reverse fallback: planner returned an Agoura name for a non-Stadium device.
+  if (!ampModel && !isAgouraEra) {
+    // Reverse fallback: planner returned an Agoura name for an HD2-era device.
     // The Zod schema allows all amp names (HD2 + Agoura) so constrained decoding
     // can pick Agoura amps for Helix/Stomp/PodGo. Map back to closest HD2 equivalent.
     const agModel = STADIUM_AMPS[intent.ampName];
@@ -340,7 +330,7 @@ export function assembleSignalChain(intent: ToneIntent, device?: DeviceTarget): 
 
   if (!ampModel) {
     throw new Error(
-      `Unknown amp model: "${intent.ampName}". Model name must exactly match a key in ${stadium ? "STADIUM_AMPS" : "AMP_MODELS"}.`
+      `Unknown amp model: "${intent.ampName}". Model name must exactly match a key in ${isAgouraEra ? "STADIUM_AMPS" : "AMP_MODELS"}.`
     );
   }
 
@@ -353,14 +343,13 @@ export function assembleSignalChain(intent: ToneIntent, device?: DeviceTarget): 
   }
 
   // 2b. Detect dual-amp intent (DUAL-03)
-  // Stadium v3.0: single-path only — dual-amp not supported (STAD-04)
-  // Stomp: single DSP — dual-amp not supported (STOMP-04)
-  const isDualAmp = !!(intent.secondAmpName && intent.secondCabName && !podGo && !stadium && !stomp);
+  // Only supported on devices with dualAmpSupported capability
+  const isDualAmp = !!(intent.secondAmpName && intent.secondCabName && caps.dualAmpSupported);
 
   let secondAmpModel: HelixModel | undefined;
   let secondCabModel: HelixModel | undefined;
   if (isDualAmp) {
-    // Dual-amp is only for Helix LT/Floor (isDualAmp guard excludes Stadium/Stomp/PodGo)
+    // Dual-amp is capability-driven — only devices with dualAmpSupported: true (Helix Floor/LT/Rack) enter this path
     secondAmpModel = AMP_MODELS[intent.secondAmpName!];
     if (!secondAmpModel) {
       throw new Error(
@@ -383,37 +372,22 @@ export function assembleSignalChain(intent: ToneIntent, device?: DeviceTarget): 
   const userEffectNames = new Set<string>();
 
   for (const effect of intent.effects) {
-    const resolved = resolveEffectModel(effect.modelName, device);
+    const resolved = resolveEffectModel(effect.modelName, caps);
     const slot = classifyEffectSlot(resolved, effect.modelName);
     userEffectNames.add(effect.modelName);
     userEffects.push({
       model: resolved.model,
       blockType: resolved.blockType,
       slot,
-      dsp: getDspForSlot(slot, device),
+      dsp: getDspForSlot(slot, caps),
       intentRole: effect.role,
     });
   }
 
-  // Pod Go: enforce maximum 4 user-assignable effect blocks (PGCHAIN-01)
-  if (podGo && userEffects.length > POD_GO_MAX_USER_EFFECTS) {
-    userEffects.length = POD_GO_MAX_USER_EFFECTS;
-  }
-
-  // Stadium: enforce maximum 4 effects (amp+cab+boost+gate+eq+gain = 6 mandatory, leaves ~4 flex) (STAD-04)
-  // Conservative limit: ensures total stays within STADIUM_MAX_BLOCKS_PER_PATH (12)
-  if (stadium && userEffects.length > 4) {
-    userEffects.length = 4;
-  }
-
-  // Stomp: enforce per-device block limit for user effects (STOMP-04)
-  // Stomp max 6 total: amp(1)+cab(1)+boost(1)+gate(0-1)+eq(1)+gain(1) = 5-6 mandatory
-  // Cap at 2 user effects (Stomp) or 5 (Stomp XL) to stay within total block limit
-  if (stomp) {
-    const stompMaxUserEffects = device === "helix_stomp_xl" ? 5 : 2;
-    if (userEffects.length > stompMaxUserEffects) {
-      userEffects.length = stompMaxUserEffects;
-    }
+  // Enforce per-device user effect limit (caps.maxEffectsPerDsp)
+  // Infinity for Helix (no explicit cap), 4 for Pod Go/Stadium, 2-5 for Stomp/Stomp XL
+  if (caps.maxEffectsPerDsp < Infinity && userEffects.length > caps.maxEffectsPerDsp) {
+    userEffects.length = caps.maxEffectsPerDsp;
   }
 
   // Dual-amp: enforce tighter pre-amp effect limit (DUAL-03)
@@ -460,30 +434,28 @@ export function assembleSignalChain(intent: ToneIntent, device?: DeviceTarget): 
     });
   }
 
-  // 5c. Post-cab Parametric EQ — skip for Pod Go (PGCHAIN-02: DSP budget reserved)
-  //     Stadium uses 7-band Parametric EQ (STAD-04)
-  //     Stomp: skip for same reason as Pod Go (tight block budget, STOMP-04)
-  if (!podGo && !stomp) {
-    const eqModel = stadium
+  // 5c. Post-cab Parametric EQ — only for devices with 'eq' in mandatoryBlockTypes
+  //     Agoura-era devices use 7-band Parametric EQ, HD2-era use 5-band
+  if (caps.mandatoryBlockTypes.includes("eq")) {
+    const eqModel = isAgouraEra
       ? STADIUM_EQ_MODELS[STADIUM_PARAMETRIC_EQ]!
       : EQ_MODELS[PARAMETRIC_EQ]!;
     mandatoryBlocks.push({
       model: eqModel,
       blockType: "eq",
       slot: "eq",
-      dsp: getDspForSlot("eq", device),
+      dsp: getDspForSlot("eq", caps),
     });
   }
 
-  // 5d. Gain Block as last block — skip for Pod Go (PGCHAIN-02: DSP budget reserved)
-  //     Stomp: skip for same reason (STOMP-04)
-  if (!podGo && !stomp) {
+  // 5d. Gain Block as last block — only for devices with 'volume' in mandatoryBlockTypes
+  if (caps.mandatoryBlockTypes.includes("volume")) {
     const gainModel = VOLUME_MODELS[GAIN_BLOCK]!;
     mandatoryBlocks.push({
       model: gainModel,
       blockType: "volume",
       slot: "gain_block",
-      dsp: getDspForSlot("gain_block", device),
+      dsp: getDspForSlot("gain_block", caps),
     });
   }
 
@@ -548,42 +520,17 @@ export function assembleSignalChain(intent: ToneIntent, device?: DeviceTarget): 
   allBlocks.sort((a, b) => SLOT_ORDER[a.slot] - SLOT_ORDER[b.slot]);
 
   // 8. Validate DSP block limits
-  if (podGo) {
-    // Pod Go: all blocks on single DSP, max 10 total (6 fixed + 4 flexible)
-    const totalNonCab = allBlocks.filter((b) => b.blockType !== "cab").length;
-    // Pod Go total: amp(1) + boost(1) + gate?(0-1) + user effects (up to 4) ≤ ~10
-    // We check against the total block limit including cab
+  if (caps.dspCount === 1) {
+    // Single-DSP devices: check total block count against caps.maxBlocksTotal
     const totalBlocks = allBlocks.length;
-    void totalNonCab; // used via totalBlocks
-    if (totalBlocks > 10) {
+    if (totalBlocks > caps.maxBlocksTotal) {
       throw new Error(
-        `Pod Go block limit exceeded: ${totalBlocks} blocks (max 10 total). ` +
-          `Reduce the number of effects.`
-      );
-    }
-  } else if (stadium) {
-    // Stadium: single path, max 12 blocks (including cab) (STAD-04)
-    const totalBlocks = allBlocks.length;
-    if (totalBlocks > STADIUM_MAX_BLOCKS_PER_PATH) {
-      throw new Error(
-        `Stadium block limit exceeded: ${totalBlocks} blocks (max ${STADIUM_MAX_BLOCKS_PER_PATH} per path). ` +
-          `Reduce the number of effects.`
-      );
-    }
-  } else if (stomp) {
-    // Stomp: single path, per-device block limit (STOMP-04)
-    const maxBlocks = device === "helix_stomp_xl"
-      ? STOMP_CONFIG.STOMP_XL_MAX_BLOCKS
-      : STOMP_CONFIG.STOMP_MAX_BLOCKS;
-    const totalBlocks = allBlocks.length;
-    if (totalBlocks > maxBlocks) {
-      throw new Error(
-        `Stomp block limit exceeded: ${totalBlocks} blocks (max ${maxBlocks} for ${device}). ` +
+        `Block limit exceeded: ${totalBlocks} blocks (max ${caps.maxBlocksTotal} for ${caps.family}). ` +
           `Reduce the number of effects.`
       );
     }
   } else {
-    // Helix: dual DSP, max 8 non-cab blocks per DSP
+    // Dual-DSP devices: max non-cab blocks per DSP
     const dsp0NonCab = allBlocks.filter(
       (b) => b.dsp === 0 && b.blockType !== "cab"
     );
@@ -591,15 +538,15 @@ export function assembleSignalChain(intent: ToneIntent, device?: DeviceTarget): 
       (b) => b.dsp === 1 && b.blockType !== "cab"
     );
 
-    if (dsp0NonCab.length > MAX_BLOCKS_PER_DSP) {
+    if (dsp0NonCab.length > caps.maxBlocksPerDsp) {
       throw new Error(
-        `DSP0 block limit exceeded: ${dsp0NonCab.length} non-cab blocks (max ${MAX_BLOCKS_PER_DSP}). ` +
+        `DSP0 block limit exceeded: ${dsp0NonCab.length} non-cab blocks (max ${caps.maxBlocksPerDsp}). ` +
           `Reduce the number of pre-amp effects.`
       );
     }
-    if (dsp1NonCab.length > MAX_BLOCKS_PER_DSP) {
+    if (dsp1NonCab.length > caps.maxBlocksPerDsp) {
       throw new Error(
-        `DSP1 block limit exceeded: ${dsp1NonCab.length} non-cab blocks (max ${MAX_BLOCKS_PER_DSP}). ` +
+        `DSP1 block limit exceeded: ${dsp1NonCab.length} non-cab blocks (max ${caps.maxBlocksPerDsp}). ` +
           `Reduce the number of post-cab effects.`
       );
     }

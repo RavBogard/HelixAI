@@ -21,8 +21,8 @@
 //    in buildPlannerPrompt() — any ${device ? ...} interpolation in the shared prefix
 //    fragments the cache into per-device buckets.
 
-import { buildPlannerPrompt } from "../src/lib/planner";
-import { getModelListForPrompt } from "@/lib/helix";
+import { getFamilyPlannerPrompt } from "../src/lib/prompt-router";
+import { getModelListForPrompt, getCapabilities } from "@/lib/helix";
 import type { DeviceTarget } from "@/lib/helix";
 
 // ---------------------------------------------------------------------------
@@ -68,8 +68,9 @@ interface DeviceCheckResult {
 // ---------------------------------------------------------------------------
 
 function checkDevice(device: DeviceTarget): DeviceCheckResult {
-  const modelList = getModelListForPrompt(device);
-  const prompt = buildPlannerPrompt(modelList, device);
+  const caps = getCapabilities(device);
+  const modelList = getModelListForPrompt(caps);
+  const prompt = getFamilyPlannerPrompt(device, modelList);
 
   const sectionPresent: [boolean, boolean, boolean] = [
     prompt.includes(ENRICHMENT_SECTIONS[0]),

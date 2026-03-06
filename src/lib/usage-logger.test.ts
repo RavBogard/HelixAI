@@ -9,6 +9,7 @@ import {
   logUsage,
   estimateClaudeCost,
   estimateGeminiCost,
+  CLAUDE_SONNET_PRICE,
   type PlannerUsageRecord,
 } from "@/lib/usage-logger";
 
@@ -184,13 +185,18 @@ describe("logUsage", () => {
 });
 
 describe("estimateClaudeCost", () => {
+  it("CLAUDE_SONNET_PRICE.cache_write_per_mtok is 6.0 (1h TTL)", () => {
+    // Regression guard: ensures pricing constant stays at 6.0 for 1h ephemeral cache
+    expect(CLAUDE_SONNET_PRICE.cache_write_per_mtok).toBe(6.0);
+  });
+
   it("Test 4: returns correct USD value for known inputs", () => {
     // 1000 input + 500 output + 500 cache_write + 200 cache_read
     // input:       1000 / 1_000_000 * 3.00     = 0.003
     // output:       500 / 1_000_000 * 15.00    = 0.0075
-    // cache_write:  500 / 1_000_000 * 3.75     = 0.001875
+    // cache_write:  500 / 1_000_000 * 6.00     = 0.003
     // cache_read:   200 / 1_000_000 * 0.30     = 0.00006
-    // total = 0.003 + 0.0075 + 0.001875 + 0.00006 = 0.012435
+    // total = 0.003 + 0.0075 + 0.003 + 0.00006 = 0.013560
     const cost = estimateClaudeCost({
       input_tokens: 1000,
       output_tokens: 500,
@@ -198,7 +204,7 @@ describe("estimateClaudeCost", () => {
       cache_read_input_tokens: 200,
     });
 
-    expect(cost).toBeCloseTo(0.012435, 6);
+    expect(cost).toBeCloseTo(0.013560, 6);
   });
 
   it("returns zero cost for zero tokens", () => {

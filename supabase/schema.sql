@@ -90,3 +90,30 @@ CREATE POLICY "users_own_messages"
 --     Allowed operation: DELETE
 --     Target roles: authenticated
 --     USING: bucket_id = 'presets' AND (storage.foldername(name))[1] = auth.uid()::text
+
+-- ============================================================
+-- PART 3: Phase 66 Migration — Device Column backfill
+-- ============================================================
+-- Run this in Supabase Dashboard SQL Editor BEFORE deploying Phase 66 code.
+-- The conversations table already has `device TEXT NOT NULL` (Part 1 above).
+-- This backfill handles legacy rows created before the column existed or
+-- rows where device was inserted as empty string due to bugs.
+--
+-- Step 1: Allow NULL temporarily (in case NOT NULL constraint blocks UPDATE)
+-- ALTER TABLE conversations ALTER COLUMN device DROP NOT NULL;
+--
+-- Step 2: Backfill from preset_url extension heuristic
+-- .hsp = helix_stadium, .pgp = pod_go, everything else = helix_lt
+-- UPDATE conversations
+-- SET device = CASE
+--   WHEN preset_url LIKE '%.hsp' THEN 'helix_stadium'
+--   WHEN preset_url LIKE '%.pgp' THEN 'pod_go'
+--   ELSE 'helix_lt'
+-- END
+-- WHERE device IS NULL OR device = '';
+--
+-- Step 3: Re-enforce NOT NULL
+-- ALTER TABLE conversations ALTER COLUMN device SET NOT NULL;
+--
+-- Step 4: Verify (should return 0)
+-- SELECT COUNT(*) FROM conversations WHERE device IS NULL OR device = '';
