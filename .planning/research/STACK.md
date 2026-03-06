@@ -1,14 +1,14 @@
 # Stack Research
 
-**Domain:** HelixTones v5.0 — Device-First Architecture Rework
-**Researched:** 2026-03-05
-**Confidence:** HIGH overall — TypeScript patterns verified against official docs and codebase, firmware params extracted from 12 real amp blocks across 11 .hsp files, Zod 4.3.6 discriminatedUnion verified in installed package
+**Domain:** HelixTones — Preset Quality Deep Dive (Expression Pedal, Per-Model Effect Intelligence, Effect Combination Logic, Per-Device Craft Optimization, Preset Quality Validation)
+**Researched:** 2026-03-06
+**Confidence:** HIGH — all findings derived from direct codebase inspection, binary format analysis from types.ts/preset-builder.ts comments, and pattern extrapolation from v4.0's validated AmpFamily + paramOverrides mechanism
 
 ---
 
 ## Scope
 
-This file covers ONLY what is new or changed for v5.0. The validated existing stack is:
+This file covers ONLY what is new for the expression pedal controller assignment, per-model effect intelligence, effect combination logic, per-device preset craft optimization, and preset quality validation milestone. It does NOT re-research the validated base stack:
 
 | Layer | Technology | Version |
 |-------|-----------|---------|
@@ -16,525 +16,483 @@ This file covers ONLY what is new or changed for v5.0. The validated existing st
 | Language | TypeScript | ^5 |
 | UI | Tailwind CSS | ^4 |
 | AI (generation) | Claude Sonnet 4.6 via `@anthropic-ai/sdk` | ^0.78.0 |
-| AI (chat) | Gemini 2.5 Flash via `@google/genai` | ^1.42.0 |
-| Auth + DB + Storage | Supabase | `@supabase/supabase-js` ^2.98.0, `@supabase/ssr` ^0.9.0 |
-| Hosting | Vercel (serverless) | — |
 | Schema validation | Zod | ^4.3.6 |
 | Testing | Vitest | ^4.0.18 |
-
-v5.0 has four tracks:
-
-1. **Device-first flow** — device picker moves to conversation start, routing all subsequent steps to device-specific paths
-2. **Device-family module architecture** — eliminate 17+ guard sites by routing to per-device modules from the beginning
-3. **Stadium firmware completeness** — extract all 27+ params from real .hsp corpus, eliminate param bleed
-4. **Per-device planner prompts** — each device gets its own prompt with only its model catalog
+| Auth + DB + Storage | Supabase | ^2.98.0 |
 
 ---
 
 ## The Single Most Important Finding
 
-**No new npm packages are needed for v5.0.**
+**No new npm packages are needed for this milestone.**
 
-All work is TypeScript source reorganization and new TypeScript patterns. The existing stack
-already has every tool required:
+All five feature areas are TypeScript data + logic changes in the existing Knowledge Layer:
 
-- TypeScript discriminated unions handle device-family routing — `z.discriminatedUnion()` verified working in Zod 4.3.6
-- Node.js `Buffer` + `JSON.parse()` handles .hsp binary parsing for param extraction (8-byte magic header + JSON)
-- Vitest handles per-device test suites via `describe()` nesting and file-per-device organization
-- The existing `scripts/` pattern (`npx tsx scripts/extract-params.ts`) handles one-shot extraction tooling
+1. **Expression pedal controller assignment** — extend `HlxControllerAssignment` type and `buildControllerSection()` in `preset-builder.ts` with new EXP_PEDAL_1/EXP_PEDAL_2 entries. The data structure is already defined (`@controller: 2` for EXP Pedal 2). No new npm packages.
 
-Zero new dependencies means zero integration risk and no compatibility testing.
+2. **Per-model effect intelligence** — add optional `effectOverrides` and `compatibleWith` fields to `HelixModel` in `models.ts`. Parallel to the existing `paramOverrides` mechanism on amp models (Phase 56 / Layer 4). No new npm packages.
 
----
+3. **Effect combination logic** — add a `COMBINATION_RULES` lookup table in `param-engine.ts` or a new `combination-rules.ts` module. Context flows from chain assembly into param resolution. No new npm packages.
 
-## Recommended Stack
+4. **Per-device preset craft optimization** — extend the `DeviceCapabilities` interface in `device-family.ts` with craft-guidance fields. Already uses the `DeviceCapabilities` pattern — additive extension only. No new npm packages.
 
-### Core Technologies — No Changes
-
-| Technology | Version | Purpose | v5.0 Impact |
-|------------|---------|---------|-------------|
-| TypeScript | ^5 | Type safety | New discriminated union types: `DeviceFamily`, per-family `ToneIntent` schema variants; exhaustiveness checking via `never` guard |
-| Zod | ^4.3.6 | Runtime schema validation | `z.discriminatedUnion('family', [...])` for device-family routing — verified working in installed version |
-| Vitest | ^4.0.18 | Testing | Per-device test files: `helix.test.ts`, `stadium.test.ts`, `stomp.test.ts`, `podgo.test.ts` using existing `describe()` + `it()` pattern |
-| Next.js | 16.1.6 | App framework | No changes to API routes — device selection passed as parameter, routing happens in `lib/helix/` |
-| `@anthropic-ai/sdk` | ^0.78.0 | Claude Sonnet 4.6 planner | `buildPlannerPrompt()` refactored to `buildPlannerPromptForDevice(family)` — same API, different prompt text and model list per family |
-
-### Supporting Tooling — One-Shot Script Only
-
-| Tool | Version | Purpose | How Used |
-|------|---------|---------|----------|
-| `tsx` (already in environment) | n/a | Run TypeScript extraction scripts | `npx tsx scripts/extract-stadium-params.ts` — one-shot param extraction, not added to `package.json` |
-
-`tsx` is already available via `npx` with zero install. The extraction script reads real .hsp files
-from the local corpus, prints the complete param set per amp model, and terminates. Output is
-pasted into `STADIUM_AMPS` defaultParams in `models.ts`. This is a development tool, not a
-runtime dependency.
+5. **Preset quality validation** — add new assertions to `validatePresetSpec()` in `validate.ts` and expand `model-defaults-validation.test.ts` with quality-gate tests. The Vitest test runner already handles this. No new npm packages.
 
 ---
 
-## Feature Area 1: TypeScript Patterns for Device-Family Routing
+## Feature Area 1: Expression Pedal Controller Assignment in .hlx / .pgp / .hsp
 
-### The Problem
+### What the File Format Requires
 
-Current code has 17+ guard sites:
-```typescript
-// Repeated everywhere — chain-rules, param-engine, planner, validate
-if (isPodGo(device)) { ... }
-if (isStadium(device)) { ... }
-if (isStomp(device)) { ... }
-```
-
-This means every new device adds a guard site in every module. It also means the planner
-prompt, model catalog, and chain rules all handle every device with runtime branching.
-
-### The Solution: Discriminated Union with Module-Per-Family
-
-**Step 1: Define device families as a discriminated union in `types.ts`**
+**From direct codebase inspection of `types.ts` lines 129-140:**
 
 ```typescript
-// Device families — the routing unit for v5.0
-// Each family maps to a specific builder, prompt, model catalog, and chain rules
-export type DeviceFamily =
-  | "helix"   // Helix Floor, Helix LT, Helix Rack — .hlx, dual-DSP, dual-amp
-  | "stomp"   // HX Stomp, HX Stomp XL — .hlx, 6-9 block budget
-  | "podgo"   // Pod Go, Pod Go XL — .pgp, 4-effect limit
-  | "stadium"; // Helix Stadium, Helix Stadium XL — .hsp, Agoura amps, slot-based
-
-// Map device → family (single source of truth)
-export const DEVICE_FAMILY: Record<DeviceTarget, DeviceFamily> = {
-  helix_lt:       "helix",
-  helix_floor:    "helix",
-  helix_stomp:    "stomp",
-  helix_stomp_xl: "stomp",
-  pod_go:         "podgo",
-  helix_stadium:  "stadium",
-} as const;
-
-// Exhaustiveness checker — if a new family is added, this breaks at compile time
-export function assertNever(x: never): never {
-  throw new Error(`Unhandled device family: ${x}`);
-}
-```
-
-**Step 2: Per-family module structure in `src/lib/helix/`**
-
-```
-src/lib/helix/
-  devices/
-    helix/
-      chain-rules.ts     — Helix-specific signal chain assembly
-      planner-prompt.ts  — Helix-only model catalog + prompt
-      models.ts          — HD2 amp/cab/effect catalog (no Agoura)
-    stadium/
-      chain-rules.ts     — Stadium slot-grid assembly
-      planner-prompt.ts  — Stadium-only Agoura catalog + prompt
-      models.ts          — Agoura amp catalog + HX2/VIC effects
-    stomp/
-      chain-rules.ts     — Stomp block budget rules
-      planner-prompt.ts  — Stomp-specific prompt (constraint-first)
-      models.ts          — re-exports from helix/models (same catalog, different constraints)
-    podgo/
-      chain-rules.ts     — Pod Go 4-effect limit rules
-      planner-prompt.ts  — Pod Go prompt (Mono/Stereo suffix catalog)
-      models.ts          — Pod Go model catalog (Mono/Stereo variants)
-  router.ts              — getDeviceModule(family: DeviceFamily) → per-family module
-  index.ts               — public barrel export (unchanged external API)
-```
-
-**Step 3: Router replaces guard-based branching**
-
-```typescript
-// src/lib/helix/router.ts
-import type { DeviceFamily } from "./types";
-
-// Each family module exports the same interface
-export interface DeviceModule {
-  assembleSignalChain: (intent: ToneIntent, device: DeviceTarget) => BlockSpec[];
-  buildPlannerPrompt: (device: DeviceTarget) => string;
-  getModelList: () => string;
+// EXISTING — already typed but unused for EXP assignment
+export interface HlxControllerAssignment {
+  "@min": number;
+  "@max": number;
+  "@controller": number; // 19 = Snapshot, 2 = EXP Pedal 2, 18 = MIDI CC
+  "@snapshot_disable"?: boolean;
+  "@cc"?: number;
 }
 
-export function getDeviceModule(family: DeviceFamily): DeviceModule {
-  switch (family) {
-    case "helix":   return import("./devices/helix");
-    case "stomp":   return import("./devices/stomp");
-    case "podgo":   return import("./devices/podgo");
-    case "stadium": return import("./devices/stadium");
-    default:        return assertNever(family);
-  }
-}
+export const CONTROLLERS = {
+  EXP_PEDAL_1: 1,   // already defined in models.ts line 53
+  EXP_PEDAL_2: 2,   // already defined in models.ts line 54
+  MIDI_CC: 18,
+  SNAPSHOT: 19,
+};
 ```
 
-The `default: assertNever(family)` makes TypeScript enforce exhaustive coverage at compile
-time. Adding a new device family without handling it here is a type error, not a runtime bug.
-
-### Confidence
-
-HIGH — TypeScript discriminated unions are the canonical pattern for this problem. The
-`assertNever()` trick is documented in the TypeScript handbook. Module-per-family is standard
-at Next.js scale. Zod 4.3.6 `z.discriminatedUnion()` verified working in installed package.
-
----
-
-## Feature Area 2: Per-Device ToneIntent Schema Variants
-
-### The Problem
-
-Current `ToneIntentSchema` uses global `AMP_NAMES` and `CAB_NAMES` arrays that include ALL
-amps from all devices. The planner can pick Agoura amps for Helix LT or HD2 amps for Stadium.
-
-### The Solution: Family-Specific Schema Construction
-
-**Pattern: Factory function, not separate schema files**
-
-```typescript
-// src/lib/helix/tone-intent.ts
-
-// Per-family schema factory — called once per device request
-export function buildToneIntentSchema(family: DeviceFamily) {
-  const { ampNames, cabNames } = getModelNamesForFamily(family);
-
-  return z.object({
-    ampName: z.enum(ampNames as [string, ...string[]]),
-    cabName: z.enum(cabNames as [string, ...string[]]),
-    // ... rest of schema — effects, snapshots, etc.
-    // Stadium-specific: allow secondAmpName for dual-DSP flow
-    ...(family === "helix" ? {
-      secondAmpName: z.enum(ampNames as [string, ...string[]]).optional(),
-      secondCabName: z.enum(cabNames as [string, ...string[]]).optional(),
-    } : {}),
-  });
-}
-```
-
-This approach builds the schema at request time from the family's model catalog. The Zod
-schema and its `z.enum()` validators are constructed from the correct per-family model list.
-Claude's structured output sees only the valid options for the requested device family.
-
-**Why not separate schema files per family:**
-The schema shape is 95% identical across families. Only `ampName` and `cabName` enums differ.
-A factory function avoids duplication while maintaining type safety.
-
-### Integration with Claude Structured Output
-
-```typescript
-// In planner.ts — family-aware call
-const schema = buildToneIntentSchema(family);
-const response = await claude.messages.create({
-  ...
-  tools: [zodOutputFormat(schema, "tone_intent")],
-});
-```
-
-The `zodOutputFormat` helper from `@anthropic-ai/sdk/helpers/zod` accepts any Zod object
-schema. Passing the family-specific schema constrains Claude's output to only the valid model
-names for that device. No post-validation filtering needed.
-
-### Confidence
-
-HIGH — `zodOutputFormat` accepts any Zod schema; confirmed working in v4.0. Factory pattern
-is standard TypeScript. Zod `z.enum()` from a string array is documented.
-
----
-
-## Feature Area 3: Stadium Firmware Parameter Extraction
-
-### Ground Truth from Real .hsp Files
-
-Direct extraction from 11 .hsp files in the local corpus (12 amp blocks total, 10 unique Agoura
-amp models) reveals the complete firmware parameter set:
-
-**Parameters present in EVERY Agoura amp block (15 params — mandatory, must be emitted):**
-
-| Parameter | Present | Example Value | Notes |
-|-----------|---------|---------------|-------|
-| `AmpCabPeak2Fc` | 12/12 | 1000 | Hidden EQ: 2nd peak center freq |
-| `AmpCabPeak2G` | 12/12 | 0 | Hidden EQ: 2nd peak gain |
-| `AmpCabPeak2Q` | 12/12 | 0.707 | Hidden EQ: 2nd peak Q |
-| `AmpCabPeakFc` | 12/12 | 100 | Hidden EQ: 1st peak center freq |
-| `AmpCabPeakG` | 12/12 | 0 | Hidden EQ: 1st peak gain |
-| `AmpCabPeakQ` | 12/12 | 0.707 | Hidden EQ: 1st peak Q |
-| `AmpCabShelfF` | 12/12 | 1000 | Hidden EQ: shelf frequency |
-| `AmpCabShelfG` | 12/12 | 0 | Hidden EQ: shelf gain |
-| `AmpCabZFir` | 12/12 | 0 | Cabinet impulse response index |
-| `AmpCabZUpdate` | 12/12 | 0 | Cabinet update flag |
-| `Bass` | 12/12 | 0.64 | Standard tone stack |
-| `Hype` | 12/12 | 0 | Presence-like boost circuit |
-| `Ripple` | 12/12 | 0 | Power supply ripple |
-| `Sag` | 12/12 | 0 | Power amp sag |
-| `ZPrePost` | 12/12 | 0.3 | Pre/post EQ blend |
-
-**Parameters present in MOST amp blocks (amp-specific — include if model has them):**
-
-| Parameter | Present | Notes |
-|-----------|---------|-------|
-| `Level` | 11/12 | Output level |
-| `Treble` | 11/12 | Tone stack treble |
-| `Master` | 10/12 | Master volume |
-| `Mid` | 10/12 | Tone stack mid |
-| `Channel` | 8/12 | Channel selector (multi-channel amps) |
-| `Presence` | 8/12 | Presence control |
-| `Drive` | 8/12 | Primary gain (varies: "Drive", "NormalDrive", "BrightDrive") |
-
-**v4.0 was emitting only 12 params per amp. The 10 hidden params that were missing and
-causing param state bleed between presets:**
-
-```
-AmpCabPeak2Fc, AmpCabPeak2G, AmpCabPeak2Q,
-AmpCabPeakFc, AmpCabPeakG, AmpCabPeakQ,
-AmpCabShelfF, AmpCabShelfG,
-AmpCabZFir, AmpCabZUpdate
-```
-
-(Plus `Hype`, `Ripple`, `Sag`, `ZPrePost` — these were in some models but not all.)
-
-### Extraction Approach
-
-The extraction script is a one-shot Node.js script using only the standard library:
-
-```typescript
-// scripts/extract-stadium-params.ts
-import * as fs from "fs";
-
-const HSP_DIR = "C:/Users/dsbog/Downloads/NH_STADIUM_AURA_REFLECTIONS/";
-const files = fs.readdirSync(HSP_DIR).filter(f => f.endsWith(".hsp"));
-
-for (const file of files) {
-  const data = fs.readFileSync(HSP_DIR + file);
-  const j = JSON.parse(data.slice(8).toString("utf8")); // strip 8-byte magic header
-  const flow = j.preset.flow;
-  for (const [, block] of Object.entries(flow)) {
-    for (const [, slot] of Object.entries(block as Record<string, unknown>)) {
-      if (slot && typeof slot === "object" && (slot as Record<string, unknown>).type === "amp") {
-        const ampBlock = slot as { slot: Array<{ model: string; params: Record<string, { value: unknown }> }> };
-        const { model, params } = ampBlock.slot[0];
-        console.log(`${file} | ${model} | ${JSON.stringify(params)}`);
+The controller section in .hlx is:
+```json
+{
+  "controller": {
+    "dsp0": {
+      "block2": {
+        "Mix": {
+          "@min": 0.0,
+          "@max": 1.0,
+          "@controller": 2,
+          "@snapshot_disable": false
+        }
       }
     }
   }
 }
 ```
 
-Run with: `npx tsx scripts/extract-stadium-params.ts`
+`@controller: 2` = EXP Pedal 2 (wah/volume default). `@controller: 1` = EXP Pedal 1.
+`@min` and `@max` define the parameter sweep range (both 0-1 normalized for standard effects; raw Hz for cab LowCut/HighCut).
 
-Output goes directly into `STADIUM_AMPS` defaultParams in `models.ts`. No binary parser library
-needed — the .hsp format is 8-byte ASCII magic + JSON text. `data.slice(8)` strips the header.
+**Critical: A single parameter cannot have BOTH `@controller: 19` (snapshot) AND `@controller: 2` (EXP) simultaneously.** The controller section maps each `(block, paramName)` pair to exactly one controller. Snapshot-controlled parameters (varying across snapshots) and EXP-assigned parameters are mutually exclusive.
 
-### Why No Binary Parser Library
+### .pgp Format
 
-The .hsp format is confirmed as: `"rpshnosj"` (8 ASCII bytes) + `JSON.stringify({ meta, preset })`.
-After `data.slice(8)`, it is plain JSON. `JSON.parse()` handles everything. `binary-parser`,
-`binparse`, or any other library would add a dependency for zero benefit here.
+Pod Go uses the same JSON structure but with `@controller: 4` for snapshot recall (not 19). EXP Pedal controller IDs are the same (`1` and `2`). The `buildControllerSection()` in `podgo-builder.ts` follows the same pattern as `preset-builder.ts` for snapshot params; EXP params use the same `"@controller": 1` or `"@controller": 2` encoding.
 
-Source: Direct codebase inspection of `stadium-builder.ts` + verification against 11 real .hsp files.
-Confidence: HIGH (corpus-driven, ground truth).
+### .hsp Format
 
----
+Helix Stadium uses a slot-based format (not flat-style). Expression pedal controller assignment is **not yet confirmed from real .hsp files** in the corpus. The Stadium controller section may use a different structure under `preset.controllers` or within each slot's `params` entry. This requires corpus extraction before Stadium EXP assignment is implemented.
 
-## Feature Area 4: Barrel Export Strategy for Device Modules
+**Confidence: MEDIUM for Stadium EXP format. HIGH for .hlx/.pgp.**
 
-### The Problem
+### Standard Assignment Rules (Industry Practice, MEDIUM confidence)
 
-The existing `src/lib/helix/index.ts` barrel exports everything from a flat module directory.
-Adding per-device subdirectories risks making the barrel unwieldy or leaking internal module
-details to consumers.
+For professional Helix presets, EXP Pedal 2 is conventionally assigned to wah/volume:
 
-### The Solution: Two-Layer Barrel Pattern
+| Effect Type | Parameter | @controller | @min | @max | Why |
+|-------------|-----------|-------------|------|------|-----|
+| Wah (any model) | `Position` | 2 (EXP2) | 0.0 | 1.0 | Industry standard: EXP2 = toe switch wah |
+| Volume Pedal | `Volume` | 2 (EXP2) | 0.0 | 1.0 | Volume swells via expression |
+| Reverb | `Mix` | 1 (EXP1) | 0.15 | 0.80 | Ambient swell when no wah present |
+| Delay | `Mix` | 1 (EXP1) | 0.10 | 0.60 | Delay wetness control |
+| Pitch (Whammy) | `Pitch` | 2 (EXP2) | 0.0 | 1.0 | Whammy heel-to-toe = unison-to-octave |
 
-**Layer 1: Per-family internal barrel**
-Each family directory gets its own `index.ts` that exports only what the router needs:
+Priority: If wah is in the chain, EXP2 → wah Position. If no wah, EXP2 → Volume. EXP1 → ambient effect Mix if present. If no ambient effects, EXP1 is unassigned (leave controller section for that parameter absent).
 
-```typescript
-// src/lib/helix/devices/stadium/index.ts
-export { assembleSignalChain } from "./chain-rules";
-export { buildPlannerPrompt, getModelList } from "./planner-prompt";
-export { STADIUM_AMPS, STADIUM_EQ_MODELS } from "./models";
-```
+### Data Structure for EXP Assignment
 
-**Layer 2: Root barrel — unchanged external API**
-`src/lib/helix/index.ts` continues to export the same public surface. Internal reorganization
-is invisible to API routes and test files that import from `@/lib/helix`.
+The EXP controller assignment is deterministic (not AI-decided). It belongs in the Knowledge Layer, not ToneIntent. The correct location is `buildControllerSection()` in `preset-builder.ts`.
+
+No new type is needed — `HlxControllerAssignment` with `"@controller": CONTROLLERS.EXP_PEDAL_2` is already the correct encoding.
+
+**Required logic addition to `buildControllerSection()`:**
 
 ```typescript
-// src/lib/helix/index.ts — ADD these, keep everything else
-export { getDeviceModule, DEVICE_FAMILY } from "./router";
-export type { DeviceFamily, DeviceModule } from "./router";
-```
+// After snapshot-controlled params are registered:
+// Register EXP pedal assignments based on block type priority
+function buildExpPedalAssignments(
+  chain: BlockSpec[],
+  controller: Record<string, ...>
+): void {
+  const blockKeyMap = buildBlockKeyMap(chain);
 
-### Next.js `optimizePackageImports` Consideration
+  // Priority 1: EXP2 → wah Position
+  const wahBlock = chain.find(b => b.type === "wah");
+  if (wahBlock) {
+    const mapping = blockKeyMap.get(/* wahBlock key */);
+    // Register: "@controller": CONTROLLERS.EXP_PEDAL_2, "@min": 0, "@max": 1
+  }
 
-Next.js 16 supports `optimizePackageImports` to avoid loading barrel files that import
-everything. For internal `@/lib/helix` barrels this is irrelevant — tree-shaking handles
-server-side modules correctly and none of these ship to the browser bundle.
-
-The barrel pattern is appropriate here because `src/lib/helix/` is server-side only (used in
-`/api/generate/route.ts`) and the total module count is small (under 20 files).
-
-**Avoid:** Using `export * from "./devices/stadium"` from the root barrel — explicit named
-exports keep the public API surface intentional and prevent accidental leakage.
-
-### Confidence
-
-MEDIUM — barrel export patterns are well-established in TypeScript/Next.js. The two-layer
-approach is the standard for internal module reorganizations that must preserve external API
-compatibility.
-
----
-
-## Feature Area 5: Planner Prompt Templating for Device-Specific Prompts
-
-### The Problem
-
-`buildPlannerPrompt()` in `planner.ts` uses runtime `if (stadium) / if (podGo)` branches to
-compose the prompt string. As device count grows, this function becomes unmaintainable.
-
-### The Solution: Prompt Template Objects
-
-**Pattern: Static template object per family, assembled at call time**
-
-```typescript
-// src/lib/helix/devices/helix/planner-prompt.ts
-
-// Static sections — eligible for Anthropic prompt caching (content doesn't change per request)
-const HELIX_SYSTEM_PROMPT_PREFIX = `
-You are an expert Helix signal chain engineer for Helix Floor/LT/Rack.
-This device supports dual DSP, dual-amp topologies, and up to 6 effects.
-` as const;
-
-// Dynamic section — varies per request (amp catalog is large but stable)
-export function buildPlannerPrompt(modelList: string): string {
-  return `
-${HELIX_SYSTEM_PROMPT_PREFIX}
-
-## Available Amps and Cabs
-${modelList}
-
-## Signal Chain Rules
-[Helix-specific chain rules...]
-`;
+  // Priority 2: EXP2 → volume Volume (if no wah)
+  // Priority 3: EXP1 → reverb Mix or delay Mix (if ambient in chain)
 }
 ```
 
-**Why static prefix strings (not template files):**
-Prompt caching requires the `cache_control: { type: "ephemeral" }` marker on the system
-prompt block. The prefix must be stable between requests for the cache to hit. String
-constants in TypeScript are stable — no file I/O, no dynamic interpolation in the cached
-portion.
-
-**What stays dynamic (not cached):**
-The model list section (`## Available Amps and Cabs`) can vary if the catalog changes per
-firmware update, but in practice it is generated once at module load time via
-`getModelNamesForFamily()` and is stable within a deployment.
-
-### Cab Affinity Section per Family
-
-The existing per-family cab affinity section (built in `buildPlannerPrompt()`) moves into each
-family's prompt builder. Stadium's prompt includes only Agoura amp → cab affinity. Helix's
-prompt includes only HD2 amp → cab affinity. This eliminates cross-contamination where the
-planner sees Agoura cab affinity while generating a Helix LT preset.
-
-### Confidence
-
-HIGH — prompt template as TypeScript string constant is the existing pattern in `planner.ts`.
-The per-family refactor is a reorganization of existing code, not a new pattern.
+The block key map (`buildBlockKeyMap`) already exists in `preset-builder.ts`. This is a targeted addition to an existing function.
 
 ---
 
-## Feature Area 6: Per-Device Test Infrastructure
+## Feature Area 2: Per-Model Effect Intelligence
 
-### Current State
+### What "Per-Model" Means in the Existing Architecture
 
-Tests live alongside source files (`chain-rules.test.ts`, `stadium-builder.test.ts`). Vitest
-is configured in `vitest.config.ts` with `environment: "node"` and `@` path alias.
-
-### v5.0 Test Pattern: Device-Scoped Test Files
-
-No new test configuration is needed. The pattern is file-per-device-scenario using existing
-`describe()` nesting:
+The existing `HelixModel` interface already has:
 
 ```typescript
-// src/lib/helix/devices/helix/chain-rules.test.ts
+export interface HelixModel {
+  id: string;
+  name: string;
+  basedOn: string;
+  category: string;
+  ampCategory?: AmpCategory;       // amp-only
+  topology?: TopologyTag;          // amp-only
+  cabAffinity?: string[];          // amp-only
+  ampFamily?: AmpFamily;           // amp-only
+  paramOverrides?: Record<string, number | boolean>;  // Layer 4: per-model param overrides
+  defaultParams: Record<string, number | boolean>;
+  blockType: number;
+  stadiumOnly?: boolean;
+}
+```
+
+The `paramOverrides` mechanism (Phase 56 / Layer 4) applies per-model parameter tuning after category defaults. It was implemented for amps. The same pattern extends naturally to effects.
+
+### Per-Model Effect Intelligence Schema
+
+Add optional guidance fields to `HelixModel` entries for effect models:
+
+```typescript
+export interface HelixModel {
+  // ... existing fields ...
+
+  // NEW: Per-model effect parameter overrides (parallel to amp paramOverrides)
+  // Applied in param-engine.ts after defaultParams + genre defaults
+  effectParamOverrides?: Record<string, number | boolean>;
+
+  // NEW: Effect combination guidance — which effect types pair well with this model
+  // Used by combination-rules.ts to set context-aware params
+  bestWith?: Array<"clean" | "crunch" | "high_gain">;  // amp categories this effect suits
+
+  // NEW: Expressive parameter — which param benefits most from EXP pedal
+  // Used by buildControllerSection() to assign EXP target automatically
+  expParam?: string;  // e.g., "Position" for wahs, "Mix" for reverb/delay, "Pitch" for whammy
+}
+```
+
+### Structuring Per-Model Effect Guidance for 126+ Effects
+
+The challenge with 126+ effects is maintenance. The strategy is to populate `effectParamOverrides` and `bestWith` only where the model default is known to be wrong or suboptimal — not exhaustively on every model.
+
+**Priority targets for per-model effect overrides (HIGH value, LOW risk):**
+
+| Category | Models | Key Override | Why |
+|----------|--------|--------------|-----|
+| Wah | Fassel Wah, Weeper Wah, Mutron III+ | `Heel Freq`, `Toe Freq` | Each wah has a distinct sweep range. Fassel = vintage narrow, Mutron = funky high-filter |
+| Reverb | Ganymede (shimmer), Particle Verb (glitch) | `Mix: 0.30`, `Lag: 0.15` | Shimmer/glitch reverbs produce excessive wetness at standard settings |
+| Distortion | Scream 808 (used as boost) | `Drive: 0.15, Tone: 0.50, Level: 0.60` | Already in `SCREAM_808_PARAMS` in param-engine.ts — should migrate to effectParamOverrides |
+| Modulation | Retro Reel (tape echo-style) | `Wow: 0.30, Flutter: 0.25` | High Wow/Flutter causes motion sickness at defaults |
+| Delay | Cosmos Echo | `Repeat: 0.35` | High repeat counts cause runaway feedback |
+
+**Structure approach:** Add `effectParamOverrides` as a sparse map — only models needing override get the field. The param-engine lookup remains: `model.effectParamOverrides ?? {}` merged on top of defaults.
+
+**What NOT to add:** Do not add a `genre` dimension to `effectParamOverrides`. Genre-specific tuning already exists in `GENRE_EFFECT_DEFAULTS` in `param-engine.ts`. Per-model overrides should only correct model-specific quirks (e.g., Ganymede shimmer reverb is excessively wet at defaults regardless of genre), not duplicate genre logic.
+
+### Resolution Order in param-engine.ts
+
+The final resolution order for effect parameters:
+
+```
+Layer 1: model.defaultParams (from HelixModel)
+Layer 2: GENRE_EFFECT_DEFAULTS[genre][blockType] (existing)
+Layer 3: model.effectParamOverrides (NEW — per-model correction)
+Layer 4: Tempo override for delay (existing)
+```
+
+Layer 3 is placed after genre to allow per-model corrections to override genre defaults when the model has specific behavior that trumps genre convention (e.g., shimmer reverb should always be at reduced Mix regardless of ambient genre).
+
+---
+
+## Feature Area 3: Effect Combination Logic
+
+### What Combination Logic Means
+
+Effect combination logic answers "given this amp + these effects, what parameter adjustments are needed because of interactions between them?" Examples:
+
+- Compressor before high-gain amp → reduce compressor `Attack` to avoid squash
+- Octave fuzz → set `Dry` parameter high to retain note definition
+- Chorus + delay → reduce delay `Mix` to avoid washy buildup
+- Hall reverb + long delay → reduce reverb `DecayTime` to prevent pile-up
+
+### Where It Lives
+
+A new `src/lib/helix/combination-rules.ts` module containing a lookup table of interaction rules. This module is called from `resolveParameters()` after all individual block parameters are resolved, with full chain context available.
+
+```typescript
+// src/lib/helix/combination-rules.ts
+
+export interface CombinationRule {
+  /** Block type that triggers this rule */
+  triggerType: BlockSpec["type"];
+  /** Block type that is modified when the trigger is present */
+  targetType: BlockSpec["type"];
+  /** Condition for this rule to fire */
+  condition: {
+    triggerCategory?: AmpCategory;  // only apply when amp is this category
+    triggerModelId?: string;        // only apply for specific trigger model
+  };
+  /** Parameter adjustments to apply to the target block */
+  targetAdjustments: Record<string, number>;
+  /** Human-readable reason (for prompt engineering and debugging) */
+  reason: string;
+}
+
+export const COMBINATION_RULES: CombinationRule[] = [
+  {
+    triggerType: "dynamics",           // Compressor present
+    targetType: "amp",                 // adjusts amp
+    condition: { triggerCategory: "high_gain" },
+    targetAdjustments: { Drive: -0.05 }, // back off drive slightly
+    reason: "Compressor feeding high-gain amp: reduce drive to avoid clipping",
+  },
+  {
+    triggerType: "reverb",
+    targetType: "delay",
+    condition: {},  // applies whenever both are present
+    targetAdjustments: { Mix: -0.05 },  // reduce delay wetness
+    reason: "Reverb + delay: tighten delay mix to prevent washy buildup",
+  },
+  // ... additional rules
+];
+```
+
+This module does NOT require AI. It is a deterministic table of expert-sourced combination adjustments applied after individual block resolution.
+
+### Integration Point
+
+Called in `resolveParameters()` as a final post-processing pass:
+
+```typescript
+// In resolveParameters() — at the end, after all blocks are resolved
+import { applyCombinationRules } from "./combination-rules";
+const withCombinations = applyCombinationRules(resolvedChain, intent);
+return withCombinations;
+```
+
+### What NOT to Build
+
+Do not build a full DSP interaction simulator. The combination rules are small, curated adjustments (±0.05 on 1-2 parameters). Do not attempt to model:
+
+- Frequency masking between effects (too complex, requires audio analysis)
+- Phase interactions (microphone-level concern, not preset-level)
+- Non-linear saturation cascades (amp models are black boxes at this level)
+
+Keep rules to 10-20 combinations covering the highest-impact interactions.
+
+---
+
+## Feature Area 4: Per-Device Preset Craft Optimization
+
+### What "Per-Device Craft" Means
+
+Each device has hardware-level characteristics that should inform preset construction beyond just block limits:
+
+| Device | Key Craft Consideration | Optimization |
+|--------|------------------------|--------------|
+| Helix Floor/LT | 8-block DSP limit, but dual DSP — chain can sprawl | Prefer DSP0 for pre-amp, DSP1 for post-cab effects |
+| HX Stomp | 6-block max, no room for mandatory inserts | No auto-insert EQ/Gain; maximize effect slots |
+| Pod Go | Fixed block layout (wah+vol+amp+cab+EQ+FX loop) | Only 4 user slots; prioritize unique effects |
+| Helix Stadium | Slot-grid, 12 blocks per path, dual DSP | Use Agoura-specific tone stack quirks; wider headroom |
+
+### Where It Lives
+
+Extend `DeviceCapabilities` in `device-family.ts` with craft guidance fields:
+
+```typescript
+export interface DeviceCapabilities {
+  // ... existing fields ...
+
+  // NEW: Craft-level optimization hints for Knowledge Layer
+  /** Whether this device auto-inserts mandatory blocks (Parametric EQ + Gain Block) */
+  insertsMandatoryBlocks: boolean;        // helix/stadium: true; stomp/podgo: false
+  /** Preferred DSP for post-cab effects on dual-DSP devices (0 = none) */
+  preferredPostCabDsp: 0 | 1;            // helix/stadium: 1; others: 0
+  /** Whether this device benefits from boost-before-amp (tight DSP budget = skip) */
+  includePreAmpBoost: boolean;            // stomp: false when at block limit
+  /** Max "ambient" effects that contribute to mix quality vs. slot waste */
+  recommendedAmbientEffectCount: number;  // stomp: 1, podgo: 1, helix: 2, stadium: 3
+}
+```
+
+These fields are consumed in `chain-rules.ts` and `param-engine.ts` for per-device decisions that are currently hardcoded as individual guard sites.
+
+### What This Replaces
+
+Currently `assembleSignalChain()` checks `caps.family === "stomp"` and `caps.maxEffectsPerDsp` to make craft decisions inline. Moving these to `DeviceCapabilities` fields makes the decisions data-driven and documented at the capability definition site rather than scattered through chain-rule logic.
+
+---
+
+## Feature Area 5: Preset Quality Validation
+
+### Current State of Validation
+
+`validatePresetSpec()` in `validate.ts` checks:
+1. Non-empty signal chain
+2. At least one amp block
+3. At least one cab block
+4. All model IDs valid
+5. Snapshots present
+6. Parameter ranges (0-1 normalized, Hz for cab/reverb/delay, integer for Mic)
+7. DSP block limits per device
+
+`model-defaults-validation.test.ts` checks that all 126+ model `defaultParams` pass through `validatePresetSpec` without throwing — a regression guard.
+
+### What Quality Validation Adds
+
+Quality validation goes beyond structural validity to ask "does this preset sound good?" It is deterministic (not AI) and tests auditory/craft properties derivable from the data:
+
+| Quality Check | What It Detects | Location |
+|---------------|----------------|----------|
+| Signal level sanity | ChVol outside 0.60-0.85 range = too quiet or clipping | `validatePresetSpec()` |
+| EQ anti-mud | Cab LowCut below 60Hz = bass buildup in a mix context | `validatePresetSpec()` |
+| Reverb over-wet | Reverb Mix above 0.65 = washed out in all snapshots | `validatePresetSpec()` |
+| Snapshot balance | Lead ChVol not above Clean ChVol = level imbalance | `validatePresetSpec()` |
+| Effect ordering | Distortion after reverb = incorrect signal path | `validatePresetSpec()` |
+| Device-specific | EXP param assigned on a device with 0 expression pedals | `validatePresetSpec()` |
+
+### Testing Approach for Quality Validation
+
+**Vitest test pattern — mirrors existing `model-defaults-validation.test.ts`:**
+
+```typescript
+// src/lib/helix/quality-validation.test.ts
 import { describe, it, expect } from "vitest";
-import { assembleSignalChain } from "./chain-rules";
+import { validatePresetSpec } from "./validate";
 
-describe("Helix chain rules", () => {
-  describe("dual-amp topology", () => {
-    it("assembles split/join blocks for AB topology", () => { ... });
+describe("preset quality validation", () => {
+  it("rejects reverb Mix above 0.65 (over-wet)", () => {
+    const spec = buildSpecWithReverb({ Mix: 0.80 });
+    expect(() => validatePresetSpec(spec, helixCaps))
+      .toThrow(/reverb Mix.*over-wet/i);
   });
-  describe("single-amp topology", () => {
-    it("places boost before amp in DSP0", () => { ... });
+
+  it("rejects cab LowCut below 60Hz (bass buildup)", () => {
+    const spec = buildSpecWithCab({ LowCut: 40.0 });
+    expect(() => validatePresetSpec(spec, helixCaps))
+      .toThrow(/LowCut.*below 60Hz/i);
   });
-});
 
-// src/lib/helix/devices/stadium/chain-rules.test.ts
-import { describe, it, expect } from "vitest";
-import { assembleSignalChain } from "./chain-rules";
-
-describe("Stadium chain rules", () => {
-  it("uses slot-grid positions b05/b06 for amp/cab", () => { ... });
-  it("includes all 15 mandatory AmpCab* params in output", () => { ... });
-  it("does not bleed params from previous preset", () => { ... });
+  it("rejects EXP pedal assignment on Stadium with 0 expression pedals", () => {
+    // Stadium expressionPedalCount: 0 (per device-family.ts line 193)
+    const spec = buildSpecWithExpAssignment();
+    expect(() => validatePresetSpec(spec, stadiumCaps))
+      .toThrow(/expression pedal.*not supported/i);
+  });
 });
 ```
 
-**Key test for Stadium param completeness:**
+**Warning-vs-throw distinction:**
+
+Not all quality issues should throw. Structural bugs (wrong model IDs, invalid ranges) should throw — they produce unloadable presets. Quality issues (reverb too wet) should warn but not throw — the preset loads fine, it just may not sound ideal. Use a separate `validatePresetQuality(spec, caps): QualityWarning[]` function that returns warnings without throwing.
+
 ```typescript
-it("emits all 10 hidden AmpCab params for every Agoura amp", () => {
-  const REQUIRED_HIDDEN = [
-    "AmpCabPeak2Fc", "AmpCabPeak2G", "AmpCabPeak2Q",
-    "AmpCabPeakFc", "AmpCabPeakG", "AmpCabPeakQ",
-    "AmpCabShelfF", "AmpCabShelfG",
-    "AmpCabZFir", "AmpCabZUpdate",
-  ];
-  // Build a Stadium preset and verify every Agoura amp block has all hidden params
-  const spec = buildTestStadiumSpec();
-  const hsp = buildHspFile(spec);
-  const ampBlock = findAmpBlock(hsp);
-  for (const param of REQUIRED_HIDDEN) {
-    expect(ampBlock.params).toHaveProperty(param);
+// New function signature — does NOT throw
+export interface QualityWarning {
+  severity: "warn" | "info";
+  code: string;
+  message: string;
+  blockName?: string;
+}
+
+export function validatePresetQuality(
+  spec: PresetSpec,
+  caps: DeviceCapabilities
+): QualityWarning[] {
+  const warnings: QualityWarning[] = [];
+
+  // Check reverb Mix (warn, don't throw)
+  for (const block of spec.signalChain) {
+    if (block.type === "reverb" && typeof block.parameters.Mix === "number") {
+      if (block.parameters.Mix > 0.65) {
+        warnings.push({
+          severity: "warn",
+          code: "REVERB_OVERWET",
+          message: `Reverb '${block.modelName}' Mix=${block.parameters.Mix.toFixed(2)} — may sound washed out`,
+          blockName: block.modelName,
+        });
+      }
+    }
   }
-});
+
+  // ... additional quality checks
+  return warnings;
+}
 ```
 
-### Vitest `projects` (not needed at this scale)
+This function is called in the `/api/generate` orchestration pipeline after `validatePresetSpec()`, and its warnings can be returned to the frontend as advisory notes.
 
-Vitest 4.x supports `test.projects` for multi-environment configurations. For v5.0, this is
-unnecessary — all tests run in `environment: "node"` with the same `@` alias. Per-family test
-files are sufficient isolation without a separate project config per family.
+### Test Organization Pattern
 
-The `projects` API would only be valuable if device families needed different environment
-configs (e.g., one device family testing browser APIs). That does not apply here.
+Following the established pattern (`model-defaults-validation.test.ts`):
+- Co-located test file: `src/lib/helix/quality-validation.test.ts`
+- Uses `vitest` `describe` / `it` / `expect` directly (no mocking)
+- Factory functions for building test specs: `buildSpecWithReverb()`, `buildSpecWithCab()`, etc.
+- Full suite run command: `npx vitest run`
+- Per-file command: `npx vitest run src/lib/helix/quality-validation.test.ts`
 
-### Confidence
+---
 
-HIGH — existing Vitest setup is correct for this pattern. File-per-device test organization
-is idiomatic for the codebase's existing structure.
+## Recommended Stack (No New Packages)
+
+### Core Technologies — Unchanged
+
+| Technology | Version | Purpose | Impact for This Milestone |
+|------------|---------|---------|--------------------------|
+| TypeScript | ^5 | Type safety | New `expParam`, `effectParamOverrides`, `bestWith` fields on `HelixModel`; new `QualityWarning` type; new `CombinationRule` interface |
+| Vitest | ^4.0.18 | Testing | New `quality-validation.test.ts`; extend `model-defaults-validation.test.ts` with EXP coverage |
+| Zod | ^4.3.6 | Schema validation | No changes — EXP assignment is deterministic, not AI-selected |
+| `@anthropic-ai/sdk` | ^0.78.0 | Claude planner | Planner prompt enriched with combination logic guidance (plain text addition, no API change) |
+
+### Supporting Patterns — No New Tools
+
+| Pattern | File | Purpose |
+|---------|------|---------|
+| Layer 4 override mechanism | `models.ts` + `param-engine.ts` | Reuse existing `paramOverrides` pattern for `effectParamOverrides` |
+| `CONTROLLERS` constants | `models.ts` lines 52-57 | EXP_PEDAL_1=1, EXP_PEDAL_2=2 already defined — extend `buildControllerSection()` to use them |
+| `DeviceCapabilities` interface | `device-family.ts` | Add craft-guidance fields — existing pattern for per-device decisions |
+| `validatePresetSpec()` | `validate.ts` | Add device-aware EXP validation; add quality-warning function alongside |
+| `CombinationRule[]` table | `combination-rules.ts` (NEW) | New module, same pattern as `GENRE_EFFECT_DEFAULTS` in `param-engine.ts` |
 
 ---
 
 ## Installation
 
 ```bash
-# No new packages for v5.0
-# All changes are TypeScript source reorganization in:
-
-# New directory structure:
-#   src/lib/helix/devices/
-#     helix/chain-rules.ts, planner-prompt.ts, models.ts
-#     stadium/chain-rules.ts, planner-prompt.ts, models.ts
-#     stomp/chain-rules.ts, planner-prompt.ts, models.ts
-#     podgo/chain-rules.ts, planner-prompt.ts, models.ts
-#   src/lib/helix/router.ts    — DeviceFamily → module routing
-#   src/lib/helix/tone-intent.ts — buildToneIntentSchema(family) factory
+# No new packages for this milestone.
+# All changes are in existing TypeScript source files:
 
 # Modified files:
-#   src/lib/helix/types.ts       — DeviceFamily type, DEVICE_FAMILY map, assertNever()
-#   src/lib/helix/models.ts      — STADIUM_AMPS defaultParams with 15 mandatory params
-#   src/lib/helix/index.ts       — add router exports, keep all existing exports
-#   src/lib/planner.ts           — call buildPlannerPrompt from device module via router
+#   src/lib/helix/models.ts         — add effectParamOverrides, expParam, bestWith to HelixModel
+#   src/lib/helix/param-engine.ts   — resolve effectParamOverrides as Layer 3 after genre
+#   src/lib/helix/preset-builder.ts — extend buildControllerSection() with EXP pedal logic
+#   src/lib/helix/validate.ts       — add validatePresetQuality() with QualityWarning
+#   src/lib/helix/device-family.ts  — add craft-guidance fields to DeviceCapabilities
+#   src/app/api/generate/route.ts   — call validatePresetQuality() and surface warnings
 
-# One-shot extraction script (run once, output pasted into models.ts):
-npx tsx scripts/extract-stadium-params.ts
+# New files:
+#   src/lib/helix/combination-rules.ts      — COMBINATION_RULES table + applyCombinationRules()
+#   src/lib/helix/quality-validation.test.ts — Vitest tests for quality warnings
 ```
 
 ---
@@ -543,47 +501,48 @@ npx tsx scripts/extract-stadium-params.ts
 
 | Recommended | Alternative | When to Use Alternative |
 |-------------|-------------|-------------------------|
-| `DeviceFamily` discriminated union + module-per-family | Keep guard functions (`isPodGo`, `isStadium`) | Never for v5.0 — guards don't scale to new devices and don't eliminate cross-contamination |
-| Factory function `buildToneIntentSchema(family)` | Separate schema file per device family | Only if schema shapes diverge significantly — at 95% shared shape, a factory is simpler |
-| `assertNever(family)` exhaustiveness checker | Manual switch with `default: throw` | Same effect — `assertNever` is type-safe and gives better error messages |
-| Node.js `Buffer.slice(8)` + `JSON.parse()` for .hsp extraction | `binary-parser` npm package | Use binary-parser only if the format were non-JSON binary (e.g., raw C structs). .hsp is JSON text |
-| File-per-device test files with `describe()` | Vitest `test.projects` per device family | Use projects only if device families need different test environments (JSDOM vs node). All are node here |
-| Per-family barrel (`devices/stadium/index.ts`) | Flat re-export from root index.ts | Flat is fine for small module count but creates implicit coupling; family barrels keep boundaries explicit |
-| Static TypeScript string constants for prompt templates | File-based prompt templates (`.md` or `.txt` files) | Use files if prompts need non-developer editing or translation. Prompts here contain TypeScript variable interpolation |
+| `effectParamOverrides` as sparse optional field on `HelixModel` | Separate `EFFECT_OVERRIDES` lookup table in `param-engine.ts` | Use separate table if effect overrides need to vary by device family (they don't — the overrides are model-specific, not device-specific) |
+| `CombinationRule[]` as flat array | Nested map by `(triggerType, targetType)` | Use nested map if there are 50+ rules needing fast lookup. Under 20 rules, a flat `Array.find()` is readable and fast enough |
+| `validatePresetQuality()` returns `QualityWarning[]` (non-throwing) | Add quality checks to `validatePresetSpec()` (throwing) | Use throwing only for structural bugs that make the preset unloadable. Quality issues never make a preset unloadable — warn, don't throw |
+| EXP assignment in `buildControllerSection()` (Knowledge Layer) | Add EXP assignment to ToneIntent (AI-decided) | Never — EXP assignment is deterministic based on block type, not creative. AI deciding "EXP2 → wah" adds no value and costs tokens |
+| Extend `DeviceCapabilities` with craft fields | Hardcode craft decisions in `chain-rules.ts` guards | Use capabilities object when a decision applies uniformly to a whole device family. Use inline guards only for one-off edge cases |
 
 ---
 
-## What NOT to Use
+## What NOT to Add
 
 | Avoid | Why | Use Instead |
 |-------|-----|-------------|
-| `binary-parser`, `binparse`, `bin-grammar` npm packages | The .hsp format is `"rpshnosj"` + plain JSON — `data.slice(8)` and `JSON.parse()` are sufficient. Any binary parser library adds a dependency for zero benefit | Node.js `Buffer` + `JSON.parse()` |
-| Class-based device hierarchy (`abstract class Device`) | Adds indirection without type safety benefit over discriminated unions. TypeScript structural typing means interface + function is equivalent without the inheritance chain | `DeviceModule` interface + `getDeviceModule()` function |
-| Dynamic `import()` for device modules at request time | Server-side Next.js API routes — all modules load at startup. Dynamic import adds async overhead with no bundle benefit (server side, no browser download) | Static imports in `router.ts` with a `switch` that returns the already-loaded module |
-| Separate Zod schemas per device in separate files | 95% of the schema is identical across devices. Per-file schemas mean updating snapshot rules, effect limits, or variax support in 4 places | `buildToneIntentSchema(family)` factory function in `tone-intent.ts` |
-| `z.union()` instead of `z.discriminatedUnion()` for device routing | `z.union()` checks every option in order — slower and gives worse error messages when validation fails. `z.discriminatedUnion()` uses the discriminator key for O(1) lookup | `z.discriminatedUnion('family', [...])` — verified working in Zod 4.3.6 |
-| Adding numeric params to ToneIntent per device | Breaks the Planner-Executor architecture — AI accuracy on numbers is unreliable. Device-specific numeric params belong in Knowledge Layer defaults per device family | Device-specific default tables in `param-engine.ts` per family |
-| Global `AMP_NAMES` in `buildToneIntentSchema` | Allows cross-device model contamination (the Agoura leak) — root cause of the v4.0 bug | `getModelNamesForFamily(family)` returning only the correct catalog for the requested family |
+| Any new npm package for this milestone | All five feature areas are TypeScript data + logic changes. No audio processing, binary parsing, or new schema validation is needed | The existing TypeScript + Vitest + Zod stack covers everything |
+| EXP pedal assignment in ToneIntent (AI-selected) | Expression pedal assignment is deterministic by convention (EXP2 = wah/volume). AI deciding this adds no value and can produce wrong assignments (e.g., EXP2 → reverb Mix on a wah preset) | `buildControllerSection()` in `preset-builder.ts` — deterministic by block type |
+| AI-generated combination rules | Combination logic is expert knowledge encoded as a table. AI-generated rules would be inconsistent and hard to validate | `COMBINATION_RULES` static table in `combination-rules.ts` |
+| Throwing errors for quality warnings | Quality issues (reverb too wet) produce presets that load and sound workable. Throwing prevents the user from downloading the preset at all | `validatePresetQuality()` returning `QualityWarning[]` — warn in the UI, don't block |
+| Per-model AI prompt text for all 126+ effects | 126 effect descriptions in the planner prompt would exceed reasonable context lengths and violate prompt caching. The Knowledge Layer handles per-model intelligence deterministically | `effectParamOverrides` field on `HelixModel` — deterministic, cacheable |
+| Exhaustive `effectParamOverrides` on every effect model | Most effect models have well-calibrated defaults. Per-model overrides should target only models with known quirks (shimmer reverb, runaway delay models, etc.) | Sparse optional field — only populate where the default is demonstrably wrong |
 
 ---
 
 ## Stack Patterns by Variant
 
-**If a new device is added (e.g., Pod Go XL as its own family):**
-- Add `"podgo_xl"` to `DeviceFamily` union — TypeScript immediately flags unhandled case in `router.ts`
-- Create `src/lib/helix/devices/podgo-xl/` with same interface shape
-- Update `DEVICE_FAMILY` map
-- The `assertNever(family)` in `router.ts` catches it at compile time
+**If EXP pedal assignment needs per-snapshot variation:**
+- Use `"@controller": CONTROLLERS.SNAPSHOT` for snapshot-controlled Mix + a separate EXP assignment entry for the overall pedal range
+- Real Helix presets sometimes have both: snapshot controls the Mix "target" and EXP controls sweep within that range
+- This requires a new `@snapshot_disable: true` on the EXP entry (existing field in `HlxControllerAssignment`)
 
-**If Stadium gets new Agoura amp models in future firmware:**
-- Run `npx tsx scripts/extract-stadium-params.ts` against new .hsp files
-- Update `STADIUM_AMPS` in `src/lib/helix/devices/stadium/models.ts`
-- Re-run `getModelNamesForFamily("stadium")` — planner sees updated catalog automatically
+**If a new device is added with unique EXP hardware:**
+- Add `expressionPedalCount: N` to the new device's `getCapabilities()` entry (already exists)
+- Add `expPedalControllerIds: number[]` if the device uses non-standard controller IDs
+- Stadium EXP controller ID needs corpus verification before Stadium EXP assignment is implemented
 
-**If a device family needs different snapshot count logic:**
-- Add `maxSnapshots` to the `DeviceModule` interface
-- Each family's module returns the correct value
-- `buildToneIntentSchema(family)` uses `family === "stomp" ? 3 : ...` for `snapshots.max()`
+**If effect combination rules grow beyond 20 entries:**
+- Move `COMBINATION_RULES` from flat array to `Map<string, CombinationRule[]>` keyed by `triggerType`
+- Lookup becomes `O(1)` per block type instead of `O(n)` full scan
+- Not needed at 10-20 rules
+
+**If quality validation warnings need severity thresholds by device:**
+- Add `qualityThresholds?: Record<string, number>` to `DeviceCapabilities`
+- e.g., Stomp might tolerate higher reverb Mix because its block budget forces fewer effects
+- This is a v2 enhancement — start with universal thresholds
 
 ---
 
@@ -591,29 +550,28 @@ npx tsx scripts/extract-stadium-params.ts
 
 | Package | Version | Notes |
 |---------|---------|-------|
-| `zod` | 4.3.6 | `z.discriminatedUnion()` verified working — tested in installed package. `z.enum()` from `[string, ...string[]]` tuple type works. Zod author plans to replace with `z.switch()` but current API is stable |
-| `@anthropic-ai/sdk` | ^0.78.0 | `zodOutputFormat()` accepts any Zod object schema — family-specific schema works identically to global schema |
-| `vitest` | ^4.0.18 | File-per-device test files work with existing `vitest.config.ts` — no project config changes needed |
-| `typescript` | ^5 | Discriminated union exhaustiveness checking via `assertNever(x: never)` is a TypeScript ^4.1+ feature — supported |
-| `next` | 16.1.6 | Static imports in `router.ts` are compatible — no dynamic import overhead for server-side modules |
+| `vitest` | ^4.0.18 | No changes needed — `quality-validation.test.ts` uses same `describe/it/expect` pattern |
+| `typescript` | ^5 | Optional fields on interfaces (`expParam?: string`) are standard TS — no version concern |
+| `zod` | ^4.3.6 | No changes to schemas for this milestone — EXP assignment is not AI-selected |
+| `@anthropic-ai/sdk` | ^0.78.0 | Planner prompt text additions are plain string concatenation — no API change |
+| `next` | 16.1.6 | No new routes — `validatePresetQuality()` called in existing `/api/generate` orchestration |
 
 ---
 
 ## Sources
 
-- Direct codebase inspection: `src/lib/helix/types.ts` — existing `DeviceTarget`, guard functions, DEVICE_IDS — HIGH confidence
-- Direct codebase inspection: `src/lib/helix/tone-intent.ts` — existing ToneIntent schema, AMP_NAMES global — HIGH confidence
-- Direct codebase inspection: `src/lib/planner.ts` — existing `buildPlannerPrompt()` guard pattern — HIGH confidence
-- Direct corpus analysis: 11 real .hsp files in `C:/Users/dsbog/Downloads/NH_STADIUM_AURA_REFLECTIONS/` — 12 Agoura amp blocks examined, complete param set extracted — HIGH confidence (ground truth from real firmware files)
-- Node.js execution: `node -e "..."` against corpus files — confirmed 15 params present in all 12 amp blocks, 10 hidden params missing from v4.0 builder — HIGH confidence
-- Zod package verification: `node -e "require('.../zod')"` — `z.discriminatedUnion()` confirmed working in installed 4.3.6 — HIGH confidence
-- [TypeScript Handbook — Discriminated Unions](https://www.typescriptlang.org/docs/handbook/unions-and-intersections.html) — exhaustiveness checking with `never` — HIGH confidence (official docs)
-- [Zod discriminatedUnion docs](https://zod.dev/api) — `z.discriminatedUnion('key', [...])` API — HIGH confidence (official)
-- [Vitest Test Projects](https://vitest.dev/guide/projects) — per-file isolation, `describe()` organization — HIGH confidence (official)
-- [How we optimized package imports in Next.js](https://vercel.com/blog/how-we-optimized-package-imports-in-next-js) — barrel file behavior in Next.js 16, server-side tree-shaking — MEDIUM confidence (official Vercel blog)
-- [tsx documentation](https://tsx.is/) — `npx tsx script.ts` for one-shot TypeScript scripts — HIGH confidence (official)
+- Direct codebase inspection: `src/lib/helix/types.ts` lines 129-140 — `HlxControllerAssignment`, `@controller` values (19=snapshot, 2=EXP2, 18=MIDI CC) — HIGH confidence
+- Direct codebase inspection: `src/lib/helix/models.ts` lines 52-57 — `CONTROLLERS` constant with `EXP_PEDAL_1: 1`, `EXP_PEDAL_2: 2` — HIGH confidence
+- Direct codebase inspection: `src/lib/helix/preset-builder.ts` `buildControllerSection()` — existing snapshot controller registration pattern — HIGH confidence
+- Direct codebase inspection: `src/lib/helix/validate.ts` — existing `validatePresetSpec()` structure, `validateAndFixPresetSpec()` — HIGH confidence
+- Direct codebase inspection: `src/lib/helix/model-defaults-validation.test.ts` — test pattern for mass model validation — HIGH confidence
+- Direct codebase inspection: `src/lib/helix/param-engine.ts` — `GENRE_EFFECT_DEFAULTS`, `resolveDefaultParams()`, Layer 4 override mechanism — HIGH confidence
+- Direct codebase inspection: `src/lib/helix/device-family.ts` lines 40-41, 193 — `expressionPedalCount` (Stadium=0), `DeviceCapabilities` interface — HIGH confidence
+- Direct codebase inspection: `.planning/milestones/v4.0-phases/56-per-model-amp-overrides/` — `paramOverrides` Layer 4 mechanism, validated pattern for per-model overrides — HIGH confidence
+- Direct codebase inspection: `.planning/milestones/v4.0-phases/57-effect-parameter-intelligence/57-RESEARCH.md` — existing effect intelligence patterns, resolution order — HIGH confidence
+- `.planning/codebase/TESTING.md` — confirmed Vitest patterns: `describe/it/expect`, factory functions, co-located `.test.ts` files — HIGH confidence
 
 ---
 
-*Stack research for: HelixTones v5.0 — Device-First Architecture Rework*
-*Researched: 2026-03-05*
+*Stack research for: HelixTones — Preset Quality Deep Dive (expression pedal, per-model effect intelligence, effect combination logic, per-device craft, quality validation)*
+*Researched: 2026-03-06*
