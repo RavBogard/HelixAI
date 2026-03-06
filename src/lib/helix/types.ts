@@ -185,32 +185,44 @@ export type AmpFamily =
 export type CabSize = "small" | "medium" | "large";
 
 // Device target for .hlx / .pgp / .hsp file generation
-export type DeviceTarget = "helix_lt" | "helix_floor" | "pod_go" | "helix_stadium" | "helix_stomp" | "helix_stomp_xl";
+export type DeviceTarget =
+  | "helix_lt"
+  | "helix_floor"
+  | "helix_rack"
+  | "pod_go"
+  | "pod_go_xl"
+  | "helix_stadium"
+  | "helix_stadium_xl"
+  | "helix_stomp"
+  | "helix_stomp_xl";
 
 // Source: Phase 23 research and commit 3ba0768 (fix(phase-23): correct Helix Floor device ID)
 // Regression: commit 68ad895 (docs: start milestone v2.0) incorrectly reset helix_floor to 2162692
 export const DEVICE_IDS: Record<DeviceTarget, number> = {
   helix_lt: 2162692,        // 0x210004 — confirmed from real Helix LT .hlx exports (Phase 1, FNDN-03)
   helix_floor: 2162689,     // 0x210001 — confirmed from 15 real .hlx files spanning fw v1.02–v3.80, verified working on all OG Helix devices (Phase 59, 2026-03-05)
+  helix_rack: 2162689,      // UNVERIFIED: assumed same as Floor — confirm from real Helix Rack .hlx export
   pod_go: 2162695,          // 0x210007 — confirmed from 18 real .pgp files (Phase 12)
+  pod_go_xl: 2162695,       // PLACEHOLDER: Pod Go XL not yet a real product — uses pod_go ID
   helix_stadium: 2490368,   // Source: FluidSolo Stadium_Metal_Rhythm.hsp, meta.device_id, 2026-03-04 (Phase 31)
+  helix_stadium_xl: 0,      // UNVERIFIED: real product (June 2025) but device ID not in corpus
   helix_stomp: 2162694,     // Confirmed from Swell_Delay.hlx (HX Stomp hardware export, 2026-03-04)
   helix_stomp_xl: 2162699,  // Confirmed from The_Kids_Are_D.hlx (HX Stomp XL hardware export, 2026-03-04)
 } as const;
 
-/** Returns true if the device target is a Helix (LT or Floor) */
+/** Returns true if the device target is a Helix (LT, Floor, or Rack) */
 export function isHelix(device: DeviceTarget): boolean {
-  return device === "helix_lt" || device === "helix_floor";
+  return device === "helix_lt" || device === "helix_floor" || device === "helix_rack";
 }
 
-/** Returns true if the device target is a Pod Go */
+/** Returns true if the device target is a Pod Go (any variant) */
 export function isPodGo(device: DeviceTarget): boolean {
-  return device === "pod_go";
+  return device === "pod_go" || device === "pod_go_xl";
 }
 
-/** Returns true if the device target is a Helix Stadium */
+/** Returns true if the device target is a Helix Stadium (any variant) */
 export function isStadium(device: DeviceTarget): boolean {
-  return device === "helix_stadium";
+  return device === "helix_stadium" || device === "helix_stadium_xl";
 }
 
 /** Returns true if the device target is any HX Stomp variant (Stomp or Stomp XL) */
@@ -218,7 +230,7 @@ export function isStomp(device: DeviceTarget): boolean {
   return device === "helix_stomp" || device === "helix_stomp_xl";
 }
 
-/** Returns true if the device supports Variax (VDI input). Helix Floor, LT, Stomp, Stomp XL all have VDI. Pod Go and Stadium do not. */
+/** Returns true if the device supports Variax (VDI input). Helix Floor, LT, Rack, Stomp, Stomp XL all have VDI. Pod Go and Stadium do not. */
 export function isVariaxSupported(device: DeviceTarget): boolean {
   return isHelix(device) || isStomp(device);
 }
