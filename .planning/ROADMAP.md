@@ -10,7 +10,7 @@
 - ✅ **v3.0 Helix Stadium Support** — Phases 31-38 (shipped 2026-03-04)
 - ✅ **v3.2 Infrastructure, Features & Audit Tooling** — Phases 42, 48-51 (shipped 2026-03-05)
 - ✅ **v4.0 Stadium Rebuild + Preset Quality Leap** — Phases 52-60 (shipped 2026-03-05)
-- 🚧 **v5.0 Device-First Architecture** — Phases 61-66 (in progress)
+- 🚧 **v5.0 Device-First Architecture** — Phases 61-67 (in progress)
 
 ## Phases
 
@@ -125,6 +125,7 @@
 - [x] **Phase 64: Knowledge Layer Guard Removal** — Replace 17+ boolean guard sites in chain-rules.ts, param-engine.ts, and validate.ts with DeviceCapabilities-driven dispatch
 - [x] **Phase 65: Device-Specific Prompts** — Create per-family planner and chat prompt templates with only family-appropriate model catalogs and conversation arcs
 - [ ] **Phase 66: Frontend Picker and Database Migration** — Move device picker to conversation start, add device column to Supabase conversations table, handle legacy rows
+- [ ] **Phase 67: Stadium Integration Quality** — Fix WAH/VOLUME catalog gap, dual-amp capability mismatch, TODO(Phase62) placeholder in prompt, and add schema/prompt integration tests
 
 ## Phase Details
 
@@ -237,7 +238,24 @@ Plans:
 | 64. Knowledge Layer Guards | v5.0 | 2/2 | Complete | 2026-03-06 |
 | 65. Device-Specific Prompts | v5.0 | 2/2 | Complete | 2026-03-06 |
 | 66. Frontend Picker + DB | v5.0 | 0/2 | Not started | - |
+| 67. Stadium Integration Quality | v5.0 | 0/2 | Not started | - |
+
+### Phase 67: Stadium Integration Quality
+
+**Goal:** Fix 3 integration concerns discovered after merging parallel branches (61-64 + 65): resolve WAH/VOLUME catalog gap so Stadium users get volume and wah pedals, fix dual-amp capability/prompt mismatch, replace TODO(Phase62) placeholder with real Agoura amp-cab pairing data, and add integration tests for schema/prompt alignment across all families — Stadium presets must sound fantastic
+**Depends on:** Phase 65 (runs before Phase 66)
+**Requirements**: STADQ-01 (WAH/VOLUME in Stadium catalog+schema), STADQ-02 (dual-amp capability alignment), STADQ-03 (Agoura amp-cab pairing in prompt), STADQ-04 (schema/prompt integration tests)
+**Success Criteria** (what must be TRUE):
+  1. `STADIUM_EFFECT_NAMES` includes WAH and VOLUME models, and `getToneIntentSchema("stadium")` accepts them — Claude can generate Stadium presets with wah and volume pedals
+  2. Stadium dual-amp capability in `STADIUM_CAPABILITIES` is consistent with Stadium prompt and chain-rules behavior — no crash path exists
+  3. Stadium prompt contains real Agoura amp-cab pairing guidance instead of TODO placeholder text — no TODO comments reach Claude
+  4. An integration test verifies that every model name in each family's planner prompt is a valid member of that family's Zod schema enum
+**Plans**: 2 plans
+
+Plans:
+- [ ] 67-01-PLAN.md — WAH/VOLUME in Stadium catalog + schema, fix dualAmpSupported to false
+- [ ] 67-02-PLAN.md — Replace TODO placeholder with amp-cab pairing table, cross-family schema/prompt integration tests
 
 ---
-*Last updated: 2026-03-06 after merging Phases 61-65*
+*Last updated: 2026-03-06 after planning Phase 67*
 *Full phase details for completed milestones archived in `.planning/milestones/`*
