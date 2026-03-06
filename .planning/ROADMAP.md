@@ -231,7 +231,7 @@ Plans:
 | 31-41 | v3.0 | 12 | Complete | 2026-03-04 |
 | 42,48-51 | v3.2 | 8 | Complete | 2026-03-05 |
 | 52-60 | v4.0 | 13 | Complete | 2026-03-05 |
-| 61. Family Router | v5.0 | 1/1 | Complete | 2026-03-06 |
+| 61. Family Router | v5.0 | Complete    | 2026-03-06 | 2026-03-06 |
 | 62. Catalog Isolation | v5.0 | 0/2 | Not started | - |
 | 63. Stadium Firmware Params | v5.0 | 0/2 | Not started | - |
 | 64. Knowledge Layer Guards | v5.0 | 0/2 | Not started | - |
