@@ -56,6 +56,25 @@ const BLOCK_LABEL: Record<string, string> = {
   send_return: "FX Loop",
 };
 
+// Phase 66: device picker options — single source of truth for both rig-upload and chat-flow pickers
+const DEVICE_OPTIONS = [
+  { id: "helix_lt" as const, label: "LT", desc: "Helix LT" },
+  { id: "helix_floor" as const, label: "FLOOR", desc: "Helix Floor" },
+  { id: "helix_stadium" as const, label: "STADIUM", desc: "Helix Stadium" },
+  { id: "pod_go" as const, label: "POD GO", desc: "Pod Go" },
+  { id: "helix_stomp" as const, label: "STOMP", desc: "HX Stomp" },
+  { id: "helix_stomp_xl" as const, label: "STOMP XL", desc: "HX Stomp XL" },
+] as const;
+
+const DEVICE_LABELS: Record<typeof DEVICE_OPTIONS[number]["id"], string> = {
+  helix_lt: "Helix LT",
+  helix_floor: "Helix Floor",
+  helix_stadium: "Helix Stadium",
+  pod_go: "Pod Go",
+  helix_stomp: "HX Stomp",
+  helix_stomp_xl: "HX Stomp XL",
+};
+
 function SignalChainViz({ blocks }: { blocks: VizBlock[] }) {
   return (
     <div className="overflow-x-auto pb-1">
@@ -309,6 +328,10 @@ function HomeContent() {
   const [error, setError] = useState<string | null>(null);
   const [premiumKey, setPremiumKey] = useState<string | null>(null);
   const [selectedDevice, setSelectedDevice] = useState<"helix_lt" | "helix_floor" | "pod_go" | "helix_stadium" | "helix_stomp" | "helix_stomp_xl">("helix_lt");
+  // Phase 66: device lock state — true after device is chosen for a conversation (lock-in UX)
+  const [deviceLocked, setDeviceLocked] = useState(false);
+  // Phase 66: needs-picker state — true when resuming a legacy conversation with null/empty device (FRONT-04)
+  const [needsDevicePicker, setNeedsDevicePicker] = useState(false);
   // Auth state (Phase 25)
   const [user, setUser] = useState<{ id: string; is_anonymous?: boolean; email?: string; user_metadata?: Record<string, string> } | null>(null);
 
@@ -872,9 +895,15 @@ function HomeContent() {
         })));
       }
 
-      // Restore device
+      // Restore device — null-safe (FRONT-04): legacy rows have null/empty device
       if (data.device) {
         setSelectedDevice(data.device as "helix_lt" | "helix_floor" | "pod_go" | "helix_stadium" | "helix_stomp" | "helix_stomp_xl");
+        setDeviceLocked(true);   // Resumed conversation = device already chosen
+        setNeedsDevicePicker(false);
+      } else {
+        // Legacy row — show picker instead of silently defaulting to helix_lt (FRONT-04)
+        setNeedsDevicePicker(true);
+        setDeviceLocked(false);
       }
 
       // Check for stored preset
@@ -934,6 +963,10 @@ function HomeContent() {
     setIsResumingConversation(false);
     // Phase 28: clear sign-in banner on new chat
     setShowSignInBanner(false);
+    // Phase 66: reset device lock and picker state for new conversations
+    setDeviceLocked(false);
+    setNeedsDevicePicker(false);
+    // Do NOT reset selectedDevice — keep last-used device pre-selected for UX convenience
   }
 
   // Phase 21: standalone mapping helper — called after callVision() and on device change.
@@ -1306,14 +1339,7 @@ function HomeContent() {
                         Which device are you building for?
                       </p>
                       <div className="grid grid-cols-3 gap-2">
-                        {([
-                          { id: "helix_lt" as const, label: "LT", desc: "Helix LT" },
-                          { id: "helix_floor" as const, label: "FLOOR", desc: "Helix Floor" },
-                          { id: "helix_stadium" as const, label: "STADIUM", desc: "Helix Stadium" },
-                          { id: "pod_go" as const, label: "POD GO", desc: "Pod Go" },
-                          { id: "helix_stomp" as const, label: "STOMP", desc: "HX Stomp" },
-                          { id: "helix_stomp_xl" as const, label: "STOMP XL", desc: "HX Stomp XL" },
-                        ]).map(({ id, label, desc }) => (
+                        {DEVICE_OPTIONS.map(({ id, label, desc }) => (
                           <button
                             key={id}
                             disabled={isGenerating}
@@ -1399,14 +1425,7 @@ function HomeContent() {
                   Which device are you building for?
                 </p>
                 <div className="grid grid-cols-3 gap-3 w-full max-w-sm">
-                  {([
-                    { id: "helix_lt" as const, label: "LT", desc: "Helix LT" },
-                    { id: "helix_floor" as const, label: "FLOOR", desc: "Helix Floor" },
-                    { id: "helix_stadium" as const, label: "STADIUM", desc: "Helix Stadium" },
-                    { id: "pod_go" as const, label: "POD GO", desc: "Pod Go" },
-                    { id: "helix_stomp" as const, label: "STOMP", desc: "HX Stomp" },
-                    { id: "helix_stomp_xl" as const, label: "STOMP XL", desc: "HX Stomp XL" },
-                  ]).map(({ id, label, desc }) => (
+                  {DEVICE_OPTIONS.map(({ id, label, desc }) => (
                     <button
                       key={id}
                       disabled={isGenerating}
