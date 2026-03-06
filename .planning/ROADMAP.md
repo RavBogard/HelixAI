@@ -240,7 +240,7 @@ Plans:
 | 65. Device-Specific Prompts | v5.0 | 2/2 | Complete | 2026-03-06 |
 | 66. Frontend Picker + DB | v5.0 | Complete    | 2026-03-06 | 2026-03-06 |
 | 67. Stadium Integration Quality | 2/2 | Complete    | 2026-03-06 | - |
-| 68. Token Control + Caching | v5.0 | 0/0 | Not started | - |
+| 68. Token Control + Caching | v5.0 | 0/2 | Planned | - |
 
 ### Phase 67: Stadium Integration Quality
 
@@ -261,13 +261,14 @@ Plans:
 ### Phase 68: Token Control and Prompt Caching
 
 **Goal:** Reduce API costs without degrading preset quality — optimize token usage across planner prompts (per-family prompt token budgets, trim redundant catalog entries from prompt text), maximize Anthropic prompt caching hit rates (measure per-device cache performance via usage-logger.ts, consider shared prompt buckets for low-volume devices like Stadium and Pod Go), audit system prompt sizes across all families, and implement any structural changes needed to keep cost per preset generation low as the device count grows
-**Requirements**: TBD
+**Requirements**: TBD (no formal requirement IDs — cost optimization phase)
 **Depends on:** Phase 66 (full pipeline must be wired before measuring token economics)
-**Plans:** 2/2 plans complete
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 68 to break down)
+- [ ] 68-01-PLAN.md — Fix cache write pricing bug ($3.75 -> $6.00 for 1h TTL), per-device cache statistics breakdown, prompt token measurement script
+- [ ] 68-02-PLAN.md — Unify Stomp planner prompt (helix_stomp + helix_stomp_xl share single cache entry), move device restriction to user message
 
 ---
-*Last updated: 2026-03-06 after planning Phase 66*
+*Last updated: 2026-03-06 after planning Phase 68*
 *Full phase details for completed milestones archived in `.planning/milestones/`*
