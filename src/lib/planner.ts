@@ -61,7 +61,7 @@ export async function callClaudePlanner(
     const deviceLabel = isXL ? "HX Stomp XL" : "HX Stomp";
     const blocks = isXL ? 9 : 6;
     const snaps = isXL ? 4 : 3;
-    const maxFx = isXL ? 6 : 4;
+    const maxFx = isXL ? 5 : 2;
     stompRestriction = `\n\nDEVICE RESTRICTION: This is an ${deviceLabel} preset. ${deviceLabel} is a single-DSP, series-only device. Do NOT populate secondAmpName or secondCabName. Generate exactly ${snaps} snapshots (not ${snaps === 3 ? "4" : "3"}, not 8). Keep effects to ${maxFx} maximum — ${deviceLabel} has ${blocks} block slots total (including amp + cab).`;
   }
   const finalUserContent = userContent + stompRestriction;
