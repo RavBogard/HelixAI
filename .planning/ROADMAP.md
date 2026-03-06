@@ -127,6 +127,7 @@
 - [x] **Phase 66: Frontend Picker and Database Migration** — Move device picker to conversation start, add device column to Supabase conversations table, handle legacy rows
 - [x] **Phase 67: Stadium Integration Quality** — Fix WAH/VOLUME catalog gap, dual-amp capability mismatch, TODO(Phase62) placeholder in prompt, and add schema/prompt integration tests (completed 2026-03-06)
 - [x] **Phase 68: Token Control and Prompt Caching** — Reduce API costs without degrading preset quality: optimize token budgets, maximize prompt caching, audit system prompt sizes (completed 2026-03-06)
+- [ ] **Phase 69: Audit Gap Closure** — Fix Stomp maxFx budget mismatch, create retroactive verification documents for phases 62-65, update requirements traceability table (gap closure from v5.0 audit)
 
 ## Phase Details
 
@@ -241,6 +242,7 @@ Plans:
 | 66. Frontend Picker + DB | v5.0 | Complete    | 2026-03-06 | 2026-03-06 |
 | 67. Stadium Integration Quality | 2/2 | Complete    | 2026-03-06 | - |
 | 68. Token Control + Caching | 2/2 | Complete    | 2026-03-06 | - |
+| 69. Audit Gap Closure | v5.0 | 0/0 | Planned | - |
 
 ### Phase 67: Stadium Integration Quality
 
@@ -266,9 +268,23 @@ Plans:
 **Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 68-01-PLAN.md — Fix cache write pricing bug ($3.75 -> $6.00 for 1h TTL), per-device cache statistics breakdown, prompt token measurement script
-- [ ] 68-02-PLAN.md — Unify Stomp planner prompt (helix_stomp + helix_stomp_xl share single cache entry), move device restriction to user message
+- [x] 68-01-PLAN.md — Fix cache write pricing bug ($3.75 -> $6.00 for 1h TTL), per-device cache statistics breakdown, prompt token measurement script
+- [x] 68-02-PLAN.md — Unify Stomp planner prompt (helix_stomp + helix_stomp_xl share single cache entry), move device restriction to user message
+
+### Phase 69: Audit Gap Closure
+**Goal:** Close all gaps identified by the v5.0 milestone audit — fix Stomp maxFx budget values in planner.ts to match DeviceCapabilities, create retroactive VERIFICATION.md for phases 62-65 (code is complete but was executed before formal verifier existed), and update REQUIREMENTS.md traceability table to reflect actual completion status
+**Depends on:** Phase 68 (all v5.0 code complete)
+**Requirements**: CAT-01, CAT-02, CAT-03, CAT-04, CAT-05, PROMPT-01, PROMPT-02, PROMPT-03, PROMPT-04, PROMPT-05, PROMPT-06, STADPARAM-01, STADPARAM-02, STADPARAM-03, STADPARAM-04, KLAYER-01, KLAYER-02, KLAYER-03, KLAYER-04
+**Gap Closure:** Closes gaps from v5.0-MILESTONE-AUDIT.md
+**Success Criteria** (what must be TRUE):
+  1. `planner.ts` Stomp maxFx values match DeviceCapabilities (Stomp XL: 5, Stomp: 2)
+  2. VERIFICATION.md exists for Phase 62 confirming CAT-01 through CAT-05
+  3. VERIFICATION.md exists for Phase 63 confirming STADPARAM-01 through STADPARAM-04
+  4. VERIFICATION.md exists for Phase 64 confirming KLAYER-01 through KLAYER-04
+  5. VERIFICATION.md exists for Phase 65 confirming PROMPT-01 through PROMPT-06
+  6. REQUIREMENTS.md traceability table shows all 27 v5.0 requirements as Complete
+**Plans**: TBD
 
 ---
-*Last updated: 2026-03-06 after planning Phase 68*
+*Last updated: 2026-03-06 after gap closure planning*
 *Full phase details for completed milestones archived in `.planning/milestones/`*
