@@ -582,6 +582,11 @@ function HomeContent() {
     // Phase 27: ensure conversation exists for authenticated users
     const convId = await ensureConversation();
 
+    // Phase 66: Lock device on first message (FRONT-02)
+    if (!deviceLocked) {
+      setDeviceLocked(true);
+    }
+
     // Add empty assistant message for streaming
     const assistantMessage: Message = { role: "assistant", content: "" };
     setMessages([...newMessages, assistantMessage]);
@@ -593,6 +598,7 @@ function HomeContent() {
         body: JSON.stringify({
           messages: newMessages,
           premiumKey,
+          device: selectedDevice,  // Phase 66: send device for per-family prompts (FRONT-02)
           ...(convId ? { conversationId: convId } : {}),
         }),
       });
@@ -1179,6 +1185,30 @@ function HomeContent() {
               </div>
             </div>
 
+            {/* Phase 66: Device picker — must select before chatting (FRONT-01) */}
+            <div className="flex flex-col items-center gap-3 w-full max-w-sm">
+              <p className="text-[11px] text-[var(--hlx-text-muted)] uppercase tracking-widest font-semibold">
+                Which device are you building for?
+              </p>
+              <div className="grid grid-cols-3 gap-2.5 w-full">
+                {DEVICE_OPTIONS.map(({ id, label, desc }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => { setSelectedDevice(id); setNeedsDevicePicker(false); }}
+                    className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all cursor-pointer ${
+                      selectedDevice === id
+                        ? "border-[var(--hlx-amber)] bg-[var(--hlx-elevated)] shadow-[0_0_18px_rgba(240,144,10,0.15)]"
+                        : "border-[var(--hlx-border)] bg-[var(--hlx-surface)] hover:border-[var(--hlx-border-warm)] hover:bg-[var(--hlx-elevated)]"
+                    }`}
+                  >
+                    <span className="text-[12px] font-bold tracking-wider text-[var(--hlx-text)]" style={{ fontFamily: "var(--font-mono)" }}>{label}</span>
+                    <span className="text-[10px] text-[var(--hlx-text-muted)]">{desc}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Inline input form — centered, matches card grid width */}
             <form onSubmit={sendMessage} className="flex gap-2 items-end w-full max-w-2xl">
               {/* Camera button */}
@@ -1417,37 +1447,67 @@ function HomeContent() {
               </div>
             )}
 
-            {/* --- Device Picker + Generate (Phase 23) --- */}
+            {/* --- Device Picker / Generate (Phase 66 refactor of Phase 23) --- */}
             {/* Shown after AI signals readyToGenerate — not on raw message count. */}
             {readyToGenerate && !isStreaming && !generatedPreset && (
               <div className="flex flex-col items-center gap-4 py-6">
-                <p className="text-[11px] text-[var(--hlx-text-muted)] uppercase tracking-widest font-semibold">
-                  Which device are you building for?
-                </p>
-                <div className="grid grid-cols-3 gap-3 w-full max-w-sm">
-                  {DEVICE_OPTIONS.map(({ id, label, desc }) => (
+                {needsDevicePicker ? (
+                  /* Resume picker for legacy conversations with null device (FRONT-04) */
+                  <>
+                    <p className="text-[11px] text-[var(--hlx-text-muted)] uppercase tracking-widest font-semibold">
+                      Select your device to generate
+                    </p>
+                    <div className="grid grid-cols-3 gap-3 w-full max-w-sm">
+                      {DEVICE_OPTIONS.map(({ id, label, desc }) => (
+                        <button
+                          key={id}
+                          disabled={isGenerating}
+                          onClick={() => { setSelectedDevice(id); setNeedsDevicePicker(false); setDeviceLocked(true); generatePreset(undefined, id); }}
+                          className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
+                            isGenerating && selectedDevice === id
+                              ? "border-[var(--hlx-amber)] bg-[var(--hlx-elevated)] shadow-[0_0_22px_rgba(240,144,10,0.18)]"
+                              : "border-[var(--hlx-border)] bg-[var(--hlx-surface)] hover:border-[var(--hlx-border-warm)] hover:bg-[var(--hlx-elevated)] hover:shadow-[0_0_14px_rgba(240,144,10,0.07)]"
+                          }`}
+                        >
+                          {isGenerating && selectedDevice === id ? (
+                            <svg className="hlx-spin h-5 w-5 text-[var(--hlx-amber)]" viewBox="0 0 24 24" fill="none">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                            </svg>
+                          ) : (
+                            <span className="text-[13px] font-bold tracking-wider text-[var(--hlx-text)]" style={{ fontFamily: "var(--font-mono)" }}>{label}</span>
+                          )}
+                          <span className="text-[11px] text-[var(--hlx-text-muted)]">{desc}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  /* Normal flow: device already locked — show badge + Generate button */
+                  <>
+                    <p className="text-[11px] text-[var(--hlx-text-muted)] uppercase tracking-widest font-semibold">
+                      Generating for {DEVICE_LABELS[selectedDevice]}
+                    </p>
                     <button
-                      key={id}
                       disabled={isGenerating}
-                      onClick={() => { setSelectedDevice(id); generatePreset(undefined, id); }}
-                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
-                        isGenerating && selectedDevice === id
+                      onClick={() => generatePreset()}
+                      className={`flex items-center gap-2 px-6 py-3 rounded-xl border font-semibold transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
+                        isGenerating
                           ? "border-[var(--hlx-amber)] bg-[var(--hlx-elevated)] shadow-[0_0_22px_rgba(240,144,10,0.18)]"
-                          : "border-[var(--hlx-border)] bg-[var(--hlx-surface)] hover:border-[var(--hlx-border-warm)] hover:bg-[var(--hlx-elevated)] hover:shadow-[0_0_14px_rgba(240,144,10,0.07)]"
+                          : "border-[var(--hlx-amber)] bg-[rgba(240,144,10,0.06)] text-[var(--hlx-amber)] hover:bg-[rgba(240,144,10,0.12)]"
                       }`}
+                      style={{ fontFamily: "var(--font-mono)" }}
                     >
-                      {isGenerating && selectedDevice === id ? (
+                      {isGenerating ? (
                         <svg className="hlx-spin h-5 w-5 text-[var(--hlx-amber)]" viewBox="0 0 24 24" fill="none">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                         </svg>
-                      ) : (
-                        <span className="text-[13px] font-bold tracking-wider text-[var(--hlx-text)]" style={{ fontFamily: "var(--font-mono)" }}>{label}</span>
-                      )}
-                      <span className="text-[11px] text-[var(--hlx-text-muted)]">{desc}</span>
+                      ) : null}
+                      {isGenerating ? "Generating..." : "Generate Preset"}
                     </button>
-                  ))}
-                </div>
+                  </>
+                )}
               </div>
             )}
 
@@ -1707,7 +1767,7 @@ function HomeContent() {
 }
 
 // Set to true to show maintenance page instead of chat
-const MAINTENANCE_MODE = true;
+const MAINTENANCE_MODE = false;
 
 function MaintenancePage() {
   return (
