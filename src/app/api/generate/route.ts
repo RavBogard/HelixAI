@@ -17,6 +17,7 @@ import {
   isStadium,
   isStomp,
   resolveFamily,
+  getCapabilities,
 } from "@/lib/helix";
 import type { PresetSpec, DeviceTarget, SubstitutionMap, DeviceFamily } from "@/lib/helix";
 import type { RigIntent } from "@/lib/helix";
@@ -89,9 +90,10 @@ export async function POST(req: NextRequest) {
     const toneIntent = await callClaudePlanner(messages, deviceTarget, deviceFamily, toneContext);
 
     // Step 2: Knowledge Layer pipeline (deterministic)
-    // Pass device target so chain rules apply Pod Go constraints (PGCHAIN-01-03)
-    const chain = assembleSignalChain(toneIntent, deviceTarget);
-    const parameterized = resolveParameters(chain, toneIntent, deviceTarget);
+    // Resolve capabilities once, pass to all Knowledge Layer functions (KLAYER-04)
+    const caps = getCapabilities(deviceTarget);
+    const chain = assembleSignalChain(toneIntent, caps);
+    const parameterized = resolveParameters(chain, toneIntent, caps);
     const snapshots = buildSnapshots(parameterized, toneIntent.snapshots);
 
     // Step 3: Build PresetSpec
@@ -106,8 +108,7 @@ export async function POST(req: NextRequest) {
     };
 
     // Step 4: Strict validation — fail fast on structural errors
-    // Pass device for device-specific validation (Pod Go: all dsp0, 4 snapshots, 10 blocks)
-    validatePresetSpec(presetSpec, deviceTarget);
+    validatePresetSpec(presetSpec, caps);
 
     // Step 5: Build preset file with device target
     if (isStomp(deviceTarget)) {

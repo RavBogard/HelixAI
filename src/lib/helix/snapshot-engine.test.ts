@@ -5,8 +5,11 @@ import { describe, it, expect } from "vitest";
 import { buildSnapshots } from "./snapshot-engine";
 import { assembleSignalChain } from "./chain-rules";
 import { resolveParameters } from "./param-engine";
+import { getCapabilities } from "./device-family";
 import type { BlockSpec, SnapshotSpec } from "./types";
 import type { ToneIntent, SnapshotIntent } from "./tone-intent";
+
+const defaultCaps = getCapabilities("helix_floor");
 
 // Helper: create a minimal clean ToneIntent
 function cleanIntent(overrides: Partial<ToneIntent> = {}): ToneIntent {
@@ -44,8 +47,8 @@ function highGainIntent(overrides: Partial<ToneIntent> = {}): ToneIntent {
 
 // Helper: build a fully parameterized chain from an intent
 function buildChain(intent: ToneIntent): BlockSpec[] {
-  const chain = assembleSignalChain(intent);
-  return resolveParameters(chain, intent);
+  const chain = assembleSignalChain(intent, defaultCaps);
+  return resolveParameters(chain, intent, defaultCaps);
 }
 
 // Helper: get the standard 4 snapshot intents

@@ -19,6 +19,7 @@ import type { HlxFile, PresetSpec, BlockSpec, SnapshotSpec } from "./types";
 import { DEVICE_IDS, POD_GO_IO, POD_GO_SNAPSHOT_CONTROLLER, POD_GO_STOMP_FS_INDICES } from "./types";
 import { getModelIdForDevice, getBlockTypeForDevice } from "./models";
 import { getAllModels } from "./models";
+import { getCapabilities } from "./device-family";
 import { POD_GO_FIRMWARE_CONFIG } from "./config";
 
 // ---------------------------------------------------------------------------
@@ -171,10 +172,11 @@ function buildPgpDsp(blocks: BlockSpec[]): Record<string, unknown> {
     const model = allModels[block.modelName];
 
     // Get Pod Go-specific model ID and @type
+    const podGoCaps = getCapabilities("pod_go");
     const pgModelId = model
-      ? getModelIdForDevice(model, block.type, "pod_go")
+      ? getModelIdForDevice(model, block.type, podGoCaps)
       : block.modelId;
-    const pgBlockType = getBlockTypeForDevice(block.type, pgModelId, "pod_go");
+    const pgBlockType = getBlockTypeForDevice(block.type, pgModelId, podGoCaps);
 
     // Pod Go blocks: no @path, no @stereo (PGP-03)
     const pgBlock: Record<string, unknown> = {

@@ -1,6 +1,6 @@
 import { getAllModels, STADIUM_AMPS } from "./models";
-import type { PresetSpec, DeviceTarget } from "./types";
-import { isPodGo, isStadium, isStomp } from "./types";
+import type { PresetSpec } from "./types";
+import type { DeviceCapabilities } from "./device-family";
 import { STADIUM_CONFIG, STOMP_CONFIG, HELIX_SYSTEM_MODELS, POD_GO_SYSTEM_MODELS } from "./config";
 
 // Build a set of all valid model IDs from our database
@@ -65,13 +65,10 @@ const VALID_IDS_WITH_SUFFIXES = getValidModelIdsWithSuffixes();
  * The Knowledge Layer should produce valid specs, so any failure here indicates a bug.
  * Call this before buildHlxFile/buildPgpFile in the generate pipeline.
  *
- * @param device - Optional device target for device-specific validation rules
+ * @param caps - Device capabilities for device-specific validation rules
  */
-export function validatePresetSpec(spec: PresetSpec, device?: DeviceTarget): void {
-  const podGo = device ? isPodGo(device) : false;
-  const stadium = device ? isStadium(device) : false;
-  const stomp = device ? isStomp(device) : false;
-  const validIds = podGo ? VALID_IDS_WITH_SUFFIXES : VALID_IDS;
+export function validatePresetSpec(spec: PresetSpec, caps: DeviceCapabilities): void {
+  const validIds = caps.fileFormat === "pgp" ? VALID_IDS_WITH_SUFFIXES : VALID_IDS;
 
   // 1. Signal chain not empty
   if (!spec.signalChain || spec.signalChain.length === 0) {
@@ -142,63 +139,35 @@ export function validatePresetSpec(spec: PresetSpec, device?: DeviceTarget): voi
     }
   }
 
-  // 7. DSP block limits
-  if (podGo) {
-    // Pod Go: single DSP, all blocks on dsp0 (PGP-05, PGCHAIN-01)
+  // 7. DSP block limits — caps-driven (KLAYER-03)
+  if (caps.dspCount === 1) {
+    // Single-DSP devices (Pod Go, Stadium, Stomp): all blocks on dsp0
     const nonDsp0 = spec.signalChain.filter(b => b.dsp !== 0);
     if (nonDsp0.length > 0) {
-      throw new Error(`Pod Go preset has blocks on dsp1 — all blocks must be on dsp0`);
+      throw new Error(`Preset has blocks on dsp1 — all blocks must be on dsp0 for this device`);
     }
     const totalBlocks = spec.signalChain.length;
-    if (totalBlocks > 10) {
-      throw new Error(`Pod Go exceeds 10-block limit (${totalBlocks} blocks)`);
+    if (totalBlocks > caps.maxBlocksTotal) {
+      throw new Error(`Block limit exceeded (${totalBlocks} blocks, max ${caps.maxBlocksTotal})`);
     }
-    // Validate exactly 4 snapshots (PGSNAP-01)
-    if (spec.snapshots.length !== 4) {
-      throw new Error(`Pod Go requires exactly 4 snapshots (got ${spec.snapshots.length})`);
-    }
-  } else if (stadium) {
-    // Stadium: single path (dsp0), max 12 blocks (STAD-04)
-    const nonDsp0 = spec.signalChain.filter(b => b.dsp !== 0);
-    if (nonDsp0.length > 0) {
-      throw new Error(`Stadium preset has blocks on dsp1 — Stadium v3.0 is single-path only (all blocks must be on dsp0)`);
-    }
-    const totalBlocks = spec.signalChain.length;
-    if (totalBlocks > STADIUM_CONFIG.STADIUM_MAX_BLOCKS_PER_PATH) {
-      throw new Error(`Stadium exceeds ${STADIUM_CONFIG.STADIUM_MAX_BLOCKS_PER_PATH}-block limit (${totalBlocks} blocks)`);
-    }
-    // Stadium supports up to 8 snapshots (STAD-04)
-    if (spec.snapshots.length > STADIUM_CONFIG.STADIUM_MAX_SNAPSHOTS) {
-      throw new Error(`Stadium supports at most ${STADIUM_CONFIG.STADIUM_MAX_SNAPSHOTS} snapshots (got ${spec.snapshots.length})`);
-    }
-  } else if (stomp) {
-    // Stomp: single DSP — all blocks must be on dsp0 (STOMP-05)
-    const nonDsp0 = spec.signalChain.filter(b => b.dsp !== 0);
-    if (nonDsp0.length > 0) {
-      throw new Error(`Stomp preset has blocks on dsp1 — all blocks must be on dsp0`);
-    }
-    const maxBlocks = device === "helix_stomp_xl"
-      ? STOMP_CONFIG.STOMP_XL_MAX_BLOCKS
-      : STOMP_CONFIG.STOMP_MAX_BLOCKS;
-    const totalBlocks = spec.signalChain.length;
-    if (totalBlocks > maxBlocks) {
-      throw new Error(`Stomp block limit exceeded (${totalBlocks} blocks, max ${maxBlocks} for ${device})`);
-    }
-    const maxSnapshots = device === "helix_stomp_xl"
-      ? STOMP_CONFIG.STOMP_XL_MAX_SNAPSHOTS
-      : STOMP_CONFIG.STOMP_MAX_SNAPSHOTS;
-    if (spec.snapshots.length > maxSnapshots) {
-      throw new Error(`Stomp snapshot limit exceeded (${spec.snapshots.length}, max ${maxSnapshots} for ${device})`);
+    // Snapshot validation
+    if (caps.fileFormat === "pgp") {
+      // Pod Go .pgp requires exactly maxSnapshots (PGSNAP-01)
+      if (spec.snapshots.length !== caps.maxSnapshots) {
+        throw new Error(`Pod Go requires exactly ${caps.maxSnapshots} snapshots (got ${spec.snapshots.length})`);
+      }
+    } else if (spec.snapshots.length > caps.maxSnapshots) {
+      throw new Error(`Snapshot limit exceeded (${spec.snapshots.length}, max ${caps.maxSnapshots})`);
     }
   } else {
-    // Helix: dual DSP, max 8 non-cab blocks per DSP
+    // Dual-DSP devices (Helix Floor/LT/Rack): max blocks per DSP (non-cab)
     const dsp0Count = spec.signalChain.filter(b => b.dsp === 0 && b.type !== "cab").length;
     const dsp1Count = spec.signalChain.filter(b => b.dsp === 1 && b.type !== "cab").length;
-    if (dsp0Count > 8) {
-      throw new Error(`DSP0 exceeds 8-block limit (${dsp0Count} blocks)`);
+    if (dsp0Count > caps.maxBlocksPerDsp) {
+      throw new Error(`DSP0 exceeds ${caps.maxBlocksPerDsp}-block limit (${dsp0Count} blocks)`);
     }
-    if (dsp1Count > 8) {
-      throw new Error(`DSP1 exceeds 8-block limit (${dsp1Count} blocks)`);
+    if (dsp1Count > caps.maxBlocksPerDsp) {
+      throw new Error(`DSP1 exceeds ${caps.maxBlocksPerDsp}-block limit (${dsp1Count} blocks)`);
     }
   }
 }

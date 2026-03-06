@@ -8,9 +8,10 @@
 import { describe, it, expect } from "vitest";
 import { buildPlannerPrompt } from "./planner";
 import { getModelListForPrompt } from "@/lib/helix";
+import { getCapabilities } from "@/lib/helix";
 
 describe("buildPlannerPrompt", () => {
-  const modelList = getModelListForPrompt();
+  const modelList = getModelListForPrompt(getCapabilities("helix_floor"));
   const prompt = buildPlannerPrompt(modelList);
 
   describe("enrichment sections", () => {
@@ -116,7 +117,7 @@ describe("buildPlannerPrompt", () => {
     });
 
     it("Test 10: Pod Go prompt contains all three enrichment sections (same shared static prefix)", () => {
-      const podGoModelList = getModelListForPrompt("pod_go");
+      const podGoModelList = getModelListForPrompt(getCapabilities("pod_go"));
       const podGoPrompt = buildPlannerPrompt(podGoModelList, "pod_go");
 
       expect(podGoPrompt).toContain("## Gain-Staging Intelligence");

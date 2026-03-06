@@ -8,6 +8,7 @@ import * as path from "path";
 import * as os from "os";
 import { generateBaseline } from "./generate-baseline";
 import { validatePresetSpec } from "@/lib/helix/validate";
+import { getCapabilities } from "@/lib/helix/device-family";
 import type { DeviceTarget, PresetSpec } from "@/lib/helix/types";
 
 const DEVICES: DeviceTarget[] = [
@@ -75,7 +76,7 @@ describe("generate-baseline", () => {
         const content = JSON.parse(fs.readFileSync(filePath, "utf-8"));
         const spec: PresetSpec = content.presetSpec;
 
-        expect(() => validatePresetSpec(spec, device)).not.toThrow();
+        expect(() => validatePresetSpec(spec, getCapabilities(device))).not.toThrow();
       }
     }
   });

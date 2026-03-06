@@ -3,8 +3,11 @@
 
 import { describe, it, expect } from "vitest";
 import { resolveParameters } from "./param-engine";
+import { getCapabilities } from "./device-family";
 import type { BlockSpec } from "./types";
 import type { ToneIntent } from "./tone-intent";
+
+const defaultCaps = getCapabilities("helix_floor");
 
 // Helper: create a minimal ToneIntent
 function makeIntent(overrides: Partial<ToneIntent> = {}): ToneIntent {
@@ -46,7 +49,7 @@ describe("resolveParameters", () => {
       makeBlock({ type: "amp", modelId: "HD2_AmpSoloLeadClean", modelName: "Solo Lead Clean" }),
     ];
     const intent = makeIntent({ ampName: "Solo Lead Clean" });
-    const result = resolveParameters(chain, intent);
+    const result = resolveParameters(chain, intent, defaultCaps);
     const amp = result[0];
 
     expect(amp.parameters.Drive).toBeGreaterThanOrEqual(0.20);
@@ -64,7 +67,7 @@ describe("resolveParameters", () => {
       makeBlock({ type: "amp", modelId: "HD2_AmpGrammaticoNrm", modelName: "Grammatico Nrm" }),
     ];
     const intent = makeIntent({ ampName: "Grammatico Nrm" });
-    const result = resolveParameters(chain, intent);
+    const result = resolveParameters(chain, intent, defaultCaps);
     const amp = result[0];
 
     expect(amp.parameters.Drive).toBe(0.40);    // Layer 4 override from paramOverrides
@@ -79,7 +82,7 @@ describe("resolveParameters", () => {
       makeBlock({ type: "amp", modelId: "HD2_AmpCaliRectifire", modelName: "Cali Rectifire" }),
     ];
     const intent = makeIntent({ ampName: "Cali Rectifire" });
-    const result = resolveParameters(chain, intent);
+    const result = resolveParameters(chain, intent, defaultCaps);
     const amp = result[0];
 
     expect(amp.parameters.Drive).toBeGreaterThanOrEqual(0.30);
@@ -97,7 +100,7 @@ describe("resolveParameters", () => {
       makeBlock({ type: "amp", modelId: "HD2_AmpCaliRectifire", modelName: "Cali Rectifire" }),
     ];
     const pfIntent = makeIntent({ ampName: "Cali Rectifire" });
-    const pfResult = resolveParameters(pfChain, pfIntent);
+    const pfResult = resolveParameters(pfChain, pfIntent, defaultCaps);
     expect(pfResult[0].parameters.Mid).toBeGreaterThanOrEqual(0.55);
     expect(pfResult[0].parameters.Mid).toBeLessThanOrEqual(0.65);
 
@@ -106,7 +109,7 @@ describe("resolveParameters", () => {
       makeBlock({ type: "amp", modelId: "HD2_AmpPVPanama", modelName: "PV Panama" }),
     ];
     const pvIntent = makeIntent({ ampName: "PV Panama" });
-    const pvResult = resolveParameters(pvChain, pvIntent);
+    const pvResult = resolveParameters(pvChain, pvIntent, defaultCaps);
     expect(pvResult[0].parameters.Mid).toBeGreaterThanOrEqual(0.55);
     expect(pvResult[0].parameters.Mid).toBeLessThanOrEqual(0.65);
   });
@@ -118,7 +121,7 @@ describe("resolveParameters", () => {
       makeBlock({ type: "amp", modelId: "HD2_AmpEssexA30", modelName: "Essex A30" }),
     ];
     const intent = makeIntent({ ampName: "Essex A30" });
-    const result = resolveParameters(chain, intent);
+    const result = resolveParameters(chain, intent, defaultCaps);
     // Clean amp Mid should be ~0.50 (from clean category defaults), NOT 0.40-0.50 cathode_follower override
     expect(result[0].parameters.Mid).toBe(0.50);
   });
@@ -129,7 +132,7 @@ describe("resolveParameters", () => {
       makeBlock({ type: "cab", modelId: "HD2_CabMicIr_1x12USDeluxe", modelName: "1x12 US Deluxe" }),
     ];
     const intent = makeIntent({ ampName: "US Deluxe Nrm" });
-    const result = resolveParameters(chain, intent);
+    const result = resolveParameters(chain, intent, defaultCaps);
     const cab = result[0];
 
     expect(cab.parameters.LowCut).toBeGreaterThanOrEqual(80);
@@ -145,14 +148,14 @@ describe("resolveParameters", () => {
       makeBlock({ type: "cab", modelId: "HD2_CabMicIr_1x12USDeluxe", modelName: "1x12 US Deluxe" }),
     ];
     const cleanIntent = makeIntent({ ampName: "US Deluxe Nrm" });
-    const cleanResult = resolveParameters(cleanChain, cleanIntent);
+    const cleanResult = resolveParameters(cleanChain, cleanIntent, defaultCaps);
     expect(cleanResult[0].parameters.Mic).toBe(6);
 
     const hgChain: BlockSpec[] = [
       makeBlock({ type: "cab", modelId: "HD2_CabMicIr_4x12CaliV30", modelName: "4x12 Cali V30" }),
     ];
     const hgIntent = makeIntent({ ampName: "Cali Rectifire" });
-    const hgResult = resolveParameters(hgChain, hgIntent);
+    const hgResult = resolveParameters(hgChain, hgIntent, defaultCaps);
     expect(hgResult[0].parameters.Mic).toBe(0);
   });
 
@@ -179,20 +182,20 @@ describe("resolveParameters", () => {
     } as unknown as ToneIntent;
 
     // Clean baseline: LowGain at unity (0.50), HighGain boost > 0.50
-    const cleanResult = resolveParameters(chain, baseCleanIntent);
+    const cleanResult = resolveParameters(chain, baseCleanIntent, defaultCaps);
     expect(cleanResult[0].parameters.LowGain).toBeLessThanOrEqual(0.50);
     expect(cleanResult[0].parameters.HighGain).toBeGreaterThan(0.50);
 
     // Crunch: LowGain < 0.50 (actual mud cut), HighGain boost > 0.50
     const crunchIntent = makeIntent({ ampName: "Grammatico Nrm" });
-    const crunchResult = resolveParameters(chain, crunchIntent);
+    const crunchResult = resolveParameters(chain, crunchIntent, defaultCaps);
     // crunch single_coil: LowGain = 0.45 + 0.03 = 0.48 — still < 0.50
     expect(crunchResult[0].parameters.LowGain).toBeLessThan(0.50);
     expect(crunchResult[0].parameters.HighGain).toBeGreaterThan(0.50);
 
     // High-gain: LowGain < 0.50 (aggressive mud cut), HighGain boost > 0.50
     const hgIntent = makeIntent({ ampName: "Cali Rectifire" });
-    const hgResult = resolveParameters(chain, hgIntent);
+    const hgResult = resolveParameters(chain, hgIntent, defaultCaps);
     // high_gain single_coil: LowGain = 0.42 + 0.03 = 0.45 — still < 0.50
     expect(hgResult[0].parameters.LowGain).toBeLessThan(0.50);
     expect(hgResult[0].parameters.HighGain).toBeGreaterThan(0.50);
@@ -204,7 +207,7 @@ describe("resolveParameters", () => {
       makeBlock({ type: "distortion", modelId: "HD2_DistMinotaur", modelName: "Minotaur" }),
     ];
     const intent = makeIntent({ ampName: "US Deluxe Nrm" });
-    const result = resolveParameters(chain, intent);
+    const result = resolveParameters(chain, intent, defaultCaps);
     const boost = result[0];
 
     expect(boost.parameters).toHaveProperty("Gain");
@@ -221,11 +224,11 @@ describe("resolveParameters", () => {
     ];
 
     const cleanIntent = makeIntent({ ampName: "US Deluxe Nrm" }); // clean amp
-    const cleanResult = resolveParameters(chain, cleanIntent);
+    const cleanResult = resolveParameters(chain, cleanIntent, defaultCaps);
     expect(cleanResult[0].parameters.Gain).toBe(0.00);
 
     const crunchIntent = makeIntent({ ampName: "Grammatico Nrm" }); // crunch amp
-    const crunchResult = resolveParameters(chain, crunchIntent);
+    const crunchResult = resolveParameters(chain, crunchIntent, defaultCaps);
     expect(crunchResult[0].parameters.Gain).toBeGreaterThanOrEqual(0.20);
     expect(crunchResult[0].parameters.Gain).toBeLessThanOrEqual(0.30);
   });
@@ -236,7 +239,7 @@ describe("resolveParameters", () => {
       makeBlock({ type: "distortion", modelId: "HD2_DistScream808", modelName: "Scream 808" }),
     ];
     const intent = makeIntent({ ampName: "Cali Rectifire" }); // high-gain
-    const result = resolveParameters(chain, intent);
+    const result = resolveParameters(chain, intent, defaultCaps);
     const boost = result[0];
 
     expect(boost.parameters.Drive).toBeGreaterThanOrEqual(0.10);
@@ -252,7 +255,7 @@ describe("resolveParameters", () => {
       makeBlock({ type: "dynamics", modelId: "HD2_GateHorizonGate", modelName: "Horizon Gate" }),
     ];
     const intent = makeIntent({ ampName: "Cali Rectifire" });
-    const result = resolveParameters(chain, intent);
+    const result = resolveParameters(chain, intent, defaultCaps);
     const gate = result[0];
 
     expect(gate.parameters.Threshold).toBe(0.50);
@@ -265,7 +268,7 @@ describe("resolveParameters", () => {
       makeBlock({ type: "volume", modelId: "HD2_VolPanGain", modelName: "Gain Block" }),
     ];
     const intent = makeIntent();
-    const result = resolveParameters(chain, intent);
+    const result = resolveParameters(chain, intent, defaultCaps);
     const vol = result[0];
 
     expect(vol.parameters.Gain).toBe(0.0);
@@ -279,7 +282,7 @@ describe("resolveParameters", () => {
       makeBlock({ type: "modulation", modelId: "HD2_Chorus70sChorus", modelName: "70s Chorus" }),
     ];
     const intent = makeIntent();
-    const result = resolveParameters(chain, intent);
+    const result = resolveParameters(chain, intent, defaultCaps);
 
     // Simple Delay should have its defaults
     expect(result[0].parameters.Time).toBe(0.375);
@@ -302,7 +305,7 @@ describe("resolveParameters", () => {
     ];
     const originalParams = { ...original[0].parameters };
     const intent = makeIntent();
-    const result = resolveParameters(original, intent);
+    const result = resolveParameters(original, intent, defaultCaps);
 
     // Result should be a different array
     expect(result).not.toBe(original);
@@ -317,10 +320,10 @@ describe("resolveParameters", () => {
     const eqBlock = makeBlock({ type: "eq", modelId: "HD2_EQParametric", modelName: "Parametric EQ" });
 
     const cleanIntent = makeIntent({ ampName: "US Deluxe Nrm" });
-    const cleanResult = resolveParameters([{ ...eqBlock, parameters: {} }], cleanIntent);
+    const cleanResult = resolveParameters([{ ...eqBlock, parameters: {} }], cleanIntent, defaultCaps);
 
     const hgIntent = makeIntent({ ampName: "Cali Rectifire" });
-    const hgResult = resolveParameters([{ ...eqBlock, parameters: {} }], hgIntent);
+    const hgResult = resolveParameters([{ ...eqBlock, parameters: {} }], hgIntent, defaultCaps);
 
     // High-gain should have lower LowGain (more cut) than clean
     expect(hgResult[0].parameters.LowGain).toBeLessThan(cleanResult[0].parameters.LowGain as number);
@@ -334,7 +337,7 @@ describe("resolveParameters", () => {
       makeBlock({ type: "amp", modelId: "HD2_AmpUSDeluxeNrm", modelName: "US Deluxe Nrm" }),
     ];
     const intent = makeIntent({ ampName: "US Deluxe Nrm" });
-    const result = resolveParameters(chain, intent);
+    const result = resolveParameters(chain, intent, defaultCaps);
     // Layer 4 override must win over AMP_DEFAULTS.clean.Drive (0.25)
     expect(result[0].parameters.Drive).toBe(0.60);
     // Layer 4: paramOverrides.Master = 1.0 wins over AMP_DEFAULTS.clean.Master (0.95)
@@ -347,7 +350,7 @@ describe("resolveParameters", () => {
       makeBlock({ type: "amp", modelId: "HD2_AmpUSDeluxeNrm", modelName: "US Deluxe Nrm" }),
     ];
     const intent = makeIntent({ ampName: "US Deluxe Nrm" });
-    const result = resolveParameters(chain, intent);
+    const result = resolveParameters(chain, intent, defaultCaps);
     expect(result[0].parameters.Drive).toBe(0.60);
     expect(result[0].parameters.Master).toBe(1.0);
   });
@@ -357,7 +360,7 @@ describe("resolveParameters", () => {
       makeBlock({ type: "amp", modelId: "HD2_AmpEssexA30", modelName: "Essex A30" }),
     ];
     const intent = makeIntent({ ampName: "Essex A30" });
-    const result = resolveParameters(chain, intent);
+    const result = resolveParameters(chain, intent, defaultCaps);
     expect(result[0].parameters.Drive).toBe(0.60);
     expect(result[0].parameters.Master).toBe(1.0);
   });
@@ -367,7 +370,7 @@ describe("resolveParameters", () => {
       makeBlock({ type: "amp", modelId: "HD2_AmpCaliRectifire", modelName: "Cali Rectifire" }),
     ];
     const intent = makeIntent({ ampName: "Cali Rectifire" });
-    const result = resolveParameters(chain, intent);
+    const result = resolveParameters(chain, intent, defaultCaps);
     expect(result[0].parameters.Drive).toBe(0.40);
     expect(result[0].parameters.Presence).toBe(0.30);
   });
@@ -378,7 +381,7 @@ describe("resolveParameters", () => {
       makeBlock({ type: "amp", modelId: "HD2_AmpLine62204Mod", modelName: "Line 6 2204 Mod" }),
     ];
     const intent = makeIntent({ ampName: "Line 6 2204 Mod" });
-    const result = resolveParameters(chain, intent);
+    const result = resolveParameters(chain, intent, defaultCaps);
     // AMP_DEFAULTS.crunch.Drive = 0.50 — no override, category default wins
     expect(result[0].parameters.Drive).toBe(0.50);
   });
@@ -401,7 +404,7 @@ describe("FX-02: reverb PreDelay by genre", () => {
   it("FX-02-1: blues genre reverb block produces PreDelay ~0.025 (25ms)", () => {
     const chain = makeReverbChain();
     const intent = makeIntent({ genreHint: "blues" });
-    const result = resolveParameters(chain, intent);
+    const result = resolveParameters(chain, intent, defaultCaps);
     const reverb = result[1];
     expect(reverb.parameters.PreDelay).toBeCloseTo(0.025, 3);
   });
@@ -409,7 +412,7 @@ describe("FX-02: reverb PreDelay by genre", () => {
   it("FX-02-2: ambient genre reverb block produces PreDelay ~0.045 (45ms)", () => {
     const chain = makeReverbChain();
     const intent = makeIntent({ genreHint: "ambient" });
-    const result = resolveParameters(chain, intent);
+    const result = resolveParameters(chain, intent, defaultCaps);
     const reverb = result[1];
     expect(reverb.parameters.PreDelay).toBeCloseTo(0.045, 3);
   });
@@ -417,7 +420,7 @@ describe("FX-02: reverb PreDelay by genre", () => {
   it("FX-02-3: metal genre reverb block produces PreDelay ~0.010 (10ms)", () => {
     const chain = makeReverbChain();
     const intent = makeIntent({ ampName: "Cali Rectifire", genreHint: "metal" });
-    const result = resolveParameters(chain, intent);
+    const result = resolveParameters(chain, intent, defaultCaps);
     const reverb = result[1];
     expect(reverb.parameters.PreDelay).toBeCloseTo(0.010, 3);
   });
@@ -438,7 +441,7 @@ describe("INT-02: spring reverb models receive genre PreDelay", () => {
       makeBlock({ type: "reverb", modelId: "HD2_Reverb63Spring", modelName: "'63 Spring" }),
     ];
     const intent = makeIntent({ genreHint: "blues" });
-    const result = resolveParameters(chain, intent);
+    const result = resolveParameters(chain, intent, defaultCaps);
     const reverb = result[1];
     expect(reverb.parameters.PreDelay).toBeCloseTo(0.025, 3);
   });
@@ -449,7 +452,7 @@ describe("INT-02: spring reverb models receive genre PreDelay", () => {
       makeBlock({ type: "reverb", modelId: "HD2_ReverbDoubleTank", modelName: "Double Tank" }),
     ];
     const intent = makeIntent({ genreHint: "rock" });
-    const result = resolveParameters(chain, intent);
+    const result = resolveParameters(chain, intent, defaultCaps);
     const reverb = result[1];
     expect(reverb.parameters.PreDelay).toBeCloseTo(0.020, 3);
   });
@@ -460,7 +463,7 @@ describe("INT-02: spring reverb models receive genre PreDelay", () => {
       makeBlock({ type: "reverb", modelId: "HD2_ReverbSpring", modelName: "Spring" }),
     ];
     const intent = makeIntent({ genreHint: "ambient" });
-    const result = resolveParameters(chain, intent);
+    const result = resolveParameters(chain, intent, defaultCaps);
     const reverb = result[1];
     expect(reverb.parameters.PreDelay).toBeCloseTo(0.045, 3);
   });
@@ -471,7 +474,7 @@ describe("INT-02: spring reverb models receive genre PreDelay", () => {
       makeBlock({ type: "reverb", modelId: "HD2_Reverb63Spring", modelName: "'63 Spring" }),
     ];
     const intent = makeIntent({}); // no genreHint
-    const result = resolveParameters(chain, intent);
+    const result = resolveParameters(chain, intent, defaultCaps);
     const reverb = result[1];
     expect(reverb.parameters.PreDelay).toBe(0);
   });
@@ -495,7 +498,7 @@ describe("FX-03: tempo-synced delay Time", () => {
   it("FX-03-1: tempoHint=120 produces delay Time=0.25 (quarter note at 120 BPM)", () => {
     const chain = makeDelayChain();
     const intent = makeIntent({ tempoHint: 120 });
-    const result = resolveParameters(chain, intent);
+    const result = resolveParameters(chain, intent, defaultCaps);
     const delay = result[1];
     // 30 / 120 = 0.25
     expect(delay.parameters.Time).toBeCloseTo(0.25, 3);
@@ -504,7 +507,7 @@ describe("FX-03: tempo-synced delay Time", () => {
   it("FX-03-2: tempoHint=80 produces delay Time=0.375 (quarter note at 80 BPM)", () => {
     const chain = makeDelayChain();
     const intent = makeIntent({ tempoHint: 80 });
-    const result = resolveParameters(chain, intent);
+    const result = resolveParameters(chain, intent, defaultCaps);
     const delay = result[1];
     // 30 / 80 = 0.375
     expect(delay.parameters.Time).toBeCloseTo(0.375, 3);
@@ -513,7 +516,7 @@ describe("FX-03: tempo-synced delay Time", () => {
   it("FX-03-3: tempoHint=120 with Dual Delay produces Left Time=0.25, Right Time=0.1875", () => {
     const chain = makeDelayChain("Dual Delay", "HD2_DelayDualDelay");
     const intent = makeIntent({ tempoHint: 120 });
-    const result = resolveParameters(chain, intent);
+    const result = resolveParameters(chain, intent, defaultCaps);
     const delay = result[1];
     // Left Time = 30/120 = 0.25
     // Right Time = 0.25 * 0.75 = 0.1875 (dotted-eighth offset)
@@ -525,7 +528,7 @@ describe("FX-03: tempo-synced delay Time", () => {
     const chain = makeDelayChain();
     // blues genre default Time = 0.15
     const intent = makeIntent({ genreHint: "blues" });
-    const result = resolveParameters(chain, intent);
+    const result = resolveParameters(chain, intent, defaultCaps);
     const delay = result[1];
     // Without tempoHint, delay Time should be the blues genre default (0.15)
     expect(delay.parameters.Time).toBeCloseTo(0.15, 3);
@@ -539,7 +542,7 @@ describe("FX-03: tempo-synced delay Time", () => {
     ];
     // blues genre with tempo — delay should sync, reverb DecayTime should stay at genre default
     const intent = makeIntent({ genreHint: "blues", tempoHint: 120 });
-    const result = resolveParameters(chain, intent);
+    const result = resolveParameters(chain, intent, defaultCaps);
     const delay = result[1];
     const reverb = result[2];
     // Delay Time must be tempo-synced to 0.25
@@ -576,7 +579,7 @@ describe("FX-01: guitar-type EQ shaping", () => {
   it("FX-01-1: single_coil guitarType produces HighGain lower than clean baseline (cut harshness)", () => {
     const chain = makeEqChain();
     const intent = makeIntent({ ampName: "US Deluxe Nrm", guitarType: "single_coil" });
-    const result = resolveParameters(chain, intent);
+    const result = resolveParameters(chain, intent, defaultCaps);
     const resolvedEq = result[1];
     // single_coil EQ_GUITAR_TYPE_ADJUST.HighGain = -0.02 → 0.55 - 0.02 = 0.53
     expect(resolvedEq.parameters.HighGain).toBeLessThan(0.55); // below clean baseline
@@ -587,7 +590,7 @@ describe("FX-01: guitar-type EQ shaping", () => {
   it("FX-01-2: humbucker guitarType produces HighGain higher than clean baseline (recover presence)", () => {
     const chain = makeEqChain();
     const intent = makeIntent({ ampName: "US Deluxe Nrm", guitarType: "humbucker" });
-    const result = resolveParameters(chain, intent);
+    const result = resolveParameters(chain, intent, defaultCaps);
     const resolvedEq = result[1];
     // humbucker EQ_GUITAR_TYPE_ADJUST.HighGain = +0.03 → 0.55 + 0.03 = 0.58
     expect(resolvedEq.parameters.HighGain).toBeGreaterThan(0.55); // above clean baseline
@@ -599,8 +602,8 @@ describe("FX-01: guitar-type EQ shaping", () => {
     const chain2 = makeEqChain();
     const singleCoilIntent = makeIntent({ ampName: "US Deluxe Nrm", guitarType: "single_coil" });
     const humbuckerIntent = makeIntent({ ampName: "US Deluxe Nrm", guitarType: "humbucker" });
-    const scResult = resolveParameters(chain1, singleCoilIntent);
-    const hbResult = resolveParameters(chain2, humbuckerIntent);
+    const scResult = resolveParameters(chain1, singleCoilIntent, defaultCaps);
+    const hbResult = resolveParameters(chain2, humbuckerIntent, defaultCaps);
     const scEq = scResult[1].parameters;
     const hbEq = hbResult[1].parameters;
     // Single-coil vs humbucker must differ on all three gain parameters
@@ -611,9 +614,9 @@ describe("FX-01: guitar-type EQ shaping", () => {
 
   // FX-01-4: p90 produces HighGain between single_coil and humbucker extremes
   it("FX-01-4: p90 guitarType produces HighGain between single_coil and humbucker", () => {
-    const sc = resolveParameters(makeEqChain(), makeIntent({ ampName: "US Deluxe Nrm", guitarType: "single_coil" }));
-    const hb = resolveParameters(makeEqChain(), makeIntent({ ampName: "US Deluxe Nrm", guitarType: "humbucker" }));
-    const p9 = resolveParameters(makeEqChain(), makeIntent({ ampName: "US Deluxe Nrm", guitarType: "p90" }));
+    const sc = resolveParameters(makeEqChain(), makeIntent({ ampName: "US Deluxe Nrm", guitarType: "single_coil" }), defaultCaps);
+    const hb = resolveParameters(makeEqChain(), makeIntent({ ampName: "US Deluxe Nrm", guitarType: "humbucker" }), defaultCaps);
+    const p9 = resolveParameters(makeEqChain(), makeIntent({ ampName: "US Deluxe Nrm", guitarType: "p90" }), defaultCaps);
     const scHighGain = sc[1].parameters.HighGain as number;
     const hbHighGain = hb[1].parameters.HighGain as number;
     const p90HighGain = p9[1].parameters.HighGain as number;
@@ -640,7 +643,7 @@ describe("FX-01: guitar-type EQ shaping", () => {
       ],
       // guitarType deliberately omitted — should produce exact baseline
     } as unknown as ToneIntent;
-    const result = resolveParameters(chain, intent);
+    const result = resolveParameters(chain, intent, defaultCaps);
     const resolvedEq = result[1].parameters;
     // clean baseline EQ_PARAMS.clean values
     expect(resolvedEq.LowGain).toBeCloseTo(0.50, 5);
@@ -657,8 +660,8 @@ describe("FX-01: guitar-type EQ shaping", () => {
     ];
     const scIntent = makeIntent({ ampName: "US Deluxe Nrm", guitarType: "single_coil" });
     const hbIntent = makeIntent({ ampName: "US Deluxe Nrm", guitarType: "humbucker" });
-    const scResult = resolveParameters(chainSimple, scIntent);
-    const hbResult = resolveParameters(chainSimple, hbIntent);
+    const scResult = resolveParameters(chainSimple, scIntent, defaultCaps);
+    const hbResult = resolveParameters(chainSimple, hbIntent, defaultCaps);
     // Non-parametric EQ should produce identical output regardless of guitarType
     expect(scResult[1].parameters).toEqual(hbResult[1].parameters);
   });

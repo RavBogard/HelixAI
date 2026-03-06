@@ -7,8 +7,8 @@
 //
 // Usage: resolveParameters(chain, intent) -> BlockSpec[] with all parameters filled.
 
-import type { AmpCategory, BlockSpec, DeviceTarget, TopologyTag } from "./types";
-import { isStadium } from "./types";
+import type { AmpCategory, BlockSpec, TopologyTag } from "./types";
+import type { DeviceCapabilities } from "./device-family";
 import type { ToneIntent } from "./tone-intent";
 import {
   AMP_MODELS,
@@ -270,21 +270,21 @@ function findModel(modelName: string, blockType: string): HelixModel | undefined
  *
  * @param chain - Signal chain from assembleSignalChain() with empty parameters
  * @param intent - Original ToneIntent for context (ampName determines category)
- * @param device - Optional device target — used to apply device-specific param extensions
+ * @param caps - Device capabilities — used to apply device-specific param extensions
  * @returns New BlockSpec[] with all parameter values filled
  */
 export function resolveParameters(
   chain: BlockSpec[],
   intent: ToneIntent,
-  device?: DeviceTarget,
+  caps: DeviceCapabilities,
 ): BlockSpec[] {
   // Device-aware amp lookup with Stadium HD2→Agoura fallback (mirrors chain-rules.ts).
-  const stadium = device ? isStadium(device) : false;
-  let ampModel: HelixModel | undefined = stadium
+  const isAgouraEra = caps.ampCatalogEra === "agoura";
+  let ampModel: HelixModel | undefined = isAgouraEra
     ? STADIUM_AMPS[intent.ampName]
     : AMP_MODELS[intent.ampName];
 
-  if (!ampModel && stadium) {
+  if (!ampModel && isAgouraEra) {
     const hd2Model = AMP_MODELS[intent.ampName];
     if (hd2Model) {
       // Strategy 1: Name word overlap (mirrors chain-rules.ts fallback)
@@ -309,7 +309,7 @@ export function resolveParameters(
   }
 
   if (!ampModel) {
-    throw new Error(`Unknown amp model: "${intent.ampName}" — not found in ${stadium ? "STADIUM_AMPS" : "AMP_MODELS"}`);
+    throw new Error(`Unknown amp model: "${intent.ampName}" — not found in ${isAgouraEra ? "STADIUM_AMPS" : "AMP_MODELS"}`);
   }
 
   const ampCategory: AmpCategory = ampModel.ampCategory ?? "clean";
@@ -335,8 +335,8 @@ export function resolveParameters(
 
     const resolved: BlockSpec = {
       ...block,
-      // Thread device, tempoHint, and guitarType through to resolveBlockParams
-      parameters: resolveBlockParams(block, effectiveCategory, effectiveTopology, genreProfile, device, tempoHint, guitarType),
+      // Thread caps, tempoHint, and guitarType through to resolveBlockParams
+      parameters: resolveBlockParams(block, effectiveCategory, effectiveTopology, genreProfile, caps, tempoHint, guitarType),
     };
     return resolved;
   });
@@ -344,7 +344,7 @@ export function resolveParameters(
 
 /**
  * Resolve parameters for a single block based on its type and the amp context.
- * The device parameter enables Stadium-specific param extensions (e.g., 10 cab params).
+ * The caps parameter enables device-specific param extensions (e.g., 10 cab params for Stadium).
  * The tempoHint parameter enables tempo-synced delay Time for delay blocks (FX-03).
  * The guitarType parameter enables guitar-type EQ curve adjustments for HD2_EQParametric (FX-01).
  */
@@ -353,7 +353,7 @@ function resolveBlockParams(
   ampCategory: AmpCategory,
   topology: TopologyTag,
   genreProfile?: GenreEffectProfile,
-  device?: DeviceTarget,
+  caps?: DeviceCapabilities,
   tempoHint?: number,
   guitarType?: string,
 ): Record<string, number | boolean> {
@@ -361,8 +361,8 @@ function resolveBlockParams(
     case "amp":
       return resolveAmpParams(block, ampCategory, topology);
     case "cab":
-      // STAD-06 fix: pass device to resolveCabParams so Stadium gets all 10 cab params
-      return resolveCabParams(ampCategory, device);
+      // STAD-06 fix: pass caps to resolveCabParams so Stadium gets all 10 cab params
+      return resolveCabParams(ampCategory, caps);
     case "distortion":
       return resolveDistortionParams(block, ampCategory);
     case "eq":
@@ -447,7 +447,7 @@ function resolveAmpParams(
  *   Pan: 0.5 (center)
  *   Position: 0.25 (standard near-mic position)
  */
-function resolveCabParams(ampCategory: AmpCategory, device?: DeviceTarget): Record<string, number> {
+function resolveCabParams(ampCategory: AmpCategory, caps?: DeviceCapabilities): Record<string, number> {
   const cabDefaults = CAB_PARAMS[ampCategory];
   const params: Record<string, number> = {
     LowCut: cabDefaults.LowCut,
@@ -458,7 +458,7 @@ function resolveCabParams(ampCategory: AmpCategory, device?: DeviceTarget): Reco
   };
 
   // Stadium requires all 10 cab params — add the 5 missing ones conditionally
-  if (device && isStadium(device)) {
+  if (caps?.ampCatalogEra === "agoura") {
     params.Delay = 0.0;
     params.IrData = 0;
     params.Level = 0.0;

@@ -5,7 +5,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { getToneIntentSchema, getModelListForPrompt, isPodGo, isStadium, isStomp, AMP_MODELS, VARIAX_MODEL_NAMES } from "@/lib/helix";
+import { getToneIntentSchema, getModelListForPrompt, isPodGo, isStadium, isStomp, AMP_MODELS, VARIAX_MODEL_NAMES, getCapabilities } from "@/lib/helix";
 import { STOMP_CONFIG } from "@/lib/helix/config";
 import type { ToneIntent, DeviceTarget, DeviceFamily } from "@/lib/helix";
 import { logUsage, estimateClaudeCost } from "@/lib/usage-logger";
@@ -195,7 +195,8 @@ export async function callClaudePlanner(
   if (!apiKey) throw new Error("CLAUDE_API_KEY environment variable is required");
 
   const client = new Anthropic({ apiKey });
-  const modelList = getModelListForPrompt(device);
+  const caps = device ? getCapabilities(device) : getCapabilities("helix_floor");
+  const modelList = getModelListForPrompt(caps);
   const systemPrompt = buildPlannerPrompt(modelList, device);
 
   // Concatenate conversation history into a single user message

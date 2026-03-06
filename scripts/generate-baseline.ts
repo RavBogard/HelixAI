@@ -13,7 +13,7 @@ import * as path from "path";
 import { getToneIntentSchema } from "@/lib/helix/tone-intent";
 import type { ToneIntent, SnapshotIntent } from "@/lib/helix/tone-intent";
 import type { DeviceTarget, PresetSpec } from "@/lib/helix/types";
-import { resolveFamily } from "@/lib/helix/device-family";
+import { resolveFamily, getCapabilities } from "@/lib/helix/device-family";
 import { assembleSignalChain } from "@/lib/helix/chain-rules";
 import { resolveParameters } from "@/lib/helix/param-engine";
 import { buildSnapshots } from "@/lib/helix/snapshot-engine";
@@ -339,8 +339,9 @@ function getIntent(tone: ToneScenarioKey, device: DeviceTarget): ToneIntent {
 // ---------------------------------------------------------------------------
 
 function buildPreset(intent: ToneIntent, device: DeviceTarget): PresetSpec {
-  const chain = assembleSignalChain(intent, device);
-  const parameterized = resolveParameters(chain, intent, device);
+  const caps = getCapabilities(device);
+  const chain = assembleSignalChain(intent, caps);
+  const parameterized = resolveParameters(chain, intent, caps);
   const snapshots = buildSnapshots(parameterized, intent.snapshots);
 
   const presetSpec: PresetSpec = {
@@ -352,7 +353,7 @@ function buildPreset(intent: ToneIntent, device: DeviceTarget): PresetSpec {
     snapshots,
   };
 
-  validatePresetSpec(presetSpec, device);
+  validatePresetSpec(presetSpec, caps);
 
   return presetSpec;
 }

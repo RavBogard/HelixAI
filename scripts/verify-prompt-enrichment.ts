@@ -22,7 +22,7 @@
 //    fragments the cache into per-device buckets.
 
 import { buildPlannerPrompt } from "../src/lib/planner";
-import { getModelListForPrompt } from "@/lib/helix";
+import { getModelListForPrompt, getCapabilities } from "@/lib/helix";
 import type { DeviceTarget } from "@/lib/helix";
 
 // ---------------------------------------------------------------------------
@@ -68,7 +68,8 @@ interface DeviceCheckResult {
 // ---------------------------------------------------------------------------
 
 function checkDevice(device: DeviceTarget): DeviceCheckResult {
-  const modelList = getModelListForPrompt(device);
+  const caps = getCapabilities(device);
+  const modelList = getModelListForPrompt(caps);
   const prompt = buildPlannerPrompt(modelList, device);
 
   const sectionPresent: [boolean, boolean, boolean] = [
