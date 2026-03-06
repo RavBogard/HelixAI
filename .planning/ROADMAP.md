@@ -10,7 +10,7 @@
 - ✅ **v3.0 Helix Stadium Support** — Phases 31-38 (shipped 2026-03-04)
 - ✅ **v3.2 Infrastructure, Features & Audit Tooling** — Phases 42, 48-51 (shipped 2026-03-05)
 - ✅ **v4.0 Stadium Rebuild + Preset Quality Leap** — Phases 52-60 (shipped 2026-03-05)
-- 🚧 **v5.0 Device-First Architecture** — Phases 61-68 (in progress)
+- 🚧 **v5.0 Device-First Architecture** — Phases 61-69 (in progress)
 
 ## Phases
 
@@ -113,7 +113,7 @@
 
 </details>
 
-### 🚧 v5.0 Device-First Architecture (In Progress)
+### v5.0 Device-First Architecture (In Progress)
 
 **Milestone Goal:** Rearchitect the pipeline so device identity is resolved at conversation start, every device family follows a fully isolated path (prompts, catalogs, schemas, chain rules), Stadium presets emit all 27 firmware params per amp block, and the frontend picker is the first thing a user sees.
 
@@ -125,7 +125,7 @@
 - [x] **Phase 64: Knowledge Layer Guard Removal** — Replace 17+ boolean guard sites in chain-rules.ts, param-engine.ts, and validate.ts with DeviceCapabilities-driven dispatch
 - [x] **Phase 65: Device-Specific Prompts** — Create per-family planner and chat prompt templates with only family-appropriate model catalogs and conversation arcs
 - [x] **Phase 66: Frontend Picker and Database Migration** — Move device picker to conversation start, add device column to Supabase conversations table, handle legacy rows
-- [x] **Phase 67: Stadium Integration Quality** — Fix WAH/VOLUME catalog gap, dual-amp capability mismatch, TODO(Phase62) placeholder in prompt, and add schema/prompt integration tests (completed 2026-03-06)
+- [x] **Phase 67: Stadium Integration Quality** — Fix WAH/VOLUME catalog gap, dual-amp capability mismatch, TODO(Phase62) placeholder in prompt, and add schema/prompt integration tests (completed 2026-03-06)
 - [x] **Phase 68: Token Control and Prompt Caching** — Reduce API costs without degrading preset quality: optimize token budgets, maximize prompt caching, audit system prompt sizes (completed 2026-03-06)
 - [ ] **Phase 69: Audit Gap Closure** — Fix Stomp maxFx budget mismatch, create retroactive verification documents for phases 62-65, update requirements traceability table (gap closure from v5.0 audit)
 
@@ -239,10 +239,10 @@ Plans:
 | 63. Stadium Firmware Params | v5.0 | 2/2 | Complete | 2026-03-06 |
 | 64. Knowledge Layer Guards | v5.0 | 2/2 | Complete | 2026-03-06 |
 | 65. Device-Specific Prompts | v5.0 | 2/2 | Complete | 2026-03-06 |
-| 66. Frontend Picker + DB | v5.0 | Complete    | 2026-03-06 | 2026-03-06 |
-| 67. Stadium Integration Quality | 2/2 | Complete    | 2026-03-06 | - |
-| 68. Token Control + Caching | 2/2 | Complete    | 2026-03-06 | - |
-| 69. Audit Gap Closure | v5.0 | 0/0 | Planned | - |
+| 66. Frontend Picker + DB | v5.0 | 2/2 | Complete | 2026-03-06 |
+| 67. Stadium Integration Quality | v5.0 | 2/2 | Complete | 2026-03-06 |
+| 68. Token Control + Caching | v5.0 | 2/2 | Complete | 2026-03-06 |
+| 69. Audit Gap Closure | v5.0 | 2/2 | Planned | - |
 
 ### Phase 67: Stadium Integration Quality
 
@@ -283,8 +283,12 @@ Plans:
   4. VERIFICATION.md exists for Phase 64 confirming KLAYER-01 through KLAYER-04
   5. VERIFICATION.md exists for Phase 65 confirming PROMPT-01 through PROMPT-06
   6. REQUIREMENTS.md traceability table shows all 27 v5.0 requirements as Complete
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 69-01-PLAN.md — Fix Stomp maxFx values in planner.ts (isXL ? 5 : 2), update REQUIREMENTS.md traceability table
+- [ ] 69-02-PLAN.md — Create retroactive VERIFICATION.md for phases 62, 63, 64, 65
 
 ---
-*Last updated: 2026-03-06 after gap closure planning*
+*Last updated: 2026-03-06 after Phase 69 planning*
 *Full phase details for completed milestones archived in `.planning/milestones/`*
