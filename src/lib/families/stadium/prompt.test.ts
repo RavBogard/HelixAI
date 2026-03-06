@@ -4,6 +4,7 @@
 
 import { describe, it, expect } from "vitest";
 import { buildPlannerPrompt, getSystemPrompt } from "./prompt";
+import { STADIUM_AMPS, CAB_MODELS } from "../../../lib/helix/models";
 
 const sampleModelList = "## AMPS\n- Agoura_TestAmp1\n## CABS\n- Stadium_TestCab1\n## EFFECTS\n- TestEffect1";
 
@@ -22,8 +23,17 @@ describe("stadium/buildPlannerPrompt", () => {
     expect(prompt).not.toContain("Litigator");
   });
 
-  it("contains TODO(Phase62) placeholder for Agoura cab pairing", () => {
-    expect(prompt).toContain("TODO(Phase62)");
+  it("does NOT contain TODO(Phase62) placeholder", () => {
+    expect(prompt).not.toContain("TODO(Phase62)");
+  });
+
+  it("contains real amp-cab pairing content", () => {
+    expect(prompt).toContain("Agoura Brit Plexi");
+    expect(prompt).toContain("4x12 Greenback25");
+  });
+
+  it("contains Amp-to-Cab Pairing section heading", () => {
+    expect(prompt).toContain("Amp-to-Cab Pairing");
   });
 
   it("contains Stadium-specific features section", () => {
@@ -40,6 +50,21 @@ describe("stadium/buildPlannerPrompt", () => {
 
   it("contains gain-staging section", () => {
     expect(prompt).toContain("## Gain-Staging Intelligence");
+  });
+});
+
+describe("stadium/buildPlannerPrompt - cabAffinity data integrity", () => {
+  it("every cabAffinity entry in STADIUM_AMPS is a valid key in CAB_MODELS", () => {
+    for (const [ampName, model] of Object.entries(STADIUM_AMPS)) {
+      if (model.cabAffinity && model.cabAffinity.length > 0) {
+        for (const cabName of model.cabAffinity) {
+          expect(
+            cabName in CAB_MODELS,
+            `Amp "${ampName}" references cab "${cabName}" which is not a key in CAB_MODELS`
+          ).toBe(true);
+        }
+      }
+    }
   });
 });
 
