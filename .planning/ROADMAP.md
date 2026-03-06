@@ -242,7 +242,7 @@ Plans:
 | 66. Frontend Picker + DB | v5.0 | 2/2 | Complete | 2026-03-06 |
 | 67. Stadium Integration Quality | v5.0 | 2/2 | Complete | 2026-03-06 |
 | 68. Token Control + Caching | v5.0 | 2/2 | Complete | 2026-03-06 |
-| 69. Audit Gap Closure | v5.0 | 2/2 | Planned | - |
+| 69. Audit Gap Closure | v5.0 | 1/2 | In Progress | - |
 
 ### Phase 67: Stadium Integration Quality
 
@@ -286,7 +286,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 69-01-PLAN.md — Fix Stomp maxFx values in planner.ts (isXL ? 5 : 2), update REQUIREMENTS.md traceability table
+- [x] 69-01-PLAN.md — Fix Stomp maxFx values in planner.ts (isXL ? 5 : 2), update REQUIREMENTS.md traceability table
 - [ ] 69-02-PLAN.md — Create retroactive VERIFICATION.md for phases 62, 63, 64, 65
 
 ---
