@@ -11,6 +11,8 @@ import {
   MODULATION_MODELS,
   DYNAMICS_MODELS,
   STADIUM_EQ_MODELS,
+  WAH_MODELS,
+  VOLUME_MODELS,
 } from "../models";
 
 /** Stadium amp names — Agoura-era amps only (no HD2 amps). */
@@ -22,7 +24,11 @@ export const STADIUM_CAB_NAMES = Object.keys(CAB_MODELS) as [string, ...string[]
 /**
  * Stadium effect names — user-selectable effect categories.
  * Includes STADIUM_EQ_MODELS (Stadium 7-band EQ is user-selectable, unlike HD2 EQ).
- * Excludes regular EQ_MODELS, WAH_MODELS, VOLUME_MODELS (Knowledge Layer handles those).
+ * Includes WAH_MODELS and VOLUME_MODELS — Stadium overrides the [62-01] exclusion for
+ * these block types. Stadium's prompt uses includeSecondAmp: false and the chain-rules
+ * dual-amp path (which uses AMP_MODELS, not STADIUM_AMPS) is blocked by dualAmpSupported: false,
+ * so wah/volume blocks are safe to expose as user-selectable effects.
+ * Note: Other families (Helix, Stomp, Pod Go) still exclude WAH/VOLUME per [62-01].
  */
 export const STADIUM_EFFECT_NAMES = [
   ...Object.keys(DISTORTION_MODELS),
@@ -31,4 +37,6 @@ export const STADIUM_EFFECT_NAMES = [
   ...Object.keys(MODULATION_MODELS),
   ...Object.keys(DYNAMICS_MODELS),
   ...Object.keys(STADIUM_EQ_MODELS),
+  ...Object.keys(WAH_MODELS),
+  ...Object.keys(VOLUME_MODELS),
 ] as [string, ...string[]];
