@@ -119,7 +119,7 @@
 
 #### Phase Summary
 
-- [ ] **Phase 61: Family Router and Capabilities** — Define DeviceFamily type, resolveFamily(), and DeviceCapabilities — the type-system foundation all other phases depend on
+- [x] **Phase 61: Family Router and Capabilities** — Define DeviceFamily type, resolveFamily(), and DeviceCapabilities — the type-system foundation all other phases depend on
 - [ ] **Phase 62: Catalog Isolation** — Extract per-family amp and effect catalogs, eliminate merged AMP_NAMES, close the Agoura leak at the structural level
 - [ ] **Phase 63: Stadium Firmware Parameter Completeness** — Extract all 27+ firmware params from real .hsp corpus and emit them on every Stadium amp block
 - [ ] **Phase 64: Knowledge Layer Guard Removal** — Replace 17+ boolean guard sites in chain-rules.ts, param-engine.ts, and validate.ts with DeviceCapabilities-driven dispatch
@@ -140,7 +140,7 @@
 **Plans**: TBD
 
 Plans:
-- [ ] 61-01: DeviceFamily type, resolveFamily(), getCapabilities(), DeviceCapabilities interface, pipeline wiring, tests
+- [x] 61-01: DeviceFamily type, resolveFamily(), getCapabilities(), DeviceCapabilities interface, pipeline wiring, tests
 
 ### Phase 62: Catalog Isolation
 **Goal**: Each device family has its own amp and effect catalog module containing only the models valid for that family — the global merged AMP_NAMES enum that allows cross-family model selection is eliminated
@@ -231,7 +231,7 @@ Plans:
 | 31-41 | v3.0 | 12 | Complete | 2026-03-04 |
 | 42,48-51 | v3.2 | 8 | Complete | 2026-03-05 |
 | 52-60 | v4.0 | 13 | Complete | 2026-03-05 |
-| 61. Family Router | v5.0 | 0/1 | Planned | - |
+| 61. Family Router | v5.0 | 1/1 | Complete | 2026-03-06 |
 | 62. Catalog Isolation | v5.0 | 0/2 | Not started | - |
 | 63. Stadium Firmware Params | v5.0 | 0/2 | Not started | - |
 | 64. Knowledge Layer Guards | v5.0 | 0/2 | Not started | - |
@@ -239,5 +239,5 @@ Plans:
 | 66. Frontend Picker + DB | v5.0 | 0/2 | Not started | - |
 
 ---
-*Last updated: 2026-03-05 after v5.0 roadmap creation*
+*Last updated: 2026-03-06 after Phase 61 completion (Family Router and Capabilities)*
 *Full phase details for completed milestones archived in `.planning/milestones/`*

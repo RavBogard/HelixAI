@@ -9,10 +9,10 @@ Requirements for v5.0 Device-First Architecture. Each maps to roadmap phases.
 
 ### Device Routing
 
-- [ ] **ROUTE-01**: System defines DeviceFamily discriminated union (helix, stomp, podgo, stadium) with exhaustive TypeScript switch
-- [ ] **ROUTE-02**: System maps all DeviceTarget values to their DeviceFamily via resolveFamily() with compile-time exhaustiveness
-- [ ] **ROUTE-03**: System defines DeviceCapabilities per family (block limits, DSP count, dual-amp support, available block types)
-- [ ] **ROUTE-04**: Device family is resolved at the earliest pipeline entry point (before chat or generation begins)
+- [x] **ROUTE-01**: System defines DeviceFamily discriminated union (helix, stomp, podgo, stadium) with exhaustive TypeScript switch
+- [x] **ROUTE-02**: System maps all DeviceTarget values to their DeviceFamily via resolveFamily() with compile-time exhaustiveness
+- [x] **ROUTE-03**: System defines DeviceCapabilities per family (block limits, DSP count, dual-amp support, available block types)
+- [x] **ROUTE-04**: Device family is resolved at the earliest pipeline entry point (before chat or generation begins)
 
 ### Model Catalog Isolation
 
@@ -85,10 +85,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ROUTE-01 | Phase 61 | Pending |
-| ROUTE-02 | Phase 61 | Pending |
-| ROUTE-03 | Phase 61 | Pending |
-| ROUTE-04 | Phase 61 | Pending |
+| ROUTE-01 | Phase 61 | Complete |
+| ROUTE-02 | Phase 61 | Complete |
+| ROUTE-03 | Phase 61 | Complete |
+| ROUTE-04 | Phase 61 | Complete |
 | CAT-01 | Phase 62 | Pending |
 | CAT-02 | Phase 62 | Pending |
 | CAT-03 | Phase 62 | Pending |
