@@ -186,7 +186,7 @@ const STADIUM_CAPABILITIES: DeviceCapabilities = {
   maxBlocksPerDsp: 48,
   maxBlocksTotal: 48,
   maxSnapshots: STADIUM_CONFIG.STADIUM_MAX_SNAPSHOTS,
-  dualAmpSupported: true,
+  dualAmpSupported: false, // Stadium prompt uses includeSecondAmp: false; chain-rules dual-amp path uses HD2-only AMP_MODELS lookup
   pathCount: 4,
   variaxSupported: false,
   sendReturnCount: 2,

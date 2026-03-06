@@ -349,7 +349,7 @@ export function assembleSignalChain(intent: ToneIntent, caps: DeviceCapabilities
   let secondAmpModel: HelixModel | undefined;
   let secondCabModel: HelixModel | undefined;
   if (isDualAmp) {
-    // Dual-amp is only for Helix LT/Floor (isDualAmp guard excludes Stadium/Stomp/PodGo)
+    // Dual-amp is capability-driven — only devices with dualAmpSupported: true (Helix Floor/LT/Rack) enter this path
     secondAmpModel = AMP_MODELS[intent.secondAmpName!];
     if (!secondAmpModel) {
       throw new Error(
