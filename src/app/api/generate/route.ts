@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
     // Step 1: Claude Planner generates ToneIntent (creative choices only)
     // Pass device target so planner filters model list for Pod Go (PGMOD-04)
     // Pass toneContext so planner prioritizes rig-matched models (Phase 20)
-    const toneIntent = await callClaudePlanner(messages, deviceTarget, toneContext);
+    const toneIntent = await callClaudePlanner(messages, deviceTarget, deviceFamily, toneContext);
 
     // Step 2: Knowledge Layer pipeline (deterministic)
     // Pass device target so chain rules apply Pod Go constraints (PGCHAIN-01-03)

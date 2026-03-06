@@ -5,9 +5,9 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { ToneIntentSchema, getModelListForPrompt, isPodGo, isStadium, isStomp, AMP_MODELS, VARIAX_MODEL_NAMES } from "@/lib/helix";
+import { getToneIntentSchema, getModelListForPrompt, isPodGo, isStadium, isStomp, AMP_MODELS, VARIAX_MODEL_NAMES } from "@/lib/helix";
 import { STOMP_CONFIG } from "@/lib/helix/config";
-import type { ToneIntent, DeviceTarget } from "@/lib/helix";
+import type { ToneIntent, DeviceTarget, DeviceFamily } from "@/lib/helix";
 import { logUsage, estimateClaudeCost } from "@/lib/usage-logger";
 
 /**
@@ -176,7 +176,7 @@ Based on the conversation below, generate a ToneIntent:`;
  * Call Claude Planner to generate a ToneIntent from conversation history.
  *
  * Uses structured output (output_config with zodOutputFormat) so Claude's
- * constrained decoding guarantees valid JSON matching ToneIntentSchema.
+ * constrained decoding guarantees valid JSON matching the family-specific ToneIntent schema.
  * Belt-and-suspenders: Zod validates the response after parsing to catch
  * any constraints that JSON Schema cannot express (min/max/minItems).
  *
@@ -188,6 +188,7 @@ Based on the conversation below, generate a ToneIntent:`;
 export async function callClaudePlanner(
   messages: Array<{ role: string; content: string }>,
   device?: DeviceTarget,
+  family?: DeviceFamily,
   toneContext?: string,
 ): Promise<ToneIntent> {
   const apiKey = process.env.CLAUDE_API_KEY;
@@ -221,7 +222,7 @@ export async function callClaudePlanner(
     ],
     messages: [{ role: "user", content: userContent }],
     output_config: {
-      format: zodOutputFormat(ToneIntentSchema),
+      format: zodOutputFormat(getToneIntentSchema(family ?? "helix")),
     },
   });
 
@@ -278,5 +279,5 @@ export async function callClaudePlanner(
   }
 
   // Belt-and-suspenders: Zod validates all remaining constraints
-  return ToneIntentSchema.parse(raw);
+  return getToneIntentSchema(family ?? "helix").parse(raw);
 }

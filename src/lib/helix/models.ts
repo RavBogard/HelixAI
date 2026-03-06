@@ -1332,21 +1332,8 @@ export const STADIUM_EQ_MODELS: Record<string, HelixModel> = {
   "10 Band Graphic": { id: "HD2_EQGraphic10Band", name: "10 Band Graphic", basedOn: "MXR 10-Band Graphic EQ", category: "graphic", blockType: BLOCK_TYPES.EQ, defaultParams: { Level: 0.0 } },
 };
 
-// Model name tuples for z.enum() constraints in ToneIntentSchema
-// z.enum() requires a non-empty tuple: [string, ...string[]]
-// AMP_NAMES includes BOTH standard (HD2_*) and Stadium (Agoura_*) amps.
-// The planner prompt filters which amps Claude sees per device — the schema just validates
-// that the chosen name exists somewhere in the combined catalog.
-export const AMP_NAMES = [...Object.keys(AMP_MODELS), ...Object.keys(STADIUM_AMPS)] as [string, ...string[]];
-export const CAB_NAMES = Object.keys(CAB_MODELS) as [string, ...string[]];
-// Combine user-selectable effect categories (exclude EQ, WAH, VOLUME -- Knowledge Layer handles those)
-export const EFFECT_NAMES = [
-  ...Object.keys(DISTORTION_MODELS),
-  ...Object.keys(DELAY_MODELS),
-  ...Object.keys(REVERB_MODELS),
-  ...Object.keys(MODULATION_MODELS),
-  ...Object.keys(DYNAMICS_MODELS),
-] as [string, ...string[]];
+// Per-family name tuples moved to src/lib/helix/catalogs/ (Phase 62).
+// Use getToneIntentSchema(family) from tone-intent.ts for per-family constrained decoding.
 
 // Variax tone model names — these are the guitar "models" built into Variax guitars (JTV-69, JTV-89, Standard, Shuriken).
 // Each represents a simulated guitar type. Only populated when the user proactively mentions a Variax guitar.
@@ -1459,8 +1446,11 @@ export const POD_GO_EXCLUDED_MODELS = new Set([
  * Pod Go effect model ID suffix mapping by block type category.
  * Pod Go effect IDs append Mono or Stereo suffix; Helix IDs have no suffix (PGMOD-01).
  *
- * Mono-in effects: distortion, dynamics, pitch, EQ → "Mono"
- * Stereo-capable effects: delay, reverb, modulation, wah, volume → "Stereo"
+ * Mono-in effects: distortion, dynamics, pitch, EQ -> "Mono"
+ * Stereo-capable effects: delay, reverb, modulation, wah, volume -> "Stereo"
+ *
+ * NOTE: Canonical source is PODGO_EFFECT_SUFFIX in catalogs/podgo-catalog.ts.
+ * This private copy exists to avoid circular import (models.ts <-> podgo-catalog.ts).
  *
  * Source: Direct inspection of 18 real .pgp files (confirmed patterns)
  */
