@@ -1,5 +1,29 @@
 # Milestones: HelixAI
 
+## v5.0 — Device-First Architecture (Complete)
+
+**Goal:** Rearchitect the conversation and generation pipeline so the user selects their device first, then follows a fully device-specific path — separate prompts, model catalogs, chain rules, and conversation arcs per device. Stadium gets full firmware parameter completeness. Eliminates cross-device model contamination by design.
+
+**Shipped:**
+- Family Router with DeviceTarget→DeviceFamily resolution, DeviceCapabilities per family
+- Per-family catalog isolation — src/lib/helix/catalogs/{family}-catalog.ts with typed AMP_NAMES, CAB_NAMES, EFFECT_NAMES tuples
+- Stadium firmware parameter completeness — all 27+ params from real .hsp corpus, 18 amps with full firmware param tables
+- Knowledge Layer guard removal — chain-rules.ts and models.ts dispatch on DeviceCapabilities instead of boolean guards
+- Device-specific planner prompts — buildHelixPrompt, buildPodGoPrompt, buildStadiumPrompt, buildStompPrompt via prompt-router.ts
+- Frontend device picker + DB migration — device column, picker UI at start of flow, end-to-end device wiring
+- Stadium integration quality — WAH/VOLUME catalog gap fix, amp-cab pairing table generation, schema/prompt integration tests
+- Token control and prompt caching — cost correction (cache_write 3.75→6.0), per-device cache reporting, prompt size tooling
+- Stomp prompt cache unification — helix_stomp and helix_stomp_xl share byte-identical system prompt
+- Stadium Mono/Stereo effect suffix fix — firmware requires suffixed model IDs on all effect blocks
+
+**Phases:** 61-69 (9 phases, 17 plans)
+**Completed:** 2026-03-06
+
+**Archives:**
+- `.planning/milestones/v5.0-ROADMAP.md`
+- `.planning/milestones/v5.0-REQUIREMENTS.md`
+
+
 ## v4.0 — Stadium Rebuild + Preset Quality Leap (Complete)
 
 **Goal:** Rebuild Stadium preset generation from real .hsp files and deliver a major quality improvement across all devices through enriched planner prompts, per-model amp parameters, intelligent effect parameters, and an architecture review.
@@ -146,4 +170,4 @@
 - `.planning/milestones/v3.2-MILESTONE-AUDIT.md`
 
 ---
-*Last updated: 2026-03-05 after v4.0 milestone*
+*Last updated: 2026-03-06 after v5.0 milestone*
