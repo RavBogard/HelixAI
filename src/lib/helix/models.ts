@@ -1083,154 +1083,11 @@ export const VOLUME_MODELS: Record<string, HelixModel> = {
 // from appearing in Helix LT/Floor/Pod Go planner prompts.
 // ============================================================
 export const STADIUM_AMPS: Record<string, HelixModel> = {
-  // --- Confirmed from real .hsp file (Phase 31 inspection, 2026-03-04) ---
-  "Agoura German Xtra Red": {
-    id: "Agoura_AmpGermanXtraRed",
-    name: "Agoura German Xtra Red",
-    basedOn: "Mesa/Boogie Mark V+ (Extreme Red channel)",
-    category: "high_gain",
-    ampCategory: "high_gain" as const,
-    topology: "plate_fed" as const,
-    cabAffinity: ["4x12 Uber V30"],
-    defaultParams: { Drive: 0.65, Bass: 0.50, Mid: 0.45, Treble: 0.55, Master: 0.45, ChVol: 0.80 },
-    blockType: BLOCK_TYPES.AMP_WITH_CAB,
-    stadiumOnly: true,
-  },
-  "Agoura Brit 2203 MV": {
-    id: "Agoura_AmpBrit2203MV",
-    name: "Agoura Brit 2203 MV",
-    basedOn: "Marshall JCM800 2203 Master Volume",
-    category: "high_gain",
-    ampCategory: "high_gain" as const,
-    topology: "plate_fed" as const,
-    cabAffinity: ["4x12 Greenback 25"],
-    defaultParams: { Drive: 0.60, Bass: 0.50, Mid: 0.50, Treble: 0.60, Master: 0.45, ChVol: 0.80 },
-    blockType: BLOCK_TYPES.AMP_WITH_CAB,
-    stadiumOnly: true,
-  },
-  // --- Documented in architecture research (ARCHITECTURE.md, 2026-03-04) ---
-  "Agoura WhoWatt 103": {
-    id: "Agoura_AmpWhoWatt103",
-    name: "Agoura WhoWatt 103",
-    basedOn: "Koch Who Watt 103",
-    category: "crunch",
-    ampCategory: "crunch" as const,
-    topology: "plate_fed" as const,
-    cabAffinity: ["4x12 Greenback 25", "2x12 Double C12N"],
-    defaultParams: { Drive: 0.50, Bass: 0.50, Mid: 0.55, Treble: 0.55, Master: 0.50, ChVol: 0.80 },
-    blockType: BLOCK_TYPES.AMP_WITH_CAB,
-    stadiumOnly: true,
-  },
-  // --- Derived from Line 6 Stadium model naming conventions ---
-  "Agoura German Clean": {
-    id: "Agoura_AmpGermanClean",
-    name: "Agoura German Clean",
-    basedOn: "Mesa/Boogie Mark V (Clean channel)",
-    category: "clean",
-    ampCategory: "clean" as const,
-    topology: "plate_fed" as const,
-    cabAffinity: ["4x12 Uber V30", "2x12 Double C12N"],
-    defaultParams: { Drive: 0.20, Bass: 0.50, Mid: 0.50, Treble: 0.55, Master: 0.55, ChVol: 0.80 },
-    blockType: BLOCK_TYPES.AMP_WITH_CAB,
-    stadiumOnly: true,
-  },
-  "Agoura German Crunch": {
-    id: "Agoura_AmpGermanCrunch",
-    name: "Agoura German Crunch",
-    basedOn: "Mesa/Boogie Mark V (Crunch channel)",
-    category: "crunch",
-    ampCategory: "crunch" as const,
-    topology: "plate_fed" as const,
-    cabAffinity: ["4x12 Uber V30"],
-    defaultParams: { Drive: 0.45, Bass: 0.50, Mid: 0.48, Treble: 0.55, Master: 0.48, ChVol: 0.80 },
-    blockType: BLOCK_TYPES.AMP_WITH_CAB,
-    stadiumOnly: true,
-  },
-  "Agoura German Lead": {
-    id: "Agoura_AmpGermanLead",
-    name: "Agoura German Lead",
-    basedOn: "Mesa/Boogie Mark V (Lead channel)",
-    category: "high_gain",
-    ampCategory: "high_gain" as const,
-    topology: "plate_fed" as const,
-    cabAffinity: ["4x12 Uber V30"],
-    defaultParams: { Drive: 0.58, Bass: 0.45, Mid: 0.42, Treble: 0.55, Master: 0.45, ChVol: 0.80 },
-    blockType: BLOCK_TYPES.AMP_WITH_CAB,
-    stadiumOnly: true,
-  },
-  "Agoura Brit 800": {
-    id: "Agoura_AmpBrit800",
-    name: "Agoura Brit 800",
-    basedOn: "Marshall JCM800 2203 (non-MV)",
-    category: "crunch",
-    ampCategory: "crunch" as const,
-    topology: "plate_fed" as const,
-    cabAffinity: ["4x12 Greenback 25", "4x12 Brit T75"],
-    defaultParams: { Drive: 0.55, Bass: 0.50, Mid: 0.50, Treble: 0.60, Master: 0.50, ChVol: 0.80 },
-    blockType: BLOCK_TYPES.AMP_WITH_CAB,
-    stadiumOnly: true,
-  },
-  "Agoura Brit Plexi": {
-    id: "Agoura_AmpBritPlexi",
-    name: "Agoura Brit Plexi",
-    basedOn: "Marshall Super Lead Plexi 1959",
-    category: "crunch",
-    ampCategory: "crunch" as const,
-    topology: "plate_fed" as const,
-    cabAffinity: ["4x12 Greenback 25"],
-    defaultParams: { Drive: 0.50, Bass: 0.50, Mid: 0.55, Treble: 0.60, Master: 0.55, ChVol: 0.80 },
-    blockType: BLOCK_TYPES.AMP_WITH_CAB,
-    stadiumOnly: true,
-  },
-  "Agoura US Clean": {
-    id: "Agoura_AmpUSClean",
-    name: "Agoura US Clean",
-    basedOn: "Fender Twin Reverb (Clean)",
-    category: "clean",
-    ampCategory: "clean" as const,
-    topology: "plate_fed" as const,
-    cabAffinity: ["2x12 Double C12N", "1x12 US Deluxe"],
-    defaultParams: { Drive: 0.18, Bass: 0.50, Mid: 0.50, Treble: 0.55, Master: 0.60, ChVol: 0.80 },
-    blockType: BLOCK_TYPES.AMP_WITH_CAB,
-    stadiumOnly: true,
-  },
-  "Agoura US Trem": {
-    id: "Agoura_AmpUSTrem",
-    name: "Agoura US Trem",
-    basedOn: "Fender Vibrolux Reverb (Tremolo channel)",
-    category: "clean",
-    ampCategory: "clean" as const,
-    topology: "plate_fed" as const,
-    cabAffinity: ["2x12 Double C12N", "1x12 US Deluxe"],
-    defaultParams: { Drive: 0.22, Bass: 0.50, Mid: 0.50, Treble: 0.55, Master: 0.60, ChVol: 0.80 },
-    blockType: BLOCK_TYPES.AMP_WITH_CAB,
-    stadiumOnly: true,
-  },
-  "Agoura Tread Plate Red": {
-    id: "Agoura_AmpTreadPlateRed",
-    name: "Agoura Tread Plate Red",
-    basedOn: "Mesa/Boogie Dual Rectifier (Red mode)",
-    category: "high_gain",
-    ampCategory: "high_gain" as const,
-    topology: "plate_fed" as const,
-    cabAffinity: ["4x12 Uber V30"],
-    defaultParams: { Drive: 0.60, Bass: 0.45, Mid: 0.40, Treble: 0.55, Master: 0.45, ChVol: 0.80 },
-    blockType: BLOCK_TYPES.AMP_WITH_CAB,
-    stadiumOnly: true,
-  },
-  "Agoura Tread Plate Orange": {
-    id: "Agoura_AmpTreadPlateOrange",
-    name: "Agoura Tread Plate Orange",
-    basedOn: "Mesa/Boogie Dual Rectifier (Orange mode)",
-    category: "crunch",
-    ampCategory: "crunch" as const,
-    topology: "plate_fed" as const,
-    cabAffinity: ["4x12 Uber V30"],
-    defaultParams: { Drive: 0.52, Bass: 0.48, Mid: 0.45, Treble: 0.55, Master: 0.48, ChVol: 0.80 },
-    blockType: BLOCK_TYPES.AMP_WITH_CAB,
-    stadiumOnly: true,
-  },
-  // --- 6 additional Agoura amps added in Phase 52 (STAD-01) — values from real .hsp files, 2026-03-05 ---
+  // ============================================================
+  // 10 CORPUS-VERIFIED MODELS — param tables from real .hsp files
+  // ============================================================
+
+  // Source: Agoura_Bassman.hsp — 23 params
   "Agoura US Tweedman": {
     id: "Agoura_AmpUSTweedman",
     name: "Agoura US Tweedman",
@@ -1239,10 +1096,50 @@ export const STADIUM_AMPS: Record<string, HelixModel> = {
     ampCategory: "clean" as const,
     topology: "plate_fed" as const,
     cabAffinity: ["1x12 Fullerton", "4x10 Tweed P10R"],
-    defaultParams: { Drive: 0.60, Bass: 0.64, Mid: 0.65, Treble: 0.55, Master: 1.0, ChVol: 0.80 },
+    defaultParams: {
+      // 14 universal hidden/firmware params
+      AmpCabPeak2Fc: 1000, AmpCabPeak2G: 0, AmpCabPeak2Q: 0.707,
+      AmpCabPeakFc: 100, AmpCabPeakG: 0, AmpCabPeakQ: 0.707,
+      AmpCabShelfF: 1000, AmpCabShelfG: 0,
+      AmpCabZFir: 0, AmpCabZUpdate: 0,
+      Hype: 0, ZPrePost: 0.3, Ripple: 0, Sag: 0,
+      // Standard amp params
+      Bass: 0.64, Mid: 0.65, Treble: 0.55, Master: 1.0, Level: -10,
+      Presence: 0.27,
+      // Voice params (Bassman dual-channel)
+      BrightDrive: 0.4, NormalDrive: 0.6, Channel: 2,
+    },
     blockType: BLOCK_TYPES.AMP_WITH_CAB,
     stadiumOnly: true,
   },
+
+  // Source: Agoura_Hiwatt.hsp — 23 params
+  "Agoura WhoWatt 103": {
+    id: "Agoura_AmpWhoWatt103",
+    name: "Agoura WhoWatt 103",
+    basedOn: "Koch Who Watt 103",
+    category: "crunch",
+    ampCategory: "crunch" as const,
+    topology: "plate_fed" as const,
+    cabAffinity: ["4x12 Greenback 25", "2x12 Double C12N"],
+    defaultParams: {
+      // 14 universal hidden/firmware params
+      AmpCabPeak2Fc: 1000, AmpCabPeak2G: 0, AmpCabPeak2Q: 0.707,
+      AmpCabPeakFc: 100, AmpCabPeakG: 0, AmpCabPeakQ: 0.707,
+      AmpCabShelfF: 1000, AmpCabShelfG: 0,
+      AmpCabZFir: 0, AmpCabZUpdate: 0,
+      Hype: 0, ZPrePost: 0.3, Ripple: 0, Sag: 0,
+      // Standard amp params
+      Bass: 0.70, Mid: 0.46, Treble: 0.62, Master: 0.60,
+      Presence: 0.422,
+      // Voice params (Hiwatt dual-channel)
+      BrtDrive: 0.25, NormDrive: 0.5, Channel: 2, "Output Volume": -3.1,
+    },
+    blockType: BLOCK_TYPES.AMP_WITH_CAB,
+    stadiumOnly: true,
+  },
+
+  // Source: Bigsby_Trem.hsp (AmpCab* normalized) — 23 params (NO Mid — Deluxe Reverb has no mid knob)
   "Agoura US Luxe Black": {
     id: "Agoura_AmpUSLuxeBlack",
     name: "Agoura US Luxe Black",
@@ -1251,10 +1148,23 @@ export const STADIUM_AMPS: Record<string, HelixModel> = {
     ampCategory: "clean" as const,
     topology: "plate_fed" as const,
     cabAffinity: ["1x12 US Deluxe", "2x12 Double C12N"],
-    defaultParams: { Drive: 0.22, Bass: 0.54, Mid: 0.50, Treble: 0.55, Master: 0.42, ChVol: 0.80 },
+    defaultParams: {
+      // 14 universal hidden/firmware params
+      AmpCabPeak2Fc: 1000, AmpCabPeak2G: 0, AmpCabPeak2Q: 0.707,
+      AmpCabPeakFc: 100, AmpCabPeakG: 0, AmpCabPeakQ: 0.707,
+      AmpCabShelfF: 1000, AmpCabShelfG: 0,
+      AmpCabZFir: 0, AmpCabZUpdate: 0,
+      Hype: 0, ZPrePost: 0.3, Ripple: 0, Sag: 0,
+      // Standard amp params (NO Mid — Deluxe Reverb has no mid knob)
+      Drive: 0.79, Bass: 0.54, Treble: 0.55, Master: 0.42, Level: 0,
+      // Voice params (Vibrato channel)
+      Channel: 1, VibBass: 0.75, VibTreb: 0.30, VibratoVolume: 0.45,
+    },
     blockType: BLOCK_TYPES.AMP_WITH_CAB,
     stadiumOnly: true,
   },
+
+  // Source: NH_BoomAuRang.hsp — 19 params (NO Mid — Princeton 76 has no mid knob; uses "Treb" not "Treble")
   "Agoura US Princess 76": {
     id: "Agoura_AmpUSPrincess76",
     name: "Agoura US Princess 76",
@@ -1263,10 +1173,21 @@ export const STADIUM_AMPS: Record<string, HelixModel> = {
     ampCategory: "clean" as const,
     topology: "plate_fed" as const,
     cabAffinity: ["1x12 US Deluxe", "2x12 Double C12N"],
-    defaultParams: { Drive: 0.21, Bass: 0.27, Mid: 0.50, Treble: 0.62, Master: 0.74, ChVol: 0.80 },
+    defaultParams: {
+      // 14 universal hidden/firmware params
+      AmpCabPeak2Fc: 1000, AmpCabPeak2G: 0, AmpCabPeak2Q: 0.707,
+      AmpCabPeakFc: 100, AmpCabPeakG: 0, AmpCabPeakQ: 0.707,
+      AmpCabShelfF: 1000, AmpCabShelfG: 0,
+      AmpCabZFir: 0, AmpCabZUpdate: 0,
+      Hype: 0, ZPrePost: 0.3, Ripple: 0, Sag: 0,
+      // Standard amp params (NO Mid — Princeton has no mid knob; uses "Treb" not "Treble")
+      Drive: 0.21, Bass: 0.27, Treb: 0.62, Master: 0.74, Level: -6.4,
+    },
     blockType: BLOCK_TYPES.AMP_WITH_CAB,
     stadiumOnly: true,
   },
+
+  // Source: NH_Reflections.hsp — 27 params
   "Agoura US Double Black": {
     id: "Agoura_AmpUSDoubleBlack",
     name: "Agoura US Double Black",
@@ -1275,10 +1196,24 @@ export const STADIUM_AMPS: Record<string, HelixModel> = {
     ampCategory: "clean" as const,
     topology: "plate_fed" as const,
     cabAffinity: ["2x12 Double C12N", "1x12 US Deluxe"],
-    defaultParams: { Drive: 0.20, Bass: 0.44, Mid: 0.52, Treble: 0.56, Master: 0.40, ChVol: 0.80 },
+    defaultParams: {
+      // 14 universal hidden/firmware params
+      AmpCabPeak2Fc: 1000, AmpCabPeak2G: 0, AmpCabPeak2Q: 0.707,
+      AmpCabPeakFc: 100, AmpCabPeakG: 0, AmpCabPeakQ: 0.707,
+      AmpCabShelfF: 1000, AmpCabShelfG: 0,
+      AmpCabZFir: 0, AmpCabZUpdate: 0,
+      Hype: 0, ZPrePost: 0.3, Ripple: 0, Sag: 0,
+      // Standard amp params
+      Drive: 0.70, Bass: 0.44, Mid: 0.52, Treble: 0.56, Master: 0.40, Level: 2,
+      // Voice params (Twin Reverb dual-channel with Vibrato)
+      Bright: 0, Channel: 1, MasterVol: 0.40,
+      VibBass: 0.71, VibBright: 0, VibMid: 0.80, VibTreb: 0.42, VibratoVolume: 0.32,
+    },
     blockType: BLOCK_TYPES.AMP_WITH_CAB,
     stadiumOnly: true,
   },
+
+  // Source: Purple Nurple.hsp — 27 params (Bright, Contour, Fat are BOOLEANS)
   "Agoura Revv Ch3 Purple": {
     id: "Agoura_AmpRevvCh3Purple",
     name: "Agoura Revv Ch3 Purple",
@@ -1287,10 +1222,24 @@ export const STADIUM_AMPS: Record<string, HelixModel> = {
     ampCategory: "high_gain" as const,
     topology: "plate_fed" as const,
     cabAffinity: ["4x12 Uber V30", "4x12 Brit T75"],
-    defaultParams: { Drive: 0.65, Bass: 0.35, Mid: 0.55, Treble: 0.65, Master: 0.50, ChVol: 0.80 },
+    defaultParams: {
+      // 14 universal hidden/firmware params
+      AmpCabPeak2Fc: 1000, AmpCabPeak2G: 0, AmpCabPeak2Q: 0.707,
+      AmpCabPeakFc: 100, AmpCabPeakG: 0, AmpCabPeakQ: 0.707,
+      AmpCabShelfF: 1000, AmpCabShelfG: 0,
+      AmpCabZFir: 0, AmpCabZUpdate: 0,
+      Hype: 0, ZPrePost: 0.31, Ripple: 0, Sag: 0,
+      // Standard amp params
+      Drive: 0.65, Bass: 0.35, Mid: 0.55, Treble: 0.65, Master: 0.50, Level: -2.5,
+      Presence: 0.56,
+      // Voice params (Revv — Bright/Contour/Fat are booleans)
+      Aggression: 0, Bright: false, "Ch Level": 0.47, Contour: false, Depth: 0.20, Fat: true,
+    },
     blockType: BLOCK_TYPES.AMP_WITH_CAB,
     stadiumOnly: true,
   },
+
+  // Source: Stadium Rock Rig.hsp — 26 params (Channel, NrmBright, NrmMode are BOOLEANS)
   "Agoura Solid 100": {
     id: "Agoura_AmpSolid100",
     name: "Agoura Solid 100",
@@ -1299,7 +1248,309 @@ export const STADIUM_AMPS: Record<string, HelixModel> = {
     ampCategory: "clean" as const,
     topology: "solid_state" as const,
     cabAffinity: ["2x12 Double C12N", "1x12 US Deluxe"],
-    defaultParams: { Drive: 0.22, Bass: 0.50, Mid: 0.50, Treble: 0.80, Master: 0.33, ChVol: 0.80 },
+    defaultParams: {
+      // 14 universal hidden/firmware params
+      AmpCabPeak2Fc: 1000, AmpCabPeak2G: 0, AmpCabPeak2Q: 0.707,
+      AmpCabPeakFc: 100, AmpCabPeakG: 0, AmpCabPeakQ: 0.707,
+      AmpCabShelfF: 1000, AmpCabShelfG: 0,
+      AmpCabZFir: 0, AmpCabZUpdate: 0,
+      Hype: 0, ZPrePost: 0.3, Ripple: 0, Sag: 0,
+      // Standard amp params
+      Drive: 0.70, Bass: 0.50, Mid: 0.50, Treble: 0.80, Master: 0.33, Level: -2,
+      Presence: 0.50,
+      // Voice params (JC-120 — Channel/NrmBright/NrmMode are booleans)
+      Channel: true, NrmBright: true, NrmMode: true,
+      "OD MVol": 0.36, "OD Vol": 0.65,
+    },
+    blockType: BLOCK_TYPES.AMP_WITH_CAB,
+    stadiumOnly: true,
+  },
+
+  // Source: Stadium_Billie_Joe.hsp — 23 params
+  "Agoura Brit Plexi": {
+    id: "Agoura_AmpBritPlexi",
+    name: "Agoura Brit Plexi",
+    basedOn: "Marshall Super Lead Plexi 1959",
+    category: "crunch",
+    ampCategory: "crunch" as const,
+    topology: "plate_fed" as const,
+    cabAffinity: ["4x12 Greenback 25"],
+    defaultParams: {
+      // 14 universal hidden/firmware params
+      AmpCabPeak2Fc: 1000, AmpCabPeak2G: 0, AmpCabPeak2Q: 0.707,
+      AmpCabPeakFc: 100, AmpCabPeakG: 0, AmpCabPeakQ: 0.707,
+      AmpCabShelfF: 1000, AmpCabShelfG: 0,
+      AmpCabZFir: 0, AmpCabZUpdate: 0,
+      Hype: 0, ZPrePost: 0.3, Ripple: 0, Sag: 0,
+      // Standard amp params
+      Bass: 0.47, Mid: 0.58, Treble: 0.59, Master: 1.0, Level: -9,
+      Presence: 0.55,
+      // Voice params (Plexi dual-channel)
+      BrightDrv: 0.72, NormDrv: 0.32, Channel: 1,
+    },
+    blockType: BLOCK_TYPES.AMP_WITH_CAB,
+    stadiumOnly: true,
+  },
+
+  // Source: Stadium_Metal_Rhythm.hsp — 26 params (Old_New is BOOLEAN)
+  "Agoura German Xtra Red": {
+    id: "Agoura_AmpGermanXtraRed",
+    name: "Agoura German Xtra Red",
+    basedOn: "Mesa/Boogie Mark V+ (Extreme Red channel)",
+    category: "high_gain",
+    ampCategory: "high_gain" as const,
+    topology: "plate_fed" as const,
+    cabAffinity: ["4x12 Uber V30"],
+    defaultParams: {
+      // 14 universal hidden/firmware params
+      AmpCabPeak2Fc: 1000, AmpCabPeak2G: 0, AmpCabPeak2Q: 0.707,
+      AmpCabPeakFc: 100, AmpCabPeakG: 0, AmpCabPeakQ: 0.707,
+      AmpCabShelfF: 1000, AmpCabShelfG: 0,
+      AmpCabZFir: 0, AmpCabZUpdate: 0,
+      Hype: 0, ZPrePost: 0.35, Ripple: 0, Sag: 0,
+      // Standard amp params
+      Drive: 0.36, Bass: 0.59, Mid: 0.50, Treble: 0.28, Master: 0.60, Level: -10,
+      Presence: 0.37,
+      // Voice params (Mesa Mark V — Old_New is boolean)
+      Boost: 0, Excursion_Depth: 0, Old_New: true, PreEQ_Brt: 1, Structure: 1,
+    },
+    blockType: BLOCK_TYPES.AMP_WITH_CAB,
+    stadiumOnly: true,
+  },
+
+  // Source: Stadium_Metal_Rhythm.hsp — 22 params
+  "Agoura Brit 2203 MV": {
+    id: "Agoura_AmpBrit2203MV",
+    name: "Agoura Brit 2203 MV",
+    basedOn: "Marshall JCM800 2203 Master Volume",
+    category: "high_gain",
+    ampCategory: "high_gain" as const,
+    topology: "plate_fed" as const,
+    cabAffinity: ["4x12 Greenback 25"],
+    defaultParams: {
+      // 14 universal hidden/firmware params
+      AmpCabPeak2Fc: 1000, AmpCabPeak2G: 0, AmpCabPeak2Q: 0.707,
+      AmpCabPeakFc: 100, AmpCabPeakG: 0, AmpCabPeakQ: 0.707,
+      AmpCabShelfF: 1000, AmpCabShelfG: 0,
+      AmpCabZFir: 0, AmpCabZUpdate: 0,
+      Hype: 0, ZPrePost: 0.3, Ripple: 0, Sag: 0,
+      // Standard amp params
+      Drive: 0.76, Bass: 0.71, Mid: 0.64, Treble: 0.44, Master: 0.45, Level: -10,
+      Presence: 0.37,
+      // Voice params (JCM800)
+      Jack: 1,
+    },
+    blockType: BLOCK_TYPES.AMP_WITH_CAB,
+    stadiumOnly: true,
+  },
+
+  // ============================================================
+  // 8 DERIVED MODELS — voice params from same-family models with neutral defaults
+  // ============================================================
+
+  // Derived from GermanXtraRed (Mesa Mark V family) — 26 params
+  "Agoura German Clean": {
+    id: "Agoura_AmpGermanClean",
+    name: "Agoura German Clean",
+    basedOn: "Mesa/Boogie Mark V (Clean channel)",
+    category: "clean",
+    ampCategory: "clean" as const,
+    topology: "plate_fed" as const,
+    cabAffinity: ["4x12 Uber V30", "2x12 Double C12N"],
+    defaultParams: {
+      // 14 universal hidden/firmware params
+      AmpCabPeak2Fc: 1000, AmpCabPeak2G: 0, AmpCabPeak2Q: 0.707,
+      AmpCabPeakFc: 100, AmpCabPeakG: 0, AmpCabPeakQ: 0.707,
+      AmpCabShelfF: 1000, AmpCabShelfG: 0,
+      AmpCabZFir: 0, AmpCabZUpdate: 0,
+      Hype: 0, ZPrePost: 0.3, Ripple: 0, Sag: 0,
+      // Standard amp params
+      Drive: 0.20, Bass: 0.50, Mid: 0.50, Treble: 0.55, Master: 0.55, Level: 0,
+      Presence: 0.40,
+      // Voice params (derived from GermanXtraRed — neutral clean defaults)
+      Boost: 0, Excursion_Depth: 0, Old_New: true, PreEQ_Brt: 0, Structure: 0,
+    },
+    blockType: BLOCK_TYPES.AMP_WITH_CAB,
+    stadiumOnly: true,
+  },
+
+  // Derived from GermanXtraRed (Mesa Mark V family) — 26 params
+  "Agoura German Crunch": {
+    id: "Agoura_AmpGermanCrunch",
+    name: "Agoura German Crunch",
+    basedOn: "Mesa/Boogie Mark V (Crunch channel)",
+    category: "crunch",
+    ampCategory: "crunch" as const,
+    topology: "plate_fed" as const,
+    cabAffinity: ["4x12 Uber V30"],
+    defaultParams: {
+      // 14 universal hidden/firmware params
+      AmpCabPeak2Fc: 1000, AmpCabPeak2G: 0, AmpCabPeak2Q: 0.707,
+      AmpCabPeakFc: 100, AmpCabPeakG: 0, AmpCabPeakQ: 0.707,
+      AmpCabShelfF: 1000, AmpCabShelfG: 0,
+      AmpCabZFir: 0, AmpCabZUpdate: 0,
+      Hype: 0, ZPrePost: 0.3, Ripple: 0, Sag: 0,
+      // Standard amp params
+      Drive: 0.45, Bass: 0.50, Mid: 0.48, Treble: 0.55, Master: 0.48, Level: 0,
+      Presence: 0.42,
+      // Voice params (derived from GermanXtraRed — neutral crunch defaults)
+      Boost: 0, Excursion_Depth: 0, Old_New: true, PreEQ_Brt: 0, Structure: 0,
+    },
+    blockType: BLOCK_TYPES.AMP_WITH_CAB,
+    stadiumOnly: true,
+  },
+
+  // Derived from GermanXtraRed (Mesa Mark V family) — 26 params
+  "Agoura German Lead": {
+    id: "Agoura_AmpGermanLead",
+    name: "Agoura German Lead",
+    basedOn: "Mesa/Boogie Mark V (Lead channel)",
+    category: "high_gain",
+    ampCategory: "high_gain" as const,
+    topology: "plate_fed" as const,
+    cabAffinity: ["4x12 Uber V30"],
+    defaultParams: {
+      // 14 universal hidden/firmware params
+      AmpCabPeak2Fc: 1000, AmpCabPeak2G: 0, AmpCabPeak2Q: 0.707,
+      AmpCabPeakFc: 100, AmpCabPeakG: 0, AmpCabPeakQ: 0.707,
+      AmpCabShelfF: 1000, AmpCabShelfG: 0,
+      AmpCabZFir: 0, AmpCabZUpdate: 0,
+      Hype: 0, ZPrePost: 0.3, Ripple: 0, Sag: 0,
+      // Standard amp params
+      Drive: 0.58, Bass: 0.45, Mid: 0.42, Treble: 0.55, Master: 0.45, Level: 0,
+      Presence: 0.45,
+      // Voice params (derived from GermanXtraRed — lead channel defaults)
+      Boost: 0, Excursion_Depth: 0, Old_New: true, PreEQ_Brt: 1, Structure: 1,
+    },
+    blockType: BLOCK_TYPES.AMP_WITH_CAB,
+    stadiumOnly: true,
+  },
+
+  // Derived from Brit2203MV (Marshall JCM800 family) — 22 params
+  "Agoura Brit 800": {
+    id: "Agoura_AmpBrit800",
+    name: "Agoura Brit 800",
+    basedOn: "Marshall JCM800 2203 (non-MV)",
+    category: "crunch",
+    ampCategory: "crunch" as const,
+    topology: "plate_fed" as const,
+    cabAffinity: ["4x12 Greenback 25", "4x12 Brit T75"],
+    defaultParams: {
+      // 14 universal hidden/firmware params
+      AmpCabPeak2Fc: 1000, AmpCabPeak2G: 0, AmpCabPeak2Q: 0.707,
+      AmpCabPeakFc: 100, AmpCabPeakG: 0, AmpCabPeakQ: 0.707,
+      AmpCabShelfF: 1000, AmpCabShelfG: 0,
+      AmpCabZFir: 0, AmpCabZUpdate: 0,
+      Hype: 0, ZPrePost: 0.3, Ripple: 0, Sag: 0,
+      // Standard amp params
+      Drive: 0.55, Bass: 0.50, Mid: 0.50, Treble: 0.60, Master: 0.50, Level: 0,
+      Presence: 0.50,
+      // Voice params (derived from Brit2203MV)
+      Jack: 1,
+    },
+    blockType: BLOCK_TYPES.AMP_WITH_CAB,
+    stadiumOnly: true,
+  },
+
+  // Derived from USDoubleBlack (Fender Twin family) — 27 params
+  "Agoura US Clean": {
+    id: "Agoura_AmpUSClean",
+    name: "Agoura US Clean",
+    basedOn: "Fender Twin Reverb (Clean)",
+    category: "clean",
+    ampCategory: "clean" as const,
+    topology: "plate_fed" as const,
+    cabAffinity: ["2x12 Double C12N", "1x12 US Deluxe"],
+    defaultParams: {
+      // 14 universal hidden/firmware params
+      AmpCabPeak2Fc: 1000, AmpCabPeak2G: 0, AmpCabPeak2Q: 0.707,
+      AmpCabPeakFc: 100, AmpCabPeakG: 0, AmpCabPeakQ: 0.707,
+      AmpCabShelfF: 1000, AmpCabShelfG: 0,
+      AmpCabZFir: 0, AmpCabZUpdate: 0,
+      Hype: 0, ZPrePost: 0.3, Ripple: 0, Sag: 0,
+      // Standard amp params
+      Drive: 0.18, Bass: 0.50, Mid: 0.50, Treble: 0.55, Master: 0.60, Level: 0,
+      // Voice params (derived from USDoubleBlack — full Vibrato channel)
+      Bright: 0, Channel: 1, MasterVol: 0.50,
+      VibBass: 0.50, VibBright: 0, VibMid: 0.50, VibTreb: 0.50, VibratoVolume: 0.40,
+    },
+    blockType: BLOCK_TYPES.AMP_WITH_CAB,
+    stadiumOnly: true,
+  },
+
+  // Derived from USLuxeBlack (Fender Deluxe Reverb family) — 19 params (NO Mid — Vibrolux has no mid knob)
+  "Agoura US Trem": {
+    id: "Agoura_AmpUSTrem",
+    name: "Agoura US Trem",
+    basedOn: "Fender Vibrolux Reverb (Tremolo channel)",
+    category: "clean",
+    ampCategory: "clean" as const,
+    topology: "plate_fed" as const,
+    cabAffinity: ["2x12 Double C12N", "1x12 US Deluxe"],
+    defaultParams: {
+      // 14 universal hidden/firmware params
+      AmpCabPeak2Fc: 1000, AmpCabPeak2G: 0, AmpCabPeak2Q: 0.707,
+      AmpCabPeakFc: 100, AmpCabPeakG: 0, AmpCabPeakQ: 0.707,
+      AmpCabShelfF: 1000, AmpCabShelfG: 0,
+      AmpCabZFir: 0, AmpCabZUpdate: 0,
+      Hype: 0, ZPrePost: 0.3, Ripple: 0, Sag: 0,
+      // Standard amp params (NO Mid — Vibrolux has no mid knob)
+      Drive: 0.22, Bass: 0.50, Treble: 0.55, Master: 0.60, Level: 0,
+      // Voice params (derived from USLuxeBlack — Vibrato channel)
+      Channel: 1, VibBass: 0.50, VibTreb: 0.50, VibratoVolume: 0.50,
+    },
+    blockType: BLOCK_TYPES.AMP_WITH_CAB,
+    stadiumOnly: true,
+  },
+
+  // Derived from GermanXtraRed (Mesa Rectifier family) — 26 params
+  "Agoura Tread Plate Red": {
+    id: "Agoura_AmpTreadPlateRed",
+    name: "Agoura Tread Plate Red",
+    basedOn: "Mesa/Boogie Dual Rectifier (Red mode)",
+    category: "high_gain",
+    ampCategory: "high_gain" as const,
+    topology: "plate_fed" as const,
+    cabAffinity: ["4x12 Uber V30"],
+    defaultParams: {
+      // 14 universal hidden/firmware params
+      AmpCabPeak2Fc: 1000, AmpCabPeak2G: 0, AmpCabPeak2Q: 0.707,
+      AmpCabPeakFc: 100, AmpCabPeakG: 0, AmpCabPeakQ: 0.707,
+      AmpCabShelfF: 1000, AmpCabShelfG: 0,
+      AmpCabZFir: 0, AmpCabZUpdate: 0,
+      Hype: 0, ZPrePost: 0.3, Ripple: 0, Sag: 0,
+      // Standard amp params
+      Drive: 0.60, Bass: 0.45, Mid: 0.40, Treble: 0.55, Master: 0.45, Level: 0,
+      Presence: 0.50,
+      // Voice params (derived from GermanXtraRed — Rectifier Red)
+      Boost: 0, Excursion_Depth: 0, Old_New: true, PreEQ_Brt: 0, Structure: 1,
+    },
+    blockType: BLOCK_TYPES.AMP_WITH_CAB,
+    stadiumOnly: true,
+  },
+
+  // Derived from GermanXtraRed (Mesa Rectifier family) — 26 params
+  "Agoura Tread Plate Orange": {
+    id: "Agoura_AmpTreadPlateOrange",
+    name: "Agoura Tread Plate Orange",
+    basedOn: "Mesa/Boogie Dual Rectifier (Orange mode)",
+    category: "crunch",
+    ampCategory: "crunch" as const,
+    topology: "plate_fed" as const,
+    cabAffinity: ["4x12 Uber V30"],
+    defaultParams: {
+      // 14 universal hidden/firmware params
+      AmpCabPeak2Fc: 1000, AmpCabPeak2G: 0, AmpCabPeak2Q: 0.707,
+      AmpCabPeakFc: 100, AmpCabPeakG: 0, AmpCabPeakQ: 0.707,
+      AmpCabShelfF: 1000, AmpCabShelfG: 0,
+      AmpCabZFir: 0, AmpCabZUpdate: 0,
+      Hype: 0, ZPrePost: 0.3, Ripple: 0, Sag: 0,
+      // Standard amp params
+      Drive: 0.52, Bass: 0.48, Mid: 0.45, Treble: 0.55, Master: 0.48, Level: 0,
+      Presence: 0.48,
+      // Voice params (derived from GermanXtraRed — Rectifier Orange)
+      Boost: 0, Excursion_Depth: 0, Old_New: true, PreEQ_Brt: 0, Structure: 0,
+    },
     blockType: BLOCK_TYPES.AMP_WITH_CAB,
     stadiumOnly: true,
   },
