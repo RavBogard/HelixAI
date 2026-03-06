@@ -7,8 +7,8 @@ last_updated: "2026-03-06"
 progress:
   total_phases: 8
   completed_phases: 7
-  total_plans: 13
-  completed_plans: 13
+  total_plans: 15
+  completed_plans: 14
 ---
 
 # Project State
@@ -18,21 +18,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-05)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** v5.0 Phases 61-67 complete — Phase 66 (Frontend Picker + DB Migration) complete. Phase 68 (Token Control and Prompt Caching) is the remaining phase.
+**Current focus:** v5.0 Phases 61-67 complete. Phase 68 (Token Control and Prompt Caching) in progress — Plan 02 complete, Plan 01 remaining.
 
 ## Current Position
 
-Phase: 66 of 67 complete — Phase 68 (Token Control and Prompt Caching) remaining
-Plan: 2 of 2 plans complete for Phase 66 — Phase 66 DONE
-Status: Phase 66 complete — all device-first frontend changes shipped
-Last activity: 2026-03-06 — Completed 66-02 (welcome screen device picker, device lock, device in chat POST, Generate button, MAINTENANCE_MODE=false)
+Phase: Phase 68 in progress — 1 of 2 plans complete (68-02 done, 68-01 remaining)
+Plan: 68-02 complete — Stomp cache unification (byte-identical system prompt for both variants)
+Status: Phase 68 in progress — Stomp family cache unification shipped
+Last activity: 2026-03-06 — Completed 68-02 (unified stomp planner prompt, stompVariantRestriction in planner.ts)
 
-Progress: [████████████████████████████████] 100% (13/13 plans complete)
+Progress: [███████████████████████████████░] 93% (14/15 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9 (this milestone)
+- Total plans completed: 10 (this milestone)
 - Prior milestone avg: ~1 plan/session
 
 **By Phase:**
@@ -47,6 +47,7 @@ Progress: [███████████████████████
 | 67-01 (Stadium Catalog Quality) | 1 | ~2 min | ~2 min |
 | 67-02 (Stadium Prompt + Integration Test) | 1 | ~3 min | ~3 min |
 | 66 (Frontend Picker + DB Migration) | 2 | ~18 min | ~9 min |
+| 68-02 (Stomp Cache Unification) | 1 | ~4 min | ~4 min |
 
 *Updated after each plan completion*
 
@@ -89,6 +90,9 @@ Progress: [███████████████████████
 - [66-02]: helix_lt pre-selected as welcome screen default — reduces friction for most common device; selectedDevice never empty on first send (satisfies FRONT-01 spirit)
 - [66-02]: Generate Preset is a separate button from the locked device badge — decouples device confirmation from generation trigger, gives user explicit confirmation moment
 - [66-02]: device: selectedDevice added to /api/chat POST body — closes Phase 61 deferral, activates Phase 65 per-family chat prompts end-to-end
+- [68-02]: Stomp planner prompt unified to byte-identical text for helix_stomp and helix_stomp_xl — device restriction moved to user message via stompRestriction in planner.ts, matching Helix LT/Floor cache unification pattern
+- [68-02]: Conservative system prompt values (6 blocks, 3 snapshots) used as unified reference; stompRestriction in user message overrides with exact per-device values
+- [68-02]: _device parameter prefix in buildPlannerPrompt signals intentionally unused while preserving type-contract with prompt-router.ts
 
 ### Roadmap Evolution
 
@@ -104,6 +108,6 @@ Progress: [███████████████████████
 ## Session Continuity
 
 Last session: 2026-03-06
-Stopped at: Completed 66-02-PLAN.md (welcome screen device picker, device lock, device in chat POST, Generate button, MAINTENANCE_MODE=false — Phase 66 COMPLETE)
+Stopped at: Completed 68-02-PLAN.md (stomp cache unification, device restriction moved to user message — Phase 68 Plan 02 COMPLETE)
 Resume file: None
-Next command: `/gsd:plan-phase 68` (Phase 68 — Token Control and Prompt Caching)
+Next command: `/gsd:execute-phase 68` (Phase 68 Plan 01 — token budget controls remaining)
