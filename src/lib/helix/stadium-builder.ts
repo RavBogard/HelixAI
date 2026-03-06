@@ -29,6 +29,38 @@ const AMP_TYPES = new Set(["amp"]);
 const CAB_TYPES = new Set(["cab"]);
 
 // ---------------------------------------------------------------------------
+// STAD-07: Stadium effect model ID suffix mapping
+//
+// Stadium firmware requires Mono/Stereo suffixes on ALL effect model IDs.
+// Pre-amp effects (before amp in signal chain) → "Mono" suffix
+// Post-amp effects (after cab in signal chain) → "Stereo" suffix
+// Amps, cabs, inputs, outputs, splits, joins → NO suffix
+//
+// Additionally, some models use different prefixes in Stadium firmware
+// (e.g., HD2_GateHorizonGate → HX2_GateHorizonGate). These are mapped
+// in STADIUM_MODEL_BASE_OVERRIDES.
+//
+// Verified against professional .hsp files:
+//   Agoura_Bassman.hsp, NH_BoomAuRang.hsp, Stadium_Rock_Rhythm.hsp
+// ---------------------------------------------------------------------------
+
+/**
+ * Models whose base ID differs between Helix and Stadium firmware.
+ * Key: our catalog's model ID (HD2_ prefix)
+ * Value: correct Stadium base model ID (before Mono/Stereo suffix)
+ *
+ * Only effects that changed prefixes need to be listed here.
+ * Most HD2_ effects work as-is with just the Mono/Stereo suffix appended.
+ */
+const STADIUM_MODEL_BASE_OVERRIDES: Record<string, string> = {
+  // Horizon Gate uses HX2_ prefix in all professional Stadium presets
+  "HD2_GateHorizonGate": "HX2_GateHorizonGate",
+  // Stadium Parametric EQ is a different model (HX2_ prefix, no "7Band" in name)
+  "HD2_EQParametric7Band": "HX2_EQParametric",
+  "HD2_EQParametric": "HX2_EQParametric",
+};
+
+// ---------------------------------------------------------------------------
 // STAD-04: Slot-grid block key allocation
 // Canonical positions matching real .hsp files (Agoura_Bassman, Agoura_Hiwatt reference)
 // Key formula: key = 'b' + String(position).padStart(2, '0')
@@ -126,6 +158,7 @@ interface StadiumPreset {
     activeexpsw: number;
     activesnapshot: number;
     inst1Z: string;
+    inst2Z: string;
     tempo: number;
   };
   snapshots: StadiumSnapshotEntry[];
@@ -243,6 +276,7 @@ function buildStadiumPreset(spec: PresetSpec): StadiumPreset {
       activeexpsw: 1,
       activesnapshot: 0,
       inst1Z: "FirstEnabled",
+      inst2Z: "FirstEnabled",  // STAD-07: required by firmware — present in ALL professional .hsp files
       tempo: spec.tempo,
     },
     snapshots,
@@ -317,41 +351,41 @@ function buildStadiumFlow(spec: PresetSpec): Array<Record<string, unknown>> {
   flow0["b00"] = buildInputBlock();
   // Note: input block doesn't go in blockKeyMap since it's not in signalChain
 
-  // Pre-amp effect blocks at b01-b04
+  // Pre-amp effect blocks at b01-b04 — STAD-07: mono channel mode
   for (const { block, originalIndex, slotName } of preAmpBlocks) {
     const slotPos = STADIUM_SLOT_ALLOCATION[slotName];
     if (slotPos !== undefined) {
       const blockKey = makeBlockKey(slotPos);
       blockKeyMap.set(originalIndex, blockKey);
-      flow0[blockKey] = buildFlowBlock(block, slotPos, spec, originalIndex);
+      flow0[blockKey] = buildFlowBlock(block, slotPos, spec, originalIndex, "mono");
     }
   }
 
-  // Amp at b05 (fixed canonical position)
+  // Amp at b05 (fixed canonical position) — no channel suffix
   let ampBlockKey: string | null = null;
   if (ampBlock && ampOriginalIndex >= 0) {
     const ampSlotPos = STADIUM_SLOT_ALLOCATION["amp"]!;
     ampBlockKey = makeBlockKey(ampSlotPos);
     blockKeyMap.set(ampOriginalIndex, ampBlockKey);
-    flow0[ampBlockKey] = buildFlowBlock(ampBlock, ampSlotPos, spec, ampOriginalIndex);
+    flow0[ampBlockKey] = buildFlowBlock(ampBlock, ampSlotPos, spec, ampOriginalIndex, "none");
   }
 
-  // Cab at b06 (fixed canonical position — always follows amp)
+  // Cab at b06 (fixed canonical position — always follows amp) — no channel suffix (uses WithPan)
   let cabBlockKey: string | null = null;
   if (cabBlock && cabOriginalIndex >= 0) {
     const cabSlotPos = STADIUM_SLOT_ALLOCATION["cab"]!;
     cabBlockKey = makeBlockKey(cabSlotPos);
     blockKeyMap.set(cabOriginalIndex, cabBlockKey);
-    flow0[cabBlockKey] = buildFlowBlock(cabBlock, cabSlotPos, spec, cabOriginalIndex);
+    flow0[cabBlockKey] = buildFlowBlock(cabBlock, cabSlotPos, spec, cabOriginalIndex, "none");
   }
 
-  // Post-amp effect blocks at b07-b12
+  // Post-amp effect blocks at b07-b12 — STAD-07: stereo channel mode
   for (const { block, originalIndex, slotName } of postAmpBlocks) {
     const slotPos = STADIUM_SLOT_ALLOCATION[slotName];
     if (slotPos !== undefined) {
       const blockKey = makeBlockKey(slotPos);
       blockKeyMap.set(originalIndex, blockKey);
-      flow0[blockKey] = buildFlowBlock(block, slotPos, spec, originalIndex);
+      flow0[blockKey] = buildFlowBlock(block, slotPos, spec, originalIndex, "stereo");
     }
   }
 
@@ -373,6 +407,54 @@ function buildStadiumFlow(spec: PresetSpec): Array<Record<string, unknown>> {
   flow1["b13"] = buildOutputBlock();
 
   return [flow0, flow1];
+}
+
+// ---------------------------------------------------------------------------
+// STAD-07: Stadium model ID resolution
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolve the correct Stadium firmware model ID for a block.
+ *
+ * Rules (verified against professional .hsp files):
+ *   1. Cab models: append "WithPan" suffix (existing rule)
+ *   2. Effect models (type "fx"): append "Mono" (pre-amp) or "Stereo" (post-amp)
+ *   3. Some effect models have different base IDs in Stadium (STADIUM_MODEL_BASE_OVERRIDES)
+ *   4. Amp models (Agoura_Amp*): no suffix
+ *   5. Input/Output models (P35_*): no suffix
+ *
+ * @param block The block spec from the signal chain
+ * @param channelMode "mono" for pre-amp effects, "stereo" for post-amp, "none" for amp/cab/io
+ */
+function resolveStadiumModelId(
+  block: BlockSpec,
+  channelMode: "mono" | "stereo" | "none",
+): string {
+  let baseId = block.modelId;
+
+  // Cab: append "WithPan" (existing behavior)
+  if (block.type === "cab" && baseId.startsWith("HD2_CabMicIr_") && !baseId.endsWith("WithPan")) {
+    return baseId + "WithPan";
+  }
+
+  // Amp, input, output: no suffix
+  if (block.type === "amp" || channelMode === "none") {
+    return baseId;
+  }
+
+  // Effect blocks: apply STAD-07 overrides and Mono/Stereo suffix
+  // Step 1: Check if this model has a Stadium-specific base ID override
+  if (STADIUM_MODEL_BASE_OVERRIDES[baseId]) {
+    baseId = STADIUM_MODEL_BASE_OVERRIDES[baseId];
+  }
+
+  // Step 2: Append Mono/Stereo suffix (only if not already suffixed)
+  if (!baseId.endsWith("Mono") && !baseId.endsWith("Stereo")) {
+    const suffix = channelMode === "mono" ? "Mono" : "Stereo";
+    baseId = baseId + suffix;
+  }
+
+  return baseId;
 }
 
 // ---------------------------------------------------------------------------
@@ -398,6 +480,8 @@ function buildFlowBlock(
   flowPosition: number,
   spec: PresetSpec,
   originalIndex: number,
+  /** STAD-07: "mono" for pre-amp effects, "stereo" for post-amp effects, "none" for amp/cab/io */
+  channelMode: "mono" | "stereo" | "none" = "none",
 ): Record<string, unknown> {
   // Build @enabled with optional per-snapshot bypass states
   const enabledObj = buildBlockEnabled(block, spec, originalIndex);
@@ -442,11 +526,8 @@ function buildFlowBlock(
     }
   }
 
-  // Stadium cabs require "WithPan" suffix on model ID — confirmed across all 11 real .hsp files
-  // e.g., "HD2_CabMicIr_4x10TweedP10R" → "HD2_CabMicIr_4x10TweedP10RWithPan"
-  const modelId = block.type === "cab" && block.modelId.startsWith("HD2_CabMicIr_") && !block.modelId.endsWith("WithPan")
-    ? block.modelId + "WithPan"
-    : block.modelId;
+  // STAD-07: Resolve the correct Stadium model ID with appropriate suffix
+  const modelId = resolveStadiumModelId(block, channelMode);
 
   const obj: Record<string, unknown> = {
     "@enabled": enabledObj,
