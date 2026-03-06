@@ -1,83 +1,75 @@
 # Requirements: HelixTones
 
-**Defined:** 2026-03-05
-**Core Value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive to playing, and built with the same signal chain intelligence as paid professional presets.
+**Defined:** 2026-03-06
+**Core Value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
 
-## v5.0 Requirements
+## v6.0 Requirements
 
-Requirements for v5.0 Device-First Architecture. Each maps to roadmap phases.
+Requirements for Preset Craft Mastery milestone. Each maps to roadmap phases.
 
-### Device Routing
+### Expression Pedal
 
-- [x] **ROUTE-01**: System defines DeviceFamily discriminated union (helix, stomp, podgo, stadium) with exhaustive TypeScript switch
-- [x] **ROUTE-02**: System maps all DeviceTarget values to their DeviceFamily via resolveFamily() with compile-time exhaustiveness
-- [x] **ROUTE-03**: System defines DeviceCapabilities per family (block limits, DSP count, dual-amp support, available block types)
-- [x] **ROUTE-04**: Device family is resolved at the earliest pipeline entry point (before chat or generation begins)
+- [ ] **EXP-01**: Wah blocks are assigned to expression pedal controller with Position parameter mapped — pressing EXP pedal sweeps the wah on hardware
+- [ ] **EXP-02**: Volume blocks are assigned to expression pedal controller with Position/Volume parameter mapped — pressing EXP pedal controls volume on hardware
+- [ ] **EXP-03**: Expression pedal assignments respect per-device capability — Helix (3 EXP), Stomp (2 EXP), Pod Go (1 EXP), Stadium (0 EXP, skipped)
+- [ ] **EXP-04**: Expression pedal assignments do not conflict with snapshot controller assignments — snapshot-exclusion guard prevents last-write-wins collision
+- [ ] **EXP-05**: Expression pedal @min/@max values are appropriate per block type — wah sweep 0.0-1.0, volume pedal heel-down not silent
 
-### Model Catalog Isolation
+### Effect Intelligence
 
-- [x] **CAT-01**: Stadium family has its own amp catalog module containing only Agoura amps — no HD2 amps visible
-- [x] **CAT-02**: Helix/Stomp/PodGo families have their own amp catalog modules containing only HD2 amps — no Agoura amps visible
-- [x] **CAT-03**: Global merged AMP_NAMES is eliminated — no single enum contains both HD2 and Agoura amp names
-- [x] **CAT-04**: Per-family ToneIntent Zod schema constrains ampName to only that family's catalog — Claude's constrained decoding cannot output cross-family amps
-- [x] **CAT-05**: Effect catalogs are scoped per family (Pod Go Mono/Stereo suffixes, Stomp subset, Stadium extended set)
+- [ ] **INTEL-01**: Delay model selection is genre-informed — AI receives per-genre delay model recommendations (e.g., Transistor Tape for blues, Ducked Delay for worship, Cosmos Echo for psychedelic)
+- [ ] **INTEL-02**: Reverb model selection is genre-informed — AI receives per-genre reverb model recommendations (e.g., Plate for universal, '63 Spring for country/blues, Ganymede for ambient)
+- [ ] **INTEL-03**: Wah model selection is genre-informed — AI receives per-genre wah model recommendations (e.g., Chrome Custom as default, Teardrop 310 for rock, Fassel for funk)
+- [ ] **INTEL-04**: Effect model guidance is included in the static system prompt (not dynamic user message) to preserve prompt cache hit rates
+- [ ] **INTEL-05**: High-value effect models have per-model parameter overrides where defaults are wrong (e.g., shimmer reverb mix, high-repeat delay feedback)
 
-### Device-Specific Prompts
+### Effect Combinations
 
-- [x] **PROMPT-01**: Each device family has its own planner prompt template with only its model catalog, constraints, and capabilities
-- [x] **PROMPT-02**: Each device family has its own chat system prompt with device-appropriate conversation arc
-- [x] **PROMPT-03**: Stomp prompt emphasizes block-budget management ("what do you cut?" constraint conversation)
-- [x] **PROMPT-04**: Pod Go prompt emphasizes slot priority and regimented chain order
-- [x] **PROMPT-05**: Stadium prompt uses Agoura-native tone vocabulary and references Stadium-specific features (7-band Parametric EQ)
-- [x] **PROMPT-06**: Helix prompt leverages full dual-DSP capabilities and dual-amp routing options
+- [ ] **COMBO-01**: When wah and compressor coexist in chain, compressor threshold is reduced to prevent over-compression of wah sweep
+- [ ] **COMBO-02**: For high-gain/metal tones, noise gate is placed before amp and compressor is omitted or minimal — prevents squeezed dynamics
+- [ ] **COMBO-03**: Effect combination rules have priority ordering (required/preferred/optional) that survives device block budget truncation — Pod Go's 4-effect limit doesn't break musical intent
+- [ ] **COMBO-04**: Reverb and delay interaction — when both present, reverb mix is slightly reduced to prevent wash; delay time accounts for reverb pre-delay
 
-### Stadium Firmware Params
+### Per-Device Craft
 
-- [x] **STADPARAM-01**: All 27+ firmware params per Agoura amp model are extracted from real .hsp corpus
-- [x] **STADPARAM-02**: Hidden params (AmpCabPeak*, AmpCabShelf*, AmpCabZFir, Aggression, Bright, Contour, Depth, Fat, Hype) have correct default values in model definitions
-- [x] **STADPARAM-03**: Generated Stadium presets emit all firmware params on every amp block — no param bleed from previously loaded presets
-- [x] **STADPARAM-04**: Stadium effect blocks also emit complete firmware param sets (not just amp blocks)
+- [ ] **CRAFT-01**: Stomp/Stomp XL presets optimize for 6-block budget — effect choices prioritize maximum tonal variety within tight constraints
+- [ ] **CRAFT-02**: Pod Go presets respect single-DSP, 4-effect budget with intelligent effect prioritization based on genre
+- [ ] **CRAFT-03**: Helix Floor/LT presets take full advantage of dual-DSP capacity — richer effect chains, more creative signal routing
+- [ ] **CRAFT-04**: Per-device craft guidance is encoded in both planner prompts (creative direction) and code (hard limit enforcement)
 
-### Knowledge Layer Refactor
+### Quality Validation
 
-- [x] **KLAYER-01**: chain-rules.ts guard sites replaced with family-dispatched module functions
-- [x] **KLAYER-02**: param-engine.ts device guards replaced with per-family parameter resolution
-- [x] **KLAYER-03**: validate.ts device guards replaced with per-family validation modules
-- [x] **KLAYER-04**: Adding a new device to an existing family requires no changes to shared code — only family module update
-
-### Frontend + Persistence
-
-- [x] **FRONT-01**: Device family picker appears at the start of conversation (before first user message)
-- [x] **FRONT-02**: Selected device family persists through the entire conversation and generation pipeline
-- [x] **FRONT-03**: Supabase conversations table has a device column storing the selected device
-- [x] **FRONT-04**: Legacy conversations without device show the device picker on resume (no silent default)
+- [ ] **QUAL-01**: Non-throwing preset quality validation function returns warnings (not errors) for suboptimal parameter choices — over-wet reverb, missing cab filtering, snapshot level imbalance
+- [ ] **QUAL-02**: Quality validation runs on every generated preset and warnings are logged for analysis
+- [ ] **QUAL-03**: Per-device baseline comparison validates that quality changes improve (not regress) preset output across all 6 device families
 
 ## Future Requirements
 
-Deferred to v5.1 or later. Tracked but not in current roadmap.
+Deferred to future release. Tracked but not in current roadmap.
 
-### New Device Variants
+### Advanced Expression Pedal
 
-- **NEWDEV-01**: Helix Rack support (same .hlx format as Floor/LT — verify device ID and I/O model IDs from real hardware export)
-- **NEWDEV-02**: Stadium XL support (verify topology matches Stadium — single-path or dual-path)
-- **NEWDEV-03**: Pod Go XL support (verify block limits match Pod Go or are extended)
+- **EXP-F01**: User can specify custom expression pedal assignments in tone interview (e.g., "I want EXP2 on reverb mix")
+- **EXP-F02**: Expression pedal assignments for reverb mix, delay mix, and other effect parameters beyond wah/volume
 
-### Deferred from v4.0
+### Advanced Effect Intelligence
 
-- **COMBO-01**: Effect combination logic (comp→drive, mod→reverb interaction params)
-- **COST-01**: Cost-aware model routing (evidence-based Haiku chat vs. Sonnet generation)
+- **INTEL-F01**: Drive/distortion model selection is genre-informed (e.g., Tube Screamer for blues, RAT for grunge, Klon for transparent boost)
+- **INTEL-F02**: Modulation model selection is genre-informed (e.g., Chorus for 80s clean, Uni-Vibe for classic rock, Tremolo for surf)
+
+### Cost Optimization
+
+- **COST-F01**: Evidence-based Haiku chat vs. Sonnet generation routing (deferred from v4.0)
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| New device variants (Rack, Stadium XL, Pod Go XL) | Requires real hardware exports for corpus-driven development — deferred to v5.1 after architecture ships |
-| MIDI configuration | Focus on tone, not hardware routing |
-| IR (impulse response) loading | Stick with stock cabs |
-| Full pedalboard OCR | Too unreliable, per-pedal photos are the baseline |
-| Multi-provider comparison UI | Single provider for quality focus |
-| Effect combination logic | Requires context-passing architectural decision — deferred from v4.0 |
-| Cost-aware model routing | Requires 30-day baseline and A/B quality comparison — deferred from v4.0 |
+| New effect model additions to catalog | v6.0 uses existing 126+ effects better, not expanding the catalog |
+| Stadium expression pedal support | Stadium has `expressionPedalCount: 0` — no physical EXP pedal; deferred until hardware verification |
+| Full AI-driven expression pedal assignment | Deterministic wah→EXP1, volume→EXP2 mapping covers 95% of cases; AI-driven custom assignments deferred |
+| Per-model amp override expansion | v4.0 already shipped 18 amps with Layer 4 overrides; this milestone focuses on effects |
+| Prompt caching architecture changes | v5.0 established per-device cache unification; v6.0 must preserve, not restructure |
 
 ## Traceability
 
@@ -85,39 +77,33 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ROUTE-01 | Phase 61 | Complete |
-| ROUTE-02 | Phase 61 | Complete |
-| ROUTE-03 | Phase 61 | Complete |
-| ROUTE-04 | Phase 61 | Complete |
-| CAT-01 | Phase 62 | Complete |
-| CAT-02 | Phase 62 | Complete |
-| CAT-03 | Phase 62 | Complete |
-| CAT-04 | Phase 62 | Complete |
-| CAT-05 | Phase 62 | Complete |
-| PROMPT-01 | Phase 65 | Complete |
-| PROMPT-02 | Phase 65 | Complete |
-| PROMPT-03 | Phase 65 | Complete (maxFx fixed in Phase 69) |
-| PROMPT-04 | Phase 65 | Complete |
-| PROMPT-05 | Phase 65 | Complete |
-| PROMPT-06 | Phase 65 | Complete |
-| STADPARAM-01 | Phase 63 | Complete |
-| STADPARAM-02 | Phase 63 | Complete |
-| STADPARAM-03 | Phase 63 | Complete |
-| STADPARAM-04 | Phase 63 | Complete |
-| KLAYER-01 | Phase 64 | Complete |
-| KLAYER-02 | Phase 64 | Complete |
-| KLAYER-03 | Phase 64 | Complete |
-| KLAYER-04 | Phase 64 | Complete |
-| FRONT-01 | Phase 66 | Complete (66-02) |
-| FRONT-02 | Phase 66 | Complete (66-02) |
-| FRONT-03 | Phase 66 | Complete (66-01) |
-| FRONT-04 | Phase 66 | Complete (66-01) |
+| EXP-01 | — | Pending |
+| EXP-02 | — | Pending |
+| EXP-03 | — | Pending |
+| EXP-04 | — | Pending |
+| EXP-05 | — | Pending |
+| INTEL-01 | — | Pending |
+| INTEL-02 | — | Pending |
+| INTEL-03 | — | Pending |
+| INTEL-04 | — | Pending |
+| INTEL-05 | — | Pending |
+| COMBO-01 | — | Pending |
+| COMBO-02 | — | Pending |
+| COMBO-03 | — | Pending |
+| COMBO-04 | — | Pending |
+| CRAFT-01 | — | Pending |
+| CRAFT-02 | — | Pending |
+| CRAFT-03 | — | Pending |
+| CRAFT-04 | — | Pending |
+| QUAL-01 | — | Pending |
+| QUAL-02 | — | Pending |
+| QUAL-03 | — | Pending |
 
 **Coverage:**
-- v5.0 requirements: 27 total
-- Mapped to phases: 27
-- Unmapped: 0 ✓
+- v6.0 requirements: 21 total
+- Mapped to phases: 0
+- Unmapped: 21 ⚠️
 
 ---
-*Requirements defined: 2026-03-05*
-*Last updated: 2026-03-06 after Phase 69 gap closure — all 19 gap-closure requirements marked Complete, traceability table references original implementation phases (62-65)*
+*Requirements defined: 2026-03-06*
+*Last updated: 2026-03-06 after initial definition*
