@@ -151,6 +151,77 @@ export function formatReport(stats: CacheReportStats): string {
   ].join("\n");
 }
 
+/**
+ * Parse usage records and compute per-device cache hit statistics.
+ * Groups records by `record.device` (defaults to "unknown" when undefined).
+ * Filters to `endpoint === "generate"` records before grouping.
+ *
+ * @param records - All usage records from usage.jsonl
+ * @returns Map of device name -> CacheReportStats for that device
+ */
+export function parseCacheReportByDevice(
+  records: PlannerUsageRecord[],
+): Map<string, CacheReportStats> {
+  // Filter to generate-only records first
+  const generateRecords = records.filter((r) => r.endpoint === "generate");
+
+  // Group by device
+  const deviceGroups = new Map<string, PlannerUsageRecord[]>();
+  for (const record of generateRecords) {
+    const device = record.device ?? "unknown";
+    if (!deviceGroups.has(device)) {
+      deviceGroups.set(device, []);
+    }
+    deviceGroups.get(device)!.push(record);
+  }
+
+  // Compute per-device stats using existing parseCacheReport
+  // Pass records as-is — parseCacheReport filters generate internally,
+  // but since we already filtered, all records qualify.
+  const result = new Map<string, CacheReportStats>();
+  for (const [device, deviceRecords] of deviceGroups) {
+    result.set(device, parseCacheReport(deviceRecords));
+  }
+
+  return result;
+}
+
+/**
+ * Format per-device cache statistics into a human-readable string.
+ *
+ * @param deviceStats - Map returned by parseCacheReportByDevice
+ * @returns Formatted string with per-device breakdown
+ */
+export function formatReportByDevice(
+  deviceStats: Map<string, CacheReportStats>,
+): string {
+  if (deviceStats.size === 0) {
+    return "No device data available.";
+  }
+
+  const lines: string[] = ["=== Per-Device Cache Statistics ===", ""];
+
+  // Sort entries by device name for consistent output
+  const sorted = [...deviceStats.entries()].sort(([a], [b]) => a.localeCompare(b));
+
+  for (const [device, stats] of sorted) {
+    const hitPct = (stats.hitRate * 100).toFixed(1);
+    const coldPct = ((1 - stats.hitRate) * 100).toFixed(1);
+    lines.push(
+      `Device: ${device}`,
+      `  Total calls:   ${stats.totalCalls}`,
+      `  Cache hits:    ${stats.cacheHits} (${hitPct}%)`,
+      `  Cold starts:   ${stats.coldStarts} (${coldPct}%)`,
+      `  Avg cost cold: $${stats.avgCostCold.toFixed(4)}`,
+      `  Avg cost hit:  $${stats.avgCostCached.toFixed(4)}`,
+      `  Total cost:    $${stats.totalCost.toFixed(4)}`,
+      "",
+    );
+  }
+
+  return lines.join("\n").trimEnd();
+}
+
 // ---------------------------------------------------------------------------
 // CLI entry point
 // ---------------------------------------------------------------------------
@@ -182,4 +253,14 @@ if (process.argv[1]?.includes("cache-hit-report")) {
 
   const stats = parseCacheReport(records);
   console.log(formatReport(stats));
+
+  // Per-device breakdown (when data has device fields)
+  const deviceStats = parseCacheReportByDevice(records);
+  const devicesWithData = [...deviceStats.entries()].filter(
+    ([, s]) => s.totalCalls > 0,
+  );
+  if (devicesWithData.length > 1) {
+    console.log("");
+    console.log(formatReportByDevice(deviceStats));
+  }
 }

@@ -31,14 +31,15 @@ export interface PlannerUsageRecord {
 // ---------------------------------------------------------------------------
 
 /**
- * Claude Sonnet 4 pricing (5-minute ephemeral cache).
+ * Claude Sonnet 4 pricing (1-hour ephemeral cache).
  * Prices: https://www.anthropic.com/pricing
+ * Matches ttl: "1h" in planner.ts
  */
 export const CLAUDE_SONNET_PRICE = {
   input_per_mtok: 3.0,
   output_per_mtok: 15.0,
-  cache_write_per_mtok: 3.75, // 1.25x input for 5-min ephemeral
-  cache_read_per_mtok: 0.3,   // 0.1x input
+  cache_write_per_mtok: 6.0, // 2x input for 1h ephemeral — matches ttl: "1h" in planner.ts
+  cache_read_per_mtok: 0.3,  // 0.1x input
 } as const;
 
 /**
