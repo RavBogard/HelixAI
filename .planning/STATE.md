@@ -6,9 +6,9 @@ status: in_progress
 last_updated: "2026-03-06"
 progress:
   total_phases: 8
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 13
-  completed_plans: 12
+  completed_plans: 13
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-05)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** v5.0 Phases 61-65 and 67 complete — Phase 66 (Frontend Picker + DB Migration) in progress (Plan 01 done, Plan 02 remaining)
+**Current focus:** v5.0 Phases 61-67 complete — Phase 66 (Frontend Picker + DB Migration) complete. Phase 68 (Token Control and Prompt Caching) is the remaining phase.
 
 ## Current Position
 
-Phase: 66 of 67 (Phase 66 in progress — Plan 01 complete, Plan 02 remaining)
-Plan: 1 of 2 plans complete for Phase 66
-Status: Phase 66 in progress — state foundation done, picker UI remaining
-Last activity: 2026-03-06 — Completed 66-01 (DEVICE_OPTIONS constant, deviceLocked/needsDevicePicker state, null-safe loadConversation, backfill SQL documented)
+Phase: 66 of 67 complete — Phase 68 (Token Control and Prompt Caching) remaining
+Plan: 2 of 2 plans complete for Phase 66 — Phase 66 DONE
+Status: Phase 66 complete — all device-first frontend changes shipped
+Last activity: 2026-03-06 — Completed 66-02 (welcome screen device picker, device lock, device in chat POST, Generate button, MAINTENANCE_MODE=false)
 
-Progress: [████████████████████████████████] 92% (12/13 plans complete)
+Progress: [████████████████████████████████] 100% (13/13 plans complete)
 
 ## Performance Metrics
 
@@ -46,6 +46,7 @@ Progress: [███████████████████████
 | 65 (Device-Specific Prompts) | 2 | ~22 min | ~11 min |
 | 67-01 (Stadium Catalog Quality) | 1 | ~2 min | ~2 min |
 | 67-02 (Stadium Prompt + Integration Test) | 1 | ~3 min | ~3 min |
+| 66 (Frontend Picker + DB Migration) | 2 | ~18 min | ~9 min |
 
 *Updated after each plan completion*
 
@@ -85,6 +86,9 @@ Progress: [███████████████████████
 - [66-01]: DEVICE_OPTIONS extracted as module-level const array — avoids re-creation on every render and allows Plan 66-02 to reference it from sibling components without prop drilling
 - [66-01]: loadConversation() sets needsDevicePicker(true) for null/empty device rows instead of defaulting to helix_lt — prevents assertNever crash in resolveFamily() for legacy rows (FRONT-04)
 - [66-01]: startOver() does NOT reset selectedDevice — keeps last-used device pre-selected for UX convenience on new conversations
+- [66-02]: helix_lt pre-selected as welcome screen default — reduces friction for most common device; selectedDevice never empty on first send (satisfies FRONT-01 spirit)
+- [66-02]: Generate Preset is a separate button from the locked device badge — decouples device confirmation from generation trigger, gives user explicit confirmation moment
+- [66-02]: device: selectedDevice added to /api/chat POST body — closes Phase 61 deferral, activates Phase 65 per-family chat prompts end-to-end
 
 ### Roadmap Evolution
 
@@ -100,6 +104,6 @@ Progress: [███████████████████████
 ## Session Continuity
 
 Last session: 2026-03-06
-Stopped at: Completed 66-01-PLAN.md (DEVICE_OPTIONS constant, deviceLocked/needsDevicePicker state, null-safe loadConversation, backfill SQL documented)
+Stopped at: Completed 66-02-PLAN.md (welcome screen device picker, device lock, device in chat POST, Generate button, MAINTENANCE_MODE=false — Phase 66 COMPLETE)
 Resume file: None
-Next command: `/gsd:execute-phase 66` (Phase 66 Plan 02 — Frontend Picker UI)
+Next command: `/gsd:plan-phase 68` (Phase 68 — Token Control and Prompt Caching)

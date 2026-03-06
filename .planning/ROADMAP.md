@@ -124,7 +124,7 @@
 - [x] **Phase 63: Stadium Firmware Parameter Completeness** — Extract all 27+ firmware params from real .hsp corpus and emit them on every Stadium amp block
 - [x] **Phase 64: Knowledge Layer Guard Removal** — Replace 17+ boolean guard sites in chain-rules.ts, param-engine.ts, and validate.ts with DeviceCapabilities-driven dispatch
 - [x] **Phase 65: Device-Specific Prompts** — Create per-family planner and chat prompt templates with only family-appropriate model catalogs and conversation arcs
-- [ ] **Phase 66: Frontend Picker and Database Migration** — Move device picker to conversation start, add device column to Supabase conversations table, handle legacy rows
+- [x] **Phase 66: Frontend Picker and Database Migration** — Move device picker to conversation start, add device column to Supabase conversations table, handle legacy rows
 - [x] **Phase 67: Stadium Integration Quality** — Fix WAH/VOLUME catalog gap, dual-amp capability mismatch, TODO(Phase62) placeholder in prompt, and add schema/prompt integration tests (completed 2026-03-06)
 - [ ] **Phase 68: Token Control and Prompt Caching** — Reduce API costs without degrading preset quality: optimize token budgets, maximize prompt caching, audit system prompt sizes
 
@@ -219,7 +219,7 @@ Plans:
 
 Plans:
 - [x] 66-01-PLAN.md — State variables (deviceLocked, needsDevicePicker), DEVICE_OPTIONS constant, null-safe loadConversation, startOver reset, backfill migration SQL documentation
-- [ ] 66-02-PLAN.md — Welcome screen device picker, device lock on first message, device in /api/chat POST body, readyToGenerate Generate button, MAINTENANCE_MODE off, human verification
+- [x] 66-02-PLAN.md — Welcome screen device picker, device lock on first message, device in /api/chat POST body, readyToGenerate Generate button, MAINTENANCE_MODE off, human verification
 
 ## Progress
 
@@ -238,7 +238,7 @@ Plans:
 | 63. Stadium Firmware Params | v5.0 | 2/2 | Complete | 2026-03-06 |
 | 64. Knowledge Layer Guards | v5.0 | 2/2 | Complete | 2026-03-06 |
 | 65. Device-Specific Prompts | v5.0 | 2/2 | Complete | 2026-03-06 |
-| 66. Frontend Picker + DB | v5.0 | 1/2 | In progress | - |
+| 66. Frontend Picker + DB | v5.0 | 2/2 | Complete | 2026-03-06 |
 | 67. Stadium Integration Quality | 2/2 | Complete    | 2026-03-06 | - |
 | 68. Token Control + Caching | v5.0 | 0/0 | Not started | - |
 

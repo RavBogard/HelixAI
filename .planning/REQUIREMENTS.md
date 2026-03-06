@@ -47,8 +47,8 @@ Requirements for v5.0 Device-First Architecture. Each maps to roadmap phases.
 
 ### Frontend + Persistence
 
-- [ ] **FRONT-01**: Device family picker appears at the start of conversation (before first user message)
-- [ ] **FRONT-02**: Selected device family persists through the entire conversation and generation pipeline
+- [x] **FRONT-01**: Device family picker appears at the start of conversation (before first user message)
+- [x] **FRONT-02**: Selected device family persists through the entire conversation and generation pipeline
 - [x] **FRONT-03**: Supabase conversations table has a device column storing the selected device
 - [x] **FRONT-04**: Legacy conversations without device show the device picker on resume (no silent default)
 
