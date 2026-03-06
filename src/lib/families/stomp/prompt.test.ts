@@ -12,17 +12,17 @@ describe("stomp/buildPlannerPrompt", () => {
   const stompPrompt = buildPlannerPrompt("helix_stomp", sampleModelList);
   const stompXLPrompt = buildPlannerPrompt("helix_stomp_xl", sampleModelList);
 
+  it("helix_stomp and helix_stomp_xl produce identical planner prompt text", () => {
+    expect(stompPrompt).toStrictEqual(stompXLPrompt);
+  });
+
   it("does NOT contain Agoura_ amp names (cross-family isolation)", () => {
     expect(stompPrompt).not.toMatch(/Agoura_/);
     expect(stompXLPrompt).not.toMatch(/Agoura_/);
   });
 
-  it("HX Stomp prompt references 3 snapshots", () => {
+  it("unified prompt references STOMP_MAX_SNAPSHOTS (3) in ToneIntent fields", () => {
     expect(stompPrompt).toContain(`Exactly ${STOMP_CONFIG.STOMP_MAX_SNAPSHOTS} snapshots`);
-  });
-
-  it("HX Stomp XL prompt references 4 snapshots", () => {
-    expect(stompXLPrompt).toContain(`Exactly ${STOMP_CONFIG.STOMP_XL_MAX_SNAPSHOTS} snapshots`);
   });
 
   it("contains priority hierarchy language for genre-based over-budget", () => {
@@ -30,24 +30,19 @@ describe("stomp/buildPlannerPrompt", () => {
     expect(stompPrompt).toContain("reverb > delay > mod > drive");
   });
 
-  it("HX Stomp prompt references 6 block slots", () => {
+  it("unified prompt references STOMP_MAX_BLOCKS (6) block slots in genre sections", () => {
     expect(stompPrompt).toContain(`${STOMP_CONFIG.STOMP_MAX_BLOCKS} block slots`);
   });
 
-  it("HX Stomp XL prompt references 9 block slots", () => {
-    expect(stompXLPrompt).toContain(`${STOMP_CONFIG.STOMP_XL_MAX_BLOCKS} block slots`);
+  it("does NOT contain DEVICE RESTRICTION in planner system prompt (moved to user message)", () => {
+    expect(stompPrompt).not.toContain("DEVICE RESTRICTION");
+    expect(stompXLPrompt).not.toContain("DEVICE RESTRICTION");
   });
 
   it("ToneIntent fields section does not offer secondAmpName as a field option", () => {
     // The ToneIntent Fields section should not offer secondAmpName as an optional field.
-    // The DEVICE RESTRICTION section may mention it in a "Do NOT populate" context — that's fine.
     const toneIntentSection = stompPrompt.split("## ToneIntent Fields")[1]?.split("## ")[0] ?? "";
     expect(toneIntentSection).not.toContain("secondAmpName");
-  });
-
-  it("contains DEVICE RESTRICTION text", () => {
-    expect(stompPrompt).toContain("DEVICE RESTRICTION");
-    expect(stompXLPrompt).toContain("DEVICE RESTRICTION");
   });
 });
 
