@@ -316,6 +316,7 @@ export function resolveParameters(
   const topology: TopologyTag = ampModel.topology ?? "not_applicable";
   const genreProfile = matchGenre(intent.genreHint);
   const tempoHint = intent.tempoHint;
+  const delaySubdivision = intent.delaySubdivision;
   const guitarType = intent.guitarType;
 
   // Dual-amp: resolve second amp's category and topology independently (DUAL-04)
@@ -335,8 +336,8 @@ export function resolveParameters(
 
     const resolved: BlockSpec = {
       ...block,
-      // Thread caps, tempoHint, and guitarType through to resolveBlockParams
-      parameters: resolveBlockParams(block, effectiveCategory, effectiveTopology, genreProfile, caps, tempoHint, guitarType),
+      // Thread caps, tempoHint, delaySubdivision, and guitarType through to resolveBlockParams
+      parameters: resolveBlockParams(block, effectiveCategory, effectiveTopology, genreProfile, caps, tempoHint, delaySubdivision, guitarType),
     };
     return resolved;
   });
@@ -346,6 +347,7 @@ export function resolveParameters(
  * Resolve parameters for a single block based on its type and the amp context.
  * The caps parameter enables device-specific param extensions (e.g., 10 cab params for Stadium).
  * The tempoHint parameter enables tempo-synced delay Time for delay blocks (FX-03).
+ * The delaySubdivision parameter selects note value (quarter, dotted_eighth, eighth, triplet).
  * The guitarType parameter enables guitar-type EQ curve adjustments for HD2_EQParametric (FX-01).
  */
 function resolveBlockParams(
@@ -355,6 +357,7 @@ function resolveBlockParams(
   genreProfile?: GenreEffectProfile,
   caps?: DeviceCapabilities,
   tempoHint?: number,
+  delaySubdivision?: string,
   guitarType?: string,
 ): Record<string, number | boolean> {
   switch (block.type) {
@@ -374,7 +377,7 @@ function resolveBlockParams(
     default:
       // delay, reverb, modulation, wah, pitch, send_return:
       // Use model defaults, then apply genre overrides, then tempo override for delay (FX-03)
-      return resolveDefaultParams(block, genreProfile, tempoHint);
+      return resolveDefaultParams(block, genreProfile, tempoHint, delaySubdivision);
   }
 }
 
@@ -544,6 +547,15 @@ function resolveVolumeParams(block: BlockSpec): Record<string, number | boolean>
   return resolveDefaultParams(block);
 }
 
+// Subdivision multipliers relative to quarter note
+// quarter = 1.0, dotted_eighth = 0.75, eighth = 0.5, triplet = 0.333
+const SUBDIVISION_MULTIPLIERS: Record<string, number> = {
+  quarter: 1.0,
+  dotted_eighth: 0.75,
+  eighth: 0.5,
+  triplet: 1 / 3,
+};
+
 /**
  * Default parameter resolution — look up model's defaultParams from the database,
  * then apply genre-specific overrides, then tempo-synced delay override (FX-03).
@@ -551,11 +563,13 @@ function resolveVolumeParams(block: BlockSpec): Record<string, number | boolean>
  * Resolution order: model defaults -> genre overrides -> tempo override (delay only)
  * Genre overrides only apply to matching block types (delay/reverb/modulation).
  * Tempo override only applies to delay blocks when tempoHint is present.
+ * delaySubdivision selects the note value (defaults to "quarter" for backwards compat).
  */
 function resolveDefaultParams(
   block: BlockSpec,
   genreProfile?: GenreEffectProfile,
   tempoHint?: number,
+  delaySubdivision?: string,
 ): Record<string, number | boolean> {
   const model = findModel(block.modelName, block.type);
   const params = model ? { ...model.defaultParams } : { ...block.parameters };
@@ -577,7 +591,9 @@ function resolveDefaultParams(
   // Only fires for delay blocks when tempoHint is present; reverb/modulation unaffected.
   if (tempoHint && block.type === "delay") {
     const quarterNoteTime = 30 / tempoHint; // 60000/BPM/2000 simplified
-    const clamped = Math.max(0.01, Math.min(1.0, quarterNoteTime));
+    const subdivMultiplier = SUBDIVISION_MULTIPLIERS[delaySubdivision ?? "quarter"] ?? 1.0;
+    const subdivTime = quarterNoteTime * subdivMultiplier;
+    const clamped = Math.max(0.01, Math.min(1.0, subdivTime));
     // Standard delay: "Time" key
     if ("Time" in params) {
       params.Time = clamped;
@@ -585,7 +601,7 @@ function resolveDefaultParams(
     // Dual Delay uses "Left Time" / "Right Time" keys (space in key name)
     if ("Left Time" in params) {
       params["Left Time"] = clamped;
-      params["Right Time"] = Math.min(1.0, clamped * 0.75); // dotted-eighth offset
+      params["Right Time"] = Math.min(1.0, clamped * 0.75); // dotted-eighth offset for ping-pong
     }
   }
 

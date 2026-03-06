@@ -45,7 +45,8 @@ ${secondAmpFields}- **guitarType**: "single_coil", "humbucker", or "p90" — bas
 - **snapshots**: Exactly ${opts.snapshots} snapshots, each with:
   - name: display name (max ${maxSnapLen} characters, e.g., "CLEAN", "RHYTHM", "LEAD", "AMBIENT")
   - toneRole: "clean", "crunch", "lead", or "ambient"
-- **tempoHint**: Optional BPM for delay sync (integer, useful if the user mentioned tempo or song)
+- **tempoHint**: Optional BPM for delay sync (integer 60-200, useful if the user mentioned tempo or song)
+- **delaySubdivision**: Optional note value for delay timing — "quarter", "dotted_eighth", "eighth", or "triplet". Use when the user requests a specific rhythmic delay (e.g., "dotted eighth delay" → "dotted_eighth"). Defaults to "quarter" if omitted. Requires tempoHint to take effect.
 - **presetName**: A creative, descriptive preset name (max 32 characters)
 - **description**: Brief tone description summarizing the preset character
 - **guitarNotes**: Tips for the user — pickup position, tone knob, volume knob suggestions`;

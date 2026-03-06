@@ -42,6 +42,7 @@ function buildToneIntentSchema(
     effects: z.array(effectSchema).max(6),
     snapshots: z.array(SnapshotIntentSchema).min(3).max(8),
     tempoHint: z.number().int().min(60).max(200).optional(),
+    delaySubdivision: z.enum(["quarter", "dotted_eighth", "eighth", "triplet"]).optional(),
     presetName: z.string().max(32).optional(),
     description: z.string().optional(),
     guitarNotes: z.string().optional(),

@@ -550,6 +550,62 @@ describe("FX-03: tempo-synced delay Time", () => {
     // Reverb DecayTime must remain at blues genre default (0.4) — NOT affected by tempoHint
     expect(reverb.parameters.DecayTime).toBeCloseTo(0.4, 3);
   });
+
+  it("FX-03-6: delaySubdivision=dotted_eighth at 120 BPM produces Time=0.1875", () => {
+    const chain = makeDelayChain();
+    const intent = makeIntent({ tempoHint: 120, delaySubdivision: "dotted_eighth" as const });
+    const result = resolveParameters(chain, intent, defaultCaps);
+    const delay = result[1];
+    // quarter = 30/120 = 0.25, dotted eighth = 0.25 * 0.75 = 0.1875
+    expect(delay.parameters.Time).toBeCloseTo(0.1875, 3);
+  });
+
+  it("FX-03-7: delaySubdivision=eighth at 120 BPM produces Time=0.125", () => {
+    const chain = makeDelayChain();
+    const intent = makeIntent({ tempoHint: 120, delaySubdivision: "eighth" as const });
+    const result = resolveParameters(chain, intent, defaultCaps);
+    const delay = result[1];
+    // quarter = 30/120 = 0.25, eighth = 0.25 * 0.5 = 0.125
+    expect(delay.parameters.Time).toBeCloseTo(0.125, 3);
+  });
+
+  it("FX-03-8: delaySubdivision=triplet at 120 BPM produces Time≈0.0833", () => {
+    const chain = makeDelayChain();
+    const intent = makeIntent({ tempoHint: 120, delaySubdivision: "triplet" as const });
+    const result = resolveParameters(chain, intent, defaultCaps);
+    const delay = result[1];
+    // quarter = 30/120 = 0.25, triplet = 0.25 * (1/3) ≈ 0.0833
+    expect(delay.parameters.Time).toBeCloseTo(0.0833, 3);
+  });
+
+  it("FX-03-9: delaySubdivision=quarter (explicit) at 120 BPM produces same as no subdivision", () => {
+    const chain = makeDelayChain();
+    const intent = makeIntent({ tempoHint: 120, delaySubdivision: "quarter" as const });
+    const result = resolveParameters(chain, intent, defaultCaps);
+    const delay = result[1];
+    // quarter = 30/120 = 0.25
+    expect(delay.parameters.Time).toBeCloseTo(0.25, 3);
+  });
+
+  it("FX-03-10: delaySubdivision without tempoHint has no effect", () => {
+    const chain = makeDelayChain();
+    const intent = makeIntent({ genreHint: "blues", delaySubdivision: "dotted_eighth" as const });
+    const result = resolveParameters(chain, intent, defaultCaps);
+    const delay = result[1];
+    // Without tempoHint, subdivision is ignored — genre default blues Time = 0.15
+    expect(delay.parameters.Time).toBeCloseTo(0.15, 3);
+  });
+
+  it("FX-03-11: dotted_eighth with Dual Delay applies subdivision then dotted-eighth offset", () => {
+    const chain = makeDelayChain("Dual Delay", "HD2_DelayDualDelay");
+    const intent = makeIntent({ tempoHint: 120, delaySubdivision: "eighth" as const });
+    const result = resolveParameters(chain, intent, defaultCaps);
+    const delay = result[1];
+    // Left Time: quarter=0.25 * 0.5(eighth) = 0.125
+    // Right Time: 0.125 * 0.75 = 0.09375 (dotted-eighth offset for ping-pong)
+    expect(delay.parameters["Left Time"]).toBeCloseTo(0.125, 3);
+    expect(delay.parameters["Right Time"]).toBeCloseTo(0.09375, 4);
+  });
 });
 
 // ============================================================
