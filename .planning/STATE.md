@@ -18,14 +18,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** v7.0 Phase 81 — Snapshot System (COMPLETE)
+**Current focus:** v7.0 Phase 82 — Controllers + Parameter Dependencies (IN PROGRESS)
 
 ## Current Position
 
-Phase: 81 of 83 (Snapshot System) — COMPLETE
-Plan: 81-01 complete, 81-02 complete
-Status: Phase 81 done — full snapshot system with reactivity (4 new tests, 222 visualizer total)
-Last activity: 2026-03-07 — Phase 81 complete (toggleBlockBypass, SnapshotSelectorBar, reactive canvas + editor, page wiring)
+Phase: 82 of 83 (Controllers + Parameter Dependencies) — IN PROGRESS
+Plan: 82-01 complete, 82-02 in progress
+Status: Plan 82-01 done — controller extraction + dependency rules (48 new tests, 270 total)
+Last activity: 2026-03-07 — Plan 82-01 complete (EXP extraction, FS extraction, dependency evaluator, hydration pipeline)
 
 Progress: [████████████████████████░░░░░░░░] 71% (5/7 phases)
 
@@ -75,6 +75,6 @@ Progress: [███████████████████████
 ## Session Continuity
 
 Last session: 2026-03-07
-Stopped at: Phase 81 complete
+Stopped at: Phase 82, plan 82-01 complete
 Resume file: None
-Next command: Phase 82 execution (Controllers)
+Next command: Phase 82-02 execution (UI wiring)
