@@ -239,6 +239,7 @@ function checkDescriptionEffectCoherence(
   warnings: QualityWarning[],
 ): void {
   if (!spec.description) return;
+  if (!spec.signalChain || !Array.isArray(spec.signalChain)) return;
   const desc = spec.description.toLowerCase();
 
   const effectKeywords: Array<[string, BlockSpec["type"]]> = [
@@ -283,9 +284,8 @@ export function validatePresetQuality(
   spec: PresetSpec,
   caps: DeviceCapabilities,
 ): QualityWarning[] {
+  const warnings: QualityWarning[] = [];
   try {
-    const warnings: QualityWarning[] = [];
-
     // Per-block checks (7 checks)
     if (spec.signalChain && Array.isArray(spec.signalChain)) {
       for (const block of spec.signalChain) {
@@ -305,10 +305,8 @@ export function validatePresetQuality(
 
     // COHERE-06: Description-effect cross-validation
     checkDescriptionEffectCoherence(spec, warnings);
-
-    return warnings;
   } catch {
-    // Non-throwing guarantee: return empty array on any unexpected error
-    return [];
+    // Non-throwing guarantee: return whatever warnings were accumulated
   }
+  return warnings;
 }

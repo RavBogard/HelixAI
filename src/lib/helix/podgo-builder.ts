@@ -247,13 +247,11 @@ function buildPgpSnapshot(
     }
   }
 
-  // Ensure ALL blocks have a bypass state
-  let idx = 0;
-  for (const block of allBlocks) {
-    const key = `block${idx}`;
-    idx++;
+  // Ensure ALL blocks have a bypass state (using DSP index, which includes cabs)
+  for (let i = 0; i < allBlocks.length; i++) {
+    const key = `block${i}`;
     if (!(key in blocks)) {
-      blocks[key] = block.enabled;
+      blocks[key] = allBlocks[i].enabled;
     }
   }
 
@@ -301,15 +299,16 @@ function buildEmptyPgpSnapshot(index: number): Record<string, unknown> {
 
 function buildPgpBlockKeyMap(allBlocks: BlockSpec[]): Map<string, string> {
   const map = new Map<string, string>();
-  let idx = 0;
+  let snapshotIdx = 0; // counts only non-cab blocks (matches snapshot engine's buildBlockKeys)
+  let dspIdx = 0;      // counts all blocks including cabs (matches DSP slot numbering)
 
   for (const block of allBlocks) {
-    // Pod Go: cab is a numbered block, not separate cab0 key
-    const key = `block${idx}`;
-    // Map both the sequential key and global index to the same key
-    map.set(key, key);
-    map.set(`block${idx}`, key);
-    idx++;
+    const dspKey = `block${dspIdx}`;
+    dspIdx++;
+    if (block.type === "cab") continue; // skip cabs — snapshot engine skips them too
+    // Map snapshot key (non-cab index) → DSP slot key (all-blocks index)
+    map.set(`block${snapshotIdx}`, dspKey);
+    snapshotIdx++;
   }
 
   return map;
