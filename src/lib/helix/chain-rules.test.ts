@@ -64,7 +64,8 @@ function crunchIntent(overrides: Partial<ToneIntent> = {}): ToneIntent {
 
 describe("assembleSignalChain", () => {
   // Test 1: Clean amp with no effects returns correct blocks in correct order
-  it("returns blocks in order: boost (Minotaur) > amp > cab > EQ > gain block for clean amp with no effects", () => {
+  // COHERE-02: Plate reverb auto-inserted for clean/ambient snapshots
+  it("returns blocks in order: boost (Minotaur) > amp > cab > EQ > Plate > gain block for clean amp with no effects", () => {
     const chain = assembleSignalChain(cleanIntent(), HELIX_CAPS);
 
     const names = chain.map((b) => b.modelName);
@@ -73,6 +74,7 @@ describe("assembleSignalChain", () => {
       "US Deluxe Nrm",
       "1x12 US Deluxe",
       "Parametric EQ",
+      "Plate",
       "Gain Block",
     ]);
 
@@ -84,17 +86,19 @@ describe("assembleSignalChain", () => {
       "1x12 US Deluxe",
     ]);
 
-    // DSP1: EQ, gain block
+    // DSP1: EQ, Plate, gain block
     const dsp1Blocks = chain.filter((b) => b.dsp === 1);
     expect(dsp1Blocks.map((b) => b.modelName)).toEqual([
       "Parametric EQ",
+      "Plate",
       "Gain Block",
     ]);
   });
 
   // Test 2: High-gain amp returns correct blocks with Scream 808 and Horizon Gate
   // COMBO-02: Horizon Gate now placed before amp (pre-amp position) for high-gain
-  it("returns blocks: Horizon Gate > Scream 808 > amp > cab > EQ > gain block for high-gain amp", () => {
+  // COHERE-02: Plate reverb auto-inserted (default high-gain helper has clean+ambient snapshots)
+  it("returns blocks: Horizon Gate > Scream 808 > amp > cab > EQ > Plate > gain block for high-gain amp", () => {
     const chain = assembleSignalChain(highGainIntent(), HELIX_CAPS);
 
     const names = chain.map((b) => b.modelName);
@@ -104,6 +108,7 @@ describe("assembleSignalChain", () => {
       "Placater Dirty",
       "4x12 Cali V30",
       "Parametric EQ",
+      "Plate",
       "Gain Block",
     ]);
   });
@@ -403,28 +408,37 @@ describe("assembleSignalChain", () => {
     expect(dsp0Names).toEqual(["Teemah!", "Minotaur", "US Deluxe Nrm"]);
   });
 
-  // Test: DSP block limit exceeded produces a clear, descriptive error
-  it("throws a clear error message when DSP0 block limit would be exceeded", () => {
-    // With 8 user effects all routed to DSP0 (wah, compressor, 6 drives)
-    // plus mandatory Minotaur (boost) and amp = 10 non-cab blocks on DSP0
-    // This must exceed the 8-block limit and throw a descriptive error
-    expect(() =>
-      assembleSignalChain(
-        cleanIntent({
-          effects: [
-            { modelName: "UK Wah 846", role: "toggleable" },
-            { modelName: "Deluxe Comp", role: "toggleable" },
-            { modelName: "Teemah!", role: "toggleable" },
-            { modelName: "Heir Apparent", role: "toggleable" },
-            { modelName: "Stupor OD", role: "toggleable" },
-            { modelName: "Deranged Master", role: "toggleable" },
-            { modelName: "Vermin Dist", role: "toggleable" },
-            { modelName: "Arbitrator Fuzz", role: "toggleable" },
-          ],
-        }),
-        HELIX_CAPS
-      )
-    ).toThrow(/DSP0 block limit exceeded.*non-cab blocks.*max 8/);
+  // Test: COHERE-01 prevents DSP0 overflow by capping drives to 2
+  // Previously 8 user effects (wah, comp, 6 drives) + boost + amp = 10 DSP0 blocks → overflow
+  // Now COHERE-01 caps drives to 2, so DSP0 = wah + comp + 2 drives + boost + amp = 6 → no overflow
+  it("COHERE-01 drive cap prevents DSP0 overflow from excess user drives", () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const chain = assembleSignalChain(
+      cleanIntent({
+        effects: [
+          { modelName: "UK Wah 846", role: "toggleable" },
+          { modelName: "Deluxe Comp", role: "toggleable" },
+          { modelName: "Teemah!", role: "toggleable" },
+          { modelName: "Heir Apparent", role: "toggleable" },
+          { modelName: "Stupor OD", role: "toggleable" },
+          { modelName: "Deranged Master", role: "toggleable" },
+          { modelName: "Vermin Dist", role: "toggleable" },
+          { modelName: "Arbitrator Fuzz", role: "toggleable" },
+        ],
+      }),
+      HELIX_CAPS
+    );
+
+    const dsp0NonCab = chain.filter(
+      (b) => b.dsp === 0 && b.type !== "cab"
+    );
+    // wah + comp + 2 drives (COHERE-01) + boost + amp = 6
+    expect(dsp0NonCab.length).toBeLessThanOrEqual(8);
+    // Verify drives were capped
+    const userDrives = chain.filter(
+      (b) => b.type === "distortion" && b.modelName !== "Minotaur" && b.modelName !== "Scream 808"
+    );
+    expect(userDrives).toHaveLength(2);
   });
 
   // --- Cross-device model contamination tests ---
@@ -510,7 +524,9 @@ describe("assembleSignalChain", () => {
       const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
       const stadiumCaps = getCapabilities("helix_stadium");
 
-      // 10 effects exceeds Stadium maxEffectsPerDsp (should be 8)
+      // 10 non-drive effects to exceed Stadium maxEffectsPerDsp=8 even after COHERE-01
+      // COHERE-01 only caps drives to 2; non-drive effects are unaffected
+      // COHERE-02 won't add Plate since Hall is already a reverb
       assembleSignalChain(
         cleanIntent({
           ampName: "Agoura German Xtra Red",
@@ -521,11 +537,11 @@ describe("assembleSignalChain", () => {
             { modelName: "70s Chorus", role: "toggleable" },
             { modelName: "Teemah!", role: "toggleable" },
             { modelName: "Deluxe Comp", role: "toggleable" },
-            { modelName: "Stupor OD", role: "toggleable" },
+            { modelName: "Adriatic Delay", role: "toggleable" },
+            { modelName: "Ganymede", role: "toggleable" },
+            { modelName: "Cosmos Echo", role: "toggleable" },
             { modelName: "Heir Apparent", role: "toggleable" },
-            { modelName: "Vermin Dist", role: "toggleable" },
-            { modelName: "Deranged Master", role: "toggleable" },
-            { modelName: "Arbitrator Fuzz", role: "toggleable" },
+            { modelName: "Glitz", role: "toggleable" },
           ],
         }),
         stadiumCaps
@@ -561,12 +577,14 @@ describe("assembleSignalChain", () => {
       expect(budgetWarn).toBeUndefined();
     });
 
-    it("Stadium with 8 user effects produces all 8 in output", () => {
+    it("Stadium with 8 user effects (max 2 drives) produces all 8 in output", () => {
       vi.spyOn(console, "warn").mockImplementation(() => {});
       const stadiumCaps = getCapabilities("helix_stadium");
 
       // COMBO-02: Use UK Wah 846 instead of Deluxe Comp — toggleable compressors
       // are omitted from high-gain chains (Agoura German Xtra Red is high_gain)
+      // COHERE-01: Max 2 drives — replaced 3rd drive (Vermin Dist) with Adriatic Delay
+      // COHERE-02: Hall reverb present, so no auto Plate insertion
       const chain = assembleSignalChain(
         cleanIntent({
           ampName: "Agoura German Xtra Red",
@@ -578,8 +596,8 @@ describe("assembleSignalChain", () => {
             { modelName: "Teemah!", role: "toggleable" },
             { modelName: "UK Wah 846", role: "toggleable" },
             { modelName: "Stupor OD", role: "toggleable" },
-            { modelName: "Heir Apparent", role: "toggleable" },
-            { modelName: "Vermin Dist", role: "toggleable" },
+            { modelName: "Adriatic Delay", role: "toggleable" },
+            { modelName: "Ganymede", role: "toggleable" },
           ],
         }),
         stadiumCaps
