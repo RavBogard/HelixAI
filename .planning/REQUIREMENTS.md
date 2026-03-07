@@ -33,9 +33,9 @@ Requirements for Preset Craft Mastery milestone. Each maps to roadmap phases.
 ### Per-Device Craft
 
 - [ ] **CRAFT-01**: Stomp/Stomp XL presets optimize for 6-block budget — effect choices prioritize maximum tonal variety within tight constraints
-- [ ] **CRAFT-02**: Pod Go presets respect single-DSP, 4-effect budget with intelligent effect prioritization based on genre
+- [x] **CRAFT-02**: Pod Go presets respect single-DSP, 4-effect budget with intelligent effect prioritization based on genre
 - [ ] **CRAFT-03**: Helix Floor/LT presets take full advantage of dual-DSP capacity — richer effect chains, more creative signal routing
-- [ ] **CRAFT-04**: Per-device craft guidance is encoded in both planner prompts (creative direction) and code (hard limit enforcement)
+- [x] **CRAFT-04**: Per-device craft guidance is encoded in both planner prompts (creative direction) and code (hard limit enforcement)
 
 ### Quality Validation
 
@@ -109,9 +109,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | COMBO-03 | Phase 72 | Complete |
 | COMBO-04 | Phase 72 | Complete |
 | CRAFT-01 | Phase 73 | Pending |
-| CRAFT-02 | Phase 73 | Pending |
+| CRAFT-02 | Phase 73 | Complete |
 | CRAFT-03 | Phase 73 | Pending |
-| CRAFT-04 | Phase 73 | Pending |
+| CRAFT-04 | Phase 73 | Complete |
 | QUAL-01 | Phase 74 | Pending |
 | QUAL-02 | Phase 74 | Pending |
 | QUAL-03 | Phase 74 | Pending |
