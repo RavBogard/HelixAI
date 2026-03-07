@@ -7,8 +7,8 @@ last_updated: "2026-03-07"
 progress:
   total_phases: 7
   completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 6
+  completed_plans: 5
 ---
 
 # Project State
@@ -18,21 +18,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-06)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** v6.0 Preset Craft Mastery — Phase 76 complete, next phase ready to plan
+**Current focus:** v6.0 Preset Craft Mastery — Phase 71 Plan 01 complete, Plan 02 next
 
 ## Current Position
 
-Phase: Phase 76 COMPLETE — Device Block Budget Calibration
-Plan: 2/2 complete
-Status: Phase 76 done, all device block budgets calibrated
-Last activity: 2026-03-07 — Phase 76 complete (hardware budget corrections + prompt alignment)
+Phase: Phase 71 — Per-Model Effect Intelligence
+Plan: 1/2 complete
+Status: Plan 01 done (core data layer), Plan 02 next (prompt integration)
+Last activity: 2026-03-07 — Phase 71 Plan 01 complete (genre tables + paramOverrides + resolution step)
 
 Progress: [█████████░░░░░░░░░░░░░░░░░░░░░░░] 29% (2/7 phases complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4 (this milestone)
+- Total plans completed: 5 (this milestone)
+- Phase 71: Plan 01 in ~5 min (genre tables + paramOverrides + resolution step)
 - Phase 76: 2 plans in ~7 min total (avg 3.5 min/plan)
 - Phase 70: 2 plans in ~5 min total (avg 2.5 min/plan)
 - Prior milestone avg: ~5 min/plan (v5.0)
@@ -59,6 +60,8 @@ Progress: [█████████░░░░░░░░░░░░░░
 - [v6.0]: maxEffectsPerDsp calibrated to real hardware: Stomp=4, StompXL=4, Stadium=8, Helix=Infinity, PodGo=4
 - [v6.0]: Zod schema .max(10) for effects array — provides headroom above Stadium's 8-effect capacity
 - [v6.0]: chain-rules now logs console.warn before effect truncation for observability
+- [v6.0]: Effect paramOverrides applied BEFORE genre overrides in resolveDefaultParams (genre intent wins as outermost layer)
+- [v6.0]: 7 effect models get paramOverrides: Ganymede/Glitz/Octo/Plateaux (Mix), Heliosphere/Cosmos Echo/Adriatic Swell (Feedback)
 
 ### Roadmap Evolution
 
@@ -77,6 +80,6 @@ Progress: [█████████░░░░░░░░░░░░░░
 ## Session Continuity
 
 Last session: 2026-03-07
-Stopped at: Phase 76 complete — device block budgets calibrated for all 5 families with 12 new tests
+Stopped at: Phase 71 Plan 01 complete — genre effect model intelligence data layer with 18 new tests (734 total)
 Resume file: None
-Next command: /gsd:plan-phase (next phase)
+Next command: /gsd:execute-phase (Phase 71, Plan 02)
