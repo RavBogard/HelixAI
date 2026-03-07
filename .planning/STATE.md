@@ -8,7 +8,7 @@ progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 4
-  completed_plans: 10
+  completed_plans: 11
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** v7.0 Phase 83 — Download Integration (NEXT)
+**Current focus:** v7.0 Phase 83 — Download Integration (Plan 01 complete, Plan 02 next)
 
 ## Current Position
 
-Phase: 82 of 83 (Controllers + Parameter Dependencies) — COMPLETE
-Plan: 82-01 complete, 82-02 complete
-Status: Phase 82 done — controller/footswitch extraction, dependency rules, UI wiring (64 new tests, 286 total)
-Last activity: 2026-03-07 — Phase 82 complete (EXP/FS extraction, dependency evaluator, store, BlockTile FS badges, ParameterEditorPane EXP badges + DualHandleSlider + dependency rules)
+Phase: 83 of 83 (Download Integration + Diffing)
+Plan: 83-01 complete, 83-02 next
+Status: Plan 83-01 done — state diff engine, dehydrate transformer, /api/download endpoint (17 new tests, 303 total)
+Last activity: 2026-03-07 — Plan 83-01 complete (calculateStateDiff, dehydrateToPresetSpec, POST /api/download with device branching)
 
-Progress: [██████████████████████████████░░] 86% (6/7 phases)
+Progress: [██████████████████████████████░░] 93% (6.5/7 phases)
 
 ## Performance Metrics
 
@@ -63,6 +63,9 @@ Progress: [███████████████████████
 - [v7.0]: Reactive subscription pattern for snapshot-dependent components — subscribe to activeSnapshotIndex + snapshots via hook, use getState() for computed selectors
 - [v7.0]: DualHandleSlider is read-only for Phase 82 — display-only EXP range visualization
 - [v7.0]: evaluateDependencies is pure function called in ParameterEditorPane render — no store coupling for dependency rules
+- [v7.0]: Two-pass block matching for state diff: blockId match for model swaps, type+modelId match for position/add/remove
+- [v7.0]: Dehydrate is identity transform (signalChain = baseBlocks) — builders receive data in expected format
+- [v7.0]: Download endpoint is stateless — no persistence, frontend sends state, backend compiles and returns binary
 
 ### Roadmap Evolution
 
@@ -77,6 +80,6 @@ Progress: [███████████████████████
 ## Session Continuity
 
 Last session: 2026-03-07
-Stopped at: Phase 82 COMPLETE
+Stopped at: Completed 83-01-PLAN.md
 Resume file: None
-Next command: Phase 83 execution (Download Integration)
+Next command: Execute 83-02-PLAN.md (UI download flow wiring)

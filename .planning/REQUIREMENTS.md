@@ -44,7 +44,7 @@ Requirements for Interactive Signal Chain Visualizer milestone. Each maps to roa
 ### API Integration
 
 - [ ] **API-01**: /api/preview endpoint accepts userPrompt + deviceTarget and returns baseBlocks[] + snapshots[4] as VisualizerState — this replaces the current single-step generation flow with a two-step preview-then-download flow
-- [ ] **API-02**: /api/download endpoint accepts modified frontend VisualizerState (baseBlocks + snapshots) and compiles it into the correct downloadable binary — .hlx for Helix, .pgp for Pod Go, .hsp for Stadium
+- [x] **API-02**: /api/download endpoint accepts modified frontend VisualizerState (baseBlocks + snapshots) and compiles it into the correct downloadable binary — .hlx for Helix, .pgp for Pod Go, .hsp for Stadium
 - [ ] **API-03**: Preview hydration uses the deterministic Knowledge Layer pipeline (chain-rules → param-engine → snapshot-engine) — zero AI token cost for parameter resolution after initial ToneIntent generation
 - [ ] **API-04**: Download request payload is diff-optimized via calculateStateDiff() — only chain reordering, model swaps, and snapshot data are transmitted
 
@@ -66,7 +66,7 @@ Requirements for Interactive Signal Chain Visualizer milestone. Each maps to roa
 
 - [ ] **STATE-01**: Zustand store manages VisualizerState with baseBlocks, snapshots[4], activeSnapshotIndex, selectedBlockId, and all mutation actions (setParameterValue, moveBlock, swapBlockModel, hydrate)
 - [ ] **STATE-02**: Computed selectors derive effective block state (getEffectiveBlockState) and DSP-grouped blocks (getBlocksByDsp) without duplicating data in the store
-- [ ] **STATE-03**: calculateStateDiff() detects chain reordering (position/DSP/path changes) and model swaps (same blockId, different modelId) for download optimization
+- [x] **STATE-03**: calculateStateDiff() detects chain reordering (position/DSP/path changes) and model swaps (same blockId, different modelId) for download optimization
 - [ ] **STATE-04**: Hydrate action replaces entire store state when /api/preview returns — clean state reset with no stale data from previous generation
 
 ## Future Requirements
@@ -129,7 +129,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SNAP-03 | Phase 81 | Pending |
 | SNAP-04 | Phase 81 | Pending |
 | API-01 | Phase 77 | Pending |
-| API-02 | Phase 83 | Pending |
+| API-02 | Phase 83 | Complete |
 | API-03 | Phase 77 | Pending |
 | API-04 | Phase 83 | Pending |
 | CTRL-01 | Phase 82 | Pending |
@@ -142,7 +142,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DEP-04 | Phase 82 | Pending |
 | STATE-01 | Phase 77 | Pending |
 | STATE-02 | Phase 77 | Pending |
-| STATE-03 | Phase 83 | Pending |
+| STATE-03 | Phase 83 | Complete |
 | STATE-04 | Phase 77 | Pending |
 
 **Coverage:**
