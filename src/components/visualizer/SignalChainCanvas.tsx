@@ -336,6 +336,15 @@ export function SignalChainCanvas() {
   const removeBlock = useVisualizerStore((s) => s.removeBlock);
   const addBlock = useVisualizerStore((s) => s.addBlock);
 
+  // Reactive subscriptions for snapshot state — triggers re-render when
+  // activeSnapshotIndex or snapshots change so getEffectiveBlockState
+  // returns fresh bypass/override data after snapshot switch.
+  const activeSnapshotIndex = useVisualizerStore((s) => s.activeSnapshotIndex);
+  const snapshots = useVisualizerStore((s) => s.snapshots);
+  // Suppress unused-variable lint — these exist solely to trigger re-renders
+  void activeSnapshotIndex;
+  void snapshots;
+
   // Error message state — shown for 3 seconds on constraint violations
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 

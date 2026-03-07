@@ -244,6 +244,44 @@ describe("SignalChainCanvas", () => {
     expect(screen.getByTestId("dnd-error-area")).toBeTruthy();
   });
 
+  // --------------------------------------------------
+  // Phase 81-02: Snapshot reactivity tests
+  // --------------------------------------------------
+
+  it("canvas re-renders block bypass state when snapshot changes", async () => {
+    const { act } = await import("@testing-library/react");
+    const snapshots = makeSnapshots();
+    // Snapshot 0: delay2 is bypassed
+    snapshots[0].blockStates["delay2"] = false;
+    // Snapshot 1: delay2 is enabled (or undefined = base enabled)
+    snapshots[1].blockStates["delay2"] = true;
+
+    useVisualizerStore.setState({
+      device: "helix_stomp" as DeviceTarget,
+      baseBlocks: [
+        makeBlock({ type: "amp", modelName: "US Double Nrm", position: 0 }),
+        makeBlock({ type: "delay", modelName: "Simple Delay", position: 2 }),
+      ],
+      snapshots,
+      activeSnapshotIndex: 0,
+    });
+
+    render(<SignalChainCanvas />);
+
+    // delay2 should be dimmed in snapshot 0
+    const tile = screen.getByTestId("block-tile-delay2");
+    expect(tile.className).toContain("opacity-40");
+
+    // Switch to snapshot 1
+    act(() => {
+      useVisualizerStore.getState().setActiveSnapshot(1);
+    });
+
+    // delay2 should no longer be dimmed
+    const tileAfter = screen.getByTestId("block-tile-delay2");
+    expect(tileAfter.className).not.toContain("opacity-40");
+  });
+
   it("add block button renders for non-full DSP on stomp device", () => {
     useVisualizerStore.setState({
       device: "helix_stomp" as DeviceTarget,
