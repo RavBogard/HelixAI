@@ -1115,4 +1115,198 @@ describe("assembleSignalChain", () => {
       // 4 total survive: Teemah! + 3 of the time-based effects
     });
   });
+
+  // --- COHERE-01: effect palette balance (max 2 user drives) ---
+
+  describe("COHERE-01: effect palette balance", () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    // COHERE-01-1: Intent with 3 user drives drops lowest-priority drive
+    it("intent with 3 user drives produces chain with max 2 drives (lowest-priority dropped)", () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const chain = assembleSignalChain(
+        cleanIntent({
+          effects: [
+            { modelName: "Compulsive Drive", role: "toggleable" },
+            { modelName: "Heir Apparent", role: "toggleable" },
+            { modelName: "Stupor OD", role: "toggleable" },
+          ],
+        }),
+        HELIX_CAPS
+      );
+
+      // Count user drives (slot === "extra_drive") — exclude mandatory Minotaur (slot === "boost")
+      const userDrives = chain.filter(
+        (b) => b.type === "distortion" && b.modelName !== "Minotaur" && b.modelName !== "Scream 808"
+      );
+      expect(userDrives).toHaveLength(2);
+    });
+
+    // COHERE-01-2: Intent with 2 user drives keeps both
+    it("intent with 2 user drives keeps both — no truncation", () => {
+      const chain = assembleSignalChain(
+        cleanIntent({
+          effects: [
+            { modelName: "Compulsive Drive", role: "toggleable" },
+            { modelName: "Heir Apparent", role: "toggleable" },
+          ],
+        }),
+        HELIX_CAPS
+      );
+
+      const userDrives = chain.filter(
+        (b) => b.type === "distortion" && b.modelName !== "Minotaur" && b.modelName !== "Scream 808"
+      );
+      expect(userDrives).toHaveLength(2);
+    });
+
+    // COHERE-01-3: Mandatory Minotaur boost NOT counted toward 2-drive limit
+    it("mandatory Minotaur boost is NOT counted toward the 2-drive limit", () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const chain = assembleSignalChain(
+        cleanIntent({
+          effects: [
+            { modelName: "Compulsive Drive", role: "toggleable" },
+            // Minotaur is auto-inserted as mandatory boost (slot=boost, not extra_drive)
+          ],
+        }),
+        HELIX_CAPS
+      );
+
+      const names = chain.map((b) => b.modelName);
+      // Both the user drive AND the mandatory Minotaur should be present
+      expect(names).toContain("Compulsive Drive");
+      expect(names).toContain("Minotaur");
+
+      // Total distortion blocks = 2 (Minotaur boost + 1 user drive) — boost doesn't count
+      const distortionBlocks = chain.filter((b) => b.type === "distortion");
+      expect(distortionBlocks).toHaveLength(2);
+    });
+
+    // COHERE-01-4: 3 drives with metal genreHint keeps 2 highest-priority per genre scoring
+    it("3 drives with metal genreHint keeps 2 highest-priority drives per genre scoring", () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const chain = assembleSignalChain(
+        highGainIntent({
+          genreHint: "metal",
+          effects: [
+            { modelName: "Compulsive Drive", role: "toggleable" },
+            { modelName: "Heir Apparent", role: "toggleable" },
+            { modelName: "Stupor OD", role: "ambient" },
+          ],
+        }),
+        HELIX_CAPS
+      );
+
+      // The "ambient" role drive (Stupor OD, score=30+20=50) should be dropped
+      // "toggleable" role drives (score=50+20=70) should survive
+      const userDrives = chain.filter(
+        (b) => b.type === "distortion" && b.modelName !== "Minotaur" && b.modelName !== "Scream 808"
+      );
+      expect(userDrives).toHaveLength(2);
+      const driveNames = userDrives.map((b) => b.modelName);
+      expect(driveNames).not.toContain("Stupor OD");
+    });
+  });
+
+  // --- COHERE-02: reverb soft-mandatory insertion ---
+
+  describe("COHERE-02: reverb soft-mandatory insertion", () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    // COHERE-02-1: Clean amp intent with no reverb auto-inserts Plate reverb
+    it("clean amp intent with no reverb in effects auto-inserts Plate reverb", () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const chain = assembleSignalChain(
+        cleanIntent({
+          effects: [
+            { modelName: "Simple Delay", role: "toggleable" },
+          ],
+        }),
+        HELIX_CAPS
+      );
+
+      const reverbBlocks = chain.filter((b) => b.type === "reverb");
+      expect(reverbBlocks).toHaveLength(1);
+      expect(reverbBlocks[0].modelName).toBe("Plate");
+    });
+
+    // COHERE-02-2: Clean amp intent WITH user-specified reverb does NOT insert a second reverb
+    it("clean amp intent with user-specified reverb does NOT insert Plate", () => {
+      const chain = assembleSignalChain(
+        cleanIntent({
+          effects: [
+            { modelName: "Ganymede", role: "toggleable" },
+          ],
+        }),
+        HELIX_CAPS
+      );
+
+      const reverbBlocks = chain.filter((b) => b.type === "reverb");
+      expect(reverbBlocks).toHaveLength(1);
+      expect(reverbBlocks[0].modelName).toBe("Ganymede");
+    });
+
+    // COHERE-02-3: High-gain-only intent (no clean/ambient snapshots) does NOT auto-insert reverb
+    it("high-gain-only intent with no clean/ambient snapshots does NOT auto-insert reverb", () => {
+      const chain = assembleSignalChain(
+        highGainIntent({
+          snapshots: [
+            { name: "Rhythm", toneRole: "crunch" },
+            { name: "Crunch 2", toneRole: "crunch" },
+            { name: "Lead", toneRole: "lead" },
+            { name: "Lead 2", toneRole: "lead" },
+          ],
+          effects: [
+            { modelName: "Simple Delay", role: "toggleable" },
+          ],
+        }),
+        HELIX_CAPS
+      );
+
+      const reverbBlocks = chain.filter((b) => b.type === "reverb");
+      expect(reverbBlocks).toHaveLength(0);
+    });
+
+    // COHERE-02-4: Intent with ambient snapshot role and no reverb auto-inserts Plate
+    it("intent with ambient snapshot and no reverb auto-inserts Plate", () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const chain = assembleSignalChain(
+        cleanIntent({
+          snapshots: [
+            { name: "Rhythm", toneRole: "crunch" },
+            { name: "Lead", toneRole: "lead" },
+            { name: "Ambient", toneRole: "ambient" },
+            { name: "Lead 2", toneRole: "lead" },
+          ],
+          effects: [],
+        }),
+        HELIX_CAPS
+      );
+
+      const reverbBlocks = chain.filter((b) => b.type === "reverb");
+      expect(reverbBlocks).toHaveLength(1);
+      expect(reverbBlocks[0].modelName).toBe("Plate");
+    });
+
+    // COHERE-02-5: Auto-inserted Plate reverb has intentRole "toggleable" and correct slot
+    it("auto-inserted Plate has intentRole 'toggleable' and trails: true", () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const chain = assembleSignalChain(
+        cleanIntent({
+          effects: [],
+        }),
+        HELIX_CAPS
+      );
+
+      const plateBlock = chain.find((b) => b.modelName === "Plate");
+      expect(plateBlock).toBeDefined();
+      expect(plateBlock!.intentRole).toBe("toggleable");
+      expect(plateBlock!.trails).toBe(true);
+    });
+  });
 });
