@@ -3,6 +3,7 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import type { BlockSpec, SnapshotSpec, DeviceTarget } from "../helix/types";
+import type { ControllerAssignment, FootswitchAssignment } from "./controller-assignments";
 import {
   useVisualizerStore,
   getEffectiveBlockState,
@@ -143,6 +144,47 @@ describe("useVisualizerStore", () => {
       expect(state.snapshots).toHaveLength(4);
       expect(state.activeSnapshotIndex).toBe(0);
       expect(state.selectedBlockId).toBeNull();
+    });
+
+    // --- Phase 82-02: controller/footswitch hydration ---
+
+    it("hydrate stores controllerAssignments when provided", () => {
+      const blocks = makeTestBlocks();
+      const snapshots = makeTestSnapshots();
+      const controllers: ControllerAssignment[] = [
+        { blockId: "wah0", paramKey: "Position", controller: "EXP1", min: 0, max: 1 },
+      ];
+
+      useVisualizerStore.getState().hydrate("helix_floor", blocks, snapshots, controllers);
+
+      const state = useVisualizerStore.getState();
+      expect(state.controllerAssignments).toHaveLength(1);
+      expect(state.controllerAssignments[0].controller).toBe("EXP1");
+    });
+
+    it("hydrate stores footswitchAssignments when provided", () => {
+      const blocks = makeTestBlocks();
+      const snapshots = makeTestSnapshots();
+      const footswitches: FootswitchAssignment[] = [
+        { blockId: "delay2", fsIndex: 5, label: "Simple DLY", ledColor: "#00FF00" },
+      ];
+
+      useVisualizerStore.getState().hydrate("helix_floor", blocks, snapshots, undefined, footswitches);
+
+      const state = useVisualizerStore.getState();
+      expect(state.footswitchAssignments).toHaveLength(1);
+      expect(state.footswitchAssignments[0].fsIndex).toBe(5);
+    });
+
+    it("hydrate defaults controller/footswitch to empty arrays when not provided", () => {
+      const blocks = makeTestBlocks();
+      const snapshots = makeTestSnapshots();
+
+      useVisualizerStore.getState().hydrate("helix_floor", blocks, snapshots);
+
+      const state = useVisualizerStore.getState();
+      expect(state.controllerAssignments).toEqual([]);
+      expect(state.footswitchAssignments).toEqual([]);
     });
 
     it("called twice replaces all state — no stale data from first call", () => {

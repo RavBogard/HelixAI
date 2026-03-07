@@ -2,6 +2,7 @@
 
 import { getBlockUIConfig } from "@/lib/visualizer/block-ui-registry";
 import type { BlockSpec } from "@/lib/helix/types";
+import type { FootswitchAssignment } from "@/lib/visualizer/controller-assignments";
 
 // ---------------------------------------------------------------------------
 // Props
@@ -24,6 +25,8 @@ export interface BlockTileProps {
   onRemove?: (blockId: string) => void;
   /** Visual state when being dragged (from @dnd-kit useSortable) */
   isDragging?: boolean;
+  /** Footswitch assignment data — renders FS badge when provided */
+  footswitchAssignment?: FootswitchAssignment | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -53,6 +56,7 @@ export function BlockTile({
   isLocked,
   onRemove,
   isDragging,
+  footswitchAssignment,
 }: BlockTileProps) {
   const config = getBlockUIConfig(block.type);
   const widthClass = WIDTH_CLASSES[config.widthMode] ?? WIDTH_CLASSES.standard;
@@ -97,6 +101,16 @@ export function BlockTile({
           }}
         >
           x
+        </span>
+      )}
+      {footswitchAssignment && (
+        <span
+          className="absolute bottom-0.5 left-0.5 text-[8px] text-white font-bold px-1 rounded"
+          style={{ backgroundColor: footswitchAssignment.ledColor }}
+          data-testid={`fs-badge-${blockId}`}
+          title={footswitchAssignment.label}
+        >
+          FS{footswitchAssignment.fsIndex}
         </span>
       )}
     </button>

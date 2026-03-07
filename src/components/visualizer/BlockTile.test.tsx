@@ -4,6 +4,7 @@ import React from "react";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import { BlockTile } from "./BlockTile";
 import type { BlockSpec } from "@/lib/helix/types";
+import type { FootswitchAssignment } from "@/lib/visualizer/controller-assignments";
 
 afterEach(cleanup);
 
@@ -281,5 +282,65 @@ describe("BlockTile", () => {
     );
     const tile = screen.getByTestId("block-tile-delay2");
     expect(tile.className).not.toContain("opacity-50");
+  });
+
+  // --------------------------------------------------
+  // Phase 82-02: Footswitch badge rendering
+  // --------------------------------------------------
+
+  it("renders FS badge with correct text when footswitchAssignment is provided", () => {
+    const fsAssignment: FootswitchAssignment = {
+      blockId: "delay2",
+      fsIndex: 5,
+      label: "Simple DLY",
+      ledColor: "#00FF00",
+    };
+    render(
+      <BlockTile
+        block={makeBlock()}
+        blockId="delay2"
+        enabled={true}
+        isSelected={false}
+        onSelect={() => {}}
+        footswitchAssignment={fsAssignment}
+      />,
+    );
+    const badge = screen.getByTestId("fs-badge-delay2");
+    expect(badge).toBeTruthy();
+    expect(badge.textContent).toBe("FS5");
+  });
+
+  it("FS badge has correct background color from ledColor", () => {
+    const fsAssignment: FootswitchAssignment = {
+      blockId: "delay2",
+      fsIndex: 6,
+      label: "Simple DLY",
+      ledColor: "#FF0000",
+    };
+    render(
+      <BlockTile
+        block={makeBlock()}
+        blockId="delay2"
+        enabled={true}
+        isSelected={false}
+        onSelect={() => {}}
+        footswitchAssignment={fsAssignment}
+      />,
+    );
+    const badge = screen.getByTestId("fs-badge-delay2");
+    expect(badge.style.backgroundColor).toBe("rgb(255, 0, 0)");
+  });
+
+  it("does not render FS badge when footswitchAssignment is null/undefined", () => {
+    render(
+      <BlockTile
+        block={makeBlock()}
+        blockId="delay2"
+        enabled={true}
+        isSelected={false}
+        onSelect={() => {}}
+      />,
+    );
+    expect(screen.queryByTestId("fs-badge-delay2")).toBeNull();
   });
 });

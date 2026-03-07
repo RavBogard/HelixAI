@@ -4,6 +4,7 @@
 
 import { create } from "zustand";
 import type { BlockSpec, SnapshotSpec, DeviceTarget } from "./types";
+import type { ControllerAssignment, FootswitchAssignment } from "./controller-assignments";
 import { validateMove, canAddBlock } from "./dnd-constraints";
 import { lookupModelByModelId } from "./parameter-schema";
 
@@ -44,12 +45,16 @@ export interface VisualizerStoreState {
   snapshots: SnapshotSpec[];
   activeSnapshotIndex: number;
   selectedBlockId: string | null;
+  controllerAssignments: ControllerAssignment[];
+  footswitchAssignments: FootswitchAssignment[];
 
   // Mutation actions
   hydrate: (
     device: DeviceTarget,
     baseBlocks: BlockSpec[],
     snapshots: SnapshotSpec[],
+    controllerAssignments?: ControllerAssignment[],
+    footswitchAssignments?: FootswitchAssignment[],
   ) => void;
   setActiveSnapshot: (index: number) => void;
   selectBlock: (blockId: string | null) => void;
@@ -87,16 +92,20 @@ export const useVisualizerStore = create<VisualizerStoreState>((set, get) => ({
   snapshots: [...INITIAL_SNAPSHOTS],
   activeSnapshotIndex: 0,
   selectedBlockId: null,
+  controllerAssignments: [],
+  footswitchAssignments: [],
 
   // --- Actions ---
 
-  hydrate(device, baseBlocks, snapshots) {
+  hydrate(device, baseBlocks, snapshots, controllerAssignments, footswitchAssignments) {
     set({
       device,
       baseBlocks,
       snapshots,
       activeSnapshotIndex: 0,
       selectedBlockId: null,
+      controllerAssignments: controllerAssignments ?? [],
+      footswitchAssignments: footswitchAssignments ?? [],
     });
   },
 
