@@ -147,7 +147,7 @@
 
 - [x] **Phase 77: API Preview + State Foundation** — Two-step API endpoint, Zustand visualizer store, deterministic hydration pipeline (2/2 plans, 33 tests)
 - [x] **Phase 78: Signal Chain Canvas** — Device-specific block rendering (dual DSP rows, single DSP, Pod Go fixed layout) with color-coded tiles and selection (2/2 plans, 91 tests)
-- [ ] **Phase 79: Drag-and-Drop Reordering** — Block reordering within and across DSP rows, constraint validation, block add/remove
+- [x] **Phase 79: Drag-and-Drop Reordering** — Block reordering within and across DSP rows, constraint validation, block add/remove (2/2 plans, 157 tests)
 - [ ] **Phase 80: Parameter Editing** — Side panel with schema registry, 7 control types, human-readable display transforms, model swapping
 - [ ] **Phase 81: Snapshot System** — 4-snapshot switcher with per-snapshot parameter overlays and bypass state toggling
 - [ ] **Phase 82: Controllers + Parameter Dependencies** — Read-only controller assignment badges, expression pedal dual-handle sliders, reactive parameter dependency rules
@@ -198,7 +198,7 @@ Plans:
 **Plans**: 2 plans
 Plans:
 - [x] 79-01-PLAN.md -- DnD constraint engine + addBlock/removeBlock/reorderBlock store actions (TDD, 75 tests)
-- [ ] 79-02-PLAN.md -- DnD UI with @dnd-kit, block remove buttons, model browser dropdown
+- [x] 79-02-PLAN.md -- DnD UI with @dnd-kit, block remove buttons, model browser dropdown (28 component tests)
 
 ### Phase 80: Parameter Editing
 **Goal**: Users can click any block to open a parameter editor side panel showing all editable parameters with human-readable controls — sliders show real units (dB, Hz, ms, %), dropdowns for discrete values, toggles for booleans — and users can swap a block's model with deterministic parameter hydration

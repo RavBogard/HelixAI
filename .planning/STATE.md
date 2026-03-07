@@ -6,9 +6,9 @@ status: active
 last_updated: "2026-03-07"
 progress:
   total_phases: 7
-  completed_phases: 2
-  total_plans: 2
-  completed_plans: 2
+  completed_phases: 3
+  total_plans: 4
+  completed_plans: 4
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** v7.0 Phase 78 — Signal Chain Canvas (COMPLETE, verified)
+**Current focus:** v7.0 Phase 79 — Drag-and-Drop Reordering (COMPLETE, verified)
 
 ## Current Position
 
-Phase: 79 of 83 (Drag-and-Drop Reordering) — IN PROGRESS
-Plan: 79-01 complete, 79-02 pending
-Status: Plan 79-01 complete — DnD constraint engine + store actions, 75 tests, 4 TDD commits
-Last activity: 2026-03-07 — Plan 79-01 complete (constraint engine + store actions)
+Phase: 79 of 83 (Drag-and-Drop Reordering) — COMPLETE
+Plan: 79-01 complete, 79-02 complete
+Status: Phase 79 complete — DnD constraint engine, store actions, @dnd-kit UI, ModelBrowserDropdown, 157 tests
+Last activity: 2026-03-07 — Phase 79 complete (all 5 success criteria verified)
 
-Progress: [████████░░░░░░░░░░░░░░░░░░░░░░░░] 29% (2/7 phases)
+Progress: [████████████░░░░░░░░░░░░░░░░░░░░] 43% (3/7 phases)
 
 ## Performance Metrics
 
@@ -56,6 +56,8 @@ Progress: [████████░░░░░░░░░░░░░░░
 - [v7.0]: hydrateVisualizerState always returns exactly 4 snapshots (truncate/pad)
 - [v7.0]: Per-file @vitest-environment jsdom for component tests — preserves fast node environment for non-React tests
 - [v7.0]: BlockTile uses inline style for backgroundColor + Tailwind for state classes — avoids dynamic class generation issues
+- [v7.0]: SortableBlockTile wraps BlockTile via useSortable — clean separation of DnD and rendering concerns
+- [v7.0]: PointerSensor with distance=5 activation constraint — prevents accidental drags on click
 
 ### Roadmap Evolution
 
@@ -70,6 +72,6 @@ Progress: [████████░░░░░░░░░░░░░░░
 ## Session Continuity
 
 Last session: 2026-03-07
-Stopped at: Plan 79-01 complete, executing Plan 79-02
+Stopped at: Phase 79 complete, ready for Phase 80
 Resume file: None
-Next command: Continue Phase 79 execution (Plan 79-02 — DnD UI)
+Next command: Plan or execute Phase 80 (Parameter Editing)
