@@ -1327,4 +1327,37 @@ describe("assembleSignalChain", () => {
       expect(plateBlock!.trails).toBe(true);
     });
   });
+
+  // --- COHERE-03: slot propagation ---
+
+  describe("COHERE-03: slot propagation", () => {
+    // COHERE-03-1: Mandatory boost blocks have slot="boost" on the output BlockSpec
+    it("mandatory Minotaur has slot='boost' on output BlockSpec", () => {
+      const chain = assembleSignalChain(cleanIntent(), HELIX_CAPS);
+      const minotaur = chain.find((b) => b.modelName === "Minotaur");
+      expect(minotaur).toBeDefined();
+      expect(minotaur!.slot).toBe("boost");
+    });
+
+    // COHERE-03-2: Mandatory Scream 808 has slot="boost" for high-gain
+    it("mandatory Scream 808 has slot='boost' on output BlockSpec", () => {
+      const chain = assembleSignalChain(highGainIntent(), HELIX_CAPS);
+      const scream = chain.find((b) => b.modelName === "Scream 808");
+      expect(scream).toBeDefined();
+      expect(scream!.slot).toBe("boost");
+    });
+
+    // COHERE-03-3: User-selected Minotaur does NOT have slot="boost"
+    it("user-selected Minotaur does NOT have slot='boost'", () => {
+      const chain = assembleSignalChain(
+        cleanIntent({
+          effects: [{ modelName: "Minotaur", role: "toggleable" }],
+        }),
+        HELIX_CAPS
+      );
+      const minotaur = chain.find((b) => b.modelName === "Minotaur");
+      expect(minotaur).toBeDefined();
+      expect(minotaur!.slot).not.toBe("boost");
+    });
+  });
 });
