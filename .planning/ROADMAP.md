@@ -149,7 +149,7 @@
 - [x] **Phase 78: Signal Chain Canvas** — Device-specific block rendering (dual DSP rows, single DSP, Pod Go fixed layout) with color-coded tiles and selection (2/2 plans, 91 tests)
 - [x] **Phase 79: Drag-and-Drop Reordering** — Block reordering within and across DSP rows, constraint validation, block add/remove (2/2 plans, 157 tests)
 - [x] **Phase 80: Parameter Editing** — Side panel with schema registry, 7 control types, human-readable display transforms, model swapping (2/2 plans, 203 tests)
-- [ ] **Phase 81: Snapshot System** — 4-snapshot switcher with per-snapshot parameter overlays and bypass state toggling (2 plans)
+- [x] **Phase 81: Snapshot System** — 4-snapshot switcher with per-snapshot parameter overlays and bypass state toggling (2/2 plans, 222 tests)
 - [ ] **Phase 82: Controllers + Parameter Dependencies** — Read-only controller assignment badges, expression pedal dual-handle sliders, reactive parameter dependency rules
 - [ ] **Phase 83: Download Integration + Diffing** — /api/download endpoint compiling modified state to device files, diff-optimized payloads, state diffing
 
@@ -226,8 +226,8 @@ Plans:
   5. Editing a parameter while Snap 2 is active does NOT modify the baseBlock parameters — base state remains pristine
 **Plans**: 2 plans
 Plans:
-- [ ] 81-01-PLAN.md -- toggleBlockBypass store action + SnapshotSelectorBar component (TDD, snapshot isolation tests)
-- [ ] 81-02-PLAN.md -- Reactive wiring for canvas/editor snapshot switching + page layout integration
+- [x] 81-01-PLAN.md -- toggleBlockBypass store action + SnapshotSelectorBar component (TDD, 14 tests)
+- [x] 81-02-PLAN.md -- Reactive wiring for canvas/editor snapshot switching + page layout integration (4 tests, 222 total)
 
 ### Phase 82: Controllers + Parameter Dependencies
 **Goal**: Users see which parameters are hardware-controlled (expression pedals, footswitches) via inline badges and dual-handle sliders, and parameter controls reactively show/hide based on dependency rules (Sync hides Time, Link disables Right params)
@@ -258,14 +258,14 @@ Phases execute in numeric order: 77 -> 78 -> 79 -> 80 -> 81 -> 82 -> 83
 
 | Phase | Milestone | Plans | Status | Completed |
 |-------|-----------|-------|--------|-----------|
-| 77. API Preview + State Foundation | v7.0 | 2 plans | Complete | 2026-03-07 |
-| 78. Signal Chain Canvas | v7.0 | 2 plans | Complete | 2026-03-07 |
-| 79. Drag-and-Drop Reordering | v7.0 | TBD | Not started | - |
-| 80. Parameter Editing | 1/2 | In Progress|  | - |
-| 81. Snapshot System | 1/2 | In Progress|  | - |
+| 77. API Preview + State Foundation | v7.0 | 2/2 plans | Complete | 2026-03-07 |
+| 78. Signal Chain Canvas | v7.0 | 2/2 plans | Complete | 2026-03-07 |
+| 79. Drag-and-Drop Reordering | v7.0 | 2/2 plans | Complete | 2026-03-07 |
+| 80. Parameter Editing | v7.0 | 2/2 plans | Complete | 2026-03-07 |
+| 81. Snapshot System | v7.0 | 2/2 plans | Complete | 2026-03-07 |
 | 82. Controllers + Dependencies | v7.0 | TBD | Not started | - |
 | 83. Download Integration + Diffing | v7.0 | TBD | Not started | - |
 
 ---
-*Last updated: 2026-03-07 after Phase 78 complete (2/2 plans, 91 tests, verified)*
+*Last updated: 2026-03-07 after Phase 81 complete (2/2 plans, 222 tests, 5/7 phases done)*
 *Full phase details for completed milestones archived in `.planning/milestones/`*
