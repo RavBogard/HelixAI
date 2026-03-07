@@ -227,6 +227,45 @@ function checkReverbWithoutCabFiltering(
 }
 
 // ---------------------------------------------------------------------------
+// COHERE-06: Description-effect cross-validation
+// ---------------------------------------------------------------------------
+
+/**
+ * Warn when description mentions effects not present in signal chain.
+ * Advisory only — never throws.
+ */
+function checkDescriptionEffectCoherence(
+  spec: PresetSpec,
+  warnings: QualityWarning[],
+): void {
+  if (!spec.description) return;
+  const desc = spec.description.toLowerCase();
+
+  const effectKeywords: Array<[string, BlockSpec["type"]]> = [
+    ["reverb", "reverb"],
+    ["delay", "delay"],
+    ["chorus", "modulation"],
+    ["tremolo", "modulation"],
+    ["flanger", "modulation"],
+    ["phaser", "modulation"],
+    ["modulation", "modulation"],
+  ];
+
+  for (const [keyword, blockType] of effectKeywords) {
+    if (desc.includes(keyword)) {
+      const hasEffect = spec.signalChain.some(b => b.type === blockType);
+      if (!hasEffect) {
+        warnings.push({
+          code: "DESC_EFFECT_MISSING",
+          severity: "warn",
+          message: `Description mentions "${keyword}" but no ${blockType} block in signal chain`,
+        });
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -263,6 +302,9 @@ export function validatePresetQuality(
     checkSnapshotLevelBalance(spec, warnings);
     checkEffectPresence(spec, warnings);
     checkReverbWithoutCabFiltering(spec, warnings);
+
+    // COHERE-06: Description-effect cross-validation
+    checkDescriptionEffectCoherence(spec, warnings);
 
     return warnings;
   } catch {

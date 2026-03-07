@@ -16,6 +16,7 @@ interface Message {
 // Signal chain block data from PresetSpec
 interface VizBlock {
   type: string;
+  modelId: string;
   modelName: string;
   dsp: number;
   enabled: boolean;
@@ -40,9 +41,8 @@ const LED_CSS: Record<number, string> = {
   8: "#e5e7eb",   // White
 };
 
-// Block type → display label
+// Block type -> display label (COHERE-05: dynamics handled by getBlockLabel)
 const BLOCK_LABEL: Record<string, string> = {
-  dynamics: "Gate",
   distortion: "Drive",
   amp: "Amp",
   cab: "Cab",
@@ -55,6 +55,23 @@ const BLOCK_LABEL: Record<string, string> = {
   pitch: "Pitch",
   send_return: "FX Loop",
 };
+
+// COHERE-05: Context-aware block label — distinguishes compressor from gate
+function getBlockLabel(block: { type: string; modelId: string }): string {
+  if (block.type === "dynamics") {
+    // Compressor IDs: HD2_Compressor* (except HD2_CompressorAutoSwell which is a swell effect)
+    if (block.modelId.startsWith("HD2_Compressor") && !block.modelId.includes("AutoSwell")) {
+      return "Comp";
+    }
+    // Gate IDs: HD2_Gate*
+    if (block.modelId.startsWith("HD2_Gate")) {
+      return "Gate";
+    }
+    // Autoswell and unknown dynamics
+    return "Dynamics";
+  }
+  return BLOCK_LABEL[block.type] || block.type;
+}
 
 // Phase 66: device picker options — single source of truth for both rig-upload and chat-flow pickers
 const DEVICE_OPTIONS = [
@@ -89,7 +106,7 @@ function SignalChainViz({ blocks }: { blocks: VizBlock[] }) {
               }`}
             >
               <span className="text-[10px] font-semibold tracking-wide uppercase text-[var(--hlx-text-muted)]">
-                {BLOCK_LABEL[block.type] || block.type}
+                {getBlockLabel(block)}
               </span>
               <span className="text-[11px] text-[var(--hlx-text-sub)] leading-tight max-w-[80px] truncate">
                 {block.modelName}
@@ -150,7 +167,7 @@ function ToneDescriptionCard({
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[var(--hlx-elevated)] border border-[var(--hlx-border)] text-[11px] text-[var(--hlx-text-sub)]"
             >
               <span className="text-[var(--hlx-text-muted)] font-semibold uppercase text-[9px]">
-                {BLOCK_LABEL[fx.type] || fx.type}
+                {getBlockLabel(fx)}
               </span>
               {fx.modelName}
             </span>
