@@ -6,6 +6,8 @@ import { useVisualizerStore } from "@/lib/visualizer/store";
 import { ParameterEditorPane } from "./ParameterEditorPane";
 import type { BlockSpec, DeviceTarget, SnapshotSpec } from "@/lib/helix/types";
 
+import type { ControllerAssignment } from "@/lib/visualizer/controller-assignments";
+
 afterEach(() => {
   cleanup();
   useVisualizerStore.setState({
@@ -19,6 +21,8 @@ afterEach(() => {
     ],
     activeSnapshotIndex: 0,
     selectedBlockId: null,
+    controllerAssignments: [],
+    footswitchAssignments: [],
   });
 });
 
@@ -427,5 +431,212 @@ describe("ParameterEditorPane model swap", () => {
     expect(block.modelName).toBe("Minotaur");
     // Minotaur's defaults: Gain: 0.20, Treble: 0.50, Output: 0.60
     expect(block.parameters).toEqual({ Gain: 0.20, Treble: 0.50, Output: 0.60 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 82-02: Controller badges, dual-handle slider, dependency rules
+// ---------------------------------------------------------------------------
+
+describe("ParameterEditorPane controller assignments", () => {
+  it("shows EXP1 badge for parameter with expression pedal assignment", () => {
+    const controllers: ControllerAssignment[] = [
+      { blockId: "wah0", paramKey: "Position", controller: "EXP1", min: 0, max: 1 },
+    ];
+    useVisualizerStore.setState({
+      baseBlocks: [
+        makeBlock({
+          type: "wah",
+          modelId: "HD2_WahChromeCustom",
+          modelName: "Chrome Custom",
+          position: 0,
+          parameters: { Position: 0.5 },
+        }),
+      ],
+      snapshots: makeSnapshots(),
+      selectedBlockId: "wah0",
+      controllerAssignments: controllers,
+    });
+
+    render(<ParameterEditorPane />);
+    const badge = screen.getByTestId("controller-badge-Position");
+    expect(badge).toBeTruthy();
+    expect(badge.textContent).toBe("EXP1");
+  });
+
+  it("renders dual-handle slider for EXP-assigned parameter", () => {
+    const controllers: ControllerAssignment[] = [
+      { blockId: "wah0", paramKey: "Position", controller: "EXP1", min: 0, max: 1 },
+    ];
+    useVisualizerStore.setState({
+      baseBlocks: [
+        makeBlock({
+          type: "wah",
+          modelId: "HD2_WahChromeCustom",
+          modelName: "Chrome Custom",
+          position: 0,
+          parameters: { Position: 0.5 },
+        }),
+      ],
+      snapshots: makeSnapshots(),
+      selectedBlockId: "wah0",
+      controllerAssignments: controllers,
+    });
+
+    render(<ParameterEditorPane />);
+    expect(screen.getByTestId("param-dual-slider-Position")).toBeTruthy();
+    // Should NOT render the regular slider
+    expect(screen.queryByTestId("param-slider-Position")).toBeNull();
+  });
+
+  it("dual-handle slider shows min and max handles", () => {
+    const controllers: ControllerAssignment[] = [
+      { blockId: "wah0", paramKey: "Position", controller: "EXP2", min: 0.2, max: 0.8 },
+    ];
+    useVisualizerStore.setState({
+      baseBlocks: [
+        makeBlock({
+          type: "wah",
+          modelId: "HD2_WahChromeCustom",
+          modelName: "Chrome Custom",
+          position: 0,
+          parameters: { Position: 0.5 },
+        }),
+      ],
+      snapshots: makeSnapshots(),
+      selectedBlockId: "wah0",
+      controllerAssignments: controllers,
+    });
+
+    render(<ParameterEditorPane />);
+    expect(screen.getByTestId("min-handle-Position")).toBeTruthy();
+    expect(screen.getByTestId("max-handle-Position")).toBeTruthy();
+  });
+});
+
+describe("ParameterEditorPane dependency rules", () => {
+  it("hides Time when Sync=ON (1)", () => {
+    useVisualizerStore.setState({
+      baseBlocks: [
+        makeBlock({
+          parameters: { Sync: 1, Time: 0.5, Interval: 3, Feedback: 0.4, Mix: 0.3 },
+        }),
+      ],
+      snapshots: makeSnapshots(),
+      selectedBlockId: "delay0",
+    });
+
+    render(<ParameterEditorPane />);
+    expect(screen.queryByTestId("param-slider-Time")).toBeNull();
+  });
+
+  it("shows Interval when Sync=ON (1)", () => {
+    useVisualizerStore.setState({
+      baseBlocks: [
+        makeBlock({
+          parameters: { Sync: 1, Time: 0.5, Interval: 3, Feedback: 0.4, Mix: 0.3 },
+        }),
+      ],
+      snapshots: makeSnapshots(),
+      selectedBlockId: "delay0",
+    });
+
+    render(<ParameterEditorPane />);
+    expect(screen.getByTestId("param-slider-Interval")).toBeTruthy();
+  });
+
+  it("shows Time when Sync=OFF (0)", () => {
+    useVisualizerStore.setState({
+      baseBlocks: [
+        makeBlock({
+          parameters: { Sync: 0, Time: 0.5, Interval: 3, Feedback: 0.4, Mix: 0.3 },
+        }),
+      ],
+      snapshots: makeSnapshots(),
+      selectedBlockId: "delay0",
+    });
+
+    render(<ParameterEditorPane />);
+    expect(screen.getByTestId("param-slider-Time")).toBeTruthy();
+  });
+
+  it("hides Interval when Sync=OFF (0)", () => {
+    useVisualizerStore.setState({
+      baseBlocks: [
+        makeBlock({
+          parameters: { Sync: 0, Time: 0.5, Interval: 3, Feedback: 0.4, Mix: 0.3 },
+        }),
+      ],
+      snapshots: makeSnapshots(),
+      selectedBlockId: "delay0",
+    });
+
+    render(<ParameterEditorPane />);
+    expect(screen.queryByTestId("param-slider-Interval")).toBeNull();
+  });
+
+  it("disables Right Time when Link=ON (1)", () => {
+    useVisualizerStore.setState({
+      baseBlocks: [
+        makeBlock({
+          parameters: { Link: 1, Time: 0.5, "Right Time": 0.6, Feedback: 0.4, Mix: 0.3 },
+          stereo: true,
+        }),
+      ],
+      snapshots: makeSnapshots(),
+      selectedBlockId: "delay0",
+    });
+
+    render(<ParameterEditorPane />);
+    const wrapper = screen.getByTestId("param-wrapper-Right Time");
+    expect(wrapper.className).toContain("opacity-50");
+    expect(wrapper.className).toContain("pointer-events-none");
+  });
+
+  it("dims ModSpeed when ModDepth=0", () => {
+    useVisualizerStore.setState({
+      baseBlocks: [
+        makeBlock({
+          type: "modulation",
+          modelId: "HD2_ModChorus",
+          modelName: "Chorus",
+          parameters: { ModDepth: 0, ModSpeed: 0.5, Mix: 0.3 },
+        }),
+      ],
+      snapshots: makeSnapshots(),
+      selectedBlockId: "modulation0",
+    });
+
+    render(<ParameterEditorPane />);
+    const wrapper = screen.getByTestId("param-wrapper-ModSpeed");
+    expect(wrapper.className).toContain("opacity-60");
+    // Dimmed but still interactive (no pointer-events-none)
+    expect(wrapper.className).not.toContain("pointer-events-none");
+  });
+
+  it("dependency state updates when parameter changes", async () => {
+    const { act } = await import("@testing-library/react");
+
+    useVisualizerStore.setState({
+      baseBlocks: [
+        makeBlock({
+          parameters: { Sync: 0, Time: 0.5, Interval: 3, Feedback: 0.4, Mix: 0.3 },
+        }),
+      ],
+      snapshots: makeSnapshots(),
+      selectedBlockId: "delay0",
+    });
+
+    render(<ParameterEditorPane />);
+    // Sync=OFF: Time should be visible
+    expect(screen.getByTestId("param-slider-Time")).toBeTruthy();
+
+    // Change Sync to ON via store
+    act(() => {
+      useVisualizerStore.getState().setParameterValue("delay0", "Sync", 1);
+    });
+
+    // Time should now be hidden
+    expect(screen.queryByTestId("param-slider-Time")).toBeNull();
   });
 });

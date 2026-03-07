@@ -26,6 +26,9 @@ import {
 } from "@/lib/helix/models";
 import type { HelixModel } from "@/lib/helix/models";
 import type { BlockSpec } from "@/lib/helix/types";
+import { getControllerForParam } from "@/lib/visualizer/controller-assignments";
+import type { ControllerAssignment } from "@/lib/visualizer/controller-assignments";
+import { evaluateDependencies } from "@/lib/visualizer/param-dependencies";
 
 // ---------------------------------------------------------------------------
 // Model catalogs by block type — for model swap dropdown
@@ -172,6 +175,70 @@ function DropdownControl({
   );
 }
 
+function DualHandleSlider({
+  paramKey,
+  assignment,
+  schema,
+}: {
+  paramKey: string;
+  assignment: ControllerAssignment;
+  schema: ParameterSchemaDef;
+}) {
+  const minDisplay = toDisplayValue(assignment.min, schema);
+  const maxDisplay = toDisplayValue(assignment.max, schema);
+  const minFormatted =
+    schema.step >= 1
+      ? Math.round(minDisplay).toString()
+      : minDisplay.toFixed(1);
+  const maxFormatted =
+    schema.step >= 1
+      ? Math.round(maxDisplay).toString()
+      : maxDisplay.toFixed(1);
+
+  return (
+    <div
+      className="flex flex-col gap-1"
+      data-testid={`param-dual-slider-${paramKey}`}
+    >
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-1.5">
+          <label className="text-xs text-gray-400 uppercase">{paramKey}</label>
+          <span
+            className="text-[10px] font-bold bg-blue-600 text-white px-1.5 py-0.5 rounded"
+            data-testid={`controller-badge-${paramKey}`}
+          >
+            {assignment.controller}
+          </span>
+        </div>
+        <span className="text-sm text-white font-mono">
+          {minFormatted}&ndash;{maxFormatted}
+          {schema.unit}
+        </span>
+      </div>
+      {/* Read-only dual range visualization */}
+      <div className="relative w-full h-2 bg-gray-700 rounded">
+        <div
+          className="absolute h-full bg-blue-500/40 rounded"
+          style={{
+            left: `${assignment.min * 100}%`,
+            width: `${(assignment.max - assignment.min) * 100}%`,
+          }}
+        />
+        <div
+          className="absolute w-2 h-4 bg-blue-400 rounded -top-1"
+          style={{ left: `${assignment.min * 100}%` }}
+          data-testid={`min-handle-${paramKey}`}
+        />
+        <div
+          className="absolute w-2 h-4 bg-blue-400 rounded -top-1"
+          style={{ left: `${assignment.max * 100}%` }}
+          data-testid={`max-handle-${paramKey}`}
+        />
+      </div>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Main Component
 // ---------------------------------------------------------------------------
@@ -191,6 +258,7 @@ export function ParameterEditorPane() {
   const activeSnapshotIndex = useVisualizerStore((s) => s.activeSnapshotIndex);
   const snapshots = useVisualizerStore((s) => s.snapshots);
   const baseBlocks = useVisualizerStore((s) => s.baseBlocks);
+  const controllerAssignments = useVisualizerStore((s) => s.controllerAssignments);
   void activeSnapshotIndex;
   void snapshots;
   void baseBlocks;
@@ -274,51 +342,116 @@ export function ParameterEditorPane() {
       )}
 
       {/* Parameter List */}
-      {visibleParams.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center text-gray-500 text-sm">
-          No editable parameters
-        </div>
-      ) : (
-        <div className="flex flex-col gap-3" data-testid="parameter-list">
-          {visibleParams.map(([paramKey, rawValue]) => {
-            const schema = PARAMETER_SCHEMA[paramKey] ?? DEFAULT_SCHEMA;
+      {(() => {
+        // Evaluate dependency rules against block parameters
+        const depState = evaluateDependencies(
+          block.parameters as Record<string, number | boolean>,
+        );
 
-            if (schema.type === "boolean") {
-              return (
-                <ToggleControl
-                  key={paramKey}
-                  paramKey={paramKey}
-                  value={rawValue as boolean}
-                  onChange={(k, v) => handleParamChange(k, v)}
-                />
+        // Filter visible params further by dependency visibility
+        const filteredParams = visibleParams.filter(([paramKey]) => {
+          const dep = depState[paramKey];
+          if (dep && !dep.visible) return false;
+          return true;
+        });
+
+        if (filteredParams.length === 0) {
+          return (
+            <div className="flex-1 flex items-center justify-center text-gray-500 text-sm">
+              No editable parameters
+            </div>
+          );
+        }
+
+        return (
+          <div className="flex flex-col gap-3" data-testid="parameter-list">
+            {filteredParams.map(([paramKey, rawValue]) => {
+              const schema = PARAMETER_SCHEMA[paramKey] ?? DEFAULT_SCHEMA;
+              const paramDep = depState[paramKey] ?? {
+                visible: true,
+                enabled: true,
+                dimmed: false,
+              };
+
+              // Check for controller assignment (EXP pedal)
+              const ctrlAssignment = getControllerForParam(
+                controllerAssignments,
+                selectedBlockId!,
+                paramKey,
               );
-            }
 
-            if (schema.type === "discrete") {
-              return (
-                <DropdownControl
-                  key={paramKey}
-                  paramKey={paramKey}
-                  rawValue={rawValue as number}
-                  schema={schema}
-                  onChange={(k, v) => handleParamChange(k, v)}
-                />
-              );
-            }
+              // If assigned to expression pedal, render DualHandleSlider
+              if (ctrlAssignment) {
+                return (
+                  <DualHandleSlider
+                    key={paramKey}
+                    paramKey={paramKey}
+                    assignment={ctrlAssignment}
+                    schema={schema}
+                  />
+                );
+              }
 
-            // All other types: slider control
-            return (
-              <SliderControl
-                key={paramKey}
-                paramKey={paramKey}
-                rawValue={rawValue as number}
-                schema={schema}
-                onChange={(k, v) => handleParamChange(k, v)}
-              />
-            );
-          })}
-        </div>
-      )}
+              // Build wrapper classes for disabled/dimmed states
+              const wrapperClasses = [
+                !paramDep.enabled ? "opacity-50 pointer-events-none" : "",
+                paramDep.dimmed ? "opacity-60" : "",
+              ]
+                .filter(Boolean)
+                .join(" ");
+
+              const needsWrapper = wrapperClasses.length > 0;
+
+              let control: React.ReactNode;
+
+              if (schema.type === "boolean") {
+                control = (
+                  <ToggleControl
+                    key={paramKey}
+                    paramKey={paramKey}
+                    value={rawValue as boolean}
+                    onChange={(k, v) => handleParamChange(k, v)}
+                  />
+                );
+              } else if (schema.type === "discrete") {
+                control = (
+                  <DropdownControl
+                    key={paramKey}
+                    paramKey={paramKey}
+                    rawValue={rawValue as number}
+                    schema={schema}
+                    onChange={(k, v) => handleParamChange(k, v)}
+                  />
+                );
+              } else {
+                control = (
+                  <SliderControl
+                    key={paramKey}
+                    paramKey={paramKey}
+                    rawValue={rawValue as number}
+                    schema={schema}
+                    onChange={(k, v) => handleParamChange(k, v)}
+                  />
+                );
+              }
+
+              if (needsWrapper) {
+                return (
+                  <div
+                    key={paramKey}
+                    className={wrapperClasses}
+                    data-testid={`param-wrapper-${paramKey}`}
+                  >
+                    {control}
+                  </div>
+                );
+              }
+
+              return control;
+            })}
+          </div>
+        );
+      })()}
     </div>
   );
 }
