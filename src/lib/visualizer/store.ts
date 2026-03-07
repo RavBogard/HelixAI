@@ -48,6 +48,16 @@ export interface VisualizerStoreState {
   controllerAssignments: ControllerAssignment[];
   footswitchAssignments: FootswitchAssignment[];
 
+  // Preset metadata (set during hydration, used by download flow)
+  presetName: string;
+  description: string;
+  tempo: number;
+
+  // Diff baseline — original state captured at hydration time, never mutated.
+  // Used by DownloadButton to detect whether changes have been made.
+  originalBaseBlocks: BlockSpec[];
+  originalSnapshots: SnapshotSpec[];
+
   // Mutation actions
   hydrate: (
     device: DeviceTarget,
@@ -55,6 +65,9 @@ export interface VisualizerStoreState {
     snapshots: SnapshotSpec[],
     controllerAssignments?: ControllerAssignment[],
     footswitchAssignments?: FootswitchAssignment[],
+    presetName?: string,
+    description?: string,
+    tempo?: number,
   ) => void;
   setActiveSnapshot: (index: number) => void;
   selectBlock: (blockId: string | null) => void;
@@ -94,10 +107,15 @@ export const useVisualizerStore = create<VisualizerStoreState>((set, get) => ({
   selectedBlockId: null,
   controllerAssignments: [],
   footswitchAssignments: [],
+  presetName: "",
+  description: "",
+  tempo: 120,
+  originalBaseBlocks: [],
+  originalSnapshots: [],
 
   // --- Actions ---
 
-  hydrate(device, baseBlocks, snapshots, controllerAssignments, footswitchAssignments) {
+  hydrate(device, baseBlocks, snapshots, controllerAssignments, footswitchAssignments, presetName, description, tempo) {
     set({
       device,
       baseBlocks,
@@ -106,6 +124,13 @@ export const useVisualizerStore = create<VisualizerStoreState>((set, get) => ({
       selectedBlockId: null,
       controllerAssignments: controllerAssignments ?? [],
       footswitchAssignments: footswitchAssignments ?? [],
+      presetName: presetName ?? "",
+      description: description ?? "",
+      tempo: tempo ?? 120,
+      // Deep-clone baseline state so mutations to baseBlocks/snapshots don't
+      // affect the diff comparison.
+      originalBaseBlocks: JSON.parse(JSON.stringify(baseBlocks)),
+      originalSnapshots: JSON.parse(JSON.stringify(snapshots)),
     });
   },
 
