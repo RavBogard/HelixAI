@@ -5,6 +5,7 @@
 // frontend visualizer state.
 
 import type { PresetSpec, BlockSpec, SnapshotSpec, DeviceTarget } from "@/lib/helix/types";
+import type { ControllerAssignment, FootswitchAssignment } from "./controller-assignments";
 
 export interface PreviewResult {
   device: DeviceTarget;
@@ -13,6 +14,8 @@ export interface PreviewResult {
   presetName: string;
   description: string;
   tempo: number;
+  controllerAssignments: ControllerAssignment[];
+  footswitchAssignments: FootswitchAssignment[];
 }
 
 /**
@@ -53,6 +56,8 @@ function padSnapshots(
 export function hydrateVisualizerState(
   presetSpec: PresetSpec,
   device: DeviceTarget,
+  controllerAssignments?: ControllerAssignment[],
+  footswitchAssignments?: FootswitchAssignment[],
 ): PreviewResult {
   return {
     device,
@@ -61,5 +66,7 @@ export function hydrateVisualizerState(
     presetName: presetSpec.name,
     description: presetSpec.description,
     tempo: presetSpec.tempo,
+    controllerAssignments: controllerAssignments ?? [],
+    footswitchAssignments: footswitchAssignments ?? [],
   };
 }

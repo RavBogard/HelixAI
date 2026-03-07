@@ -4,6 +4,7 @@
 import { describe, it, expect } from "vitest";
 import type { PresetSpec, BlockSpec, SnapshotSpec } from "../helix/types";
 import { hydrateVisualizerState } from "./hydrate";
+import type { ControllerAssignment, FootswitchAssignment } from "./controller-assignments";
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -172,5 +173,41 @@ describe("hydrateVisualizerState", () => {
     expect(result.snapshots).toHaveLength(4);
     expect(result.snapshots[0].name).toBe("Snap 1");
     expect(result.snapshots[3].name).toBe("Snap 4");
+  });
+
+  // --- Phase 82 additions: controller/footswitch passthrough ---
+
+  it("defaults controllerAssignments to [] when not provided", () => {
+    const presetSpec = makePresetSpec(4);
+    const result = hydrateVisualizerState(presetSpec, "helix_lt");
+
+    expect(result.controllerAssignments).toEqual([]);
+  });
+
+  it("defaults footswitchAssignments to [] when not provided", () => {
+    const presetSpec = makePresetSpec(4);
+    const result = hydrateVisualizerState(presetSpec, "helix_lt");
+
+    expect(result.footswitchAssignments).toEqual([]);
+  });
+
+  it("passes through controllerAssignments when provided", () => {
+    const presetSpec = makePresetSpec(4);
+    const controllers: ControllerAssignment[] = [
+      { blockId: "wah0", paramKey: "Position", controller: "EXP1", min: 0, max: 1 },
+    ];
+    const result = hydrateVisualizerState(presetSpec, "helix_lt", controllers);
+
+    expect(result.controllerAssignments).toEqual(controllers);
+  });
+
+  it("passes through footswitchAssignments when provided", () => {
+    const presetSpec = makePresetSpec(4);
+    const footswitches: FootswitchAssignment[] = [
+      { blockId: "delay2", fsIndex: 5, label: "Simple DLY", ledColor: "#00FF00" },
+    ];
+    const result = hydrateVisualizerState(presetSpec, "helix_lt", undefined, footswitches);
+
+    expect(result.footswitchAssignments).toEqual(footswitches);
   });
 });
