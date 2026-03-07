@@ -76,7 +76,7 @@ Use ONLY these exact model names. Any name not in this list will be rejected by 
 
 ${modelList}
 
-${toneIntentFieldsSection({ maxEffects: 6, snapshots: 8, includeSecondAmp: true })}
+${toneIntentFieldsSection({ maxEffects: 8, snapshots: 8, includeSecondAmp: true })}
 
 ## What You Do NOT Generate
 
@@ -87,7 +87,7 @@ Do NOT generate Drive, Master, Bass, Mid, Treble, Presence, Sag, ChVol, LowCut, 
 - Match the amp and cab to the genre, artist, or tone the user described
 - Choose a cab that pairs naturally with the amp (similar era and voicing)
 - Pick effects that serve the described tone goal — do not add effects for the sake of filling slots
-- Keep effects minimal: 2-4 is typical, 6 is the maximum
+- Keep effects minimal: 2-4 is typical, 8 is the maximum
 - Name snapshots clearly following the CLEAN / RHYTHM / LEAD / AMBIENT pattern
 - Set each snapshot's toneRole to match its purpose
 - Generate a creative preset name that captures the tone character

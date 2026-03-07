@@ -301,7 +301,7 @@ Plans:
 - [ ] **Phase 72: Effect Combination Logic** — Deterministic cross-effect parameter interactions: wah+comp threshold, high-gain gate placement, delay+reverb balance, priority ordering for device budgets
 - [ ] **Phase 73: Per-Device Craft Optimization** — Device-specific tone optimization in both prompts (creative direction) and code (hard limit enforcement) for Stomp, Pod Go, Helix, and Stadium
 - [ ] **Phase 74: Quality Validation** — Non-throwing validatePresetQuality() advisory gate, per-device baseline comparison, regression detection
-- [ ] **Phase 76: Device Block Budget Calibration** — Audit and correct all device block/effect limits to match real hardware; fix Stadium 4→8+ effects, Helix prompt 6→8+ effects, Stomp maxEffectsPerDsp mislabel
+- [x] **Phase 76: Device Block Budget Calibration** — Audit and correct all device block/effect limits to match real hardware; fix Stadium 4→8+ effects, Helix prompt 6→8+ effects, Stomp maxEffectsPerDsp mislabel (completed 2026-03-07)
 
 ### Phase 70: Expression Pedal Controller Assignment
 
@@ -380,7 +380,7 @@ Plans:
 | 73. Per-Device Craft | v6.0 | TBD | Pending | — |
 | 74. Quality Validation | v6.0 | TBD | Pending | — |
 | 75. Preset Musical Coherence | v6.0 | TBD | Pending | — |
-| 76. Block Budget Calibration | v6.0 | TBD | Pending | — |
+| 76. Block Budget Calibration | 2/2 | Complete   | 2026-03-07 | — |
 
 ### Phase 75: Preset Musical Coherence
 
@@ -432,7 +432,11 @@ Plans:
   3. DeviceCapabilities.maxEffectsPerDsp matches the number of user-effect slots available on each physical device
   4. No mismatch between prompt maxEffects guidance and chain-rules enforcement — both use the same source of truth
   5. Silent truncation in chain-rules produces a logged warning so dropped effects are visible during development
-**Plans:** TBD
+**Plans:** 2/2 plans complete
+
+Plans:
+- [ ] 76-01-PLAN.md — Core value corrections (config, DeviceCapabilities, Zod schema, chain-rules warning, planner.ts) + TDD tests
+- [ ] 76-02-PLAN.md — Prompt text corrections (Helix, Stadium, Stomp maxEffects) + alignment tests
 
 ---
 *Last updated: 2026-03-06 after Phase 76 addition (device block budget calibration)*

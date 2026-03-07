@@ -134,7 +134,7 @@ const STOMP_CAPABILITIES: DeviceCapabilities = {
   fileFormat: "hlx",
   ampCatalogEra: "hd2",
   availableBlockTypes: ALL_BLOCK_TYPES,
-  maxEffectsPerDsp: 2,
+  maxEffectsPerDsp: 4, // 8 total - amp(1) - cab(1) - boost(1) - gate(0-1) = 4 user effects
   mandatoryBlockTypes: [] as const,
   modelSuffix: null,
 } as const;
@@ -153,7 +153,7 @@ const STOMP_XL_CAPABILITIES: DeviceCapabilities = {
   fileFormat: "hlx",
   ampCatalogEra: "hd2",
   availableBlockTypes: ALL_BLOCK_TYPES,
-  maxEffectsPerDsp: 5,
+  maxEffectsPerDsp: 4, // Same DSP/block limit as Stomp
   mandatoryBlockTypes: [] as const,
   modelSuffix: null,
 } as const;
@@ -194,7 +194,7 @@ const STADIUM_CAPABILITIES: DeviceCapabilities = {
   fileFormat: "hsp",
   ampCatalogEra: "agoura",
   availableBlockTypes: ALL_BLOCK_TYPES,
-  maxEffectsPerDsp: 4,
+  maxEffectsPerDsp: 8, // 12 slots - amp(1) - cab(1) - EQ(1) - volume(1) = 8 user effects
   mandatoryBlockTypes: ["eq", "volume"] as const,
   modelSuffix: null,
 } as const;

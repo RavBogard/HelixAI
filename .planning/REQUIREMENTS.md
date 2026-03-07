@@ -54,11 +54,11 @@ Requirements for Preset Craft Mastery milestone. Each maps to roadmap phases.
 
 ### Device Block Budget Calibration
 
-- [ ] **BUDGET-01**: DeviceCapabilities `maxEffectsPerDsp` matches real hardware user-effect slot count for ALL families — verified against Line 6 specs
-- [ ] **BUDGET-02**: Prompt-level `maxEffects` guidance matches DeviceCapabilities — no mismatch between what AI is told to generate and what chain-rules allows through
-- [ ] **BUDGET-03**: Stadium block budget reflects actual DSP capacity — at least 8 user effects (not capped at 4)
-- [ ] **BUDGET-04**: Helix LT/Floor prompt allows 8+ effects per DSP path — reflecting real usage patterns, not arbitrary conservative cap
-- [ ] **BUDGET-05**: Chain-rules effect truncation logs a warning when effects are dropped — silent truncation becomes visible during development
+- [x] **BUDGET-01**: DeviceCapabilities `maxEffectsPerDsp` matches real hardware user-effect slot count for ALL families — verified against Line 6 specs
+- [x] **BUDGET-02**: Prompt-level `maxEffects` guidance matches DeviceCapabilities — no mismatch between what AI is told to generate and what chain-rules allows through
+- [x] **BUDGET-03**: Stadium block budget reflects actual DSP capacity — at least 8 user effects (not capped at 4)
+- [x] **BUDGET-04**: Helix LT/Floor prompt allows 8+ effects per DSP path — reflecting real usage patterns, not arbitrary conservative cap
+- [x] **BUDGET-05**: Chain-rules effect truncation logs a warning when effects are dropped — silent truncation becomes visible during development
 
 ## Future Requirements
 
@@ -121,11 +121,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | COHERE-04 | Phase 75 | Pending |
 | COHERE-05 | Phase 75 | Pending |
 | COHERE-06 | Phase 75 | Pending |
-| BUDGET-01 | Phase 76 | Pending |
-| BUDGET-02 | Phase 76 | Pending |
-| BUDGET-03 | Phase 76 | Pending |
-| BUDGET-04 | Phase 76 | Pending |
-| BUDGET-05 | Phase 76 | Pending |
+| BUDGET-01 | Phase 76 | Complete |
+| BUDGET-02 | Phase 76 | Complete |
+| BUDGET-03 | Phase 76 | Complete |
+| BUDGET-04 | Phase 76 | Complete |
+| BUDGET-05 | Phase 76 | Complete |
 
 **Coverage:**
 - v6.0 requirements: 32 total

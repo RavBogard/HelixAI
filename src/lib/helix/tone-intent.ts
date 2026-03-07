@@ -39,7 +39,7 @@ function buildToneIntentSchema(
     secondCabName: z.enum(cabNames).optional(),
     guitarType: z.enum(["single_coil", "humbucker", "p90"]),
     genreHint: z.string().optional(),
-    effects: z.array(effectSchema).max(6),
+    effects: z.array(effectSchema).max(10), // Raised from 6 to accommodate Stadium 8 effects with headroom
     snapshots: z.array(SnapshotIntentSchema).min(3).max(8),
     tempoHint: z.number().int().min(60).max(200).optional(),
     delaySubdivision: z.enum(["quarter", "dotted_eighth", "eighth", "triplet"]).optional(),

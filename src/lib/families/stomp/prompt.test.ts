@@ -4,7 +4,9 @@
 
 import { describe, it, expect } from "vitest";
 import { buildPlannerPrompt, getSystemPrompt } from "./prompt";
+import { buildPlannerPrompt as helixBuildPlannerPrompt } from "../helix/prompt";
 import { STOMP_CONFIG } from "@/lib/helix/config";
+import { getCapabilities } from "@/lib/helix/device-family";
 
 const sampleModelList = "## AMPS\n- TestAmp1\n- TestAmp2\n## CABS\n- TestCab1\n## EFFECTS\n- TestEffect1";
 
@@ -30,7 +32,7 @@ describe("stomp/buildPlannerPrompt", () => {
     expect(stompPrompt).toContain("reverb > delay > mod > drive");
   });
 
-  it("unified prompt references STOMP_MAX_BLOCKS (6) block slots in genre sections", () => {
+  it("unified prompt references STOMP_MAX_BLOCKS (8) block slots in genre sections", () => {
     expect(stompPrompt).toContain(`${STOMP_CONFIG.STOMP_MAX_BLOCKS} block slots`);
   });
 
@@ -69,5 +71,23 @@ describe("stomp/getSystemPrompt", () => {
     expect(prompt).toContain(`${STOMP_CONFIG.STOMP_MAX_SNAPSHOTS} snapshots`);
     const xlPrompt = getSystemPrompt("helix_stomp_xl");
     expect(xlPrompt).toContain(`${STOMP_CONFIG.STOMP_XL_MAX_SNAPSHOTS} snapshots`);
+  });
+});
+
+describe("prompt/capability alignment", () => {
+  it("Stomp prompt maxEffects (4) does not exceed Stomp maxEffectsPerDsp (4)", () => {
+    const stompPrompt = buildPlannerPrompt("helix_stomp", sampleModelList);
+    const caps = getCapabilities("helix_stomp");
+    // Prompt says "up to 4 effects" via toneIntentFieldsSection
+    expect(stompPrompt).toContain("up to 4 effects");
+    expect(caps.maxEffectsPerDsp).toBe(4);
+  });
+
+  it("Helix prompt maxEffects (8) is finite despite Infinity maxEffectsPerDsp", () => {
+    const helixPrompt = helixBuildPlannerPrompt("helix_floor", sampleModelList);
+    const caps = getCapabilities("helix_floor");
+    // Prompt provides a practical cap of 8, even though chain-rules allows Infinity
+    expect(helixPrompt).toContain("up to 8 effects");
+    expect(caps.maxEffectsPerDsp).toBe(Infinity);
   });
 });

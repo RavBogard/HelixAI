@@ -65,10 +65,10 @@ export const STADIUM_CONFIG = {
  *   - The_Kids_Are_D.hlx: HX Stomp XL hardware export
  */
 export const STOMP_CONFIG = {
-  /** HX Stomp: max user-assignable effect blocks (hardware limit) */
-  STOMP_MAX_BLOCKS: 6,
-  /** HX Stomp XL: max user-assignable effect blocks (hardware limit) */
-  STOMP_XL_MAX_BLOCKS: 9,
+  /** HX Stomp: max user-assignable effect blocks (FW 3.0+ increased from 6 to 8) */
+  STOMP_MAX_BLOCKS: 8,
+  /** HX Stomp XL: max user-assignable effect blocks (same DSP chip as Stomp -- same 8-block limit) */
+  STOMP_XL_MAX_BLOCKS: 8,
   /** HX Stomp: max snapshot count */
   STOMP_MAX_SNAPSHOTS: 3,
   /** HX Stomp XL: max snapshot count (confirmed from The_Kids_Are_D.hlx) */
