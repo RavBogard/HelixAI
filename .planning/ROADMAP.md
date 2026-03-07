@@ -300,7 +300,7 @@ Plans:
 - [x] **Phase 71: Per-Model Effect Intelligence** — Genre-aware delay/reverb/wah model selection guidance in prompts + effectParamOverrides for models with known bad defaults (completed 2026-03-07)
 - [x] **Phase 72: Effect Combination Logic** — Deterministic cross-effect parameter interactions: wah+comp threshold, high-gain gate placement, delay+reverb balance, priority ordering for device budgets (completed 2026-03-07)
 - [x] **Phase 73: Per-Device Craft Optimization** — Device-specific tone optimization in both prompts (creative direction) and code (hard limit enforcement) for Stomp, Pod Go, Helix, and Stadium (completed 2026-03-07)
-- [ ] **Phase 74: Quality Validation** — Non-throwing validatePresetQuality() advisory gate, per-device baseline comparison, regression detection
+- [x] **Phase 74: Quality Validation** — Non-throwing validatePresetQuality() advisory gate, per-device baseline comparison, regression detection (completed 2026-03-07)
 - [x] **Phase 76: Device Block Budget Calibration** — Audit and correct all device block/effect limits to match real hardware; fix Stadium 4→8+ effects, Helix prompt 6→8+ effects, Stomp maxEffectsPerDsp mislabel (completed 2026-03-07)
 
 ### Phase 70: Expression Pedal Controller Assignment
@@ -379,7 +379,7 @@ Plans:
   2. validatePresetQuality() with a well-formed clean preset returns empty array — no false positives
   3. Presets with quality warnings still download successfully — warnings are logged, never block the user
   4. Running 36-preset baseline generator before and after v6.0 shows measurable improvement in quality metrics
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] 74-01-PLAN.md — Core validatePresetQuality() function + quality logger (TDD, QUAL-01, QUAL-02)
@@ -393,7 +393,7 @@ Plans:
 | 71. Effect Intelligence | 2/2 | Complete   | 2026-03-07 | — |
 | 72. Effect Combinations | 2/2 | Complete   | 2026-03-07 | — |
 | 73. Per-Device Craft | 2/2 | Complete   | 2026-03-07 | — |
-| 74. Quality Validation | 1/2 | In Progress|  | — |
+| 74. Quality Validation | 2/2 | Complete   | 2026-03-07 | — |
 | 75. Preset Musical Coherence | v6.0 | TBD | Pending | — |
 | 76. Block Budget Calibration | 2/2 | Complete   | 2026-03-07 | — |
 
