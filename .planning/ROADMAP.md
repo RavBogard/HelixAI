@@ -313,7 +313,7 @@ Plans:
   3. Pod Go presets emit only EXP1 assignments (1 physical pedal); Stadium presets emit zero EXP entries (0 physical pedals)
   4. No EXP controller assignment conflicts with any snapshot controller assignment — snapshot-exclusion guard prevents collision
   5. EXP @min/@max values are musically appropriate — wah sweep 0.0-1.0, volume heel-down not silent
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
 - [ ] 70-01-PLAN.md — EXP pedal assignment in preset-builder.ts (Helix LT/Floor) and stomp-builder.ts (Stomp/XL) with TDD tests
@@ -372,7 +372,7 @@ Plans:
 
 | Phase | Milestone | Plans | Status | Completed |
 |-------|-----------|-------|--------|-----------|
-| 70. Expression Pedal | v6.0 | 0/2 | In Progress | — |
+| 70. Expression Pedal | 1/2 | In Progress|  | — |
 | 71. Effect Intelligence | v6.0 | TBD | Pending | — |
 | 72. Effect Combinations | v6.0 | TBD | Pending | — |
 | 73. Per-Device Craft | v6.0 | TBD | Pending | — |
