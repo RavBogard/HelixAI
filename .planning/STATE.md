@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Interactive Signal Chain Visualizer
-status: active
+status: complete
 last_updated: "2026-03-07"
 progress:
   total_phases: 7
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 4
-  completed_plans: 11
+  completed_plans: 12
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** v7.0 Phase 83 — Download Integration (Plan 01 complete, Plan 02 next)
+**Current focus:** v7.0 complete — all 7 phases (77-83) delivered
 
 ## Current Position
 
-Phase: 83 of 83 (Download Integration + Diffing)
-Plan: 83-01 complete, 83-02 next
-Status: Plan 83-01 done — state diff engine, dehydrate transformer, /api/download endpoint (17 new tests, 303 total)
-Last activity: 2026-03-07 — Plan 83-01 complete (calculateStateDiff, dehydrateToPresetSpec, POST /api/download with device branching)
+Phase: 83 of 83 (Download Integration + Diffing) -- COMPLETE
+Plan: 83-02 complete (all plans in phase done)
+Status: Phase 83 complete — DownloadButton with diff-gated download flow, 8 new tests (1152 total passing)
+Last activity: 2026-03-07 — Plan 83-02 complete (DownloadButton, visualizer page wiring, store metadata/baseline)
 
-Progress: [██████████████████████████████░░] 93% (6.5/7 phases)
+Progress: [████████████████████████████████] 100% (7/7 phases)
 
 ## Performance Metrics
 
@@ -66,6 +66,10 @@ Progress: [███████████████████████
 - [v7.0]: Two-pass block matching for state diff: blockId match for model swaps, type+modelId match for position/add/remove
 - [v7.0]: Dehydrate is identity transform (signalChain = baseBlocks) — builders receive data in expected format
 - [v7.0]: Download endpoint is stateless — no persistence, frontend sends state, backend compiles and returns binary
+- [v7.0]: calculateStateDiff gates download API call — no changes = no round-trip, just info message
+- [v7.0]: Download payload is minimal builder-required set (device, baseBlocks, snapshots, presetName, description, tempo) — never UI-only fields
+- [v7.0]: Store captures originalBaseBlocks/originalSnapshots at hydration via deep clone for diff baseline
+- [v7.0]: DownloadButton uses getState() at click time (non-reactive read) to avoid unnecessary re-renders
 
 ### Roadmap Evolution
 
@@ -80,6 +84,6 @@ Progress: [███████████████████████
 ## Session Continuity
 
 Last session: 2026-03-07
-Stopped at: Completed 83-01-PLAN.md
+Stopped at: Completed 83-02-PLAN.md — v7.0 milestone complete
 Resume file: None
-Next command: Execute 83-02-PLAN.md (UI download flow wiring)
+Next command: v7.0 milestone audit or v8.0 planning

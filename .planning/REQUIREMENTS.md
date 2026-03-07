@@ -46,7 +46,7 @@ Requirements for Interactive Signal Chain Visualizer milestone. Each maps to roa
 - [ ] **API-01**: /api/preview endpoint accepts userPrompt + deviceTarget and returns baseBlocks[] + snapshots[4] as VisualizerState — this replaces the current single-step generation flow with a two-step preview-then-download flow
 - [x] **API-02**: /api/download endpoint accepts modified frontend VisualizerState (baseBlocks + snapshots) and compiles it into the correct downloadable binary — .hlx for Helix, .pgp for Pod Go, .hsp for Stadium
 - [ ] **API-03**: Preview hydration uses the deterministic Knowledge Layer pipeline (chain-rules → param-engine → snapshot-engine) — zero AI token cost for parameter resolution after initial ToneIntent generation
-- [ ] **API-04**: Download request payload is diff-optimized via calculateStateDiff() — only chain reordering, model swaps, and snapshot data are transmitted
+- [x] **API-04**: Download request payload is diff-optimized via calculateStateDiff() — only chain reordering, model swaps, and snapshot data are transmitted
 
 ### Controller Assignments
 
@@ -131,7 +131,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | API-01 | Phase 77 | Pending |
 | API-02 | Phase 83 | Complete |
 | API-03 | Phase 77 | Pending |
-| API-04 | Phase 83 | Pending |
+| API-04 | Phase 83 | Complete |
 | CTRL-01 | Phase 82 | Pending |
 | CTRL-02 | Phase 82 | Pending |
 | CTRL-03 | Phase 82 | Pending |
