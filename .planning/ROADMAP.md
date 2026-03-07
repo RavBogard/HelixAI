@@ -148,7 +148,7 @@
 - [x] **Phase 77: API Preview + State Foundation** — Two-step API endpoint, Zustand visualizer store, deterministic hydration pipeline (2/2 plans, 33 tests)
 - [x] **Phase 78: Signal Chain Canvas** — Device-specific block rendering (dual DSP rows, single DSP, Pod Go fixed layout) with color-coded tiles and selection (2/2 plans, 91 tests)
 - [x] **Phase 79: Drag-and-Drop Reordering** — Block reordering within and across DSP rows, constraint validation, block add/remove (2/2 plans, 157 tests)
-- [ ] **Phase 80: Parameter Editing** — Side panel with schema registry, 7 control types, human-readable display transforms, model swapping
+- [x] **Phase 80: Parameter Editing** — Side panel with schema registry, 7 control types, human-readable display transforms, model swapping (2/2 plans, 203 tests)
 - [ ] **Phase 81: Snapshot System** — 4-snapshot switcher with per-snapshot parameter overlays and bypass state toggling
 - [ ] **Phase 82: Controllers + Parameter Dependencies** — Read-only controller assignment badges, expression pedal dual-handle sliders, reactive parameter dependency rules
 - [ ] **Phase 83: Download Integration + Diffing** — /api/download endpoint compiling modified state to device files, diff-optimized payloads, state diffing
@@ -209,7 +209,10 @@ Plans:
   2. Parameter controls match their schema type — percentage params render as 0-100% sliders, eq_gain as -12dB to +12dB sliders, hz_freq as 20-20000Hz sliders, booleans as toggles, discrete values as dropdowns
   3. Slider values display human-readable units using displayMultiplier/displayOffset — raw 0.0-1.0 values are never visible to the user
   4. Swapping a block's model (e.g., Scream 808 to Minotaur) resets parameters to Knowledge Layer defaults while preserving block position and DSP assignment
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [x] 80-01-PLAN.md -- Parameter schema registry with 80+ mappings, 7 types, display transforms, model lookup (TDD, 36 tests)
+- [x] 80-02-PLAN.md -- ParameterEditorPane UI with schema-driven controls, model swap dropdown (16 tests)
 
 ### Phase 81: Snapshot System
 **Goal**: Users can switch between 4 snapshots and see the preset update instantly — parameter values, bypass states, and block appearances reflect the active snapshot — and parameter edits are scoped to the active snapshot only

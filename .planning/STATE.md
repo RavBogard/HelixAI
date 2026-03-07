@@ -6,9 +6,9 @@ status: active
 last_updated: "2026-03-07"
 progress:
   total_phases: 7
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 4
-  completed_plans: 4
+  completed_plans: 6
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** v7.0 Phase 80 — Parameter Editing (IN PROGRESS, plan 80-01 complete)
+**Current focus:** v7.0 Phase 80 — Parameter Editing (COMPLETE, verifying)
 
 ## Current Position
 
-Phase: 80 of 83 (Parameter Editing) — IN PROGRESS
-Plan: 80-01 complete, 80-02 pending
-Status: Plan 80-01 done — parameter schema registry (80+ mappings, 7 types, display transforms, 36 tests)
-Last activity: 2026-03-07 — Plan 80-01 complete (TDD: RED-GREEN)
+Phase: 80 of 83 (Parameter Editing) — COMPLETE
+Plan: 80-01 complete, 80-02 complete
+Status: Both plans done — parameter schema registry + ParameterEditorPane UI (52 tests, 203 visualizer total)
+Last activity: 2026-03-07 — Plan 80-02 complete (schema-driven controls, model swap, 16 tests)
 
-Progress: [████████████░░░░░░░░░░░░░░░░░░░░] 43% (3/7 phases)
+Progress: [████████████████░░░░░░░░░░░░░░░░] 57% (4/7 phases)
 
 ## Performance Metrics
 
@@ -58,6 +58,8 @@ Progress: [████████████░░░░░░░░░░░
 - [v7.0]: BlockTile uses inline style for backgroundColor + Tailwind for state classes — avoids dynamic class generation issues
 - [v7.0]: SortableBlockTile wraps BlockTile via useSortable — clean separation of DnD and rendering concerns
 - [v7.0]: PointerSensor with distance=5 activation constraint — prevents accidental drags on click
+- [v7.0]: MODEL_CATALOGS_BY_TYPE maps block types to model catalogs for same-type model swap dropdown
+- [v7.0]: swapBlockModel enhanced with lookupModelByModelId to hydrate Knowledge Layer defaults on model swap
 
 ### Roadmap Evolution
 
@@ -72,6 +74,6 @@ Progress: [████████████░░░░░░░░░░░
 ## Session Continuity
 
 Last session: 2026-03-07
-Stopped at: Phase 80, Plan 80-01 complete, executing Plan 80-02
+Stopped at: Phase 80 complete, pending transition to Phase 81
 Resume file: None
-Next command: Continue Phase 80 execution (Plan 80-02)
+Next command: Execute Phase 81 (Snapshot System)
