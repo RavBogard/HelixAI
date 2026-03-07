@@ -18,14 +18,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** v7.0 Phase 79 — Drag-and-Drop Reordering (COMPLETE, verified)
+**Current focus:** v7.0 Phase 80 — Parameter Editing (IN PROGRESS, plan 80-01 complete)
 
 ## Current Position
 
-Phase: 79 of 83 (Drag-and-Drop Reordering) — COMPLETE
-Plan: 79-01 complete, 79-02 complete
-Status: Phase 79 complete — DnD constraint engine, store actions, @dnd-kit UI, ModelBrowserDropdown, 157 tests
-Last activity: 2026-03-07 — Phase 79 complete (all 5 success criteria verified)
+Phase: 80 of 83 (Parameter Editing) — IN PROGRESS
+Plan: 80-01 complete, 80-02 pending
+Status: Plan 80-01 done — parameter schema registry (80+ mappings, 7 types, display transforms, 36 tests)
+Last activity: 2026-03-07 — Plan 80-01 complete (TDD: RED-GREEN)
 
 Progress: [████████████░░░░░░░░░░░░░░░░░░░░] 43% (3/7 phases)
 
@@ -72,6 +72,6 @@ Progress: [████████████░░░░░░░░░░░
 ## Session Continuity
 
 Last session: 2026-03-07
-Stopped at: Phase 79 complete, ready for Phase 80
+Stopped at: Phase 80, Plan 80-01 complete, executing Plan 80-02
 Resume file: None
-Next command: Plan or execute Phase 80 (Parameter Editing)
+Next command: Continue Phase 80 execution (Plan 80-02)

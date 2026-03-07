@@ -255,7 +255,7 @@ Phases execute in numeric order: 77 -> 78 -> 79 -> 80 -> 81 -> 82 -> 83
 | 77. API Preview + State Foundation | v7.0 | 2 plans | Complete | 2026-03-07 |
 | 78. Signal Chain Canvas | v7.0 | 2 plans | Complete | 2026-03-07 |
 | 79. Drag-and-Drop Reordering | v7.0 | TBD | Not started | - |
-| 80. Parameter Editing | v7.0 | TBD | Not started | - |
+| 80. Parameter Editing | 1/2 | In Progress|  | - |
 | 81. Snapshot System | v7.0 | TBD | Not started | - |
 | 82. Controllers + Dependencies | v7.0 | TBD | Not started | - |
 | 83. Download Integration + Diffing | v7.0 | TBD | Not started | - |
