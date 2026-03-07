@@ -558,9 +558,10 @@ const SUBDIVISION_MULTIPLIERS: Record<string, number> = {
 
 /**
  * Default parameter resolution — look up model's defaultParams from the database,
- * then apply genre-specific overrides, then tempo-synced delay override (FX-03).
+ * apply per-model paramOverrides, then genre-specific overrides, then tempo-synced delay override (FX-03).
  *
- * Resolution order: model defaults -> genre overrides -> tempo override (delay only)
+ * Resolution order: model defaults -> paramOverrides -> genre overrides -> tempo override (delay only)
+ * paramOverrides fixes model-inherent defaults that are wrong regardless of genre (INTEL-05).
  * Genre overrides only apply to matching block types (delay/reverb/modulation).
  * Tempo override only applies to delay blocks when tempoHint is present.
  * delaySubdivision selects the note value (defaults to "quarter" for backwards compat).
@@ -573,6 +574,15 @@ function resolveDefaultParams(
 ): Record<string, number | boolean> {
   const model = findModel(block.modelName, block.type);
   const params = model ? { ...model.defaultParams } : { ...block.parameters };
+
+  // Apply per-model paramOverrides (INTEL-05)
+  // Fixes model-inherent defaults that are wrong regardless of genre.
+  // Applied BEFORE genre overrides so genre intent can still win.
+  if (model?.paramOverrides) {
+    for (const [key, value] of Object.entries(model.paramOverrides)) {
+      params[key] = value;
+    }
+  }
 
   // Apply genre overrides as outermost layer (only for effect types with genre profiles)
   if (genreProfile) {

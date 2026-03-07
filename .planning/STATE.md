@@ -6,9 +6,9 @@ status: active
 last_updated: "2026-03-07"
 progress:
   total_phases: 7
-  completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
+  completed_phases: 3
+  total_plans: 6
+  completed_plans: 6
 ---
 
 # Project State
@@ -18,21 +18,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-06)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** v6.0 Preset Craft Mastery — Phase 76 complete, next phase ready to plan
+**Current focus:** v6.0 Preset Craft Mastery — Phase 71 complete (2/2 plans), next phase TBD
 
 ## Current Position
 
-Phase: Phase 76 COMPLETE — Device Block Budget Calibration
+Phase: Phase 71 — Per-Model Effect Intelligence (COMPLETE)
 Plan: 2/2 complete
-Status: Phase 76 done, all device block budgets calibrated
-Last activity: 2026-03-07 — Phase 76 complete (hardware budget corrections + prompt alignment)
+Status: Phase 71 complete -- all genre-effect intelligence wired into prompts
+Last activity: 2026-03-07 — Phase 71 Plan 02 complete (prompt integration, 17 new tests, 751 total)
 
-Progress: [█████████░░░░░░░░░░░░░░░░░░░░░░░] 29% (2/7 phases complete)
+Progress: [██████████████░░░░░░░░░░░░░░░░░░] 43% (3/7 phases complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4 (this milestone)
+- Total plans completed: 6 (this milestone)
+- Phase 71: 2 plans in ~7 min total (avg 3.5 min/plan — data layer + prompt integration)
 - Phase 76: 2 plans in ~7 min total (avg 3.5 min/plan)
 - Phase 70: 2 plans in ~5 min total (avg 2.5 min/plan)
 - Prior milestone avg: ~5 min/plan (v5.0)
@@ -59,6 +60,10 @@ Progress: [█████████░░░░░░░░░░░░░░
 - [v6.0]: maxEffectsPerDsp calibrated to real hardware: Stomp=4, StompXL=4, Stadium=8, Helix=Infinity, PodGo=4
 - [v6.0]: Zod schema .max(10) for effects array — provides headroom above Stadium's 8-effect capacity
 - [v6.0]: chain-rules now logs console.warn before effect truncation for observability
+- [v6.0]: Effect paramOverrides applied BEFORE genre overrides in resolveDefaultParams (genre intent wins as outermost layer)
+- [v6.0]: 7 effect models get paramOverrides: Ganymede/Glitz/Octo/Plateaux (Mix), Heliosphere/Cosmos Echo/Adriatic Swell (Feedback)
+- [v6.0]: genreEffectModelSection placed after amp-cab pairing, before Effect Discipline — planner-only (not chat prompt)
+- [v6.0]: Genre-effect guidance is in static system prompt for cache stability — identical across all devices in a family
 
 ### Roadmap Evolution
 
@@ -77,6 +82,6 @@ Progress: [█████████░░░░░░░░░░░░░░
 ## Session Continuity
 
 Last session: 2026-03-07
-Stopped at: Phase 76 complete — device block budgets calibrated for all 5 families with 12 new tests
+Stopped at: Phase 71 complete — genre-effect intelligence wired into all 4 family prompts (751 tests)
 Resume file: None
-Next command: /gsd:plan-phase (next phase)
+Next command: /gsd:plan-phase (next phase TBD)

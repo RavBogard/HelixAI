@@ -51,6 +51,22 @@ describe("podgo/buildPlannerPrompt", () => {
   it("contains DEVICE RESTRICTION text", () => {
     expect(prompt).toContain("DEVICE RESTRICTION");
   });
+
+  it("contains genre-informed effect model selection section", () => {
+    expect(prompt).toContain("## Genre-Informed Effect Model Selection");
+  });
+
+  it("contains delay genre table with Transistor Tape", () => {
+    expect(prompt).toContain("Transistor Tape");
+  });
+
+  it("contains reverb genre table with '63 Spring", () => {
+    expect(prompt).toContain("'63 Spring");
+  });
+
+  it("contains wah genre table with Fassel", () => {
+    expect(prompt).toContain("Fassel");
+  });
 });
 
 describe("podgo/getSystemPrompt", () => {

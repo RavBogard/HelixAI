@@ -18,6 +18,22 @@ describe("stomp/buildPlannerPrompt", () => {
     expect(stompPrompt).toStrictEqual(stompXLPrompt);
   });
 
+  it("contains genre-informed effect model selection section", () => {
+    expect(stompPrompt).toContain("## Genre-Informed Effect Model Selection");
+  });
+
+  it("contains delay genre table with Transistor Tape", () => {
+    expect(stompPrompt).toContain("Transistor Tape");
+  });
+
+  it("contains reverb genre table with '63 Spring", () => {
+    expect(stompPrompt).toContain("'63 Spring");
+  });
+
+  it("contains wah genre table with Fassel", () => {
+    expect(stompPrompt).toContain("Fassel");
+  });
+
   it("does NOT contain Agoura_ amp names (cross-family isolation)", () => {
     expect(stompPrompt).not.toMatch(/Agoura_/);
     expect(stompXLPrompt).not.toMatch(/Agoura_/);
