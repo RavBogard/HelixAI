@@ -2,6 +2,7 @@ import type { HlxFile, HlxDsp, HlxSnapshot, HlxTone, PresetSpec, BlockSpec, Snap
 import { DEVICE_IDS, isVariaxSupported, type DeviceTarget } from "./types";
 import { CONTROLLERS } from "./models";
 import { FIRMWARE_CONFIG } from "./config";
+import { getCapabilities } from "./device-family";
 
 export function buildHlxFile(spec: PresetSpec, device: DeviceTarget = "helix_lt"): HlxFile {
   const tone = buildTone(spec, device);
@@ -95,8 +96,8 @@ function buildTone(spec: PresetSpec, device: DeviceTarget = "helix_lt"): HlxTone
     }
   }
 
-  // Build controller section for snapshot-controlled parameters
-  const controller = buildControllerSection(spec);
+  // Build controller section for snapshot-controlled parameters + EXP pedal assignments
+  const controller = buildControllerSection(spec, device);
 
   const tone: HlxTone = {
     dsp0,
@@ -415,7 +416,7 @@ function buildEmptySnapshot(index: number): HlxSnapshot {
   };
 }
 
-function buildControllerSection(spec: PresetSpec) {
+function buildControllerSection(spec: PresetSpec, device: DeviceTarget) {
   const controller: Record<string, Record<string, Record<string, unknown>>> = {
     dsp0: {},
     dsp1: {},
@@ -461,6 +462,66 @@ function buildControllerSection(spec: PresetSpec) {
           "@controller": CONTROLLERS.SNAPSHOT,
           "@snapshot_disable": false,
         };
+      }
+    }
+  }
+
+  // --- EXP Pedal Assignments ---
+  // Compute the global non-cab index for a block in the signal chain.
+  // buildBlockKeyMap uses globalIdx which counts non-cab blocks sequentially.
+  const getGlobalIdx = (block: BlockSpec): number => {
+    let idx = 0;
+    for (const b of spec.signalChain) {
+      if (b === block) return idx;
+      if (b.type !== "cab") idx++;
+    }
+    return -1;
+  };
+
+  const caps = getCapabilities(device);
+  if (caps.expressionPedalCount > 0) {
+    // EXP1 -> wah Position (industry convention: EXP Pedal 1 controls wah sweep)
+    const wahBlock = spec.signalChain.find(b => b.type === "wah");
+    if (wahBlock) {
+      const wahGlobalIdx = getGlobalIdx(wahBlock);
+      const wahMapping = blockKeyMap.get(`block${wahGlobalIdx}`);
+      if (wahMapping) {
+        const dspKey = wahMapping.dsp === 1 ? "dsp1" : "dsp0";
+        if (!controller[dspKey][wahMapping.perDspKey]) {
+          controller[dspKey][wahMapping.perDspKey] = {};
+        }
+        // Defensive: skip if Position already has a controller (e.g., snapshot)
+        if (!controller[dspKey][wahMapping.perDspKey]["Position"]) {
+          controller[dspKey][wahMapping.perDspKey]["Position"] = {
+            "@min": 0.0,
+            "@max": 1.0,
+            "@controller": CONTROLLERS.EXP_PEDAL_1,
+          };
+        }
+      }
+    }
+
+    // EXP2 -> Volume Pedal Position (only if device has 2+ expression pedals)
+    if (caps.expressionPedalCount >= 2) {
+      const volBlock = spec.signalChain.find(
+        b => b.type === "volume" && b.modelName !== "Gain Block"
+      );
+      if (volBlock) {
+        const volGlobalIdx = getGlobalIdx(volBlock);
+        const volMapping = blockKeyMap.get(`block${volGlobalIdx}`);
+        if (volMapping) {
+          const dspKey = volMapping.dsp === 1 ? "dsp1" : "dsp0";
+          if (!controller[dspKey][volMapping.perDspKey]) {
+            controller[dspKey][volMapping.perDspKey] = {};
+          }
+          if (!controller[dspKey][volMapping.perDspKey]["Position"]) {
+            controller[dspKey][volMapping.perDspKey]["Position"] = {
+              "@min": 0.0,
+              "@max": 1.0,
+              "@controller": CONTROLLERS.EXP_PEDAL_2,
+            };
+          }
+        }
       }
     }
   }
