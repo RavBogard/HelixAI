@@ -348,7 +348,10 @@ Plans:
   2. High-gain/metal presets place noise gate before amp and omit compressor — no squeezed dynamics
   3. Delay + reverb presets have reverb Mix at least 0.05 lower than reverb-only presets — prevents wash
   4. Pod Go presets with combination rules still fit within 4-effect budget — priority ordering ensures essential effects survive truncation
-**Plans:** TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 72-01-PLAN.md — Structural combination rules: COMBO-02 gate placement + compressor omission, COMBO-03 priority truncation
+- [ ] 72-02-PLAN.md — Parametric combination rules: COMBO-01 wah+comp threshold reduction, COMBO-04 delay+reverb mix balance
 
 ### Phase 73: Per-Device Craft Optimization
 
