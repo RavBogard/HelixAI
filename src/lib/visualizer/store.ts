@@ -5,6 +5,7 @@
 import { create } from "zustand";
 import type { BlockSpec, SnapshotSpec, DeviceTarget } from "./types";
 import { validateMove, canAddBlock } from "./dnd-constraints";
+import { lookupModelByModelId } from "./parameter-schema";
 
 // ---------------------------------------------------------------------------
 // Block ID generation
@@ -154,12 +155,14 @@ export const useVisualizerStore = create<VisualizerStoreState>((set, get) => ({
 
     if (blockIndex === -1) return;
 
+    // Resolve the new model's defaults from the Knowledge Layer
+    const resolved = lookupModelByModelId(newModelId);
     const updatedBlocks = [...state.baseBlocks];
     updatedBlocks[blockIndex] = {
       ...updatedBlocks[blockIndex],
       modelId: newModelId,
-      modelName: newModelId, // Downstream phases resolve display name
-      parameters: {},
+      modelName: resolved?.name ?? newModelId,
+      parameters: resolved?.defaultParams ?? {},
     };
 
     set({ baseBlocks: updatedBlocks });
