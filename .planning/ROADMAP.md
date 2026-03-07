@@ -380,7 +380,7 @@ Plans:
 | 73. Per-Device Craft | v6.0 | TBD | Pending | — |
 | 74. Quality Validation | v6.0 | TBD | Pending | — |
 | 75. Preset Musical Coherence | v6.0 | TBD | Pending | — |
-| 76. Block Budget Calibration | v6.0 | TBD | Pending | — |
+| 76. Block Budget Calibration | v6.0 | 0/2 | Planned | — |
 
 ### Phase 75: Preset Musical Coherence
 
@@ -432,7 +432,11 @@ Plans:
   3. DeviceCapabilities.maxEffectsPerDsp matches the number of user-effect slots available on each physical device
   4. No mismatch between prompt maxEffects guidance and chain-rules enforcement — both use the same source of truth
   5. Silent truncation in chain-rules produces a logged warning so dropped effects are visible during development
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 76-01-PLAN.md — Core value corrections (config, DeviceCapabilities, Zod schema, chain-rules warning, planner.ts) + TDD tests
+- [ ] 76-02-PLAN.md — Prompt text corrections (Helix, Stadium, Stomp maxEffects) + alignment tests
 
 ---
 *Last updated: 2026-03-06 after Phase 76 addition (device block budget calibration)*
