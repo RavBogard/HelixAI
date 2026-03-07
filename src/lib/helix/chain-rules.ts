@@ -385,8 +385,14 @@ export function assembleSignalChain(intent: ToneIntent, caps: DeviceCapabilities
   }
 
   // Enforce per-device user effect limit (caps.maxEffectsPerDsp)
-  // Infinity for Helix (no explicit cap), 4 for Pod Go/Stadium, 2-5 for Stomp/Stomp XL
+  // Infinity for Helix (no explicit cap), 4 for Pod Go/Stomp, 8 for Stadium
   if (caps.maxEffectsPerDsp < Infinity && userEffects.length > caps.maxEffectsPerDsp) {
+    const dropped = userEffects.length - caps.maxEffectsPerDsp;
+    console.warn(
+      `[chain-rules] Effect budget exceeded: ${userEffects.length} effects requested, ` +
+      `max ${caps.maxEffectsPerDsp} for ${caps.family}. Dropping ${dropped} effect(s): ` +
+      userEffects.slice(caps.maxEffectsPerDsp).map(e => e.model.name).join(', ')
+    );
     userEffects.length = caps.maxEffectsPerDsp;
   }
 

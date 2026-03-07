@@ -324,8 +324,8 @@ describe("HX Stomp + HX Stomp XL (STOMP-01 through STOMP-05, STOMP-10)", () => {
 
   // STOMP-02: STOMP_CONFIG constants
   it("STOMP-02: STOMP_CONFIG has correct block limits", () => {
-    expect(STOMP_CONFIG.STOMP_MAX_BLOCKS).toBe(6);
-    expect(STOMP_CONFIG.STOMP_XL_MAX_BLOCKS).toBe(9);
+    expect(STOMP_CONFIG.STOMP_MAX_BLOCKS).toBe(8);
+    expect(STOMP_CONFIG.STOMP_XL_MAX_BLOCKS).toBe(8);
   });
   it("STOMP-02: STOMP_CONFIG has correct snapshot counts", () => {
     expect(STOMP_CONFIG.STOMP_MAX_SNAPSHOTS).toBe(3);

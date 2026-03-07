@@ -5,7 +5,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { getToneIntentSchema, getModelListForPrompt, VARIAX_MODEL_NAMES, getCapabilities } from "@/lib/helix";
+import { getToneIntentSchema, getModelListForPrompt, VARIAX_MODEL_NAMES, getCapabilities, STOMP_CONFIG } from "@/lib/helix";
 import type { ToneIntent, DeviceTarget, DeviceFamily } from "@/lib/helix";
 import { logUsage, estimateClaudeCost } from "@/lib/usage-logger";
 import { getFamilyPlannerPrompt } from "@/lib/prompt-router";
@@ -59,9 +59,9 @@ export async function callClaudePlanner(
   if (resolvedFamily === "stomp") {
     const isXL = effectiveDevice === "helix_stomp_xl";
     const deviceLabel = isXL ? "HX Stomp XL" : "HX Stomp";
-    const blocks = isXL ? 9 : 6;
+    const blocks = isXL ? STOMP_CONFIG.STOMP_XL_MAX_BLOCKS : STOMP_CONFIG.STOMP_MAX_BLOCKS;
     const snaps = isXL ? 4 : 3;
-    const maxFx = isXL ? 5 : 2;
+    const maxFx = 4; // Both Stomp and Stomp XL share same DSP, same 4 user-effect budget
     stompRestriction = `\n\nDEVICE RESTRICTION: This is an ${deviceLabel} preset. ${deviceLabel} is a single-DSP, series-only device. Do NOT populate secondAmpName or secondCabName. Generate exactly ${snaps} snapshots (not ${snaps === 3 ? "4" : "3"}, not 8). Keep effects to ${maxFx} maximum — ${deviceLabel} has ${blocks} block slots total (including amp + cab).`;
   }
   const finalUserContent = userContent + stompRestriction;

@@ -583,15 +583,16 @@ describe("assembleSignalChain", () => {
         stadiumCaps
       );
 
-      // Count user effect blocks (exclude amp, cab, mandatory EQ, mandatory volume/gain, mandatory boost)
+      // Count user effect blocks (exclude amp, cab, and all mandatory blocks)
+      const mandatoryNames = new Set([
+        "Minotaur", "Scream 808", "Stadium Parametric EQ",
+        "Parametric EQ", "Gain Block", "Horizon Gate",
+      ]);
       const userEffects = chain.filter(
         (b) =>
           b.type !== "amp" &&
           b.type !== "cab" &&
-          b.modelName !== "Minotaur" &&
-          b.modelName !== "Scream 808" &&
-          b.modelName !== "Stadium Parametric EQ" &&
-          b.modelName !== "Gain Block"
+          !mandatoryNames.has(b.modelName)
       );
       expect(userEffects).toHaveLength(8);
     });
