@@ -39,8 +39,8 @@ Requirements for Preset Craft Mastery milestone. Each maps to roadmap phases.
 
 ### Quality Validation
 
-- [ ] **QUAL-01**: Non-throwing preset quality validation function returns warnings (not errors) for suboptimal parameter choices — over-wet reverb, missing cab filtering, snapshot level imbalance
-- [ ] **QUAL-02**: Quality validation runs on every generated preset and warnings are logged for analysis
+- [x] **QUAL-01**: Non-throwing preset quality validation function returns warnings (not errors) for suboptimal parameter choices — over-wet reverb, missing cab filtering, snapshot level imbalance
+- [x] **QUAL-02**: Quality validation runs on every generated preset and warnings are logged for analysis
 - [ ] **QUAL-03**: Per-device baseline comparison validates that quality changes improve (not regress) preset output across all 6 device families
 
 ### Preset Musical Coherence
@@ -112,8 +112,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CRAFT-02 | Phase 73 | Complete |
 | CRAFT-03 | Phase 73 | Complete |
 | CRAFT-04 | Phase 73 | Complete |
-| QUAL-01 | Phase 74 | Pending |
-| QUAL-02 | Phase 74 | Pending |
+| QUAL-01 | Phase 74 | Complete |
+| QUAL-02 | Phase 74 | Complete |
 | QUAL-03 | Phase 74 | Pending |
 | COHERE-01 | Phase 75 | Pending |
 | COHERE-02 | Phase 75 | Pending |
