@@ -44,7 +44,7 @@ describe("stomp/buildPlannerPrompt", () => {
   });
 
   it("contains priority hierarchy language for genre-based over-budget", () => {
-    expect(stompPrompt).toContain("drive > delay > mod");
+    expect(stompPrompt).toContain("drive > delay > gate");
     expect(stompPrompt).toContain("reverb > delay > mod > drive");
   });
 
@@ -61,6 +61,25 @@ describe("stomp/buildPlannerPrompt", () => {
     // The ToneIntent Fields section should not offer secondAmpName as an optional field.
     const toneIntentSection = stompPrompt.split("## ToneIntent Fields")[1]?.split("## ")[0] ?? "";
     expect(toneIntentSection).not.toContain("secondAmpName");
+  });
+});
+
+describe("CRAFT-01: effect count optimization", () => {
+  const prompt = buildPlannerPrompt("helix_stomp", sampleModelList);
+
+  it("Stomp prompt encourages 3-4 effects for metal (not Maximum 2)", () => {
+    // Metal section should say "3-4 effects", not "Maximum 2 effects"
+    expect(prompt).toContain("3-4 effects");
+    expect(prompt).not.toContain("Maximum 2 effects");
+  });
+
+  it("Stomp prompt encourages 4 effects for ambient/worship", () => {
+    // Ambient/worship should say "4 effects (use all available slots)"
+    expect(prompt).toContain("4 effects (use all available slots)");
+  });
+
+  it("Stomp prompt contains underuse warning", () => {
+    expect(prompt).toContain("underusing the device");
   });
 });
 
