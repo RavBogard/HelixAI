@@ -6,9 +6,9 @@ status: active
 last_updated: "2026-03-07"
 progress:
   total_phases: 7
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 8
-  completed_plans: 7
+  completed_plans: 8
 ---
 
 # Project State
@@ -18,21 +18,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-06)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** v6.0 Preset Craft Mastery — Phase 72 in progress (1/2 plans complete)
+**Current focus:** v6.0 Preset Craft Mastery — Phase 72 COMPLETE, ready for next phase
 
 ## Current Position
 
-Phase: Phase 72 — Effect Combination Logic (IN PROGRESS)
-Plan: 1/2 complete
-Status: Phase 72 Plan 01 complete -- structural combination rules (COMBO-02, COMBO-03) implemented
-Last activity: 2026-03-07 — Phase 72 Plan 01 complete (gate placement, compressor omission, priority truncation, 760 tests)
+Phase: Phase 72 — Effect Combination Logic (COMPLETE)
+Plan: 2/2 complete
+Status: Phase 72 complete -- all 4 COMBO rules implemented (COMBO-01 wah+comp, COMBO-02 comp omission, COMBO-03 truncation, COMBO-04 delay+reverb)
+Last activity: 2026-03-07 — Phase 72 Plan 02 complete (parametric combination rules, 771 tests)
 
-Progress: [██████████████░░░░░░░░░░░░░░░░░░] 43% (3/7 phases complete, 72 in progress)
+Progress: [██████████████████░░░░░░░░░░░░░░] 57% (4/7 phases complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 7 (this milestone)
+- Total plans completed: 8 (this milestone)
+- Phase 72: Plan 02 in ~4 min (parametric combination rules, TDD)
 - Phase 72: Plan 01 in ~3 min (structural combination rules, TDD)
 - Phase 71: 2 plans in ~7 min total (avg 3.5 min/plan — data layer + prompt integration)
 - Phase 76: 2 plans in ~7 min total (avg 3.5 min/plan)
@@ -68,6 +69,9 @@ Progress: [██████████████░░░░░░░░░
 - [v6.0]: SLOT_ORDER uses fractional value 2.5 for horizon_gate — inserts between extra_drive(2) and boost(3) without renumbering
 - [v6.0]: getEffectPriority scores intentRole (always_on=100, toggleable=50, ambient=30) + slot (wah=18, comp=15, delay=10, reverb=8, mod=5)
 - [v6.0]: COMBO-02 compressor omission runs BEFORE COMBO-03 truncation — reduces effect count before budget check
+- [v6.0]: COMBO-01 wah+compressor threshold reduction: single-value params -0.10, multi-band -0.08 (covers all 7 compressor models via modelId prefix)
+- [v6.0]: COMBO-04 delay+reverb mix balancing: reverb Mix -0.05 with floor of 0.08 (metal genre 0.12->0.08, not 0.07)
+- [v6.0]: applyCombinationAdjustments() runs as final post-processing step in resolveParameters() — scans full chain context
 
 ### Roadmap Evolution
 
@@ -86,6 +90,6 @@ Progress: [██████████████░░░░░░░░░
 ## Session Continuity
 
 Last session: 2026-03-07
-Stopped at: Completed 72-01-PLAN.md — structural combination rules (COMBO-02 gate+compressor, COMBO-03 priority truncation)
+Stopped at: Completed 72-02-PLAN.md — parametric combination rules (COMBO-01 wah+comp, COMBO-04 delay+reverb)
 Resume file: None
-Next command: /gsd:execute-phase 72 (Plan 02 remaining)
+Next command: /gsd:execute-phase (next phase in milestone)

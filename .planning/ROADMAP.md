@@ -298,7 +298,7 @@ Plans:
 
 - [x] **Phase 70: Expression Pedal Controller Assignment** — Fix P0 hardware bug: wah and volume blocks get @controller entries so expression pedals actually work on hardware
 - [x] **Phase 71: Per-Model Effect Intelligence** — Genre-aware delay/reverb/wah model selection guidance in prompts + effectParamOverrides for models with known bad defaults (completed 2026-03-07)
-- [ ] **Phase 72: Effect Combination Logic** — Deterministic cross-effect parameter interactions: wah+comp threshold, high-gain gate placement, delay+reverb balance, priority ordering for device budgets
+- [x] **Phase 72: Effect Combination Logic** — Deterministic cross-effect parameter interactions: wah+comp threshold, high-gain gate placement, delay+reverb balance, priority ordering for device budgets (completed 2026-03-07)
 - [ ] **Phase 73: Per-Device Craft Optimization** — Device-specific tone optimization in both prompts (creative direction) and code (hard limit enforcement) for Stomp, Pod Go, Helix, and Stadium
 - [ ] **Phase 74: Quality Validation** — Non-throwing validatePresetQuality() advisory gate, per-device baseline comparison, regression detection
 - [x] **Phase 76: Device Block Budget Calibration** — Audit and correct all device block/effect limits to match real hardware; fix Stadium 4→8+ effects, Helix prompt 6→8+ effects, Stomp maxEffectsPerDsp mislabel (completed 2026-03-07)
@@ -348,7 +348,7 @@ Plans:
   2. High-gain/metal presets place noise gate before amp and omit compressor — no squeezed dynamics
   3. Delay + reverb presets have reverb Mix at least 0.05 lower than reverb-only presets — prevents wash
   4. Pod Go presets with combination rules still fit within 4-effect budget — priority ordering ensures essential effects survive truncation
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [ ] 72-01-PLAN.md — Structural combination rules: COMBO-02 gate placement + compressor omission, COMBO-03 priority truncation
 - [ ] 72-02-PLAN.md — Parametric combination rules: COMBO-01 wah+comp threshold reduction, COMBO-04 delay+reverb mix balance
@@ -383,7 +383,7 @@ Plans:
 |-------|-----------|-------|--------|-----------|
 | 70. Expression Pedal | 1/2 | In Progress|  | — |
 | 71. Effect Intelligence | 2/2 | Complete   | 2026-03-07 | — |
-| 72. Effect Combinations | 1/2 | In Progress|  | — |
+| 72. Effect Combinations | 2/2 | Complete   | 2026-03-07 | — |
 | 73. Per-Device Craft | v6.0 | TBD | Pending | — |
 | 74. Quality Validation | v6.0 | TBD | Pending | — |
 | 75. Preset Musical Coherence | v6.0 | TBD | Pending | — |
