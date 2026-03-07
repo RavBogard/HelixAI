@@ -145,7 +145,7 @@
 
 ### v7.0 Interactive Signal Chain Visualizer
 
-- [ ] **Phase 77: API Preview + State Foundation** — Two-step API endpoint, Zustand visualizer store, deterministic hydration pipeline
+- [x] **Phase 77: API Preview + State Foundation** — Two-step API endpoint, Zustand visualizer store, deterministic hydration pipeline (2/2 plans, 33 tests)
 - [ ] **Phase 78: Signal Chain Canvas** — Device-specific block rendering (dual DSP rows, single DSP, Pod Go fixed layout) with color-coded tiles and selection
 - [ ] **Phase 79: Drag-and-Drop Reordering** — Block reordering within and across DSP rows, constraint validation, block add/remove
 - [ ] **Phase 80: Parameter Editing** — Side panel with schema registry, 7 control types, human-readable display transforms, model swapping
@@ -167,8 +167,8 @@
   5. Calling hydrate(newState) on the store replaces all state cleanly with no stale data from a previous generation
 **Plans**: 2 plans
 Plans:
-- [ ] 77-01-PLAN.md -- VisualizerState types + Zustand store with actions and selectors
-- [ ] 77-02-PLAN.md -- /api/preview endpoint + hydration transformer
+- [x] 77-01-PLAN.md -- VisualizerState types + Zustand store with actions and selectors
+- [x] 77-02-PLAN.md -- /api/preview endpoint + hydration transformer
 
 ### Phase 78: Signal Chain Canvas
 **Goal**: Users see their generated preset as a visual signal chain with device-appropriate layout — dual-DSP devices show two rows, single-DSP devices show one row, Pod Go shows its fixed architecture — every block rendered as a color-coded tile indicating category and bypass state
@@ -246,7 +246,7 @@ Phases execute in numeric order: 77 -> 78 -> 79 -> 80 -> 81 -> 82 -> 83
 
 | Phase | Milestone | Plans | Status | Completed |
 |-------|-----------|-------|--------|-----------|
-| 77. API Preview + State Foundation | v7.0 | 2 plans | Not started | - |
+| 77. API Preview + State Foundation | v7.0 | 2 plans | Complete | 2026-03-07 |
 | 78. Signal Chain Canvas | v7.0 | TBD | Not started | - |
 | 79. Drag-and-Drop Reordering | v7.0 | TBD | Not started | - |
 | 80. Parameter Editing | v7.0 | TBD | Not started | - |
@@ -255,5 +255,5 @@ Phases execute in numeric order: 77 -> 78 -> 79 -> 80 -> 81 -> 82 -> 83
 | 83. Download Integration + Diffing | v7.0 | TBD | Not started | - |
 
 ---
-*Last updated: 2026-03-07 after Phase 77 planning (2 plans in 2 waves)*
+*Last updated: 2026-03-07 after Phase 77 complete (2/2 plans, 33 tests, verified)*
 *Full phase details for completed milestones archived in `.planning/milestones/`*
