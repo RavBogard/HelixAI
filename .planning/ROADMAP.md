@@ -299,7 +299,7 @@ Plans:
 - [x] **Phase 70: Expression Pedal Controller Assignment** — Fix P0 hardware bug: wah and volume blocks get @controller entries so expression pedals actually work on hardware
 - [x] **Phase 71: Per-Model Effect Intelligence** — Genre-aware delay/reverb/wah model selection guidance in prompts + effectParamOverrides for models with known bad defaults (completed 2026-03-07)
 - [x] **Phase 72: Effect Combination Logic** — Deterministic cross-effect parameter interactions: wah+comp threshold, high-gain gate placement, delay+reverb balance, priority ordering for device budgets (completed 2026-03-07)
-- [ ] **Phase 73: Per-Device Craft Optimization** — Device-specific tone optimization in both prompts (creative direction) and code (hard limit enforcement) for Stomp, Pod Go, Helix, and Stadium
+- [x] **Phase 73: Per-Device Craft Optimization** — Device-specific tone optimization in both prompts (creative direction) and code (hard limit enforcement) for Stomp, Pod Go, Helix, and Stadium (completed 2026-03-07)
 - [ ] **Phase 74: Quality Validation** — Non-throwing validatePresetQuality() advisory gate, per-device baseline comparison, regression detection
 - [x] **Phase 76: Device Block Budget Calibration** — Audit and correct all device block/effect limits to match real hardware; fix Stadium 4→8+ effects, Helix prompt 6→8+ effects, Stomp maxEffectsPerDsp mislabel (completed 2026-03-07)
 
@@ -363,7 +363,11 @@ Plans:
   2. Pod Go presets intelligently prioritize effects based on genre — delay and reverb both present for ambient, drive prioritized for rock
   3. Helix Floor/LT presets use richer effect chains than constrained devices — more creative routing, more effects
   4. Per-device craft is encoded in both planner prompts (creative direction) and chain-rules code (hard limit enforcement) — no prompt-only guidelines that can be violated
-**Plans:** TBD
+**Plans:** 2/2 plans complete
+
+Plans:
+- [ ] 73-01-PLAN.md — Genre-aware effect priority truncation in chain-rules.ts (CRAFT-02, CRAFT-04 code side)
+- [ ] 73-02-PLAN.md — Per-device prompt craft optimization for Stomp, Pod Go, Helix (CRAFT-01, CRAFT-02, CRAFT-03, CRAFT-04 prompt side)
 
 ### Phase 74: Quality Validation
 
@@ -384,7 +388,7 @@ Plans:
 | 70. Expression Pedal | 1/2 | In Progress|  | — |
 | 71. Effect Intelligence | 2/2 | Complete   | 2026-03-07 | — |
 | 72. Effect Combinations | 2/2 | Complete   | 2026-03-07 | — |
-| 73. Per-Device Craft | v6.0 | TBD | Pending | — |
+| 73. Per-Device Craft | 2/2 | Complete   | 2026-03-07 | — |
 | 74. Quality Validation | v6.0 | TBD | Pending | — |
 | 75. Preset Musical Coherence | v6.0 | TBD | Pending | — |
 | 76. Block Budget Calibration | 2/2 | Complete   | 2026-03-07 | — |

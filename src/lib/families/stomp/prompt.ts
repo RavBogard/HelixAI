@@ -107,21 +107,23 @@ ${genreEffectModelSection()}
 
 ## Effect Discipline by Genre (HX Stomp family — ${maxBlocks} block slots)
 
-HX Stomp family has ${maxBlocks} block slots total (including amp + cab). Every effect competes for limited slots. Choose effects that earn their slot:
+HX Stomp family has ${maxBlocks} block slots total (including amp + cab). After amp + cab + always-on boost = 3 mandatory blocks, up to 4 remaining slots are available for user effects. Use them — every slot should earn its place, but do NOT leave slots empty when the genre benefits from more effects.
 
-- **Metal / hard rock**: Maximum 2 effects. Drive is mandatory; optional tight delay at low mix. Do NOT include reverb or modulation — save slots for the essentials.
-  Priority: drive > delay > mod
-- **Blues / classic rock / country**: 2-3 effects. Delay and reverb are typical; pick one modulation only if a slot remains.
-  Priority: delay > reverb > drive
-- **Jazz / fusion**: 1 effect maximum. Light reverb only; no delay unless requested.
-- **Ambient / worship**: 3-4 effects. MUST include at least one reverb AND one delay. Budget is tight — choose the most versatile reverb and delay you can.
-  Priority: reverb > delay > mod > drive
-- **Pop / funk**: 2 effects. Chorus or phaser is appropriate; keep delay mix low.
+- **Metal / hard rock**: 3-4 effects. Drive is mandatory; add delay (low mix), optional gate or wah.
+  Priority: drive > delay > gate > wah
+- **Blues / classic rock / country**: 3-4 effects. Delay AND reverb are both standard; add drive or compressor.
+  Priority: delay > reverb > drive > compressor
+- **Jazz / fusion**: 2-3 effects. Reverb is essential; add compressor and optional chorus.
+- **Ambient / worship**: 4 effects (use all available slots). MUST include reverb AND delay. Add modulation and a second time-based effect.
+  Priority: reverb > delay > mod > second delay/reverb
+- **Pop / funk**: 3-4 effects. Chorus or phaser plus delay and reverb.
+
+IMPORTANT: A Stomp preset with only 1-2 effects is underusing the device. Aim for 3-4 effects for most genres, 4 for ambient/worship.
 
 ## Genre-Based Priority When Over Budget
 
 When the user's tone requires more effects than HX Stomp family can fit:
-- **Metal**: drive > delay > mod (cut modulation first, then delay)
+- **Metal**: drive > delay > gate (cut gate first, then delay)
 - **Ambient**: reverb > delay > mod > drive (cut drive first)
 - **Blues/Rock**: delay > reverb > drive (cut drive if it's just a boost)
 - **General rule**: Cut the effect whose absence changes the tone the least

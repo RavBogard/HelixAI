@@ -6,9 +6,9 @@ status: active
 last_updated: "2026-03-07"
 progress:
   total_phases: 7
-  completed_phases: 4
-  total_plans: 8
-  completed_plans: 8
+  completed_phases: 5
+  total_plans: 10
+  completed_plans: 10
 ---
 
 # Project State
@@ -18,21 +18,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-06)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** v6.0 Preset Craft Mastery — Phase 72 COMPLETE, ready for next phase
+**Current focus:** v6.0 Preset Craft Mastery — Phase 73 complete (both plans done, 780 tests)
 
 ## Current Position
 
-Phase: Phase 72 — Effect Combination Logic (COMPLETE)
+Phase: Phase 73 — Per-Device Craft Optimization (COMPLETE)
 Plan: 2/2 complete
-Status: Phase 72 complete -- all 4 COMBO rules implemented (COMBO-01 wah+comp, COMBO-02 comp omission, COMBO-03 truncation, COMBO-04 delay+reverb)
-Last activity: 2026-03-07 — Phase 72 Plan 02 complete (parametric combination rules, 771 tests)
+Status: Phase 73 complete — genre-aware truncation (Plan 01) + prompt optimization (Plan 02)
+Last activity: 2026-03-07 — Phase 73 Plan 02 complete (prompt optimization, 780 tests)
 
-Progress: [██████████████████░░░░░░░░░░░░░░] 57% (4/7 phases complete)
+Progress: [████████████████████████░░░░░░░░] 71% (5/7 phases, 10/10 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8 (this milestone)
+- Total plans completed: 10 (this milestone)
+- Phase 73: Plan 02 in ~4 min (prompt optimization for all 3 device families, 9 new tests)
+- Phase 73: Plan 01 in ~3 min (genre-aware effect priority truncation, TDD)
 - Phase 72: Plan 02 in ~4 min (parametric combination rules, TDD)
 - Phase 72: Plan 01 in ~3 min (structural combination rules, TDD)
 - Phase 71: 2 plans in ~7 min total (avg 3.5 min/plan — data layer + prompt integration)
@@ -72,6 +74,13 @@ Progress: [██████████████████░░░░░
 - [v6.0]: COMBO-01 wah+compressor threshold reduction: single-value params -0.10, multi-band -0.08 (covers all 7 compressor models via modelId prefix)
 - [v6.0]: COMBO-04 delay+reverb mix balancing: reverb Mix -0.05 with floor of 0.08 (metal genre 0.12->0.08, not 0.07)
 - [v6.0]: applyCombinationAdjustments() runs as final post-processing step in resolveParameters() — scans full chain context
+- [v6.0]: GENRE_SLOT_PRIORITY table with 9 genres (metal, ambient, worship, blues, rock, jazz, country, funk, pop) — drives genre-aware truncation
+- [v6.0]: matchGenreKey() checks "rock" last as catch-all — "hard rock"/"classic rock" both resolve to "rock" entry
+- [v6.0]: Worship genre reuses ambient priorities (reverb=20, delay=18, modulation=15) — both emphasize atmospheric effects
+- [v6.0]: getEffectPriority(pending, genreHint?) — optional genreHint parameter preserves all existing callers
+- [v6.0]: Pod Go prompt section renamed "Effect Discipline by Genre" -> "Effect Slot Planning by Genre" — fill-all-slots philosophy with exact 4-effect templates
+- [v6.0]: Helix prompt effect discipline includes per-genre DSP0/DSP1 placement guidance (e.g., drive+gate on DSP0, delay+mod on DSP1)
+- [v6.0]: Stomp metal over-budget priority: drive > delay > gate (was drive > delay > mod) — matches new gate inclusion in metal genre
 
 ### Roadmap Evolution
 
@@ -90,6 +99,6 @@ Progress: [██████████████████░░░░░
 ## Session Continuity
 
 Last session: 2026-03-07
-Stopped at: Completed 72-02-PLAN.md — parametric combination rules (COMBO-01 wah+comp, COMBO-04 delay+reverb)
+Stopped at: Completed 73-02-PLAN.md — device-specific prompt optimization (CRAFT-01/02/03/04 complete)
 Resume file: None
-Next command: /gsd:execute-phase (next phase in milestone)
+Next command: /gsd:execute-phase (next milestone phase)

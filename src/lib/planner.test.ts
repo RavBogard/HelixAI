@@ -89,7 +89,7 @@ describe("getFamilyPlannerPrompt (helix)", () => {
 
       expect(podGoPrompt).toContain("## Gain-Staging Intelligence");
       expect(podGoPrompt).toContain("## Amp-to-Cab Pairing");
-      expect(podGoPrompt).toContain("## Effect Discipline by Genre");
+      expect(podGoPrompt).toContain("## Effect Slot Planning by Genre");
 
       const gainIdx = podGoPrompt.indexOf("## Gain-Staging Intelligence");
       const deviceIdx = podGoPrompt.indexOf("DEVICE RESTRICTION");

@@ -871,4 +871,248 @@ describe("assembleSignalChain", () => {
       expect(() => schema.parse(tooMany)).toThrow();
     });
   });
+
+  // --- CRAFT-04: genre-aware priority truncation ---
+
+  describe("CRAFT-04: genre-aware priority truncation", () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    // CRAFT-04-1: Pod Go ambient with 6 effects keeps reverb + delay + mod, drops drive + compressor
+    it("Pod Go ambient keeps reverb + delay + mod, drops drive + compressor", () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const podGoCaps = getCapabilities("pod_go");
+
+      const chain = assembleSignalChain(
+        cleanIntent({
+          genreHint: "ambient",
+          effects: [
+            { modelName: "Deluxe Comp", role: "toggleable" },
+            { modelName: "Teemah!", role: "toggleable" },
+            { modelName: "Simple Delay", role: "toggleable" },
+            { modelName: "Hall", role: "toggleable" },
+            { modelName: "70s Chorus", role: "toggleable" },
+            { modelName: "Adriatic Delay", role: "toggleable" },
+          ],
+        }),
+        podGoCaps
+      );
+
+      const names = chain.map((b) => b.modelName);
+      // Ambient priorities: reverb(20) > delay(18) > modulation(15) > compressor(8) > drive(5)
+      // Survivors (top 4): Hall(reverb), Simple Delay(delay), Adriatic Delay(delay), 70s Chorus(mod)
+      expect(names).toContain("Hall");
+      expect(names).toContain("Simple Delay");
+      expect(names).toContain("70s Chorus");
+      expect(names).toContain("Adriatic Delay");
+      // Dropped: Teemah! (drive=5) and Deluxe Comp (compressor=8)
+      expect(names).not.toContain("Teemah!");
+      expect(names).not.toContain("Deluxe Comp");
+    });
+
+    // CRAFT-04-2: Pod Go metal with 5 effects keeps drive + delay, drops reverb + modulation
+    it("Pod Go metal keeps drive + delay, drops modulation", () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const podGoCaps = getCapabilities("pod_go");
+
+      const chain = assembleSignalChain(
+        highGainIntent({
+          genreHint: "metal",
+          effects: [
+            { modelName: "Teemah!", role: "toggleable" },
+            { modelName: "Simple Delay", role: "toggleable" },
+            { modelName: "Hall", role: "toggleable" },
+            { modelName: "70s Chorus", role: "toggleable" },
+            { modelName: "Stupor OD", role: "toggleable" },
+          ],
+        }),
+        podGoCaps
+      );
+
+      const names = chain.map((b) => b.modelName);
+      // Metal priorities: extra_drive(20) > delay(12) > wah(10) > compressor(5) > reverb(3) > modulation(2)
+      // COMBO-02 doesn't apply here (no compressor)
+      // 5 effects, budget=4 => drop 1
+      // Scores: Teemah!(50+20=70), Stupor OD(50+20=70), Simple Delay(50+12=62), Hall(50+3=53), 70s Chorus(50+2=52)
+      // Drop 70s Chorus (lowest)
+      expect(names).toContain("Teemah!");
+      expect(names).toContain("Stupor OD");
+      expect(names).toContain("Simple Delay");
+      expect(names).not.toContain("70s Chorus");
+    });
+
+    // CRAFT-04-3: Pod Go blues with 5 effects keeps delay + reverb + drive, drops modulation
+    it("Pod Go blues keeps delay + reverb + drive, drops modulation", () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const podGoCaps = getCapabilities("pod_go");
+
+      const chain = assembleSignalChain(
+        cleanIntent({
+          genreHint: "blues",
+          effects: [
+            { modelName: "Teemah!", role: "toggleable" },
+            { modelName: "Deluxe Comp", role: "toggleable" },
+            { modelName: "Simple Delay", role: "toggleable" },
+            { modelName: "Hall", role: "toggleable" },
+            { modelName: "70s Chorus", role: "toggleable" },
+          ],
+        }),
+        podGoCaps
+      );
+
+      const names = chain.map((b) => b.modelName);
+      // Blues priorities: delay(18) > reverb(15) > extra_drive(12) > compressor(10) > modulation(5)
+      // Scores: Simple Delay(50+18=68), Hall(50+15=65), Teemah!(50+12=62), Deluxe Comp(50+10=60), 70s Chorus(50+5=55)
+      // Drop 70s Chorus (lowest)
+      expect(names).toContain("Simple Delay");
+      expect(names).toContain("Hall");
+      expect(names).toContain("Teemah!");
+      expect(names).toContain("Deluxe Comp");
+      expect(names).not.toContain("70s Chorus");
+    });
+
+    // CRAFT-04-4: Pod Go jazz with 5 effects keeps reverb + compressor, drops drive
+    it("Pod Go jazz keeps reverb + compressor + modulation, drops drive", () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const podGoCaps = getCapabilities("pod_go");
+
+      const chain = assembleSignalChain(
+        cleanIntent({
+          genreHint: "jazz",
+          effects: [
+            { modelName: "Deluxe Comp", role: "toggleable" },
+            { modelName: "Simple Delay", role: "toggleable" },
+            { modelName: "Hall", role: "toggleable" },
+            { modelName: "70s Chorus", role: "toggleable" },
+            { modelName: "Teemah!", role: "toggleable" },
+          ],
+        }),
+        podGoCaps
+      );
+
+      const names = chain.map((b) => b.modelName);
+      // Jazz priorities: reverb(18) > compressor(15) > modulation(10) > delay(5) > extra_drive(3)
+      // Scores: Hall(50+18=68), Deluxe Comp(50+15=65), 70s Chorus(50+10=60), Simple Delay(50+5=55), Teemah!(50+3=53)
+      // Drop Teemah! (lowest)
+      expect(names).toContain("Hall");
+      expect(names).toContain("Deluxe Comp");
+      expect(names).toContain("70s Chorus");
+      expect(names).toContain("Simple Delay");
+      expect(names).not.toContain("Teemah!");
+    });
+
+    // CRAFT-04-5: No genreHint falls back to generic scoring (backward compat)
+    it("no genreHint falls back to generic scoring (70s Chorus dropped)", () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const podGoCaps = getCapabilities("pod_go");
+
+      const chain = assembleSignalChain(
+        cleanIntent({
+          effects: [
+            { modelName: "UK Wah 846", role: "always_on" },
+            { modelName: "Deluxe Comp", role: "toggleable" },
+            { modelName: "Simple Delay", role: "toggleable" },
+            { modelName: "Hall", role: "toggleable" },
+            { modelName: "70s Chorus", role: "toggleable" },
+          ],
+        }),
+        podGoCaps
+      );
+
+      const names = chain.map((b) => b.modelName);
+      // Generic priorities: wah(18) > compressor(15) > delay(10) > reverb(8) > modulation(5)
+      // UK Wah 846 is always_on (100+18=118), others toggleable (50+slot)
+      // 70s Chorus (50+5=55) is lowest — same as COMBO-03-1
+      expect(names).not.toContain("70s Chorus");
+      expect(names).toContain("UK Wah 846");
+      expect(names).toContain("Deluxe Comp");
+      expect(names).toContain("Simple Delay");
+      expect(names).toContain("Hall");
+    });
+
+    // CRAFT-04-6: Stomp with genreHint "worship" keeps reverb + delay + mod
+    it("Stomp worship keeps reverb + delay + mod, drops drive", () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const stompCaps = getCapabilities("helix_stomp");
+
+      const chain = assembleSignalChain(
+        cleanIntent({
+          genreHint: "worship",
+          effects: [
+            { modelName: "Deluxe Comp", role: "toggleable" },
+            { modelName: "Teemah!", role: "toggleable" },
+            { modelName: "Simple Delay", role: "toggleable" },
+            { modelName: "Hall", role: "toggleable" },
+            { modelName: "70s Chorus", role: "toggleable" },
+          ],
+        }),
+        stompCaps
+      );
+
+      const names = chain.map((b) => b.modelName);
+      // Worship = same as ambient: reverb(20) > delay(18) > modulation(15) > compressor(8) > drive(5)
+      // Scores: Hall(50+20=70), Simple Delay(50+18=68), 70s Chorus(50+15=65), Deluxe Comp(50+8=58), Teemah!(50+5=55)
+      // Drop Teemah! (lowest)
+      expect(names).toContain("Hall");
+      expect(names).toContain("Simple Delay");
+      expect(names).toContain("70s Chorus");
+      expect(names).toContain("Deluxe Comp");
+      expect(names).not.toContain("Teemah!");
+    });
+
+    // CRAFT-04-7: Helix with genreHint does NOT truncate (Infinity cap)
+    it("Helix with genreHint ambient does NOT truncate (all 6 survive)", () => {
+      const chain = assembleSignalChain(
+        cleanIntent({
+          genreHint: "ambient",
+          effects: [
+            { modelName: "Deluxe Comp", role: "toggleable" },
+            { modelName: "Teemah!", role: "toggleable" },
+            { modelName: "Simple Delay", role: "toggleable" },
+            { modelName: "Hall", role: "toggleable" },
+            { modelName: "70s Chorus", role: "toggleable" },
+            { modelName: "Adriatic Delay", role: "toggleable" },
+          ],
+        }),
+        HELIX_CAPS
+      );
+
+      const names = chain.map((b) => b.modelName);
+      // Helix maxEffectsPerDsp = Infinity — no truncation
+      expect(names).toContain("Deluxe Comp");
+      expect(names).toContain("Teemah!");
+      expect(names).toContain("Simple Delay");
+      expect(names).toContain("Hall");
+      expect(names).toContain("70s Chorus");
+      expect(names).toContain("Adriatic Delay");
+    });
+
+    // CRAFT-04-8: always_on intentRole overrides genre priority
+    it("always_on drive survives ambient truncation despite lowest genre priority", () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const podGoCaps = getCapabilities("pod_go");
+
+      const chain = assembleSignalChain(
+        cleanIntent({
+          genreHint: "ambient",
+          effects: [
+            { modelName: "Teemah!", role: "always_on" },
+            { modelName: "Simple Delay", role: "toggleable" },
+            { modelName: "Hall", role: "toggleable" },
+            { modelName: "70s Chorus", role: "toggleable" },
+            { modelName: "Adriatic Delay", role: "toggleable" },
+          ],
+        }),
+        podGoCaps
+      );
+
+      const names = chain.map((b) => b.modelName);
+      // Teemah! always_on (100+5=105) survives despite drive=5 for ambient
+      // Toggleable scores: Hall(50+20=70), Simple Delay(50+18=68), Adriatic Delay(50+18=68), 70s Chorus(50+15=65)
+      // Drop 1: 70s Chorus (65) is lowest among toggleable
+      expect(names).toContain("Teemah!");
+      // 4 total survive: Teemah! + 3 of the time-based effects
+    });
+  });
 });

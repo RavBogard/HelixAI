@@ -233,29 +233,66 @@ function buildBlockSpec(
 }
 
 // ---------------------------------------------------------------------------
-// Effect priority scoring (COMBO-03)
+// Effect priority scoring (COMBO-03) + Genre-aware scoring (CRAFT-04)
 // ---------------------------------------------------------------------------
 
-/** Score an effect for truncation priority (COMBO-03).
- * Higher score = more likely to survive budget truncation. */
-function getEffectPriority(pending: PendingBlock): number {
+/** Per-genre slot priority scores for CRAFT-04 genre-aware truncation.
+ * Higher score = effect slot is more important for that genre.
+ * When genreHint matches a key, these scores replace the generic slot scores. */
+const GENRE_SLOT_PRIORITY: Record<string, Partial<Record<ChainSlot, number>>> = {
+  metal:   { extra_drive: 20, delay: 12, wah: 10, compressor: 5, reverb: 3, modulation: 2 },
+  ambient: { reverb: 20, delay: 18, modulation: 15, compressor: 8, extra_drive: 5, wah: 3 },
+  worship: { reverb: 20, delay: 18, modulation: 15, compressor: 8, extra_drive: 5, wah: 3 },
+  blues:   { delay: 18, reverb: 15, extra_drive: 12, compressor: 10, modulation: 5, wah: 8 },
+  rock:    { extra_drive: 18, delay: 15, reverb: 12, compressor: 8, modulation: 5, wah: 10 },
+  jazz:    { reverb: 18, compressor: 15, modulation: 10, delay: 5, extra_drive: 3, wah: 3 },
+  country: { delay: 18, reverb: 15, compressor: 12, modulation: 8, extra_drive: 5, wah: 5 },
+  funk:    { compressor: 18, modulation: 15, delay: 12, reverb: 10, extra_drive: 8, wah: 10 },
+  pop:     { delay: 15, reverb: 12, modulation: 15, compressor: 10, extra_drive: 5, wah: 5 },
+};
+
+/** Match a genreHint string to a GENRE_SLOT_PRIORITY key.
+ * Returns undefined if no genreHint or no match found.
+ * Checks specific genres first, "rock" last as a catch-all for "hard rock", "classic rock", etc. */
+function matchGenreKey(genreHint?: string): string | undefined {
+  if (!genreHint) return undefined;
+  const hint = genreHint.toLowerCase();
+  // Check specific genres first (order matters — "rock" last as catch-all)
+  const genres = ["metal", "ambient", "worship", "blues", "jazz", "country", "funk", "pop", "rock"];
+  for (const genre of genres) {
+    if (hint.includes(genre)) return genre;
+  }
+  return undefined;
+}
+
+/** Score an effect for truncation priority (COMBO-03 + CRAFT-04).
+ * Higher score = more likely to survive budget truncation.
+ * When genreHint is provided, genre-specific slot scores replace generic ones. */
+function getEffectPriority(pending: PendingBlock, genreHint?: string): number {
   let score = 0;
-  // intentRole scoring
+  // intentRole scoring (unchanged)
   switch (pending.intentRole) {
     case "always_on": score += 100; break;
     case "toggleable": score += 50; break;
     case "ambient": score += 30; break;
     default: score += 40; break;
   }
-  // Slot-based scoring — core tone-shaping effects survive
-  switch (pending.slot) {
-    case "wah": score += 18; break;
-    case "compressor": score += 15; break;
-    case "extra_drive": score += 12; break;
-    case "delay": score += 10; break;
-    case "reverb": score += 8; break;
-    case "modulation": score += 5; break;
-    default: score += 5; break;
+  // Genre-aware slot scoring (CRAFT-04)
+  const genreKey = matchGenreKey(genreHint);
+  const genreScores = genreKey ? GENRE_SLOT_PRIORITY[genreKey] : undefined;
+  if (genreScores && pending.slot in genreScores) {
+    score += genreScores[pending.slot]!;
+  } else {
+    // Generic slot-based scoring — fallback when no genre or slot not in genre table
+    switch (pending.slot) {
+      case "wah": score += 18; break;
+      case "compressor": score += 15; break;
+      case "extra_drive": score += 12; break;
+      case "delay": score += 10; break;
+      case "reverb": score += 8; break;
+      case "modulation": score += 5; break;
+      default: score += 5; break;
+    }
   }
   return score;
 }
@@ -432,7 +469,8 @@ export function assembleSignalChain(intent: ToneIntent, caps: DeviceCapabilities
   // Infinity for Helix (no explicit cap), 4 for Pod Go/Stomp, 8 for Stadium
   if (caps.maxEffectsPerDsp < Infinity && userEffects.length > caps.maxEffectsPerDsp) {
     // Sort by priority descending (highest priority survives)
-    userEffects.sort((a, b) => getEffectPriority(b) - getEffectPriority(a));
+    // CRAFT-04: pass genreHint for genre-aware slot scoring
+    userEffects.sort((a, b) => getEffectPriority(b, intent.genreHint) - getEffectPriority(a, intent.genreHint));
 
     const dropped = userEffects.length - caps.maxEffectsPerDsp;
     const droppedEffects = userEffects.slice(caps.maxEffectsPerDsp);

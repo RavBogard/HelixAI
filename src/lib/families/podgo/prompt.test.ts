@@ -69,6 +69,23 @@ describe("podgo/buildPlannerPrompt", () => {
   });
 });
 
+describe("CRAFT-02: genre-intelligent slot planning", () => {
+  const prompt = buildPlannerPrompt("pod_go", sampleModelList);
+
+  it("Pod Go prompt specifies exact 4-effect templates per genre", () => {
+    expect(prompt).toContain("Choose ALL 4");
+    expect(prompt).toContain("exactly 4 effect slots");
+  });
+
+  it("Pod Go prompt encourages filling all slots", () => {
+    expect(prompt).toContain("unused slot is a wasted slot");
+  });
+
+  it("Pod Go prompt still maintains hard 4-effect limit language", () => {
+    expect(prompt).toContain("hard 4 user-effect limit");
+  });
+});
+
 describe("podgo/getSystemPrompt", () => {
   const prompt = getSystemPrompt("pod_go");
 
