@@ -6,9 +6,9 @@ status: active
 last_updated: "2026-03-07"
 progress:
   total_phases: 7
-  completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  completed_phases: 2
+  total_plans: 4
+  completed_plans: 4
 ---
 
 # Project State
@@ -18,21 +18,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-06)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** v6.0 Preset Craft Mastery — Phase 70 complete, Phase 71 ready to plan
+**Current focus:** v6.0 Preset Craft Mastery — Phase 76 complete, next phase ready to plan
 
 ## Current Position
 
-Phase: Phase 70 COMPLETE — Expression Pedal Controller Assignment
+Phase: Phase 76 COMPLETE — Device Block Budget Calibration
 Plan: 2/2 complete
-Status: Phase 70 done, ready to plan Phase 71
-Last activity: 2026-03-07 — Phase 70 complete (EXP pedal controllers wired into all 4 builders)
+Status: Phase 76 done, all device block budgets calibrated
+Last activity: 2026-03-07 — Phase 76 complete (hardware budget corrections + prompt alignment)
 
-Progress: [████░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 14% (1/7 phases complete)
+Progress: [█████████░░░░░░░░░░░░░░░░░░░░░░░] 29% (2/7 phases complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2 (this milestone)
+- Total plans completed: 4 (this milestone)
+- Phase 76: 2 plans in ~7 min total (avg 3.5 min/plan)
 - Phase 70: 2 plans in ~5 min total (avg 2.5 min/plan)
 - Prior milestone avg: ~5 min/plan (v5.0)
 
@@ -54,6 +55,10 @@ Progress: [████░░░░░░░░░░░░░░░░░░░
 - [v6.0-pre]: Delay subdivision fully working (added in v4.0) — "quarter", "dotted_eighth", "eighth", "triplet" options resolved in param-engine.ts
 - [v6.0-pre]: 126+ effects across all families with 100% parameter coverage, but AI treats all effects in a category as interchangeable — no per-model guidance
 - [v6.0-pre]: No effect combination intelligence exists — comp→drive, mod→reverb interactions not modeled
+- [v6.0]: STOMP_MAX_BLOCKS=8 for both Stomp and StompXL (FW 3.0+ hardware limit, same DSP chip)
+- [v6.0]: maxEffectsPerDsp calibrated to real hardware: Stomp=4, StompXL=4, Stadium=8, Helix=Infinity, PodGo=4
+- [v6.0]: Zod schema .max(10) for effects array — provides headroom above Stadium's 8-effect capacity
+- [v6.0]: chain-rules now logs console.warn before effect truncation for observability
 
 ### Roadmap Evolution
 
@@ -67,11 +72,11 @@ Progress: [████░░░░░░░░░░░░░░░░░░░
 
 - **HX Edit Stadium verification:** Stadium presets unblocked but HX Edit import not verified across varied tone goals — required as success criterion for Phase 63.
 - **Expression pedal wiring:** RESOLVED in Phase 70 — EXP_PEDAL_1/2 now assigned in all 4 builders (Helix, Stomp, Pod Go, Stadium=0). 19 TDD tests cover all scenarios.
-- **Artificially conservative block budgets:** Stadium maxEffectsPerDsp=4 but prompt says 6 and hardware supports 8+; Helix prompt maxEffects=6 but LT users routinely use 8+ effects; Stomp DeviceCapabilities says maxEffectsPerDsp=2 but real hardware has 4 user-effect slots. Chain-rules silently truncates excess effects with no warning. Phase 76 addresses this.
+- **Artificially conservative block budgets:** RESOLVED in Phase 76 — Stadium maxEffectsPerDsp corrected 4->8, Stomp 2->4, StompXL 5->4, STOMP_MAX_BLOCKS 6->8. Zod .max(10), prompt maxEffects aligned, chain-rules logs truncation warnings. 716 tests pass.
 
 ## Session Continuity
 
 Last session: 2026-03-07
-Stopped at: Phase 70 complete — EXP pedal controllers wired into all 4 builders with 19 TDD tests
+Stopped at: Phase 76 complete — device block budgets calibrated for all 5 families with 12 new tests
 Resume file: None
-Next command: /gsd:plan-phase 71
+Next command: /gsd:plan-phase (next phase)
