@@ -6,9 +6,9 @@ status: active
 last_updated: "2026-03-07"
 progress:
   total_phases: 7
-  completed_phases: 6
-  total_plans: 12
-  completed_plans: 13
+  completed_phases: 7
+  total_plans: 15
+  completed_plans: 15
 ---
 
 # Project State
@@ -18,21 +18,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-06)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** v6.0 Preset Craft Mastery — Phase 74 complete (2/2 plans, 811 tests)
+**Current focus:** v6.0 Preset Craft Mastery — Phase 75 complete (3/3 plans, 842 tests)
 
 ## Current Position
 
 Phase: Phase 75 — Preset Musical Coherence
-Plan: 2/3 complete
-Status: Phase 75 Plan 02 complete — COHERE-03 boost disambiguation + COHERE-04 dynamics split
-Last activity: 2026-03-07 — Phase 75 Plan 02 complete (slot-based boost detection + compressor toggle-off for high-gain)
+Plan: 3/3 complete
+Status: Phase 75 complete — all 6 COHERE issues resolved
+Last activity: 2026-03-07 — Phase 75 Plan 03 complete (COHERE-05 getBlockLabel + COHERE-06 description cross-validation)
 
-Progress: [████████████████████████████████] 100% (6/7 phases, 13/15 plans)
+Progress: [████████████████████████████████] 100% (7/7 phases, 15/15 plans)
 
 ## Performance Metrics
 
 **Velocity:**
 - Total plans completed: 14 (this milestone)
+- Phase 75: Plan 03 in ~3 min (COHERE-05 getBlockLabel + COHERE-06 description cross-validation, TDD, 7 new tests)
 - Phase 75: Plan 02 in ~6 min (COHERE-03 boost disambiguation + COHERE-04 dynamics split, TDD, 10 new tests)
 - Phase 75: Plan 01 in ~6 min (COHERE-01 drive palette balance + COHERE-02 reverb auto-insert, TDD, 9 new tests)
 - Phase 74: Plan 02 in ~5 min (pipeline integration + baseline generator/compare scripts)
@@ -98,6 +99,8 @@ Progress: [███████████████████████
 - [v6.0]: COHERE-03 classifyEffectSlot returns "extra_drive" for user Minotaur/Scream 808 (was "boost") — only mandatory step 5a gets slot="boost"
 - [v6.0]: COHERE-03 backward compat: !block.slot && BOOST_MODEL_IDS.has() fallback for old presets without slot field
 - [v6.0]: COHERE-04 compressor OFF only for high-gain + lead/crunch; gate/Autoswell always-ON unchanged
+- [v6.0]: COHERE-05 VizBlock.modelId added for type-safe getBlockLabel(); AutoSwell excluded via includes("AutoSwell") guard
+- [v6.0]: COHERE-06 checkDescriptionEffectCoherence maps 7 keywords to block types — advisory only, non-throwing
 
 ### Roadmap Evolution
 
@@ -116,6 +119,6 @@ Progress: [███████████████████████
 ## Session Continuity
 
 Last session: 2026-03-07
-Stopped at: Completed 75-02-PLAN.md — COHERE-03 boost disambiguation + COHERE-04 dynamics split
+Stopped at: Completed 75-03-PLAN.md — Phase 75 complete (all 6 COHERE issues resolved)
 Resume file: None
-Next command: Continue Phase 75 — Plan 03 (quality validation updates).
+Next command: v6.0 Preset Craft Mastery milestone complete — all 7 phases (70-76) done.

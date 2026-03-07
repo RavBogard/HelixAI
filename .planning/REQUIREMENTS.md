@@ -49,8 +49,8 @@ Requirements for Preset Craft Mastery milestone. Each maps to roadmap phases.
 - [x] **COHERE-02**: Reverb soft-mandatory insertion — auto-insert genre-appropriate reverb (Plate default) when ToneIntent includes clean/ambient snapshot roles but no reverb effect
 - [x] **COHERE-03**: Boost model disambiguation — snapshot-engine distinguishes mandatory boost (chain-rules inserted, slot="boost") from AI-selected drive (user chose Minotaur/Scream 808 as effect); user-selected boosts follow distortion toggle rules, not always-on
 - [x] **COHERE-04**: Dynamics type split — separate "compressor" and "gate" block types in chain-rules, snapshot-engine, and frontend; compressor toggles OFF for high-gain lead/rhythm snapshots; gate remains always-on
-- [ ] **COHERE-05**: Frontend block label accuracy — BLOCK_LABEL map distinguishes compressor ("Comp") from gate ("Gate") instead of blanket "Gate" for all dynamics
-- [ ] **COHERE-06**: ToneIntent-description cross-validation — post-planner check warns when description mentions effects (reverb, delay, modulation) not present in ToneIntent.effects; logged as quality warning
+- [x] **COHERE-05**: Frontend block label accuracy — BLOCK_LABEL map distinguishes compressor ("Comp") from gate ("Gate") instead of blanket "Gate" for all dynamics
+- [x] **COHERE-06**: ToneIntent-description cross-validation — post-planner check warns when description mentions effects (reverb, delay, modulation) not present in ToneIntent.effects; logged as quality warning
 
 ### Device Block Budget Calibration
 
@@ -119,8 +119,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | COHERE-02 | Phase 75 | Complete |
 | COHERE-03 | Phase 75 | Complete |
 | COHERE-04 | Phase 75 | Complete |
-| COHERE-05 | Phase 75 | Pending |
-| COHERE-06 | Phase 75 | Pending |
+| COHERE-05 | Phase 75 | Complete |
+| COHERE-06 | Phase 75 | Complete |
 | BUDGET-01 | Phase 76 | Complete |
 | BUDGET-02 | Phase 76 | Complete |
 | BUDGET-03 | Phase 76 | Complete |
