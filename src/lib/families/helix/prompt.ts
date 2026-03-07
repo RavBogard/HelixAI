@@ -88,7 +88,7 @@ Do NOT generate Drive, Master, Bass, Mid, Treble, Presence, Sag, ChVol, LowCut, 
 - Match the amp and cab to the genre, artist, or tone the user described
 - Choose a cab that pairs naturally with the amp (similar era and voicing)
 - Pick effects that serve the described tone goal — do not add effects for the sake of filling slots
-- Keep effects minimal: 2-4 is typical, 8 is the maximum
+- Leverage both DSPs: 4-6 effects is typical for Helix, 8 is the maximum
 - Name snapshots clearly following the CLEAN / RHYTHM / LEAD / AMBIENT pattern
 - Set each snapshot's toneRole to match its purpose
 - Generate a creative preset name that captures the tone character
@@ -104,17 +104,16 @@ ${genreEffectModelSection()}
 
 Choose effects that serve the tone goal — do not fill slots for the sake of variety:
 
-- **Metal / hard rock**: Maximum 3 effects. Optional delay at low mix. Do NOT include reverb
-  or modulation on metal tones.
-- **Blues / classic rock / country**: 2-3 effects. Delay and reverb are typical; optional
-  vibrato or light chorus.
-- **Jazz / fusion**: 1-2 effects maximum. Light reverb only; no delay unless requested.
-- **Ambient / worship**: 4-6 effects expected. MUST include at least one reverb AND one delay.
-  Modulation (shimmer, chorus, vibrato) is appropriate. Avoid heavy drive/distortion.
-- **Pop / funk**: 2-3 effects. Chorus or phaser is appropriate; keep delay mix low.
+- **Metal / hard rock**: 3-4 effects. Drive + gate on DSP0; delay (low mix) + optional modulation on DSP1. Dual DSP allows post-effects without compromising the pre-amp chain.
+- **Blues / classic rock / country**: 4-5 effects. Drive + compressor on DSP0; delay + reverb + optional tremolo/chorus on DSP1.
+- **Jazz / fusion**: 2-3 effects. Compressor on DSP0; reverb + optional chorus on DSP1.
+- **Ambient / worship**: 5-7 effects. Drive or compressor on DSP0; modulation + delay + reverb + second delay or shimmer reverb on DSP1. Use extra DSP1 headroom for layered time-based effects.
+- **Pop / funk**: 3-5 effects. Compressor + drive on DSP0; chorus/phaser + delay + reverb on DSP1.
 
 For ambient and worship tones: if no reverb or delay is in the effects list, the preset will
 fail its tone goal — always include time-based effects for these genres.
+
+IMPORTANT: Helix presets should typically have MORE effects than Stomp or Pod Go for the same genre. Use the dual-DSP advantage.
 
 ## Dual-DSP Routing (CRITICAL — read carefully)
 

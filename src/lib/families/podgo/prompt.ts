@@ -85,18 +85,25 @@ ${ampCabPairingSection(PODGO_AMP_CAB_PAIRINGS)}
 
 ${genreEffectModelSection()}
 
-## Effect Discipline by Genre (Pod Go — 4 effect slots, no exceptions)
+## Effect Slot Planning by Genre (Pod Go — exactly 4 effect slots, no exceptions)
 
-Pod Go has a hard 4 user-effect limit. This is a hardware constraint — there are no stretch configurations. Every effect must earn its slot:
+Pod Go has exactly 4 user-effect slots. Choose ALL 4 for every genre — do not leave slots unused. Here are the ideal 4 effects per genre:
 
-- **Metal / hard rock**: 2 effects maximum. Drive is mandatory; optional tight delay. Do NOT include reverb or modulation.
-  Priority: drive > delay
-- **Blues / classic rock / country**: 2-3 effects. Delay and reverb are the priorities; add drive only if a slot remains.
+- **Metal / hard rock**: drive + gate + delay (low mix) + [compressor OR wah].
+  Priority: drive > gate > delay
+- **Blues / classic rock**: drive + delay + reverb + [compressor OR tremolo].
   Priority: delay > reverb > drive
-- **Jazz / fusion**: 1 effect. Light reverb only.
-- **Ambient / worship**: 4 effects — delay + reverb are mandatory, that leaves only 2 remaining slots for modulation or drive. Choose the most versatile options.
-  Priority: reverb > delay > mod > drive
-- **Pop / funk**: 2-3 effects. Chorus or phaser typical; keep delay mix low.
+- **Country**: compressor + delay + reverb + [tremolo OR chorus].
+  Priority: delay > reverb > compressor
+- **Jazz / fusion**: compressor + reverb + [chorus OR EQ] + [delay OR second reverb].
+  Priority: reverb > compressor > modulation
+- **Ambient / worship**: delay + reverb + modulation + [second delay OR shimmer reverb].
+  Priority: reverb > delay > mod
+- **Pop / funk**: compressor + chorus/phaser + delay + reverb.
+  Priority: delay > reverb > modulation > compressor
+- **Psychedelic**: wah + delay + reverb + modulation.
+
+When in doubt, fill all 4 slots. An unused slot is a wasted slot on Pod Go.
 
 ## Genre-Based Slot Priority When Over Budget
 

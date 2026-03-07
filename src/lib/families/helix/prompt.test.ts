@@ -86,6 +86,23 @@ describe("helix/buildPlannerPrompt", () => {
   });
 });
 
+describe("CRAFT-03: dual-DSP richness", () => {
+  const prompt = buildPlannerPrompt("helix_lt", sampleModelList);
+
+  it("Helix prompt encourages 4-6 effects typical (not 2-4)", () => {
+    expect(prompt).toContain("4-6");
+    expect(prompt).not.toContain("2-4 is typical");
+  });
+
+  it("Helix prompt encourages dual-DSP advantage", () => {
+    expect(prompt).toMatch(/dual-DSP advantage|Leverage both DSPs/);
+  });
+
+  it("Helix prompt says presets should have more effects than constrained devices", () => {
+    expect(prompt).toContain("MORE effects than Stomp or Pod Go");
+  });
+});
+
 describe("helix/getSystemPrompt", () => {
   const prompt = getSystemPrompt("helix_lt");
 
