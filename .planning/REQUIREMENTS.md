@@ -106,50 +106,50 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| VIS-01 | — | Pending |
-| VIS-02 | — | Pending |
-| VIS-03 | — | Pending |
-| VIS-04 | — | Pending |
-| VIS-05 | — | Pending |
-| VIS-06 | — | Pending |
-| DND-01 | — | Pending |
-| DND-02 | — | Pending |
-| DND-03 | — | Pending |
-| DND-04 | — | Pending |
-| DND-05 | — | Pending |
-| DND-06 | — | Pending |
-| DND-07 | — | Pending |
-| PARAM-01 | — | Pending |
-| PARAM-02 | — | Pending |
-| PARAM-03 | — | Pending |
-| PARAM-04 | — | Pending |
-| PARAM-05 | — | Pending |
-| SNAP-01 | — | Pending |
-| SNAP-02 | — | Pending |
-| SNAP-03 | — | Pending |
-| SNAP-04 | — | Pending |
-| API-01 | — | Pending |
-| API-02 | — | Pending |
-| API-03 | — | Pending |
-| API-04 | — | Pending |
-| CTRL-01 | — | Pending |
-| CTRL-02 | — | Pending |
-| CTRL-03 | — | Pending |
-| CTRL-04 | — | Pending |
-| DEP-01 | — | Pending |
-| DEP-02 | — | Pending |
-| DEP-03 | — | Pending |
-| DEP-04 | — | Pending |
-| STATE-01 | — | Pending |
-| STATE-02 | — | Pending |
-| STATE-03 | — | Pending |
-| STATE-04 | — | Pending |
+| VIS-01 | Phase 78 | Pending |
+| VIS-02 | Phase 78 | Pending |
+| VIS-03 | Phase 78 | Pending |
+| VIS-04 | Phase 78 | Pending |
+| VIS-05 | Phase 78 | Pending |
+| VIS-06 | Phase 78 | Pending |
+| DND-01 | Phase 79 | Pending |
+| DND-02 | Phase 79 | Pending |
+| DND-03 | Phase 79 | Pending |
+| DND-04 | Phase 79 | Pending |
+| DND-05 | Phase 79 | Pending |
+| DND-06 | Phase 79 | Pending |
+| DND-07 | Phase 79 | Pending |
+| PARAM-01 | Phase 80 | Pending |
+| PARAM-02 | Phase 80 | Pending |
+| PARAM-03 | Phase 80 | Pending |
+| PARAM-04 | Phase 81 | Pending |
+| PARAM-05 | Phase 80 | Pending |
+| SNAP-01 | Phase 81 | Pending |
+| SNAP-02 | Phase 81 | Pending |
+| SNAP-03 | Phase 81 | Pending |
+| SNAP-04 | Phase 81 | Pending |
+| API-01 | Phase 77 | Pending |
+| API-02 | Phase 83 | Pending |
+| API-03 | Phase 77 | Pending |
+| API-04 | Phase 83 | Pending |
+| CTRL-01 | Phase 82 | Pending |
+| CTRL-02 | Phase 82 | Pending |
+| CTRL-03 | Phase 82 | Pending |
+| CTRL-04 | Phase 82 | Pending |
+| DEP-01 | Phase 82 | Pending |
+| DEP-02 | Phase 82 | Pending |
+| DEP-03 | Phase 82 | Pending |
+| DEP-04 | Phase 82 | Pending |
+| STATE-01 | Phase 77 | Pending |
+| STATE-02 | Phase 77 | Pending |
+| STATE-03 | Phase 83 | Pending |
+| STATE-04 | Phase 77 | Pending |
 
 **Coverage:**
 - v7.0 requirements: 38 total
-- Mapped to phases: 0
-- Unmapped: 38 ⚠️
+- Mapped to phases: 38
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-07*
-*Last updated: 2026-03-07 after initial definition*
+*Last updated: 2026-03-06 after roadmap creation — all 38 requirements mapped to phases 77-83*
