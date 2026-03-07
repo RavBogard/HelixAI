@@ -1,9 +1,10 @@
 // chain-rules.test.ts — Signal chain assembly tests
 // TDD RED phase: These tests define the expected behavior of assembleSignalChain()
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { assembleSignalChain } from "./chain-rules";
 import { getCapabilities } from "./device-family";
+import { getToneIntentSchema } from "./tone-intent";
 import type { ToneIntent } from "./tone-intent";
 import type { BlockSpec } from "./types";
 
@@ -496,5 +497,160 @@ describe("assembleSignalChain", () => {
     const ampBlock = chain.find((b) => b.type === "amp");
     expect(ampBlock).toBeDefined();
     expect(ampBlock!.modelId).toMatch(/^HD2_/);
+  });
+
+  // --- Effect budget truncation warning tests (BUDGET-05) ---
+
+  describe("effect budget truncation warning (BUDGET-05)", () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it("logs console.warn when effects exceed maxEffectsPerDsp for Stadium", () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const stadiumCaps = getCapabilities("helix_stadium");
+
+      // 10 effects exceeds Stadium maxEffectsPerDsp (should be 8)
+      assembleSignalChain(
+        cleanIntent({
+          ampName: "Agoura German Xtra Red",
+          cabName: "4x12 Cali V30",
+          effects: [
+            { modelName: "Simple Delay", role: "toggleable" },
+            { modelName: "Hall", role: "toggleable" },
+            { modelName: "70s Chorus", role: "toggleable" },
+            { modelName: "Teemah!", role: "toggleable" },
+            { modelName: "Deluxe Comp", role: "toggleable" },
+            { modelName: "Stupor OD", role: "toggleable" },
+            { modelName: "Heir Apparent", role: "toggleable" },
+            { modelName: "Vermin Dist", role: "toggleable" },
+            { modelName: "Deranged Master", role: "toggleable" },
+            { modelName: "Arbitrator Fuzz", role: "toggleable" },
+          ],
+        }),
+        stadiumCaps
+      );
+
+      const budgetWarn = warnSpy.mock.calls.find(
+        (call) => typeof call[0] === "string" && call[0].includes("Effect budget exceeded")
+      );
+      expect(budgetWarn).toBeDefined();
+    });
+
+    it("does NOT warn when effects fit within budget", () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const stadiumCaps = getCapabilities("helix_stadium");
+
+      assembleSignalChain(
+        cleanIntent({
+          ampName: "Agoura German Xtra Red",
+          cabName: "4x12 Cali V30",
+          effects: [
+            { modelName: "Simple Delay", role: "toggleable" },
+            { modelName: "Hall", role: "toggleable" },
+            { modelName: "70s Chorus", role: "toggleable" },
+            { modelName: "Teemah!", role: "toggleable" },
+          ],
+        }),
+        stadiumCaps
+      );
+
+      const budgetWarn = warnSpy.mock.calls.find(
+        (call) => typeof call[0] === "string" && call[0].includes("Effect budget exceeded")
+      );
+      expect(budgetWarn).toBeUndefined();
+    });
+
+    it("Stadium with 8 user effects produces all 8 in output", () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const stadiumCaps = getCapabilities("helix_stadium");
+
+      const chain = assembleSignalChain(
+        cleanIntent({
+          ampName: "Agoura German Xtra Red",
+          cabName: "4x12 Cali V30",
+          effects: [
+            { modelName: "Simple Delay", role: "toggleable" },
+            { modelName: "Hall", role: "toggleable" },
+            { modelName: "70s Chorus", role: "toggleable" },
+            { modelName: "Teemah!", role: "toggleable" },
+            { modelName: "Deluxe Comp", role: "toggleable" },
+            { modelName: "Stupor OD", role: "toggleable" },
+            { modelName: "Heir Apparent", role: "toggleable" },
+            { modelName: "Vermin Dist", role: "toggleable" },
+          ],
+        }),
+        stadiumCaps
+      );
+
+      // Count user effect blocks (exclude amp, cab, mandatory EQ, mandatory volume/gain, mandatory boost)
+      const userEffects = chain.filter(
+        (b) =>
+          b.type !== "amp" &&
+          b.type !== "cab" &&
+          b.modelName !== "Minotaur" &&
+          b.modelName !== "Scream 808" &&
+          b.modelName !== "Stadium Parametric EQ" &&
+          b.modelName !== "Gain Block"
+      );
+      expect(userEffects).toHaveLength(8);
+    });
+  });
+
+  // --- Zod schema max effects tests ---
+
+  describe("Zod schema max effects", () => {
+    it("schema accepts 8 effects without error", () => {
+      const schema = getToneIntentSchema("helix");
+      const valid = {
+        ampName: "US Deluxe Nrm",
+        cabName: "1x12 US Deluxe",
+        guitarType: "single_coil",
+        effects: [
+          { modelName: "Simple Delay", role: "toggleable" },
+          { modelName: "Hall", role: "toggleable" },
+          { modelName: "70s Chorus", role: "toggleable" },
+          { modelName: "Teemah!", role: "toggleable" },
+          { modelName: "Deluxe Comp", role: "toggleable" },
+          { modelName: "Stupor OD", role: "toggleable" },
+          { modelName: "Heir Apparent", role: "toggleable" },
+          { modelName: "Vermin Dist", role: "toggleable" },
+        ],
+        snapshots: [
+          { name: "Clean", toneRole: "clean" },
+          { name: "Rhythm", toneRole: "crunch" },
+          { name: "Lead", toneRole: "lead" },
+        ],
+      };
+      expect(() => schema.parse(valid)).not.toThrow();
+    });
+
+    it("schema rejects 11 effects", () => {
+      const schema = getToneIntentSchema("helix");
+      const tooMany = {
+        ampName: "US Deluxe Nrm",
+        cabName: "1x12 US Deluxe",
+        guitarType: "single_coil",
+        effects: [
+          { modelName: "Simple Delay", role: "toggleable" },
+          { modelName: "Hall", role: "toggleable" },
+          { modelName: "70s Chorus", role: "toggleable" },
+          { modelName: "Teemah!", role: "toggleable" },
+          { modelName: "Deluxe Comp", role: "toggleable" },
+          { modelName: "Stupor OD", role: "toggleable" },
+          { modelName: "Heir Apparent", role: "toggleable" },
+          { modelName: "Vermin Dist", role: "toggleable" },
+          { modelName: "Deranged Master", role: "toggleable" },
+          { modelName: "Arbitrator Fuzz", role: "toggleable" },
+          { modelName: "UK Wah 846", role: "toggleable" },
+        ],
+        snapshots: [
+          { name: "Clean", toneRole: "clean" },
+          { name: "Rhythm", toneRole: "crunch" },
+          { name: "Lead", toneRole: "lead" },
+        ],
+      };
+      expect(() => schema.parse(tooMany)).toThrow();
+    });
   });
 });

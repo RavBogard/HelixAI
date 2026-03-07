@@ -108,8 +108,8 @@ describe("getCapabilities", () => {
   });
 
   describe("helix_stomp capabilities", () => {
-    it("maxBlocksTotal === 6", () => {
-      expect(getCapabilities("helix_stomp").maxBlocksTotal).toBe(6);
+    it("maxBlocksTotal === 8", () => {
+      expect(getCapabilities("helix_stomp").maxBlocksTotal).toBe(8);
     });
 
     it("maxSnapshots === 3", () => {
@@ -122,8 +122,8 @@ describe("getCapabilities", () => {
   });
 
   describe("helix_stomp_xl capabilities", () => {
-    it("maxBlocksTotal === 9", () => {
-      expect(getCapabilities("helix_stomp_xl").maxBlocksTotal).toBe(9);
+    it("maxBlocksTotal === 8", () => {
+      expect(getCapabilities("helix_stomp_xl").maxBlocksTotal).toBe(8);
     });
 
     it("maxSnapshots === 4", () => {
@@ -210,6 +210,28 @@ describe("getCapabilities", () => {
 
     it("maxSnapshots === 8", () => {
       expect(getCapabilities("helix_rack").maxSnapshots).toBe(8);
+    });
+  });
+
+  describe("maxEffectsPerDsp correctness", () => {
+    it("helix_floor maxEffectsPerDsp === Infinity", () => {
+      expect(getCapabilities("helix_floor").maxEffectsPerDsp).toBe(Infinity);
+    });
+
+    it("helix_stomp maxEffectsPerDsp === 4", () => {
+      expect(getCapabilities("helix_stomp").maxEffectsPerDsp).toBe(4);
+    });
+
+    it("helix_stomp_xl maxEffectsPerDsp === 4", () => {
+      expect(getCapabilities("helix_stomp_xl").maxEffectsPerDsp).toBe(4);
+    });
+
+    it("pod_go maxEffectsPerDsp === 4", () => {
+      expect(getCapabilities("pod_go").maxEffectsPerDsp).toBe(4);
+    });
+
+    it("helix_stadium maxEffectsPerDsp === 8", () => {
+      expect(getCapabilities("helix_stadium").maxEffectsPerDsp).toBe(8);
     });
   });
 
