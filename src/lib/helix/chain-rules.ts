@@ -140,8 +140,11 @@ function classifyEffectSlot(resolved: ResolvedEffect, modelName: string): ChainS
       return "wah";
     case "dynamics":
       // Compressors go to DSP0 compressor slot, gates go differently
-      if (model.category === "gate") return "horizon_gate"; // Other gates treated like horizon gate
-      return "compressor";
+      if (model.category === "gate") return "horizon_gate";
+      if (model.category === "compressor") return "compressor";
+      // Autoswell and other non-compressor/non-gate dynamics (category: "dynamics")
+      // are pre-amp effects, not compressors — don't remove in high-gain chains
+      return "extra_drive";
     case "distortion":
       return "extra_drive";
     case "eq":

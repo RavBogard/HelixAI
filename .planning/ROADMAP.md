@@ -11,7 +11,7 @@
 - ✅ **v3.2 Infrastructure, Features & Audit Tooling** — Phases 42, 48-51 (shipped 2026-03-05)
 - ✅ **v4.0 Stadium Rebuild + Preset Quality Leap** — Phases 52-60 (shipped 2026-03-05)
 - ✅ **v5.0 Device-First Architecture** — Phases 61-69 (shipped 2026-03-06)
-- 🚧 **v6.0 Preset Craft Mastery** — Phases 70-74 (in progress)
+- ✅ **v6.0 Preset Craft Mastery** — Phases 70-76 (shipped 2026-03-07)
 
 ## Phases
 
@@ -114,7 +114,7 @@
 
 </details>
 
-### v5.0 Device-First Architecture (In Progress)
+### v5.0 Device-First Architecture
 
 **Milestone Goal:** Rearchitect the pipeline so device identity is resolved at conversation start, every device family follows a fully isolated path (prompts, catalogs, schemas, chain rules), Stadium presets emit all 27 firmware params per amp block, and the frontend picker is the first thing a user sees.
 
@@ -336,7 +336,7 @@ Plans:
 
 Plans:
 - [x] 71-01-PLAN.md — Shared effect-model-intelligence module, paramOverrides on 7 effect models, param-engine resolveDefaultParams override step, TDD tests
-- [ ] 71-02-PLAN.md — Wire genreEffectModelSection() into all 4 family planner prompts, alignment tests
+- [x] 71-02-PLAN.md — Wire genreEffectModelSection() into all 4 family planner prompts, alignment tests
 
 ### Phase 72: Effect Combination Logic
 
@@ -350,8 +350,8 @@ Plans:
   4. Pod Go presets with combination rules still fit within 4-effect budget — priority ordering ensures essential effects survive truncation
 **Plans:** 2/2 plans complete
 Plans:
-- [ ] 72-01-PLAN.md — Structural combination rules: COMBO-02 gate placement + compressor omission, COMBO-03 priority truncation
-- [ ] 72-02-PLAN.md — Parametric combination rules: COMBO-01 wah+comp threshold reduction, COMBO-04 delay+reverb mix balance
+- [x] 72-01-PLAN.md — Structural combination rules: COMBO-02 gate placement + compressor omission, COMBO-03 priority truncation
+- [x] 72-02-PLAN.md — Parametric combination rules: COMBO-01 wah+comp threshold reduction, COMBO-04 delay+reverb mix balance
 
 ### Phase 73: Per-Device Craft Optimization
 
@@ -366,8 +366,8 @@ Plans:
 **Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 73-01-PLAN.md — Genre-aware effect priority truncation in chain-rules.ts (CRAFT-02, CRAFT-04 code side)
-- [ ] 73-02-PLAN.md — Per-device prompt craft optimization for Stomp, Pod Go, Helix (CRAFT-01, CRAFT-02, CRAFT-03, CRAFT-04 prompt side)
+- [x] 73-01-PLAN.md — Genre-aware effect priority truncation in chain-rules.ts (CRAFT-02, CRAFT-04 code side)
+- [x] 73-02-PLAN.md — Per-device prompt craft optimization for Stomp, Pod Go, Helix (CRAFT-01, CRAFT-02, CRAFT-03, CRAFT-04 prompt side)
 
 ### Phase 74: Quality Validation
 
@@ -382,21 +382,20 @@ Plans:
 **Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 75-01-PLAN.md — Chain-rules structural: COHERE-01 (drive palette balance), COHERE-02 (reverb auto-insert)
-- [ ] 75-02-PLAN.md — Snapshot + types: COHERE-03 (boost slot disambiguation), COHERE-04 (dynamics compressor/gate split)
-- [ ] 75-03-PLAN.md — Frontend + quality: COHERE-05 (block label accuracy), COHERE-06 (description cross-validation)
+- [x] 74-01-PLAN.md — Core validatePresetQuality() function + quality logger, TDD tests
+- [x] 74-02-PLAN.md — Pipeline integration at Step 4.5, baseline generator/compare scripts
 
 ## Progress (v6.0)
 
 | Phase | Milestone | Plans | Status | Completed |
 |-------|-----------|-------|--------|-----------|
-| 70. Expression Pedal | 1/2 | In Progress|  | — |
-| 71. Effect Intelligence | 2/2 | Complete   | 2026-03-07 | — |
-| 72. Effect Combinations | 2/2 | Complete   | 2026-03-07 | — |
-| 73. Per-Device Craft | 2/2 | Complete   | 2026-03-07 | — |
-| 74. Quality Validation | 2/2 | Complete   | 2026-03-07 | — |
-| 75. Preset Musical Coherence | 3/3 | Complete   | 2026-03-07 | — |
-| 76. Block Budget Calibration | 2/2 | Complete   | 2026-03-07 | — |
+| 70. Expression Pedal | v6.0 | 2/2 | Complete | 2026-03-07 |
+| 71. Effect Intelligence | v6.0 | 2/2 | Complete | 2026-03-07 |
+| 72. Effect Combinations | v6.0 | 2/2 | Complete | 2026-03-07 |
+| 73. Per-Device Craft | v6.0 | 2/2 | Complete | 2026-03-07 |
+| 74. Quality Validation | v6.0 | 2/2 | Complete | 2026-03-07 |
+| 75. Preset Musical Coherence | v6.0 | 3/3 | Complete | 2026-03-07 |
+| 76. Block Budget Calibration | v6.0 | 2/2 | Complete | 2026-03-07 |
 
 ### Phase 75: Preset Musical Coherence
 
@@ -407,12 +406,12 @@ Plans:
 **Root cause (Blackbird Arena analysis):** AI described "hall reverb throughout" and "pristine cleans" but .hsp had zero reverb blocks and 2 boost-classified drives permanently ON for CLEAN snapshot. 6 systemic issues: effect balance blindness, description-ToneIntent disconnection, boost always-on for user drives, comp/gate dynamics conflation, no reverb safety net, snapshot tonal range collapse.
 
 **Requirements:**
-- [ ] **COHERE-01**: Chain-rules enforce effect palette balance — max 2 user-selected drives; at least 1 time-based effect (delay or reverb) when preset has clean/ambient snapshots
-- [ ] **COHERE-02**: Reverb soft-mandatory insertion — auto-insert genre-appropriate reverb (Plate default) when ToneIntent includes clean/ambient snapshot roles but no reverb effect
-- [ ] **COHERE-03**: Boost model disambiguation — snapshot-engine distinguishes mandatory boost (chain-rules inserted, slot="boost") from AI-selected drive (user chose Minotaur/Scream 808 as effect); user-selected boosts follow distortion toggle rules, not always-on
-- [ ] **COHERE-04**: Dynamics type split — separate "compressor" and "gate" block types in chain-rules, snapshot-engine, and frontend; compressor toggles OFF for high-gain lead/rhythm snapshots; gate remains always-on
-- [ ] **COHERE-05**: Frontend block label accuracy — BLOCK_LABEL map distinguishes compressor ("Comp") from gate ("Gate") instead of blanket "Gate" for all dynamics
-- [ ] **COHERE-06**: ToneIntent-description cross-validation — post-planner check warns when description mentions effects not present in ToneIntent.effects; logged as quality warning
+- [x] **COHERE-01**: Chain-rules enforce effect palette balance — max 2 user-selected drives; at least 1 time-based effect (delay or reverb) when preset has clean/ambient snapshots
+- [x] **COHERE-02**: Reverb soft-mandatory insertion — auto-insert genre-appropriate reverb (Plate default) when ToneIntent includes clean/ambient snapshot roles but no reverb effect
+- [x] **COHERE-03**: Boost model disambiguation — snapshot-engine distinguishes mandatory boost (chain-rules inserted, slot="boost") from AI-selected drive (user chose Minotaur/Scream 808 as effect); user-selected boosts follow distortion toggle rules, not always-on
+- [x] **COHERE-04**: Dynamics type split — separate "compressor" and "gate" block types in chain-rules, snapshot-engine, and frontend; compressor toggles OFF for high-gain lead/rhythm snapshots; gate remains always-on
+- [x] **COHERE-05**: Frontend block label accuracy — BLOCK_LABEL map distinguishes compressor ("Comp") from gate ("Gate") instead of blanket "Gate" for all dynamics
+- [x] **COHERE-06**: ToneIntent-description cross-validation — post-planner check warns when description mentions effects not present in ToneIntent.effects; logged as quality warning
 
 **Success Criteria:**
 - Blackbird Arena regeneration: reverb present, CLEAN snapshot fully drive-free, compressor shows as "Comp" not "Gate"
@@ -423,9 +422,9 @@ Plans:
 **Plans:** 3/3 plans complete
 
 Plans:
-- [ ] 75-01-PLAN.md — Chain-rules structural: COHERE-01 (drive palette balance), COHERE-02 (reverb auto-insert)
-- [ ] 75-02-PLAN.md — Snapshot + types: COHERE-03 (boost slot disambiguation), COHERE-04 (dynamics compressor/gate split)
-- [ ] 75-03-PLAN.md — Frontend + quality: COHERE-05 (block label accuracy), COHERE-06 (description cross-validation)
+- [x] 75-01-PLAN.md — Chain-rules structural: COHERE-01 (drive palette balance), COHERE-02 (reverb auto-insert)
+- [x] 75-02-PLAN.md — Snapshot + types: COHERE-03 (boost slot disambiguation), COHERE-04 (dynamics compressor/gate split)
+- [x] 75-03-PLAN.md — Frontend + quality: COHERE-05 (block label accuracy), COHERE-06 (description cross-validation)
 
 ### Phase 76: Device Block Budget Calibration
 
@@ -441,11 +440,11 @@ Plans:
 - Silent truncation in chain-rules (line ~390) drops effects with zero user visibility — effects just vanish.
 
 **Requirements:**
-- [ ] **BUDGET-01**: DeviceCapabilities `maxEffectsPerDsp` matches real hardware user-effect slot count for ALL families — verified against Line 6 specs
-- [ ] **BUDGET-02**: Prompt-level `maxEffects` guidance matches DeviceCapabilities — no mismatch between what AI is told to generate and what chain-rules allows through
-- [ ] **BUDGET-03**: Stadium block budget reflects actual DSP capacity — at least 8 user effects (not capped at 4)
-- [ ] **BUDGET-04**: Helix LT/Floor prompt allows 8+ effects per DSP path — reflecting real usage patterns, not arbitrary conservative cap
-- [ ] **BUDGET-05**: Chain-rules effect truncation logs a warning when effects are dropped — silent truncation becomes visible during development
+- [x] **BUDGET-01**: DeviceCapabilities `maxEffectsPerDsp` matches real hardware user-effect slot count for ALL families — verified against Line 6 specs
+- [x] **BUDGET-02**: Prompt-level `maxEffects` guidance matches DeviceCapabilities — no mismatch between what AI is told to generate and what chain-rules allows through
+- [x] **BUDGET-03**: Stadium block budget reflects actual DSP capacity — at least 8 user effects (not capped at 4)
+- [x] **BUDGET-04**: Helix LT/Floor prompt allows 8+ effects per DSP path — reflecting real usage patterns, not arbitrary conservative cap
+- [x] **BUDGET-05**: Chain-rules effect truncation logs a warning when effects are dropped — silent truncation becomes visible during development
 
 **Success Criteria** (what must be TRUE):
   1. Generating a Stadium preset requesting 8 effects produces all 8 in the output — no silent truncation
@@ -456,9 +455,9 @@ Plans:
 **Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 76-01-PLAN.md — Core value corrections (config, DeviceCapabilities, Zod schema, chain-rules warning, planner.ts) + TDD tests
-- [ ] 76-02-PLAN.md — Prompt text corrections (Helix, Stadium, Stomp maxEffects) + alignment tests
+- [x] 76-01-PLAN.md — Core value corrections (config, DeviceCapabilities, Zod schema, chain-rules warning, planner.ts) + TDD tests
+- [x] 76-02-PLAN.md — Prompt text corrections (Helix, Stadium, Stomp maxEffects) + alignment tests
 
 ---
-*Last updated: 2026-03-06 after Phase 76 addition (device block budget calibration)*
+*Last updated: 2026-03-07 after v6.0 milestone completion (all 7 phases, 32/32 requirements)*
 *Full phase details for completed milestones archived in `.planning/milestones/`*

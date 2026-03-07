@@ -7,7 +7,7 @@
  * Each family passes its own device-specific values.
  */
 export interface ToneIntentFieldsOptions {
-  /** Maximum number of effects (4 for PodGo, 6 for Stomp/Helix, variable) */
+  /** Maximum number of effects (4 for PodGo/Stomp/StompXL, 8 for Helix/Stadium) */
   maxEffects: number;
   /** Number of snapshots (3/4/8 per device) */
   snapshots: number;

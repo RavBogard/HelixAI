@@ -52,7 +52,7 @@ export async function callClaudePlanner(
 
   // Stomp cache unification: device-specific restriction goes in user message
   // so helix_stomp and helix_stomp_xl share a single system prompt cache entry.
-  // The system prompt uses conservative values (6 blocks, 3 snapshots) as reference;
+  // The system prompt uses shared values (8 blocks, 3 snapshots) as reference;
   // this restriction overrides with exact per-device values.
   const resolvedFamily = family ?? "helix";
   let stompRestriction = "";

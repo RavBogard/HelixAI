@@ -107,7 +107,7 @@ ${genreEffectModelSection()}
 
 ## Effect Discipline by Genre (HX Stomp family — ${maxBlocks} block slots)
 
-HX Stomp family has ${maxBlocks} block slots total (including amp + cab). After amp + cab + always-on boost = 3 mandatory blocks, up to 4 remaining slots are available for user effects. Use them — every slot should earn its place, but do NOT leave slots empty when the genre benefits from more effects.
+HX Stomp family has ${maxBlocks} block slots total (including amp + cab). After amp + cab + boost + optional gate = up to 4 infrastructure blocks, a maximum of 4 user-effect slots remain. Use them — every slot should earn its place, but do NOT leave slots empty when the genre benefits from more effects.
 
 - **Metal / hard rock**: 3-4 effects. Drive is mandatory; add delay (low mix), optional gate or wah.
   Priority: drive > delay > gate > wah
