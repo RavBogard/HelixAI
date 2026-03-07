@@ -4,6 +4,7 @@
 
 import { create } from "zustand";
 import type { BlockSpec, SnapshotSpec, DeviceTarget } from "./types";
+import { validateMove, canAddBlock } from "./dnd-constraints";
 
 // ---------------------------------------------------------------------------
 // Block ID generation
@@ -61,6 +62,20 @@ export interface VisualizerStoreState {
     newPosition: { dsp: 0 | 1; position: number; path: number },
   ) => { success: boolean; error?: string };
   swapBlockModel: (blockId: string, newModelId: string) => void;
+  addBlock: (
+    blockSpec: Partial<BlockSpec> & {
+      type: BlockSpec["type"];
+      modelId: string;
+      modelName: string;
+    },
+    targetDsp: 0 | 1,
+    targetPosition: number,
+  ) => { success: boolean; error?: string };
+  removeBlock: (blockId: string) => { success: boolean; error?: string };
+  reorderBlock: (
+    blockId: string,
+    newPosition: number,
+  ) => { success: boolean; error?: string };
 }
 
 export const useVisualizerStore = create<VisualizerStoreState>((set, get) => ({
@@ -148,6 +163,120 @@ export const useVisualizerStore = create<VisualizerStoreState>((set, get) => ({
     };
 
     set({ baseBlocks: updatedBlocks });
+  },
+
+  addBlock(blockSpec, targetDsp, targetPosition) {
+    const state = get();
+
+    // Validate via constraint engine
+    const addCheck = canAddBlock(state.baseBlocks, state.device);
+    if (!addCheck.canAdd) {
+      return { success: false, error: addCheck.reason };
+    }
+
+    // Construct full BlockSpec with defaults
+    const newBlock: BlockSpec = {
+      type: blockSpec.type,
+      modelId: blockSpec.modelId,
+      modelName: blockSpec.modelName,
+      dsp: targetDsp,
+      position: targetPosition,
+      path: blockSpec.path ?? 0,
+      enabled: blockSpec.enabled ?? true,
+      stereo: blockSpec.stereo ?? false,
+      parameters: blockSpec.parameters ?? {},
+    };
+
+    // Shift blocks at or after targetPosition on the same DSP
+    const updatedBlocks = state.baseBlocks.map((b) => {
+      if (b.dsp === targetDsp && b.position >= targetPosition) {
+        return { ...b, position: b.position + 1 };
+      }
+      return b;
+    });
+
+    updatedBlocks.push(newBlock);
+    set({ baseBlocks: updatedBlocks });
+    return { success: true };
+  },
+
+  removeBlock(blockId) {
+    const state = get();
+    const blockIndex = state.baseBlocks.findIndex(
+      (b) => generateBlockId(b) === blockId,
+    );
+
+    if (blockIndex === -1) {
+      return { success: false, error: `Block ${blockId} not found` };
+    }
+
+    const removedBlock = state.baseBlocks[blockIndex];
+    const remaining = state.baseBlocks.filter((_, i) => i !== blockIndex);
+
+    // Renumber positions sequentially on the removed block's DSP
+    const dspBlocks = remaining
+      .filter((b) => b.dsp === removedBlock.dsp)
+      .sort((a, b) => a.position - b.position);
+
+    const renumbered = remaining.map((b) => {
+      if (b.dsp === removedBlock.dsp) {
+        const sortedIdx = dspBlocks.indexOf(b);
+        return { ...b, position: sortedIdx };
+      }
+      return b;
+    });
+
+    // Clear selectedBlockId if the removed block was selected
+    const newSelectedBlockId =
+      state.selectedBlockId === blockId ? null : state.selectedBlockId;
+
+    set({ baseBlocks: renumbered, selectedBlockId: newSelectedBlockId });
+    return { success: true };
+  },
+
+  reorderBlock(blockId, newPosition) {
+    const state = get();
+    const blockIndex = state.baseBlocks.findIndex(
+      (b) => generateBlockId(b) === blockId,
+    );
+
+    if (blockIndex === -1) {
+      return { success: false, error: `Block ${blockId} not found` };
+    }
+
+    const block = state.baseBlocks[blockIndex];
+
+    // Validate move (Pod Go fixed blocks cannot be reordered)
+    const moveCheck = validateMove(block, state.device);
+    if (!moveCheck.valid) {
+      return { success: false, error: moveCheck.error };
+    }
+
+    // Get all blocks on the same DSP, sorted by position
+    const dspBlocks = state.baseBlocks
+      .filter((b) => b.dsp === block.dsp)
+      .sort((a, b) => a.position - b.position);
+
+    // Remove the block from its current position in the sorted array
+    const withoutBlock = dspBlocks.filter(
+      (b) => generateBlockId(b) !== blockId,
+    );
+
+    // Clamp newPosition to valid range
+    const clampedPos = Math.max(0, Math.min(withoutBlock.length, newPosition));
+
+    // Insert at new position
+    withoutBlock.splice(clampedPos, 0, block);
+
+    // Renumber all positions sequentially
+    const renumberedDsp = withoutBlock.map((b, i) => ({ ...b, position: i }));
+
+    // Replace DSP blocks in the full array
+    const otherDspBlocks = state.baseBlocks.filter(
+      (b) => b.dsp !== block.dsp,
+    );
+    set({ baseBlocks: [...otherDspBlocks, ...renumberedDsp] });
+    return { success: true };
   },
 }));
 
