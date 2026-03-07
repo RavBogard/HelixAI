@@ -7,6 +7,7 @@
 
 import { gainStagingSection } from "../shared/gain-staging";
 import { toneIntentFieldsSection } from "../shared/tone-intent-fields";
+import { genreEffectModelSection } from "../shared/effect-model-intelligence";
 import { STADIUM_AMPS } from "@/lib/helix/models";
 import type { DeviceTarget } from "@/lib/helix/types";
 
@@ -68,6 +69,8 @@ Pair each Agoura amp with its natural cabinet. These pairings match the speaker 
 ${buildAmpCabPairingTable()}
 
 Choosing the recommended cab improves FOH translation and ensures the amp's character is preserved.
+
+${genreEffectModelSection()}
 
 ## Stadium-Specific Features
 

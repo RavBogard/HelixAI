@@ -8,6 +8,7 @@
 import { gainStagingSection } from "../shared/gain-staging";
 import { toneIntentFieldsSection } from "../shared/tone-intent-fields";
 import { ampCabPairingSection } from "../shared/amp-cab-pairing";
+import { genreEffectModelSection } from "../shared/effect-model-intelligence";
 import type { DeviceTarget } from "@/lib/helix/types";
 
 // HD2 amp-to-cab pairings — Pod Go family, no Agoura models
@@ -81,6 +82,8 @@ Do NOT generate Drive, Master, Bass, Mid, Treble, Presence, Sag, ChVol, LowCut, 
 ${gainStagingSection()}
 
 ${ampCabPairingSection(PODGO_AMP_CAB_PAIRINGS)}
+
+${genreEffectModelSection()}
 
 ## Effect Discipline by Genre (Pod Go — 4 effect slots, no exceptions)
 

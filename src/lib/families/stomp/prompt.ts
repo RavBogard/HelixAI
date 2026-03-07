@@ -8,6 +8,7 @@
 import { gainStagingSection } from "../shared/gain-staging";
 import { toneIntentFieldsSection } from "../shared/tone-intent-fields";
 import { ampCabPairingSection } from "../shared/amp-cab-pairing";
+import { genreEffectModelSection } from "../shared/effect-model-intelligence";
 import { STOMP_CONFIG } from "@/lib/helix/config";
 import type { DeviceTarget } from "@/lib/helix/types";
 
@@ -101,6 +102,8 @@ Do NOT generate Drive, Master, Bass, Mid, Treble, Presence, Sag, ChVol, LowCut, 
 ${gainStagingSection()}
 
 ${ampCabPairingSection(STOMP_AMP_CAB_PAIRINGS)}
+
+${genreEffectModelSection()}
 
 ## Effect Discipline by Genre (HX Stomp family — ${maxBlocks} block slots)
 
