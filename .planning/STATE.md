@@ -6,9 +6,9 @@ status: active
 last_updated: "2026-03-07"
 progress:
   total_phases: 7
-  completed_phases: 5
-  total_plans: 10
-  completed_plans: 10
+  completed_phases: 6
+  total_plans: 12
+  completed_plans: 12
 ---
 
 # Project State
@@ -18,21 +18,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-06)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** v6.0 Preset Craft Mastery — Phase 73 complete (both plans done, 780 tests)
+**Current focus:** v6.0 Preset Craft Mastery — Phase 74 complete (2/2 plans, 811 tests)
 
 ## Current Position
 
-Phase: Phase 73 — Per-Device Craft Optimization (COMPLETE)
+Phase: Phase 74 — Quality Validation (COMPLETE)
 Plan: 2/2 complete
-Status: Phase 73 complete — genre-aware truncation (Plan 01) + prompt optimization (Plan 02)
-Last activity: 2026-03-07 — Phase 73 Plan 02 complete (prompt optimization, 780 tests)
+Status: Phase 74 complete — quality validation pipeline + 36-preset baseline generator
+Last activity: 2026-03-07 — Phase 74 Plan 02 complete (pipeline integration + baseline scripts)
 
-Progress: [████████████████████████░░░░░░░░] 71% (5/7 phases, 10/10 plans)
+Progress: [████████████████████████████████] 100% (6/7 phases, 12/12 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 10 (this milestone)
+- Total plans completed: 12 (this milestone)
+- Phase 74: Plan 02 in ~5 min (pipeline integration + baseline generator/compare scripts)
+- Phase 74: Plan 01 in ~4 min (validatePresetQuality + quality logger, TDD, 23 new tests)
 - Phase 73: Plan 02 in ~4 min (prompt optimization for all 3 device families, 9 new tests)
 - Phase 73: Plan 01 in ~3 min (genre-aware effect priority truncation, TDD)
 - Phase 72: Plan 02 in ~4 min (parametric combination rules, TDD)
@@ -81,6 +83,11 @@ Progress: [███████████████████████
 - [v6.0]: Pod Go prompt section renamed "Effect Discipline by Genre" -> "Effect Slot Planning by Genre" — fill-all-slots philosophy with exact 4-effect templates
 - [v6.0]: Helix prompt effect discipline includes per-genre DSP0/DSP1 placement guidance (e.g., drive+gate on DSP0, delay+mod on DSP1)
 - [v6.0]: Stomp metal over-budget priority: drive > delay > gate (was drive > delay > mod) — matches new gate inclusion in metal genre
+- [v6.0]: 11 quality checks with expert-consensus thresholds from param-engine.ts (QUAL-01)
+- [v6.0]: Stadium amp Drive check exempted via ampCatalogEra guard (firmware encoding difference)
+- [v6.0]: Quality logger uses real temp files for test verification (ESM spy limitation workaround)
+- [v6.0]: Quality warnings are server-side only -- never included in API response JSON (QUAL-02)
+- [v6.0]: Baseline generator uses Brit Plexi Nrm for rock (plan's "Brit 2204" invalid in HD2 catalog)
 
 ### Roadmap Evolution
 
@@ -99,6 +106,6 @@ Progress: [███████████████████████
 ## Session Continuity
 
 Last session: 2026-03-07
-Stopped at: Completed 73-02-PLAN.md — device-specific prompt optimization (CRAFT-01/02/03/04 complete)
+Stopped at: Completed 74-02-PLAN.md — pipeline integration + baseline generator (QUAL-02/QUAL-03)
 Resume file: None
-Next command: /gsd:execute-phase (next milestone phase)
+Next command: Phase 74 complete. Next milestone phase or /gsd:plan-phase for Phase 75.

@@ -35,3 +35,8 @@ export type { PhysicalPedal, RigIntent, SubstitutionEntry, SubstitutionMap } fro
 // Device family routing (Phase 61)
 export { resolveFamily, getCapabilities } from "./device-family";
 export type { DeviceFamily, DeviceCapabilities } from "./device-family";
+// Quality validation (Phase 74)
+export { validatePresetQuality } from "./quality-validate";
+export type { QualityWarning } from "./quality-validate";
+export { logQualityWarnings } from "./quality-logger";
+export type { QualityLogRecord } from "./quality-logger";
