@@ -332,7 +332,11 @@ Plans:
   3. Ambient presets produce Ganymede reverb and Heliosphere/Adriatic delay in 6+ of 10 runs
   4. Effect model guidance is in the static system prompt (cache_control: ephemeral) — not in the dynamic user message
   5. Shimmer reverb (Ganymede) default Mix is corrected via effectParamOverrides — not the raw over-wet default
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 71-01-PLAN.md — Shared effect-model-intelligence module, paramOverrides on 7 effect models, param-engine resolveDefaultParams override step, TDD tests
+- [ ] 71-02-PLAN.md — Wire genreEffectModelSection() into all 4 family planner prompts, alignment tests
 
 ### Phase 72: Effect Combination Logic
 
@@ -375,7 +379,7 @@ Plans:
 | Phase | Milestone | Plans | Status | Completed |
 |-------|-----------|-------|--------|-----------|
 | 70. Expression Pedal | 1/2 | In Progress|  | — |
-| 71. Effect Intelligence | v6.0 | TBD | Pending | — |
+| 71. Effect Intelligence | v6.0 | 2 plans | Planned | — |
 | 72. Effect Combinations | v6.0 | TBD | Pending | — |
 | 73. Per-Device Craft | v6.0 | TBD | Pending | — |
 | 74. Quality Validation | v6.0 | TBD | Pending | — |
