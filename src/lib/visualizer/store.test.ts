@@ -399,6 +399,123 @@ describe("getBlocksByDsp()", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Phase 81-01 Task 1: Snapshot system — toggleBlockBypass + isolation tests
+// ---------------------------------------------------------------------------
+
+describe("snapshot system", () => {
+  beforeEach(() => {
+    useVisualizerStore.setState({ ...INITIAL_STATE, snapshots: [...INITIAL_STATE.snapshots.map(s => ({ ...s }))] });
+    useVisualizerStore.getState().hydrate("helix_lt", makeTestBlocks(), makeTestSnapshots());
+  });
+
+  describe("toggleBlockBypass()", () => {
+    it("flips block from enabled to disabled in active snapshot", () => {
+      // amp0 is enabled=true in base, blockStates.amp0=true in snapshot 0
+      useVisualizerStore.getState().toggleBlockBypass("amp0");
+      const state = useVisualizerStore.getState();
+      expect(state.snapshots[0].blockStates["amp0"]).toBe(false);
+    });
+
+    it("flips block from disabled to enabled in active snapshot", () => {
+      // delay2 is bypassed (false) in snapshot 0
+      useVisualizerStore.getState().toggleBlockBypass("delay2");
+      const state = useVisualizerStore.getState();
+      expect(state.snapshots[0].blockStates["delay2"]).toBe(true);
+    });
+
+    it("does not modify other snapshots", () => {
+      // Switch to snapshot 1 and toggle amp0
+      useVisualizerStore.getState().setActiveSnapshot(1);
+      const beforeSnap0 = { ...useVisualizerStore.getState().snapshots[0].blockStates };
+      const beforeSnap2 = { ...useVisualizerStore.getState().snapshots[2].blockStates };
+      const beforeSnap3 = { ...useVisualizerStore.getState().snapshots[3].blockStates };
+
+      useVisualizerStore.getState().toggleBlockBypass("amp0");
+
+      const state = useVisualizerStore.getState();
+      expect(state.snapshots[0].blockStates).toEqual(beforeSnap0);
+      expect(state.snapshots[2].blockStates).toEqual(beforeSnap2);
+      expect(state.snapshots[3].blockStates).toEqual(beforeSnap3);
+    });
+
+    it("does not modify baseBlock.enabled", () => {
+      // amp0 base enabled=true
+      useVisualizerStore.getState().toggleBlockBypass("amp0");
+      const state = useVisualizerStore.getState();
+      expect(state.baseBlocks[0].enabled).toBe(true);
+    });
+
+    it("defaults to base enabled value when no blockStates entry exists", () => {
+      // Use fresh snapshots with empty blockStates
+      const emptySnapshots: SnapshotSpec[] = [
+        { name: "S1", description: "", ledColor: 0, blockStates: {}, parameterOverrides: {} },
+        { name: "S2", description: "", ledColor: 0, blockStates: {}, parameterOverrides: {} },
+        { name: "S3", description: "", ledColor: 0, blockStates: {}, parameterOverrides: {} },
+        { name: "S4", description: "", ledColor: 0, blockStates: {}, parameterOverrides: {} },
+      ];
+      useVisualizerStore.getState().hydrate("helix_lt", makeTestBlocks(), emptySnapshots);
+
+      // amp0 base enabled=true, no blockStates entry -> first toggle should set to false
+      useVisualizerStore.getState().toggleBlockBypass("amp0");
+      const state = useVisualizerStore.getState();
+      expect(state.snapshots[0].blockStates["amp0"]).toBe(false);
+    });
+  });
+
+  describe("setParameterValue isolation", () => {
+    it("writes only to active snapshot overlay — other snapshots untouched", () => {
+      useVisualizerStore.getState().setActiveSnapshot(1);
+      useVisualizerStore.getState().setParameterValue("amp0", "Drive", 0.9);
+
+      const state = useVisualizerStore.getState();
+      expect(state.snapshots[1].parameterOverrides.amp0.Drive).toBe(0.9);
+      // Snap 0 had amp0.Drive = 0.3 from test data - should be untouched
+      expect(state.snapshots[0].parameterOverrides.amp0.Drive).toBe(0.3);
+      // Snap 2 had amp0.Drive = 0.9 from test data — should be untouched
+      expect(state.snapshots[2].parameterOverrides.amp0.Drive).toBe(0.9);
+      // Snap 3 had no amp0 overrides
+      expect(state.snapshots[3].parameterOverrides.amp0).toBeUndefined();
+    });
+
+    it("does not modify baseBlock parameters", () => {
+      useVisualizerStore.getState().setActiveSnapshot(1);
+      useVisualizerStore.getState().setParameterValue("amp0", "Drive", 0.9);
+
+      const state = useVisualizerStore.getState();
+      // Base Drive was 0.5
+      expect(state.baseBlocks[0].parameters.Drive).toBe(0.5);
+    });
+  });
+
+  describe("getEffectiveBlockState snapshot integration", () => {
+    it("returns bypassed state from active snapshot", () => {
+      // Snapshot 0: delay2 blockStates = false (bypassed)
+      const state = useVisualizerStore.getState();
+      const effective = getEffectiveBlockState(state, "delay2");
+      expect(effective).not.toBeNull();
+      expect(effective!.enabled).toBe(false);
+    });
+
+    it("returns base enabled when snapshot has no override", () => {
+      // Use fresh snapshots with empty blockStates
+      const emptySnapshots: SnapshotSpec[] = [
+        { name: "S1", description: "", ledColor: 0, blockStates: {}, parameterOverrides: {} },
+        { name: "S2", description: "", ledColor: 0, blockStates: {}, parameterOverrides: {} },
+        { name: "S3", description: "", ledColor: 0, blockStates: {}, parameterOverrides: {} },
+        { name: "S4", description: "", ledColor: 0, blockStates: {}, parameterOverrides: {} },
+      ];
+      useVisualizerStore.getState().hydrate("helix_lt", makeTestBlocks(), emptySnapshots);
+
+      const state = useVisualizerStore.getState();
+      // amp0 base enabled=true, no blockStates entry
+      const effective = getEffectiveBlockState(state, "amp0");
+      expect(effective).not.toBeNull();
+      expect(effective!.enabled).toBe(true);
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Phase 79-01 Task 2: addBlock, removeBlock, reorderBlock store actions
 // ---------------------------------------------------------------------------
 

@@ -62,6 +62,7 @@ export interface VisualizerStoreState {
     blockId: string,
     newPosition: { dsp: 0 | 1; position: number; path: number },
   ) => { success: boolean; error?: string };
+  toggleBlockBypass: (blockId: string) => void;
   swapBlockModel: (blockId: string, newModelId: string) => void;
   addBlock: (
     blockSpec: Partial<BlockSpec> & {
@@ -122,6 +123,25 @@ export const useVisualizerStore = create<VisualizerStoreState>((set, get) => ({
     snapshot.parameterOverrides = overrides;
     snapshots[idx] = snapshot;
 
+    set({ snapshots });
+  },
+
+  toggleBlockBypass(blockId) {
+    const state = get();
+    const idx = state.activeSnapshotIndex;
+    const snapshots = [...state.snapshots];
+    const snapshot = { ...snapshots[idx] };
+    const blockStates = { ...snapshot.blockStates };
+
+    // Determine current effective state: snapshot override or base block
+    const baseBlock = state.baseBlocks.find(
+      (b) => generateBlockId(b) === blockId,
+    );
+    const currentEnabled = blockStates[blockId] ?? baseBlock?.enabled ?? true;
+    blockStates[blockId] = !currentEnabled;
+
+    snapshot.blockStates = blockStates;
+    snapshots[idx] = snapshot;
     set({ snapshots });
   },
 
