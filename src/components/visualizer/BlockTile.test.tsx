@@ -185,4 +185,101 @@ describe("BlockTile", () => {
     const tile = screen.getByTestId("block-tile-amp0");
     expect(tile.textContent).toContain("\uD83D\uDD12");
   });
+
+  // --------------------------------------------------
+  // Phase 79-02: onRemove and isDragging props
+  // --------------------------------------------------
+
+  it("renders X remove button when onRemove is provided", () => {
+    const onRemove = vi.fn();
+    render(
+      <BlockTile
+        block={makeBlock()}
+        blockId="delay2"
+        enabled={true}
+        isSelected={false}
+        onSelect={() => {}}
+        onRemove={onRemove}
+      />,
+    );
+    const removeBtn = screen.getByTestId("remove-btn-delay2");
+    expect(removeBtn).toBeTruthy();
+  });
+
+  it("does NOT render X remove button when onRemove is not provided", () => {
+    render(
+      <BlockTile
+        block={makeBlock()}
+        blockId="delay2"
+        enabled={true}
+        isSelected={false}
+        onSelect={() => {}}
+      />,
+    );
+    expect(screen.queryByTestId("remove-btn-delay2")).toBeNull();
+  });
+
+  it("does NOT render X remove button when isLocked is true even if onRemove provided", () => {
+    const onRemove = vi.fn();
+    render(
+      <BlockTile
+        block={makeBlock({ type: "amp", modelName: "US Double Nrm", position: 0 })}
+        blockId="amp0"
+        enabled={true}
+        isSelected={false}
+        onSelect={() => {}}
+        onRemove={onRemove}
+        isLocked={true}
+      />,
+    );
+    expect(screen.queryByTestId("remove-btn-amp0")).toBeNull();
+  });
+
+  it("clicking X remove button calls onRemove and does NOT call onSelect", () => {
+    const onRemove = vi.fn();
+    const onSelect = vi.fn();
+    render(
+      <BlockTile
+        block={makeBlock()}
+        blockId="delay2"
+        enabled={true}
+        isSelected={false}
+        onSelect={onSelect}
+        onRemove={onRemove}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("remove-btn-delay2"));
+    expect(onRemove).toHaveBeenCalledWith("delay2");
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("applies isDragging visual state (opacity-50)", () => {
+    render(
+      <BlockTile
+        block={makeBlock()}
+        blockId="delay2"
+        enabled={true}
+        isSelected={false}
+        onSelect={() => {}}
+        isDragging={true}
+      />,
+    );
+    const tile = screen.getByTestId("block-tile-delay2");
+    expect(tile.className).toContain("opacity-50");
+  });
+
+  it("does NOT have isDragging opacity when isDragging is false", () => {
+    render(
+      <BlockTile
+        block={makeBlock()}
+        blockId="delay2"
+        enabled={true}
+        isSelected={false}
+        onSelect={() => {}}
+        isDragging={false}
+      />,
+    );
+    const tile = screen.getByTestId("block-tile-delay2");
+    expect(tile.className).not.toContain("opacity-50");
+  });
 });

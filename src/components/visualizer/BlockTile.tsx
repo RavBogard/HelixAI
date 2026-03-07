@@ -20,6 +20,10 @@ export interface BlockTileProps {
   onSelect: (blockId: string) => void;
   /** Pod Go fixed blocks — visual lock indicator */
   isLocked?: boolean;
+  /** Callback for the X remove button — hidden when not provided or when isLocked */
+  onRemove?: (blockId: string) => void;
+  /** Visual state when being dragged (from @dnd-kit useSortable) */
+  isDragging?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -47,6 +51,8 @@ export function BlockTile({
   isSelected,
   onSelect,
   isLocked,
+  onRemove,
+  isDragging,
 }: BlockTileProps) {
   const config = getBlockUIConfig(block.type);
   const widthClass = WIDTH_CLASSES[config.widthMode] ?? WIDTH_CLASSES.standard;
@@ -56,8 +62,10 @@ export function BlockTile({
       type="button"
       className={[
         widthClass,
-        "h-16 rounded-lg relative flex flex-col items-center justify-center gap-0.5 px-1",
-        enabled ? "" : "opacity-40",
+        "h-16 rounded-lg relative flex flex-col items-center justify-center gap-0.5 px-1 group",
+        enabled && !isDragging ? "" : "",
+        !enabled ? "opacity-40" : "",
+        isDragging ? "opacity-50 scale-105" : "",
         isSelected ? "ring-2 ring-white" : "",
       ]
         .filter(Boolean)
@@ -76,6 +84,19 @@ export function BlockTile({
       {isLocked && (
         <span className="absolute top-0.5 right-0.5 text-[8px] text-white/50">
           🔒
+        </span>
+      )}
+      {onRemove && !isLocked && (
+        <span
+          role="button"
+          className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/60 text-white text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-opacity cursor-pointer"
+          data-testid={`remove-btn-${blockId}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove(blockId);
+          }}
+        >
+          x
         </span>
       )}
     </button>

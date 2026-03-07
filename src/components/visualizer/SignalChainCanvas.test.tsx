@@ -183,4 +183,78 @@ describe("SignalChainCanvas", () => {
     // Lock emoji should be in the tile content
     expect(tile.textContent).toContain("\uD83D\uDD12");
   });
+
+  // --------------------------------------------------
+  // Phase 79-02: DnD context and remove button wiring
+  // --------------------------------------------------
+
+  it("renders DnD context without errors (smoke test)", () => {
+    useVisualizerStore.setState({
+      device: "helix_floor" as DeviceTarget,
+      baseBlocks: [
+        makeBlock({ type: "amp", modelName: "US Double Nrm", position: 0, dsp: 0 }),
+        makeBlock({ type: "delay", modelName: "Simple Delay", position: 1, dsp: 0 }),
+      ],
+      snapshots: makeSnapshots(),
+    });
+
+    const { container } = render(<SignalChainCanvas />);
+    // DnD context wraps the layout — layout should still render
+    expect(screen.getByTestId("layout-dual-dsp")).toBeTruthy();
+    // Blocks should have sortable wrapper data attributes
+    expect(container.querySelectorAll("[data-testid^='block-tile-']").length).toBe(2);
+  });
+
+  it("blocks have remove buttons that call store.removeBlock", () => {
+    useVisualizerStore.setState({
+      device: "helix_stomp" as DeviceTarget,
+      baseBlocks: [
+        makeBlock({ type: "delay", modelName: "Simple Delay", position: 0 }),
+        makeBlock({ type: "reverb", modelName: "Glitz", position: 1, modelId: "HD2_ReverbGlitz" }),
+      ],
+      snapshots: makeSnapshots(),
+    });
+
+    render(<SignalChainCanvas />);
+
+    // Remove button should exist on non-locked blocks
+    const removeBtn = screen.getByTestId("remove-btn-delay0");
+    expect(removeBtn).toBeTruthy();
+
+    // Click remove
+    fireEvent.click(removeBtn);
+
+    // Block should be removed from store
+    const state = useVisualizerStore.getState();
+    expect(state.baseBlocks.find((b) => b.type === "delay" && b.position === 0)).toBeUndefined();
+  });
+
+  it("error message area exists in the DOM", () => {
+    useVisualizerStore.setState({
+      device: "helix_stomp" as DeviceTarget,
+      baseBlocks: [
+        makeBlock({ type: "delay", modelName: "Simple Delay", position: 0 }),
+      ],
+      snapshots: makeSnapshots(),
+    });
+
+    render(<SignalChainCanvas />);
+
+    // Error message container should exist (may be hidden when no error)
+    expect(screen.getByTestId("dnd-error-area")).toBeTruthy();
+  });
+
+  it("add block button renders for non-full DSP on stomp device", () => {
+    useVisualizerStore.setState({
+      device: "helix_stomp" as DeviceTarget,
+      baseBlocks: [
+        makeBlock({ type: "delay", modelName: "Simple Delay", position: 0 }),
+      ],
+      snapshots: makeSnapshots(),
+    });
+
+    render(<SignalChainCanvas />);
+    // Add button should be available since stomp can hold up to 8 blocks
+    expect(screen.getByTestId("add-block-btn")).toBeTruthy();
+  });
 });
