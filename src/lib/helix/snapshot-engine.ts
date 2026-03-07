@@ -7,7 +7,7 @@
 
 import type { BlockSpec, SnapshotSpec, AmpCategory } from "./types";
 import type { SnapshotIntent } from "./tone-intent";
-import { AMP_MODELS, STADIUM_AMPS, LED_COLORS } from "./models";
+import { AMP_MODELS, STADIUM_AMPS, LED_COLORS, DYNAMICS_MODELS } from "./models";
 
 // ---------------------------------------------------------------------------
 // LED color mapping by tone role
@@ -94,8 +94,17 @@ function getBlockEnabled(
     return true;
   }
 
-  // Dynamics (gate) -- always ON when present
+  // COHERE-04: Dynamics type split — compressor vs gate behavior
   if (block.type === "dynamics") {
+    const dynModel = DYNAMICS_MODELS[block.modelName];
+    if (dynModel?.category === "compressor") {
+      // Compressor: OFF for high-gain lead/crunch (natural tube compression sufficient)
+      if (ampCategory === "high_gain" && (role === "lead" || role === "crunch")) {
+        return false;
+      }
+      return true;
+    }
+    // Gate + Autoswell + unknown dynamics: always ON (existing behavior)
     return true;
   }
 
@@ -226,7 +235,9 @@ export function buildSnapshots(
     // Build block states
     const blockStates: Record<string, boolean> = {};
     for (const entry of blockEntries) {
-      const isBoost = BOOST_MODEL_IDS.has(entry.block.modelId);
+      // COHERE-03: Use slot field for boost detection, fallback to model ID for backward compat
+      const isBoost = entry.block.slot === "boost" ||
+        (!entry.block.slot && BOOST_MODEL_IDS.has(entry.block.modelId));
       blockStates[entry.key] = getBlockEnabled(role, {
         block: entry.block,
         isBoost,

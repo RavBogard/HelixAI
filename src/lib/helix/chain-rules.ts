@@ -130,8 +130,9 @@ function classifyEffectSlot(resolved: ResolvedEffect, modelName: string): ChainS
   if (modelName === PARAMETRIC_EQ) return "eq";
   if (modelName === GAIN_BLOCK) return "gain_block";
 
-  // Boost detection: Minotaur or Scream 808 in the boost position
-  if (modelName === MINOTAUR || modelName === SCREAM_808) return "boost";
+  // COHERE-03: User-selected Minotaur/Scream 808 classified as extra_drive (regular drive).
+  // Only mandatory blocks inserted in step 5a get slot="boost" — see buildBlockSpec propagation.
+  // Previously this returned "boost" for these models regardless of source.
 
   // Categorize by catalog / type
   switch (blockType) {
@@ -229,6 +230,7 @@ function buildBlockSpec(
     ...(isDelayOrReverb ? { trails: true } : {}),
     parameters: {},
     ...(pending.intentRole ? { intentRole: pending.intentRole } : {}),
+    ...(pending.slot ? { slot: pending.slot } : {}), // COHERE-03: propagate chain slot for boost disambiguation
   };
 }
 

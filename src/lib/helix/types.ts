@@ -302,6 +302,7 @@ export interface BlockSpec {
   trails?: boolean;
   parameters: Record<string, number | boolean>;
   intentRole?: "always_on" | "toggleable" | "ambient"; // From EffectIntent — used by snapshot engine for role-aware toggling
+  slot?: string; // COHERE-03: Chain slot propagated from chain-rules. "boost" marks mandatory boost blocks for snapshot-engine disambiguation.
 }
 
 export interface SnapshotSpec {
