@@ -17,7 +17,7 @@
 
 import type { HlxFile, PresetSpec, BlockSpec, SnapshotSpec } from "./types";
 import { DEVICE_IDS, POD_GO_IO, POD_GO_SNAPSHOT_CONTROLLER, POD_GO_STOMP_FS_INDICES } from "./types";
-import { getModelIdForDevice, getBlockTypeForDevice } from "./models";
+import { getModelIdForDevice, getBlockTypeForDevice, CONTROLLERS } from "./models";
 import { getAllModels } from "./models";
 import { getCapabilities } from "./device-family";
 import { POD_GO_FIRMWARE_CONFIG } from "./config";
@@ -383,6 +383,53 @@ function buildPgpControllerSection(spec: PresetSpec): Record<string, unknown> {
           "@controller": POD_GO_SNAPSHOT_CONTROLLER, // 4, not 19
           "@snapshot_disable": false,
         };
+      }
+    }
+  }
+
+  // --- EXP Pedal Assignments ---
+  // Pod Go has 1 expression pedal (EXP1 only). Wah gets EXP1; Volume Pedal
+  // does NOT get EXP2 because Pod Go has no second pedal.
+  const caps = getCapabilities("pod_go");
+  if (caps.expressionPedalCount > 0) {
+    // EXP1 -> wah Position
+    const wahBlock = spec.signalChain.find(b => b.type === "wah");
+    if (wahBlock) {
+      const wahKey = blockKeyMap.get(`block${spec.signalChain.indexOf(wahBlock)}`);
+      if (wahKey) {
+        if (!controller.dsp0[wahKey]) {
+          controller.dsp0[wahKey] = {};
+        }
+        // Defensive guard (EXP-04): skip if Position already has a controller (snapshot)
+        if (!controller.dsp0[wahKey]["Position"]) {
+          controller.dsp0[wahKey]["Position"] = {
+            "@min": 0.0,
+            "@max": 1.0,
+            "@controller": CONTROLLERS.EXP_PEDAL_1,
+          };
+        }
+      }
+    }
+
+    // EXP2 -> volume Position (only if 2+ pedals — Pod Go has 1, so this is skipped)
+    if (caps.expressionPedalCount >= 2) {
+      const volBlock = spec.signalChain.find(
+        b => b.type === "volume" && b.modelName !== "Gain Block"
+      );
+      if (volBlock) {
+        const volKey = blockKeyMap.get(`block${spec.signalChain.indexOf(volBlock)}`);
+        if (volKey) {
+          if (!controller.dsp0[volKey]) {
+            controller.dsp0[volKey] = {};
+          }
+          if (!controller.dsp0[volKey]["Position"]) {
+            controller.dsp0[volKey]["Position"] = {
+              "@min": 0.0,
+              "@max": 1.0,
+              "@controller": CONTROLLERS.EXP_PEDAL_2,
+            };
+          }
+        }
       }
     }
   }
