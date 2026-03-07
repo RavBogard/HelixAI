@@ -5,7 +5,7 @@ milestone_name: Preset Craft Mastery
 status: active
 last_updated: "2026-03-07"
 progress:
-  total_phases: 6
+  total_phases: 7
   completed_phases: 1
   total_plans: 2
   completed_plans: 2
@@ -27,7 +27,7 @@ Plan: 2/2 complete
 Status: Phase 70 done, ready to plan Phase 71
 Last activity: 2026-03-07 — Phase 70 complete (EXP pedal controllers wired into all 4 builders)
 
-Progress: [█████░░░░░░░░░░░░░░░░░░░░░░░░░░░] 17% (1/6 phases complete)
+Progress: [████░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 14% (1/7 phases complete)
 
 ## Performance Metrics
 
@@ -61,11 +61,13 @@ Progress: [█████░░░░░░░░░░░░░░░░░░
 - v5.0 Phase 68 added: Token Control and Prompt Caching — cost correction, per-device cache reporting
 - v5.0 complete: 9 phases (61-69), 17 plans, all verified
 - v6.0 Phase 75 added: Preset Musical Coherence — Blackbird Arena analysis revealed 6 systemic issues (missing reverb, boost always-on, comp/gate conflation, effect balance blindness, description-ToneIntent disconnect, snapshot range collapse)
+- v6.0 Phase 76 added: Device Block Budget Calibration — user-reported artificially conservative effect limits (Stadium maxEffectsPerDsp=4 vs real 8+, Helix prompt caps at 6 effects but LT supports 8+, Stomp mislabeled at 2 vs real 4, silent truncation in chain-rules)
 
 ### Blockers/Concerns
 
 - **HX Edit Stadium verification:** Stadium presets unblocked but HX Edit import not verified across varied tone goals — required as success criterion for Phase 63.
 - **Expression pedal wiring:** RESOLVED in Phase 70 — EXP_PEDAL_1/2 now assigned in all 4 builders (Helix, Stomp, Pod Go, Stadium=0). 19 TDD tests cover all scenarios.
+- **Artificially conservative block budgets:** Stadium maxEffectsPerDsp=4 but prompt says 6 and hardware supports 8+; Helix prompt maxEffects=6 but LT users routinely use 8+ effects; Stomp DeviceCapabilities says maxEffectsPerDsp=2 but real hardware has 4 user-effect slots. Chain-rules silently truncates excess effects with no warning. Phase 76 addresses this.
 
 ## Session Continuity
 

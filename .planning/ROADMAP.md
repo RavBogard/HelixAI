@@ -301,6 +301,7 @@ Plans:
 - [ ] **Phase 72: Effect Combination Logic** — Deterministic cross-effect parameter interactions: wah+comp threshold, high-gain gate placement, delay+reverb balance, priority ordering for device budgets
 - [ ] **Phase 73: Per-Device Craft Optimization** — Device-specific tone optimization in both prompts (creative direction) and code (hard limit enforcement) for Stomp, Pod Go, Helix, and Stadium
 - [ ] **Phase 74: Quality Validation** — Non-throwing validatePresetQuality() advisory gate, per-device baseline comparison, regression detection
+- [ ] **Phase 76: Device Block Budget Calibration** — Audit and correct all device block/effect limits to match real hardware; fix Stadium 4→8+ effects, Helix prompt 6→8+ effects, Stomp maxEffectsPerDsp mislabel
 
 ### Phase 70: Expression Pedal Controller Assignment
 
@@ -379,6 +380,7 @@ Plans:
 | 73. Per-Device Craft | v6.0 | TBD | Pending | — |
 | 74. Quality Validation | v6.0 | TBD | Pending | — |
 | 75. Preset Musical Coherence | v6.0 | TBD | Pending | — |
+| 76. Block Budget Calibration | v6.0 | TBD | Pending | — |
 
 ### Phase 75: Preset Musical Coherence
 
@@ -404,6 +406,34 @@ Plans:
 
 **Plans:** TBD
 
+### Phase 76: Device Block Budget Calibration
+
+**Goal:** Audit and correct all device block/effect limits in DeviceCapabilities, chain-rules, prompts, and validation to match actual Line 6 hardware capabilities. Remove artificially conservative limits that prevent the AI from using available DSP capacity. Stadium should support 8+ user effects (not 4), Helix LT/Floor prompts should allow 8+ effects (not cap at 6), and Stomp maxEffectsPerDsp should reflect real slot availability.
+
+**Depends on:** Phase 70 (basic pipeline must work; expression pedal wiring complete)
+
+**Root cause analysis:**
+- Stadium: `maxEffectsPerDsp=4` in DeviceCapabilities but prompt says "up to 6 effects" — chain-rules silently truncates 2 effects when AI follows the prompt. Real Stadium DSP supports far more.
+- Helix LT/Floor: prompt tells AI `maxEffects: 6` but hardware supports 8+ effects per DSP path. Real users routinely build presets with 8-10 effects.
+- Stomp: `maxEffectsPerDsp=2` in DeviceCapabilities but Stomp has 6 block slots (minus amp + cab = 4 user-effect slots). Planner.ts uses correct values but DeviceCapabilities doesn't match.
+- Stomp XL: `maxEffectsPerDsp=5` — may be correct but needs hardware verification against 9-block capacity.
+- Silent truncation in chain-rules (line ~390) drops effects with zero user visibility — effects just vanish.
+
+**Requirements:**
+- [ ] **BUDGET-01**: DeviceCapabilities `maxEffectsPerDsp` matches real hardware user-effect slot count for ALL families — verified against Line 6 specs
+- [ ] **BUDGET-02**: Prompt-level `maxEffects` guidance matches DeviceCapabilities — no mismatch between what AI is told to generate and what chain-rules allows through
+- [ ] **BUDGET-03**: Stadium block budget reflects actual DSP capacity — at least 8 user effects (not capped at 4)
+- [ ] **BUDGET-04**: Helix LT/Floor prompt allows 8+ effects per DSP path — reflecting real usage patterns, not arbitrary conservative cap
+- [ ] **BUDGET-05**: Chain-rules effect truncation logs a warning when effects are dropped — silent truncation becomes visible during development
+
+**Success Criteria** (what must be TRUE):
+  1. Generating a Stadium preset requesting 8 effects produces all 8 in the output — no silent truncation
+  2. Generating a Helix LT preset requesting 8 effects produces all 8 — maxEffects prompt no longer caps at 6
+  3. DeviceCapabilities.maxEffectsPerDsp matches the number of user-effect slots available on each physical device
+  4. No mismatch between prompt maxEffects guidance and chain-rules enforcement — both use the same source of truth
+  5. Silent truncation in chain-rules produces a logged warning so dropped effects are visible during development
+**Plans:** TBD
+
 ---
-*Last updated: 2026-03-06 after v6.0 roadmap creation*
+*Last updated: 2026-03-06 after Phase 76 addition (device block budget calibration)*
 *Full phase details for completed milestones archived in `.planning/milestones/`*
