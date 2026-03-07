@@ -1,0 +1,188 @@
+// @vitest-environment jsdom
+import { describe, it, expect, vi, afterEach } from "vitest";
+import React from "react";
+import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import { BlockTile } from "./BlockTile";
+import type { BlockSpec } from "@/lib/helix/types";
+
+afterEach(cleanup);
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function makeBlock(overrides: Partial<BlockSpec> = {}): BlockSpec {
+  return {
+    type: "delay",
+    modelId: "HD2_DelaySimpleDelay",
+    modelName: "Simple Delay",
+    dsp: 0,
+    position: 2,
+    path: 0,
+    enabled: true,
+    stereo: false,
+    parameters: {},
+    ...overrides,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+describe("BlockTile", () => {
+  it("renders the model name text", () => {
+    render(
+      <BlockTile
+        block={makeBlock()}
+        blockId="delay2"
+        enabled={true}
+        isSelected={false}
+        onSelect={() => {}}
+      />,
+    );
+    expect(screen.getByText("Simple Delay")).toBeTruthy();
+  });
+
+  it("applies correct background color from registry for delay type", () => {
+    render(
+      <BlockTile
+        block={makeBlock()}
+        blockId="delay2"
+        enabled={true}
+        isSelected={false}
+        onSelect={() => {}}
+      />,
+    );
+    const tile = screen.getByTestId("block-tile-delay2");
+    expect(tile.style.backgroundColor).toBe("rgb(16, 185, 129)"); // #10B981
+  });
+
+  it("bypassed block (enabled=false) has opacity-40 class", () => {
+    render(
+      <BlockTile
+        block={makeBlock()}
+        blockId="delay2"
+        enabled={false}
+        isSelected={false}
+        onSelect={() => {}}
+      />,
+    );
+    const tile = screen.getByTestId("block-tile-delay2");
+    expect(tile.className).toContain("opacity-40");
+  });
+
+  it("active block (enabled=true) does NOT have opacity-40 class", () => {
+    render(
+      <BlockTile
+        block={makeBlock()}
+        blockId="delay2"
+        enabled={true}
+        isSelected={false}
+        onSelect={() => {}}
+      />,
+    );
+    const tile = screen.getByTestId("block-tile-delay2");
+    expect(tile.className).not.toContain("opacity-40");
+  });
+
+  it("selected block has ring-2 class", () => {
+    render(
+      <BlockTile
+        block={makeBlock()}
+        blockId="delay2"
+        enabled={true}
+        isSelected={true}
+        onSelect={() => {}}
+      />,
+    );
+    const tile = screen.getByTestId("block-tile-delay2");
+    expect(tile.className).toContain("ring-2");
+  });
+
+  it("unselected block does NOT have ring-2 class", () => {
+    render(
+      <BlockTile
+        block={makeBlock()}
+        blockId="delay2"
+        enabled={true}
+        isSelected={false}
+        onSelect={() => {}}
+      />,
+    );
+    const tile = screen.getByTestId("block-tile-delay2");
+    expect(tile.className).not.toContain("ring-2");
+  });
+
+  it("wide block (amp) has w-28 class", () => {
+    render(
+      <BlockTile
+        block={makeBlock({ type: "amp", modelName: "US Double Nrm", position: 0 })}
+        blockId="amp0"
+        enabled={true}
+        isSelected={false}
+        onSelect={() => {}}
+      />,
+    );
+    const tile = screen.getByTestId("block-tile-amp0");
+    expect(tile.className).toContain("w-28");
+  });
+
+  it("narrow block (volume) has w-16 class", () => {
+    render(
+      <BlockTile
+        block={makeBlock({ type: "volume", modelName: "Gain", position: 5 })}
+        blockId="volume5"
+        enabled={true}
+        isSelected={false}
+        onSelect={() => {}}
+      />,
+    );
+    const tile = screen.getByTestId("block-tile-volume5");
+    expect(tile.className).toContain("w-16");
+  });
+
+  it("clicking tile calls onSelect with correct blockId", () => {
+    const onSelect = vi.fn();
+    render(
+      <BlockTile
+        block={makeBlock()}
+        blockId="delay2"
+        enabled={true}
+        isSelected={false}
+        onSelect={onSelect}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("block-tile-delay2"));
+    expect(onSelect).toHaveBeenCalledWith("delay2");
+  });
+
+  it("renders data-testid attribute", () => {
+    render(
+      <BlockTile
+        block={makeBlock()}
+        blockId="delay2"
+        enabled={true}
+        isSelected={false}
+        onSelect={() => {}}
+      />,
+    );
+    expect(screen.getByTestId("block-tile-delay2")).toBeTruthy();
+  });
+
+  it("renders lock indicator when isLocked is true", () => {
+    render(
+      <BlockTile
+        block={makeBlock({ type: "amp", modelName: "US Double Nrm", position: 0 })}
+        blockId="amp0"
+        enabled={true}
+        isSelected={false}
+        onSelect={() => {}}
+        isLocked={true}
+      />,
+    );
+    // Lock emoji should be present somewhere in the tile
+    const tile = screen.getByTestId("block-tile-amp0");
+    expect(tile.textContent).toContain("\uD83D\uDD12");
+  });
+});
