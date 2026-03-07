@@ -9,6 +9,8 @@ import { validatePresetQuality } from "./quality-validate";
 import type { QualityWarning } from "./quality-validate";
 import { logQualityWarnings } from "./quality-logger";
 import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
 
 // ---------------------------------------------------------------------------
 // Test fixture helpers
@@ -373,30 +375,32 @@ describe("logQualityWarnings", () => {
   });
 
   it("writes JSON-line to file when LOG_QUALITY=true", () => {
-    const appendSpy = vi.spyOn(fs, "appendFileSync").mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const tmpFile = path.join(os.tmpdir(), `quality-test-${Date.now()}.jsonl`);
     const origEnv = process.env.LOG_QUALITY;
     process.env.LOG_QUALITY = "true";
     try {
-      logQualityWarnings(testWarnings, { device: "helix_lt", presetName: "Test" }, "/tmp/test-quality.jsonl");
-      expect(appendSpy).toHaveBeenCalledTimes(1);
-      const written = appendSpy.mock.calls[0][1] as string;
-      const record = JSON.parse(written.trim());
+      logQualityWarnings(testWarnings, { device: "helix_lt", presetName: "Test" }, tmpFile);
+      const content = fs.readFileSync(tmpFile, "utf-8");
+      const record = JSON.parse(content.trim());
       expect(record.warningCount).toBe(1);
       expect(record.warnings).toHaveLength(1);
       expect(record.device).toBe("helix_lt");
       expect(record.presetName).toBe("Test");
     } finally {
       process.env.LOG_QUALITY = origEnv;
+      try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
     }
   });
 
   it("does no file I/O when LOG_QUALITY is unset", () => {
-    const appendSpy = vi.spyOn(fs, "appendFileSync").mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const tmpFile = path.join(os.tmpdir(), `quality-test-noop-${Date.now()}.jsonl`);
     const origEnv = process.env.LOG_QUALITY;
     delete process.env.LOG_QUALITY;
     try {
-      logQualityWarnings(testWarnings, { device: "helix_lt", presetName: "Test" });
-      expect(appendSpy).not.toHaveBeenCalled();
+      logQualityWarnings(testWarnings, { device: "helix_lt", presetName: "Test" }, tmpFile);
+      expect(fs.existsSync(tmpFile)).toBe(false);
     } finally {
       process.env.LOG_QUALITY = origEnv;
     }
