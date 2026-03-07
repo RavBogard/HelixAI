@@ -7,8 +7,8 @@ last_updated: "2026-03-07"
 progress:
   total_phases: 7
   completed_phases: 3
-  total_plans: 6
-  completed_plans: 6
+  total_plans: 8
+  completed_plans: 7
 ---
 
 # Project State
@@ -18,21 +18,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-06)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** v6.0 Preset Craft Mastery — Phase 71 complete (2/2 plans), next phase TBD
+**Current focus:** v6.0 Preset Craft Mastery — Phase 72 in progress (1/2 plans complete)
 
 ## Current Position
 
-Phase: Phase 71 — Per-Model Effect Intelligence (COMPLETE)
-Plan: 2/2 complete
-Status: Phase 71 complete -- all genre-effect intelligence wired into prompts
-Last activity: 2026-03-07 — Phase 71 Plan 02 complete (prompt integration, 17 new tests, 751 total)
+Phase: Phase 72 — Effect Combination Logic (IN PROGRESS)
+Plan: 1/2 complete
+Status: Phase 72 Plan 01 complete -- structural combination rules (COMBO-02, COMBO-03) implemented
+Last activity: 2026-03-07 — Phase 72 Plan 01 complete (gate placement, compressor omission, priority truncation, 760 tests)
 
-Progress: [██████████████░░░░░░░░░░░░░░░░░░] 43% (3/7 phases complete)
+Progress: [██████████████░░░░░░░░░░░░░░░░░░] 43% (3/7 phases complete, 72 in progress)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6 (this milestone)
+- Total plans completed: 7 (this milestone)
+- Phase 72: Plan 01 in ~3 min (structural combination rules, TDD)
 - Phase 71: 2 plans in ~7 min total (avg 3.5 min/plan — data layer + prompt integration)
 - Phase 76: 2 plans in ~7 min total (avg 3.5 min/plan)
 - Phase 70: 2 plans in ~5 min total (avg 2.5 min/plan)
@@ -64,6 +65,9 @@ Progress: [██████████████░░░░░░░░░
 - [v6.0]: 7 effect models get paramOverrides: Ganymede/Glitz/Octo/Plateaux (Mix), Heliosphere/Cosmos Echo/Adriatic Swell (Feedback)
 - [v6.0]: genreEffectModelSection placed after amp-cab pairing, before Effect Discipline — planner-only (not chat prompt)
 - [v6.0]: Genre-effect guidance is in static system prompt for cache stability — identical across all devices in a family
+- [v6.0]: SLOT_ORDER uses fractional value 2.5 for horizon_gate — inserts between extra_drive(2) and boost(3) without renumbering
+- [v6.0]: getEffectPriority scores intentRole (always_on=100, toggleable=50, ambient=30) + slot (wah=18, comp=15, delay=10, reverb=8, mod=5)
+- [v6.0]: COMBO-02 compressor omission runs BEFORE COMBO-03 truncation — reduces effect count before budget check
 
 ### Roadmap Evolution
 
@@ -82,6 +86,6 @@ Progress: [██████████████░░░░░░░░░
 ## Session Continuity
 
 Last session: 2026-03-07
-Stopped at: Phase 71 complete — genre-effect intelligence wired into all 4 family prompts (751 tests)
+Stopped at: Completed 72-01-PLAN.md — structural combination rules (COMBO-02 gate+compressor, COMBO-03 priority truncation)
 Resume file: None
-Next command: /gsd:plan-phase (next phase TBD)
+Next command: /gsd:execute-phase 72 (Plan 02 remaining)

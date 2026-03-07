@@ -26,8 +26,8 @@ Requirements for Preset Craft Mastery milestone. Each maps to roadmap phases.
 ### Effect Combinations
 
 - [ ] **COMBO-01**: When wah and compressor coexist in chain, compressor threshold is reduced to prevent over-compression of wah sweep
-- [ ] **COMBO-02**: For high-gain/metal tones, noise gate is placed before amp and compressor is omitted or minimal — prevents squeezed dynamics
-- [ ] **COMBO-03**: Effect combination rules have priority ordering (required/preferred/optional) that survives device block budget truncation — Pod Go's 4-effect limit doesn't break musical intent
+- [x] **COMBO-02**: For high-gain/metal tones, noise gate is placed before amp and compressor is omitted or minimal — prevents squeezed dynamics
+- [x] **COMBO-03**: Effect combination rules have priority ordering (required/preferred/optional) that survives device block budget truncation — Pod Go's 4-effect limit doesn't break musical intent
 - [ ] **COMBO-04**: Reverb and delay interaction — when both present, reverb mix is slightly reduced to prevent wash; delay time accounts for reverb pre-delay
 
 ### Per-Device Craft
@@ -105,8 +105,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INTEL-04 | Phase 71 | Complete |
 | INTEL-05 | Phase 71 | Complete |
 | COMBO-01 | Phase 72 | Pending |
-| COMBO-02 | Phase 72 | Pending |
-| COMBO-03 | Phase 72 | Pending |
+| COMBO-02 | Phase 72 | Complete |
+| COMBO-03 | Phase 72 | Complete |
 | COMBO-04 | Phase 72 | Pending |
 | CRAFT-01 | Phase 73 | Pending |
 | CRAFT-02 | Phase 73 | Pending |

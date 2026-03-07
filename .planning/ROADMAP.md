@@ -348,7 +348,7 @@ Plans:
   2. High-gain/metal presets place noise gate before amp and omit compressor — no squeezed dynamics
   3. Delay + reverb presets have reverb Mix at least 0.05 lower than reverb-only presets — prevents wash
   4. Pod Go presets with combination rules still fit within 4-effect budget — priority ordering ensures essential effects survive truncation
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 Plans:
 - [ ] 72-01-PLAN.md — Structural combination rules: COMBO-02 gate placement + compressor omission, COMBO-03 priority truncation
 - [ ] 72-02-PLAN.md — Parametric combination rules: COMBO-01 wah+comp threshold reduction, COMBO-04 delay+reverb mix balance
@@ -383,7 +383,7 @@ Plans:
 |-------|-----------|-------|--------|-----------|
 | 70. Expression Pedal | 1/2 | In Progress|  | — |
 | 71. Effect Intelligence | 2/2 | Complete   | 2026-03-07 | — |
-| 72. Effect Combinations | v6.0 | TBD | Pending | — |
+| 72. Effect Combinations | 1/2 | In Progress|  | — |
 | 73. Per-Device Craft | v6.0 | TBD | Pending | — |
 | 74. Quality Validation | v6.0 | TBD | Pending | — |
 | 75. Preset Musical Coherence | v6.0 | TBD | Pending | — |
