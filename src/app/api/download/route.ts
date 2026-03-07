@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
     // --- Return binary response ---
     const sanitizedName = presetName.replace(/[^a-zA-Z0-9_\- ]/g, "_");
 
-    return new Response(fileBuffer, {
+    return new Response(new Uint8Array(fileBuffer), {
       status: 200,
       headers: {
         "Content-Type": "application/octet-stream",
