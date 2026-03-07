@@ -1,92 +1,104 @@
 # Requirements: HelixTones
 
-**Defined:** 2026-03-06
+**Defined:** 2026-03-07
 **Core Value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
 
-## v6.0 Requirements
+## v7.0 Requirements
 
-Requirements for Preset Craft Mastery milestone. Each maps to roadmap phases.
+Requirements for Interactive Signal Chain Visualizer milestone. Each maps to roadmap phases.
 
-### Expression Pedal
+### Signal Chain Visualization
 
-- [x] **EXP-01**: Wah blocks are assigned to expression pedal controller with Position parameter mapped — pressing EXP pedal sweeps the wah on hardware
-- [x] **EXP-02**: Volume blocks are assigned to expression pedal controller with Position/Volume parameter mapped — pressing EXP pedal controls volume on hardware
-- [x] **EXP-03**: Expression pedal assignments respect per-device capability — Helix (3 EXP), Stomp (2 EXP), Pod Go (1 EXP), Stadium (0 EXP, skipped)
-- [x] **EXP-04**: Expression pedal assignments do not conflict with snapshot controller assignments — snapshot-exclusion guard prevents last-write-wins collision
-- [x] **EXP-05**: Expression pedal @min/@max values are appropriate per block type — wah sweep 0.0-1.0, volume pedal heel-down not silent
+- [x] **VIS-01**: Dual-DSP devices (Helix Floor/LT/Rack) render two horizontal block rows (DSP 0 and DSP 1) with correct per-DSP block population. Note: Stadium renders as single-DSP (dspCount=1 per chain-rules)
+- [x] **VIS-02**: Single-DSP devices (Stomp/StompXL/Stadium) render one horizontal block row with correct total block count
+- [x] **VIS-03**: Pod Go renders fixed architecture layout (Wah→Vol→FX1→Amp→Cab→EQ→FX2→FX3→FX4) with visually locked positions for non-flexible blocks
+- [x] **VIS-04**: Each block renders as color-coded tile with category icon per BLOCK_UI_REGISTRY — 14 block types mapped to distinct colorHex, iconName, and widthMode (amp=yellow/wide, delay=green/standard, reverb=orange, etc.)
+- [x] **VIS-05**: Bypassed blocks (from active snapshot's blockStates) render as visually dimmed/grayed to indicate they are inactive in the current snapshot
+- [x] **VIS-06**: Selected block highlights visually and opens the ParameterEditorPane side panel
 
-### Effect Intelligence
+### Drag and Drop
 
-- [x] **INTEL-01**: Delay model selection is genre-informed — AI receives per-genre delay model recommendations (e.g., Transistor Tape for blues, Ducked Delay for worship, Cosmos Echo for psychedelic)
-- [x] **INTEL-02**: Reverb model selection is genre-informed — AI receives per-genre reverb model recommendations (e.g., Plate for universal, '63 Spring for country/blues, Ganymede for ambient)
-- [x] **INTEL-03**: Wah model selection is genre-informed — AI receives per-genre wah model recommendations (e.g., Chrome Custom as default, Teardrop 310 for rock, Fassel for funk)
-- [x] **INTEL-04**: Effect model guidance is included in the static system prompt (not dynamic user message) to preserve prompt cache hit rates
-- [x] **INTEL-05**: High-value effect models have per-model parameter overrides where defaults are wrong (e.g., shimmer reverb mix, high-repeat delay feedback)
+- [ ] **DND-01**: Blocks can be reordered within a DSP row via drag-and-drop using a robust DnD library (dnd-kit, hello-pangea/dnd, or framer-motion)
+- [ ] **DND-02**: Blocks can be dragged between DSP 0 and DSP 1 on dual-DSP devices, validated by canMoveBlockToDsp() against maxBlocksPerDsp limits
+- [ ] **DND-03**: Pod Go fixed blocks (amp, cab, wah, volume, eq) are locked in place — drag attempts are rejected with descriptive error messages
+- [ ] **DND-04**: Adding a new block is prevented when device block limits are reached — canAddBlock() enforces maxBlocksTotal (single DSP) and maxBlocksPerDsp (dual DSP)
+- [ ] **DND-05**: Pod Go user-effect slot limit (maxEffectsPerDsp) is enforced separately for the 4 flexible effect blocks
+- [ ] **DND-06**: User can remove a block via an "X" button on the block tile to free up a slot
+- [ ] **DND-07**: User can click an empty slot to open a model browser for adding a new effect to the chain
 
-### Effect Combinations
+### Parameter Editing
 
-- [x] **COMBO-01**: When wah and compressor coexist in chain, compressor threshold is reduced to prevent over-compression of wah sweep
-- [x] **COMBO-02**: For high-gain/metal tones, noise gate is placed before amp and compressor is omitted or minimal — prevents squeezed dynamics
-- [x] **COMBO-03**: Effect combination rules have priority ordering (required/preferred/optional) that survives device block budget truncation — Pod Go's 4-effect limit doesn't break musical intent
-- [x] **COMBO-04**: Reverb and delay interaction — when both present, reverb mix is slightly reduced to prevent wash; delay time accounts for reverb pre-delay
+- [ ] **PARAM-01**: Clicking a block opens the ParameterEditorPane side panel displaying all editable parameters for that block's model
+- [ ] **PARAM-02**: UI parameter schema registry maps 151+ parameter keys to 7 control types — percentage (slider 0-100%), eq_gain (slider -12dB to +12dB), db_level (slider -60dB to +12dB), time_ms (slider 0-2000ms), hz_freq (slider 20-20000Hz), boolean (toggle), discrete (dropdown)
+- [ ] **PARAM-03**: Slider controls display human-readable values using displayMultiplier and displayOffset transforms — raw 0.0-1.0 values are never shown to users
+- [ ] **PARAM-04**: Parameter changes write to the active snapshot's parameterOverrides, NOT the baseBlock — preserving base state integrity for all 4 snapshots
+- [ ] **PARAM-05**: User can swap a block's model (e.g., Scream 808 → Minotaur) — model swap resets parameters to deterministic defaults from Knowledge Layer while preserving block position and DSP assignment
 
-### Per-Device Craft
+### Snapshot System
 
-- [x] **CRAFT-01**: Stomp/Stomp XL presets optimize for 6-block budget — effect choices prioritize maximum tonal variety within tight constraints
-- [x] **CRAFT-02**: Pod Go presets respect single-DSP, 4-effect budget with intelligent effect prioritization based on genre
-- [x] **CRAFT-03**: Helix Floor/LT presets take full advantage of dual-DSP capacity — richer effect chains, more creative signal routing
-- [x] **CRAFT-04**: Per-device craft guidance is encoded in both planner prompts (creative direction) and code (hard limit enforcement)
+- [ ] **SNAP-01**: UI displays 4 snapshot selector buttons (Snap 1–4); switching snapshots immediately applies that snapshot's parameterOverrides and blockStates to the visualization
+- [ ] **SNAP-02**: Effective block state is computed as merge: baseBlock parameters + active snapshot's parameterOverrides — snapshot overrides always win
+- [ ] **SNAP-03**: Bypass states from snapshots[activeIndex].blockStates toggle block enabled/disabled visual state — false means block is bypassed in that snapshot
+- [ ] **SNAP-04**: Parameter edits made while a snapshot is active write ONLY to that snapshot's parameterOverrides — other snapshots remain unmodified
 
-### Quality Validation
+### API Integration
 
-- [x] **QUAL-01**: Non-throwing preset quality validation function returns warnings (not errors) for suboptimal parameter choices — over-wet reverb, missing cab filtering, snapshot level imbalance
-- [x] **QUAL-02**: Quality validation runs on every generated preset and warnings are logged for analysis
-- [x] **QUAL-03**: Per-device baseline comparison validates that quality changes improve (not regress) preset output across all 6 device families
+- [ ] **API-01**: /api/preview endpoint accepts userPrompt + deviceTarget and returns baseBlocks[] + snapshots[4] as VisualizerState — this replaces the current single-step generation flow with a two-step preview-then-download flow
+- [x] **API-02**: /api/download endpoint accepts modified frontend VisualizerState (baseBlocks + snapshots) and compiles it into the correct downloadable binary — .hlx for Helix, .pgp for Pod Go, .hsp for Stadium
+- [ ] **API-03**: Preview hydration uses the deterministic Knowledge Layer pipeline (chain-rules → param-engine → snapshot-engine) — zero AI token cost for parameter resolution after initial ToneIntent generation
+- [x] **API-04**: Download request payload is diff-optimized via calculateStateDiff() — only chain reordering, model swaps, and snapshot data are transmitted
 
-### Preset Musical Coherence
+### Controller Assignments
 
-- [x] **COHERE-01**: Chain-rules enforce effect palette balance — max 2 user-selected drives; at least 1 time-based effect (delay or reverb) when preset has clean/ambient snapshots
-- [x] **COHERE-02**: Reverb soft-mandatory insertion — auto-insert genre-appropriate reverb (Plate default) when ToneIntent includes clean/ambient snapshot roles but no reverb effect
-- [x] **COHERE-03**: Boost model disambiguation — snapshot-engine distinguishes mandatory boost (chain-rules inserted, slot="boost") from AI-selected drive (user chose Minotaur/Scream 808 as effect); user-selected boosts follow distortion toggle rules, not always-on
-- [x] **COHERE-04**: Dynamics type split — separate "compressor" and "gate" block types in chain-rules, snapshot-engine, and frontend; compressor toggles OFF for high-gain lead/rhythm snapshots; gate remains always-on
-- [x] **COHERE-05**: Frontend block label accuracy — BLOCK_LABEL map distinguishes compressor ("Comp") from gate ("Gate") instead of blanket "Gate" for all dynamics
-- [x] **COHERE-06**: ToneIntent-description cross-validation — post-planner check warns when description mentions effects (reverb, delay, modulation) not present in ToneIntent.effects; logged as quality warning
+- [ ] **CTRL-01**: UI displays expression pedal (EXP1/EXP2/EXP3) parameter assignments with min/max range bounds — showing which parameters are hardware-controlled
+- [ ] **CTRL-02**: UI displays footswitch (FS1-FS12) bypass assignments with optional custom label and LED color indicator
+- [ ] **CTRL-03**: Parameter sliders show dual [Min]/[Max] handles with controller badge (e.g., "EXP1") when a parameter is assigned to an expression pedal controller
+- [ ] **CTRL-04**: Draggable block tiles show a small footswitch badge (e.g., "FS2") in the corner when the block has a bypass assignment
 
-### Device Block Budget Calibration
+### Parameter Dependencies
 
-- [x] **BUDGET-01**: DeviceCapabilities `maxEffectsPerDsp` matches real hardware user-effect slot count for ALL families — verified against Line 6 specs
-- [x] **BUDGET-02**: Prompt-level `maxEffects` guidance matches DeviceCapabilities — no mismatch between what AI is told to generate and what chain-rules allows through
-- [x] **BUDGET-03**: Stadium block budget reflects actual DSP capacity — at least 8 user effects (not capped at 4)
-- [x] **BUDGET-04**: Helix LT/Floor prompt allows 8+ effects per DSP path — reflecting real usage patterns, not arbitrary conservative cap
-- [x] **BUDGET-05**: Chain-rules effect truncation logs a warning when effects are dropped — silent truncation becomes visible during development
+- [ ] **DEP-01**: When Sync=ON, Time and Speed sliders are hidden and Interval dropdown is shown; when Sync=OFF, the reverse applies — reactive toggle on parameter change
+- [ ] **DEP-02**: When Link=ON, Right parameter controls (RightTime, RightFeedback) are disabled/grayed — user cannot edit them independently
+- [ ] **DEP-03**: When ModDepth=0, ModSpeed control is visually dimmed to indicate it has no audible effect — but remains visible and editable
+- [ ] **DEP-04**: Parameter dependency rules (GLOBAL_PARAMETER_DEPENDENCIES) evaluate reactively as users change parameter values — no stale dependency state
+
+### State Management & Diffing
+
+- [ ] **STATE-01**: Zustand store manages VisualizerState with baseBlocks, snapshots[4], activeSnapshotIndex, selectedBlockId, and all mutation actions (setParameterValue, moveBlock, swapBlockModel, hydrate)
+- [ ] **STATE-02**: Computed selectors derive effective block state (getEffectiveBlockState) and DSP-grouped blocks (getBlocksByDsp) without duplicating data in the store
+- [x] **STATE-03**: calculateStateDiff() detects chain reordering (position/DSP/path changes) and model swaps (same blockId, different modelId) for download optimization
+- [ ] **STATE-04**: Hydrate action replaces entire store state when /api/preview returns — clean state reset with no stale data from previous generation
 
 ## Future Requirements
 
 Deferred to future release. Tracked but not in current roadmap.
 
-### Advanced Expression Pedal
+### AI Re-prompting
 
-- **EXP-F01**: User can specify custom expression pedal assignments in tone interview (e.g., "I want EXP2 on reverb mix")
-- **EXP-F02**: Expression pedal assignments for reverb mix, delay mix, and other effect parameters beyond wah/volume
+- **REPROMPT-F01**: When user swaps an amp model, AI re-evaluates cab pairing and suggests a matching cabinet
+- **REPROMPT-F02**: When user removes an effect, AI suggests alternative signal chain configurations
 
-### Advanced Effect Intelligence
+### Advanced Editing
 
-- **INTEL-F01**: Drive/distortion model selection is genre-informed (e.g., Tube Screamer for blues, RAT for grunge, Klon for transparent boost)
-- **INTEL-F02**: Modulation model selection is genre-informed (e.g., Chorus for 80s clean, Uni-Vibe for classic rock, Tremolo for surf)
+- **EDIT-F01**: User can copy parameter overrides from one snapshot to another
+- **EDIT-F02**: User can revert a single block to its AI-generated defaults without resetting the whole chain
+- **EDIT-F03**: Undo/redo stack for all visualizer editing actions
 
-### Cost Optimization
+### Extended Controller Editing
 
-- **COST-F01**: Evidence-based Haiku chat vs. Sonnet generation routing (deferred from v4.0)
+- **CTRL-F01**: User can interactively reassign expression pedal and footswitch assignments from within the visualizer
+- **CTRL-F02**: User can set custom min/max bounds for controller-assigned parameters via drag handles
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| New effect model additions to catalog | v6.0 uses existing 126+ effects better, not expanding the catalog |
-| Stadium expression pedal support | Stadium has `expressionPedalCount: 0` — no physical EXP pedal; deferred until hardware verification |
-| Full AI-driven expression pedal assignment | Deterministic wah→EXP1, volume→EXP2 mapping covers 95% of cases; AI-driven custom assignments deferred |
-| Per-model amp override expansion | v4.0 already shipped 18 amps with Layer 4 overrides; this milestone focuses on effects |
-| Prompt caching architecture changes | v5.0 established per-device cache unification; v6.0 must preserve, not restructure |
+| Real-time audio preview | Requires Web Audio API or server-side amp sim — orders of magnitude more complex |
+| AI re-prompting for cab/effect suggestions | Deferred to avoid token cost; deterministic Knowledge Layer covers v7.0 |
+| Effect combination logic in visualizer | v6.0 combination rules run server-side during generation; visualizer accepts the result |
+| Cost-aware Haiku/Sonnet routing | Deferred from v4.0/v6.0; not related to visualizer scope |
+| Controller assignment editing (reassign FS/EXP) | v7.0 displays assignments read-only; interactive editing deferred |
+| Dual-amp split/join path visualization | Complex routing topology; v7.0 treats dual-amp as two blocks on separate DSP rows |
 
 ## Traceability
 
@@ -94,44 +106,50 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| EXP-01 | Phase 70 | Complete |
-| EXP-02 | Phase 70 | Complete |
-| EXP-03 | Phase 70 | Complete |
-| EXP-04 | Phase 70 | Complete |
-| EXP-05 | Phase 70 | Complete |
-| INTEL-01 | Phase 71 | Complete |
-| INTEL-02 | Phase 71 | Complete |
-| INTEL-03 | Phase 71 | Complete |
-| INTEL-04 | Phase 71 | Complete |
-| INTEL-05 | Phase 71 | Complete |
-| COMBO-01 | Phase 72 | Complete |
-| COMBO-02 | Phase 72 | Complete |
-| COMBO-03 | Phase 72 | Complete |
-| COMBO-04 | Phase 72 | Complete |
-| CRAFT-01 | Phase 73 | Complete |
-| CRAFT-02 | Phase 73 | Complete |
-| CRAFT-03 | Phase 73 | Complete |
-| CRAFT-04 | Phase 73 | Complete |
-| QUAL-01 | Phase 74 | Complete |
-| QUAL-02 | Phase 74 | Complete |
-| QUAL-03 | Phase 74 | Complete |
-| COHERE-01 | Phase 75 | Complete |
-| COHERE-02 | Phase 75 | Complete |
-| COHERE-03 | Phase 75 | Complete |
-| COHERE-04 | Phase 75 | Complete |
-| COHERE-05 | Phase 75 | Complete |
-| COHERE-06 | Phase 75 | Complete |
-| BUDGET-01 | Phase 76 | Complete |
-| BUDGET-02 | Phase 76 | Complete |
-| BUDGET-03 | Phase 76 | Complete |
-| BUDGET-04 | Phase 76 | Complete |
-| BUDGET-05 | Phase 76 | Complete |
+| VIS-01 | Phase 78 | Verified |
+| VIS-02 | Phase 78 | Verified |
+| VIS-03 | Phase 78 | Verified |
+| VIS-04 | Phase 78 | Verified |
+| VIS-05 | Phase 78 | Verified |
+| VIS-06 | Phase 78 | Verified |
+| DND-01 | Phase 79 | Pending |
+| DND-02 | Phase 79 | Pending |
+| DND-03 | Phase 79 | Pending |
+| DND-04 | Phase 79 | Pending |
+| DND-05 | Phase 79 | Pending |
+| DND-06 | Phase 79 | Pending |
+| DND-07 | Phase 79 | Pending |
+| PARAM-01 | Phase 80 | Pending |
+| PARAM-02 | Phase 80 | Pending |
+| PARAM-03 | Phase 80 | Pending |
+| PARAM-04 | Phase 81 | Pending |
+| PARAM-05 | Phase 80 | Pending |
+| SNAP-01 | Phase 81 | Pending |
+| SNAP-02 | Phase 81 | Pending |
+| SNAP-03 | Phase 81 | Pending |
+| SNAP-04 | Phase 81 | Pending |
+| API-01 | Phase 77 | Pending |
+| API-02 | Phase 83 | Complete |
+| API-03 | Phase 77 | Pending |
+| API-04 | Phase 83 | Complete |
+| CTRL-01 | Phase 82 | Pending |
+| CTRL-02 | Phase 82 | Pending |
+| CTRL-03 | Phase 82 | Pending |
+| CTRL-04 | Phase 82 | Pending |
+| DEP-01 | Phase 82 | Pending |
+| DEP-02 | Phase 82 | Pending |
+| DEP-03 | Phase 82 | Pending |
+| DEP-04 | Phase 82 | Pending |
+| STATE-01 | Phase 77 | Pending |
+| STATE-02 | Phase 77 | Pending |
+| STATE-03 | Phase 83 | Complete |
+| STATE-04 | Phase 77 | Pending |
 
 **Coverage:**
-- v6.0 requirements: 32 total
-- Mapped to phases: 32
-- Unmapped: 0 ✓
+- v7.0 requirements: 38 total
+- Mapped to phases: 38
+- Unmapped: 0
 
 ---
-*Requirements defined: 2026-03-06*
-*Last updated: 2026-03-06 after Phase 76 addition (device block budget calibration)*
+*Requirements defined: 2026-03-07*
+*Last updated: 2026-03-06 after roadmap creation — all 38 requirements mapped to phases 77-83*
