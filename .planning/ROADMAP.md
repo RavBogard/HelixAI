@@ -379,7 +379,11 @@ Plans:
   2. validatePresetQuality() with a well-formed clean preset returns empty array — no false positives
   3. Presets with quality warnings still download successfully — warnings are logged, never block the user
   4. Running 36-preset baseline generator before and after v6.0 shows measurable improvement in quality metrics
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 74-01-PLAN.md — Core validatePresetQuality() function + quality logger (TDD, QUAL-01, QUAL-02)
+- [ ] 74-02-PLAN.md — Pipeline integration + 36-preset baseline generator (QUAL-02, QUAL-03)
 
 ## Progress (v6.0)
 
@@ -389,7 +393,7 @@ Plans:
 | 71. Effect Intelligence | 2/2 | Complete   | 2026-03-07 | — |
 | 72. Effect Combinations | 2/2 | Complete   | 2026-03-07 | — |
 | 73. Per-Device Craft | 2/2 | Complete   | 2026-03-07 | — |
-| 74. Quality Validation | v6.0 | TBD | Pending | — |
+| 74. Quality Validation | v6.0 | 0/2 | Planned | — |
 | 75. Preset Musical Coherence | v6.0 | TBD | Pending | — |
 | 76. Block Budget Calibration | 2/2 | Complete   | 2026-03-07 | — |
 
@@ -415,7 +419,11 @@ Plans:
 - AI-selected Minotaur/Scream 808 toggles OFF in clean snapshots (same as other drives)
 - 36-preset baseline: zero regressions, measurable improvement in effect variety
 
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 74-01-PLAN.md — Core validatePresetQuality() function + quality logger (TDD, QUAL-01, QUAL-02)
+- [ ] 74-02-PLAN.md — Pipeline integration + 36-preset baseline generator (QUAL-02, QUAL-03)
 
 ### Phase 76: Device Block Budget Calibration
 
