@@ -397,3 +397,234 @@ describe("getBlocksByDsp()", () => {
     expect(dsp1).toHaveLength(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Phase 79-01 Task 2: addBlock, removeBlock, reorderBlock store actions
+// ---------------------------------------------------------------------------
+
+describe("addBlock()", () => {
+  beforeEach(() => {
+    useVisualizerStore.setState({ ...INITIAL_STATE, snapshots: [...INITIAL_STATE.snapshots.map(s => ({ ...s }))] });
+    useVisualizerStore.getState().hydrate("helix_lt", makeTestBlocks(), makeTestSnapshots());
+  });
+
+  it("inserts a block at the specified position on the target DSP", () => {
+    const result = useVisualizerStore.getState().addBlock(
+      { type: "distortion", modelId: "Scream 808", modelName: "Scream 808" },
+      0,
+      1,
+    );
+    expect(result.success).toBe(true);
+
+    const state = useVisualizerStore.getState();
+    const dsp0Blocks = state.baseBlocks
+      .filter((b) => b.dsp === 0)
+      .sort((a, b) => a.position - b.position);
+    // Should have 3 blocks on DSP 0 now (amp at 0, distortion at 1, delay shifted to 3)
+    expect(dsp0Blocks).toHaveLength(3);
+    expect(dsp0Blocks[1].type).toBe("distortion");
+    expect(dsp0Blocks[1].position).toBe(1);
+  });
+
+  it("returns error when canAddBlock rejects (at device limit)", () => {
+    // Fill up to maxBlocksTotal (32 for Helix)
+    const fullBlocks: BlockSpec[] = Array.from({ length: 32 }, (_, i) => ({
+      type: "delay" as const,
+      modelId: `delay-${i}`,
+      modelName: `Delay ${i}`,
+      dsp: (i < 16 ? 0 : 1) as 0 | 1,
+      position: i % 16,
+      path: 0,
+      enabled: true,
+      stereo: false,
+      parameters: {},
+    }));
+    useVisualizerStore.getState().hydrate("helix_lt", fullBlocks, makeTestSnapshots());
+
+    const result = useVisualizerStore.getState().addBlock(
+      { type: "reverb", modelId: "Glitz", modelName: "Glitz" },
+      0,
+      0,
+    );
+    expect(result.success).toBe(false);
+    expect(result.error).toBeDefined();
+  });
+
+  it("shifts subsequent block positions when inserting", () => {
+    // Add a block at position 0 on DSP 0, amp (currently at 0) should shift to 1
+    useVisualizerStore.getState().addBlock(
+      { type: "distortion", modelId: "Scream 808", modelName: "Scream 808" },
+      0,
+      0,
+    );
+
+    const state = useVisualizerStore.getState();
+    const dsp0Blocks = state.baseBlocks
+      .filter((b) => b.dsp === 0)
+      .sort((a, b) => a.position - b.position);
+    expect(dsp0Blocks[0].type).toBe("distortion");
+    expect(dsp0Blocks[0].position).toBe(0);
+    expect(dsp0Blocks[1].type).toBe("amp");
+    expect(dsp0Blocks[1].position).toBe(1);
+  });
+
+  it("sets default values for new block (enabled, stereo, path, parameters)", () => {
+    useVisualizerStore.getState().addBlock(
+      { type: "distortion", modelId: "Scream 808", modelName: "Scream 808" },
+      0,
+      5,
+    );
+
+    const state = useVisualizerStore.getState();
+    const newBlock = state.baseBlocks.find((b) => b.modelId === "Scream 808");
+    expect(newBlock).toBeDefined();
+    expect(newBlock!.enabled).toBe(true);
+    expect(newBlock!.stereo).toBe(false);
+    expect(newBlock!.path).toBe(0);
+    expect(newBlock!.parameters).toEqual({});
+  });
+});
+
+describe("removeBlock()", () => {
+  beforeEach(() => {
+    useVisualizerStore.setState({ ...INITIAL_STATE, snapshots: [...INITIAL_STATE.snapshots.map(s => ({ ...s }))] });
+    useVisualizerStore.getState().hydrate("helix_lt", makeTestBlocks(), makeTestSnapshots());
+  });
+
+  it("removes block from baseBlocks", () => {
+    const result = useVisualizerStore.getState().removeBlock("delay2");
+    expect(result.success).toBe(true);
+
+    const state = useVisualizerStore.getState();
+    expect(state.baseBlocks).toHaveLength(2); // was 3, now 2
+    expect(state.baseBlocks.find((b) => b.modelId === "Simple Delay")).toBeUndefined();
+  });
+
+  it("returns error for non-existent block", () => {
+    const result = useVisualizerStore.getState().removeBlock("nonexistent99");
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("not found");
+  });
+
+  it("clears selectedBlockId when removed block was selected", () => {
+    useVisualizerStore.getState().selectBlock("delay2");
+    expect(useVisualizerStore.getState().selectedBlockId).toBe("delay2");
+
+    useVisualizerStore.getState().removeBlock("delay2");
+    expect(useVisualizerStore.getState().selectedBlockId).toBeNull();
+  });
+
+  it("does not clear selectedBlockId when a different block is removed", () => {
+    useVisualizerStore.getState().selectBlock("amp0");
+
+    useVisualizerStore.getState().removeBlock("delay2");
+    expect(useVisualizerStore.getState().selectedBlockId).toBe("amp0");
+  });
+
+  it("renumbers positions on the same DSP after removal", () => {
+    // Add another block to DSP 0 to have 3 blocks there
+    useVisualizerStore.getState().addBlock(
+      { type: "distortion", modelId: "Scream 808", modelName: "Scream 808" },
+      0,
+      1,
+    );
+
+    // Remove the middle one (position 1 = distortion)
+    useVisualizerStore.getState().removeBlock("distortion1");
+
+    const state = useVisualizerStore.getState();
+    const dsp0Blocks = state.baseBlocks
+      .filter((b) => b.dsp === 0)
+      .sort((a, b) => a.position - b.position);
+    // Positions should be sequential: 0, 1 (renumbered from 0, 2)
+    expect(dsp0Blocks[0].position).toBe(0);
+    expect(dsp0Blocks[1].position).toBe(1);
+  });
+});
+
+describe("reorderBlock()", () => {
+  beforeEach(() => {
+    useVisualizerStore.setState({ ...INITIAL_STATE, snapshots: [...INITIAL_STATE.snapshots.map(s => ({ ...s }))] });
+    useVisualizerStore.getState().hydrate("helix_lt", makeTestBlocks(), makeTestSnapshots());
+  });
+
+  it("reorders a block within the same DSP", () => {
+    // Add more blocks to DSP 0 so we can reorder
+    useVisualizerStore.getState().addBlock(
+      { type: "distortion", modelId: "Scream 808", modelName: "Scream 808" },
+      0,
+      1,
+    );
+    // DSP 0 now: amp(0), distortion(1), delay(3→shifted to 2 probably)
+
+    const result = useVisualizerStore.getState().reorderBlock("amp0", 2);
+    expect(result.success).toBe(true);
+
+    const state = useVisualizerStore.getState();
+    const dsp0Blocks = state.baseBlocks
+      .filter((b) => b.dsp === 0)
+      .sort((a, b) => a.position - b.position);
+    // amp should now be at position 2
+    const amp = dsp0Blocks.find((b) => b.type === "amp");
+    expect(amp!.position).toBe(2);
+  });
+
+  it("validates via validateMove for Pod Go fixed blocks", () => {
+    // Hydrate with Pod Go and a fixed amp block
+    const podGoBlocks: BlockSpec[] = [
+      {
+        type: "amp",
+        modelId: "US Double Nrm",
+        modelName: "US Double Nrm",
+        dsp: 0,
+        position: 3,
+        path: 0,
+        enabled: true,
+        stereo: false,
+        parameters: {},
+      },
+      {
+        type: "delay",
+        modelId: "Simple Delay",
+        modelName: "Simple Delay",
+        dsp: 0,
+        position: 2,
+        path: 0,
+        enabled: true,
+        stereo: false,
+        parameters: {},
+      },
+    ];
+    useVisualizerStore.getState().hydrate("pod_go", podGoBlocks, makeTestSnapshots());
+
+    const result = useVisualizerStore.getState().reorderBlock("amp3", 0);
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("Pod Go");
+  });
+
+  it("returns error for non-existent block", () => {
+    const result = useVisualizerStore.getState().reorderBlock("nonexistent99", 0);
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("not found");
+  });
+
+  it("renumbers all positions sequentially after reorder", () => {
+    // Add blocks to have 3 on DSP 0
+    useVisualizerStore.getState().addBlock(
+      { type: "distortion", modelId: "Scream 808", modelName: "Scream 808" },
+      0,
+      1,
+    );
+    // Move amp (pos 0) to end (pos 2)
+    useVisualizerStore.getState().reorderBlock("amp0", 2);
+
+    const state = useVisualizerStore.getState();
+    const dsp0Blocks = state.baseBlocks
+      .filter((b) => b.dsp === 0)
+      .sort((a, b) => a.position - b.position);
+    // All positions should be sequential 0, 1, 2
+    dsp0Blocks.forEach((b, i) => {
+      expect(b.position).toBe(i);
+    });
+  });
+});
