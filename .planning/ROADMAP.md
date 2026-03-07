@@ -297,7 +297,7 @@ Plans:
 #### Phase Summary
 
 - [x] **Phase 70: Expression Pedal Controller Assignment** — Fix P0 hardware bug: wah and volume blocks get @controller entries so expression pedals actually work on hardware
-- [ ] **Phase 71: Per-Model Effect Intelligence** — Genre-aware delay/reverb/wah model selection guidance in prompts + effectParamOverrides for models with known bad defaults
+- [x] **Phase 71: Per-Model Effect Intelligence** — Genre-aware delay/reverb/wah model selection guidance in prompts + effectParamOverrides for models with known bad defaults (completed 2026-03-07)
 - [ ] **Phase 72: Effect Combination Logic** — Deterministic cross-effect parameter interactions: wah+comp threshold, high-gain gate placement, delay+reverb balance, priority ordering for device budgets
 - [ ] **Phase 73: Per-Device Craft Optimization** — Device-specific tone optimization in both prompts (creative direction) and code (hard limit enforcement) for Stomp, Pod Go, Helix, and Stadium
 - [ ] **Phase 74: Quality Validation** — Non-throwing validatePresetQuality() advisory gate, per-device baseline comparison, regression detection
@@ -332,7 +332,7 @@ Plans:
   3. Ambient presets produce Ganymede reverb and Heliosphere/Adriatic delay in 6+ of 10 runs
   4. Effect model guidance is in the static system prompt (cache_control: ephemeral) — not in the dynamic user message
   5. Shimmer reverb (Ganymede) default Mix is corrected via effectParamOverrides — not the raw over-wet default
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 71-01-PLAN.md — Shared effect-model-intelligence module, paramOverrides on 7 effect models, param-engine resolveDefaultParams override step, TDD tests
@@ -379,7 +379,7 @@ Plans:
 | Phase | Milestone | Plans | Status | Completed |
 |-------|-----------|-------|--------|-----------|
 | 70. Expression Pedal | 1/2 | In Progress|  | — |
-| 71. Effect Intelligence | v6.0 | 1/2 | In Progress | — |
+| 71. Effect Intelligence | 2/2 | Complete   | 2026-03-07 | — |
 | 72. Effect Combinations | v6.0 | TBD | Pending | — |
 | 73. Per-Device Craft | v6.0 | TBD | Pending | — |
 | 74. Quality Validation | v6.0 | TBD | Pending | — |

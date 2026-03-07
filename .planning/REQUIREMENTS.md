@@ -17,10 +17,10 @@ Requirements for Preset Craft Mastery milestone. Each maps to roadmap phases.
 
 ### Effect Intelligence
 
-- [ ] **INTEL-01**: Delay model selection is genre-informed — AI receives per-genre delay model recommendations (e.g., Transistor Tape for blues, Ducked Delay for worship, Cosmos Echo for psychedelic)
-- [ ] **INTEL-02**: Reverb model selection is genre-informed — AI receives per-genre reverb model recommendations (e.g., Plate for universal, '63 Spring for country/blues, Ganymede for ambient)
-- [ ] **INTEL-03**: Wah model selection is genre-informed — AI receives per-genre wah model recommendations (e.g., Chrome Custom as default, Teardrop 310 for rock, Fassel for funk)
-- [ ] **INTEL-04**: Effect model guidance is included in the static system prompt (not dynamic user message) to preserve prompt cache hit rates
+- [x] **INTEL-01**: Delay model selection is genre-informed — AI receives per-genre delay model recommendations (e.g., Transistor Tape for blues, Ducked Delay for worship, Cosmos Echo for psychedelic)
+- [x] **INTEL-02**: Reverb model selection is genre-informed — AI receives per-genre reverb model recommendations (e.g., Plate for universal, '63 Spring for country/blues, Ganymede for ambient)
+- [x] **INTEL-03**: Wah model selection is genre-informed — AI receives per-genre wah model recommendations (e.g., Chrome Custom as default, Teardrop 310 for rock, Fassel for funk)
+- [x] **INTEL-04**: Effect model guidance is included in the static system prompt (not dynamic user message) to preserve prompt cache hit rates
 - [x] **INTEL-05**: High-value effect models have per-model parameter overrides where defaults are wrong (e.g., shimmer reverb mix, high-repeat delay feedback)
 
 ### Effect Combinations
@@ -99,10 +99,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EXP-03 | Phase 70 | Complete |
 | EXP-04 | Phase 70 | Pending |
 | EXP-05 | Phase 70 | Complete |
-| INTEL-01 | Phase 71 | Pending |
-| INTEL-02 | Phase 71 | Pending |
-| INTEL-03 | Phase 71 | Pending |
-| INTEL-04 | Phase 71 | Pending |
+| INTEL-01 | Phase 71 | Complete |
+| INTEL-02 | Phase 71 | Complete |
+| INTEL-03 | Phase 71 | Complete |
+| INTEL-04 | Phase 71 | Complete |
 | INTEL-05 | Phase 71 | Complete |
 | COMBO-01 | Phase 72 | Pending |
 | COMBO-02 | Phase 72 | Pending |
