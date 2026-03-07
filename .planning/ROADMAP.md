@@ -149,7 +149,7 @@
 - [x] **Phase 78: Signal Chain Canvas** — Device-specific block rendering (dual DSP rows, single DSP, Pod Go fixed layout) with color-coded tiles and selection (2/2 plans, 91 tests)
 - [x] **Phase 79: Drag-and-Drop Reordering** — Block reordering within and across DSP rows, constraint validation, block add/remove (2/2 plans, 157 tests)
 - [x] **Phase 80: Parameter Editing** — Side panel with schema registry, 7 control types, human-readable display transforms, model swapping (2/2 plans, 203 tests)
-- [ ] **Phase 81: Snapshot System** — 4-snapshot switcher with per-snapshot parameter overlays and bypass state toggling
+- [ ] **Phase 81: Snapshot System** — 4-snapshot switcher with per-snapshot parameter overlays and bypass state toggling (2 plans)
 - [ ] **Phase 82: Controllers + Parameter Dependencies** — Read-only controller assignment badges, expression pedal dual-handle sliders, reactive parameter dependency rules
 - [ ] **Phase 83: Download Integration + Diffing** — /api/download endpoint compiling modified state to device files, diff-optimized payloads, state diffing
 
@@ -224,7 +224,10 @@ Plans:
   3. Blocks bypassed in the active snapshot (blockStates[blockId] = false) appear visually dimmed on the canvas
   4. Editing a parameter while Snap 2 is active writes to snapshots[1].parameterOverrides and does NOT modify Snap 1, Snap 3, or Snap 4
   5. Editing a parameter while Snap 2 is active does NOT modify the baseBlock parameters — base state remains pristine
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 81-01-PLAN.md -- toggleBlockBypass store action + SnapshotSelectorBar component (TDD, snapshot isolation tests)
+- [ ] 81-02-PLAN.md -- Reactive wiring for canvas/editor snapshot switching + page layout integration
 
 ### Phase 82: Controllers + Parameter Dependencies
 **Goal**: Users see which parameters are hardware-controlled (expression pedals, footswitches) via inline badges and dual-handle sliders, and parameter controls reactively show/hide based on dependency rules (Sync hides Time, Link disables Right params)
