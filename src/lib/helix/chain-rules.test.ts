@@ -565,6 +565,8 @@ describe("assembleSignalChain", () => {
       vi.spyOn(console, "warn").mockImplementation(() => {});
       const stadiumCaps = getCapabilities("helix_stadium");
 
+      // COMBO-02: Use UK Wah 846 instead of Deluxe Comp — toggleable compressors
+      // are omitted from high-gain chains (Agoura German Xtra Red is high_gain)
       const chain = assembleSignalChain(
         cleanIntent({
           ampName: "Agoura German Xtra Red",
@@ -574,7 +576,7 @@ describe("assembleSignalChain", () => {
             { modelName: "Hall", role: "toggleable" },
             { modelName: "70s Chorus", role: "toggleable" },
             { modelName: "Teemah!", role: "toggleable" },
-            { modelName: "Deluxe Comp", role: "toggleable" },
+            { modelName: "UK Wah 846", role: "toggleable" },
             { modelName: "Stupor OD", role: "toggleable" },
             { modelName: "Heir Apparent", role: "toggleable" },
             { modelName: "Vermin Dist", role: "toggleable" },
