@@ -1,5 +1,41 @@
 # Milestones: HelixAI
 
+## v6.0 — Preset Craft Mastery (Complete)
+
+**Goal:** Deliver preset craft mastery through expression pedal wiring, genre-informed effect selection, effect combination intelligence, per-device craft optimization, quality validation, preset musical coherence, and device block budget calibration.
+
+**Shipped:**
+- Expression pedal assignments — wah→EXP1, volume→EXP2, per-device capability (Helix 3, Stomp 2, Pod Go 1, Stadium 0), snapshot conflict guard
+- Genre-informed effect model selection — per-genre delay/reverb/wah AI recommendations in planner prompt
+- Effect combination intelligence — 4 interaction rules (wah+comp threshold, high-gain comp removal, genre-priority truncation, delay+reverb mix balance)
+- Per-device craft optimization — Stomp 6-block, Pod Go 4-effect, Helix dual-DSP maximization
+- Quality validation pipeline — 11 non-throwing quality checks, per-preset warning logs, baseline comparison scripts
+- Preset musical coherence — drive palette balance, reverb auto-insert, boost disambiguation, dynamics split, block labels, description cross-validation
+- Device block budget calibration — correct maxEffectsPerDsp for all families, prompt alignment, truncation logging
+- Post-milestone bugsweep — Pod Go cab bypass fix, Autoswell misclassification fix, quality-validate robustness
+
+**Phases:** 70-76 (7 phases, 15 plans)
+**Tests:** 842 passing
+**Requirements:** 32/32 complete
+**Completed:** 2026-03-07
+
+## v5.0 — Device-First Architecture (Complete)
+
+**Goal:** Rearchitect the conversation and generation pipeline so the user selects their device first, then follows a fully device-specific path — separate prompts, model catalogs, chain rules, and conversation arcs per device. Eliminates cross-device model contamination by design.
+
+**Shipped:**
+- Family Router architecture — zero-guard device routing through per-family modules
+- Per-family catalog isolation — HD2 and Agoura model spaces completely separated
+- Device-specific planner prompts — each family gets own prompt with its model catalog and constraints
+- Stadium firmware parameter completeness — all 27+ amp params from real .hsp corpus, param bleed eliminated
+- Stadium integration quality — WAH/VOLUME catalog gap, dual-amp mismatch fixes, schema/prompt integration tests
+- Token control and prompt caching — per-device cache reporting, cost correction
+- Frontend device-first picker + DB migration (shipped atomically)
+
+**Phases:** 61-69 (9 phases, 17 plans)
+**Requirements:** All verified
+**Completed:** 2026-03-06
+
 ## v4.0 — Stadium Rebuild + Preset Quality Leap (Complete)
 
 **Goal:** Rebuild Stadium preset generation from real .hsp files and deliver a major quality improvement across all devices through enriched planner prompts, per-model amp parameters, intelligent effect parameters, and an architecture review.

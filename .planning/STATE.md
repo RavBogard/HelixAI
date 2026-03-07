@@ -1,50 +1,38 @@
 ---
 gsd_state_version: 1.0
-milestone: v6.0
-milestone_name: Preset Craft Mastery
+milestone: v7.0
+milestone_name: Interactive Signal Chain Visualizer
 status: active
 last_updated: "2026-03-07"
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 15
-  completed_plans: 15
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-06)
+See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** v6.0 Preset Craft Mastery — Phase 75 complete (3/3 plans, 842 tests)
+**Current focus:** v7.0 Interactive Signal Chain Visualizer — defining requirements
 
 ## Current Position
 
-Phase: Phase 75 — Preset Musical Coherence
-Plan: 3/3 complete
-Status: Phase 75 complete — all 6 COHERE issues resolved
-Last activity: 2026-03-07 — Phase 75 Plan 03 complete (COHERE-05 getBlockLabel + COHERE-06 description cross-validation)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-07 — Milestone v7.0 started
 
-Progress: [████████████████████████████████] 100% (7/7 phases, 15/15 plans)
+Progress: [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 14 (this milestone)
-- Phase 75: Plan 03 in ~3 min (COHERE-05 getBlockLabel + COHERE-06 description cross-validation, TDD, 7 new tests)
-- Phase 75: Plan 02 in ~6 min (COHERE-03 boost disambiguation + COHERE-04 dynamics split, TDD, 10 new tests)
-- Phase 75: Plan 01 in ~6 min (COHERE-01 drive palette balance + COHERE-02 reverb auto-insert, TDD, 9 new tests)
-- Phase 74: Plan 02 in ~5 min (pipeline integration + baseline generator/compare scripts)
-- Phase 74: Plan 01 in ~4 min (validatePresetQuality + quality logger, TDD, 23 new tests)
-- Phase 73: Plan 02 in ~4 min (prompt optimization for all 3 device families, 9 new tests)
-- Phase 73: Plan 01 in ~3 min (genre-aware effect priority truncation, TDD)
-- Phase 72: Plan 02 in ~4 min (parametric combination rules, TDD)
-- Phase 72: Plan 01 in ~3 min (structural combination rules, TDD)
-- Phase 71: 2 plans in ~7 min total (avg 3.5 min/plan — data layer + prompt integration)
-- Phase 76: 2 plans in ~7 min total (avg 3.5 min/plan)
-- Phase 70: 2 plans in ~5 min total (avg 2.5 min/plan)
+- Prior milestone avg: ~4 min/plan (v6.0)
 - Prior milestone avg: ~5 min/plan (v5.0)
 
 *Updated after each plan completion*
@@ -55,70 +43,30 @@ Progress: [███████████████████████
 
 - [v4.0]: Architecture refactor deferred — guard sites functional at 6 devices; superseded by v5.0 device-first approach
 - [v5.0]: Family Router ships first (Phase 61) — zero regression risk, pure addition, unlocks all downstream phases
-- [v5.0]: Catalog isolation (Phase 62) is highest-risk phase — AMP_MODELS imported by chain-rules, param-engine, validate; all import sites must update atomically
-- [v5.0]: Frontend picker + DB migration ship atomically (Phase 66) — deploying picker without migration causes legacy conversation crashes
 - [v5.0]: Per-family catalogs live in src/lib/helix/catalogs/{family}-catalog.ts — each exports typed tuples
-- [v5.0]: EQ, WAH, VOLUME block types excluded from most EFFECT_NAMES tuples — Stadium overrides WAH/VOLUME exclusion
 - [v5.0]: Helix Floor/LT produce byte-identical prompts (single cache entry) — Stomp variants unified similarly
-- [v5.0]: Stadium Mono/Stereo suffix fix — firmware requires suffixed model IDs on all effect blocks
-- [v6.0-pre]: Expression pedal controllers (EXP_PEDAL_1=1, EXP_PEDAL_2=2) exist as constants but are NEVER assigned in any builder — wah and volume completely non-functional
-- [v6.0-pre]: Delay subdivision fully working (added in v4.0) — "quarter", "dotted_eighth", "eighth", "triplet" options resolved in param-engine.ts
-- [v6.0-pre]: 126+ effects across all families with 100% parameter coverage, but AI treats all effects in a category as interchangeable — no per-model guidance
-- [v6.0-pre]: No effect combination intelligence exists — comp→drive, mod→reverb interactions not modeled
 - [v6.0]: STOMP_MAX_BLOCKS=8 for both Stomp and StompXL (FW 3.0+ hardware limit, same DSP chip)
 - [v6.0]: maxEffectsPerDsp calibrated to real hardware: Stomp=4, StompXL=4, Stadium=8, Helix=Infinity, PodGo=4
-- [v6.0]: Zod schema .max(10) for effects array — provides headroom above Stadium's 8-effect capacity
-- [v6.0]: chain-rules now logs console.warn before effect truncation for observability
-- [v6.0]: Effect paramOverrides applied BEFORE genre overrides in resolveDefaultParams (genre intent wins as outermost layer)
-- [v6.0]: 7 effect models get paramOverrides: Ganymede/Glitz/Octo/Plateaux (Mix), Heliosphere/Cosmos Echo/Adriatic Swell (Feedback)
-- [v6.0]: genreEffectModelSection placed after amp-cab pairing, before Effect Discipline — planner-only (not chat prompt)
-- [v6.0]: Genre-effect guidance is in static system prompt for cache stability — identical across all devices in a family
-- [v6.0]: SLOT_ORDER uses fractional value 2.5 for horizon_gate — inserts between extra_drive(2) and boost(3) without renumbering
-- [v6.0]: getEffectPriority scores intentRole (always_on=100, toggleable=50, ambient=30) + slot (wah=18, comp=15, delay=10, reverb=8, mod=5)
-- [v6.0]: COMBO-02 compressor omission runs BEFORE COMBO-03 truncation — reduces effect count before budget check
-- [v6.0]: COMBO-01 wah+compressor threshold reduction: single-value params -0.10, multi-band -0.08 (covers all 7 compressor models via modelId prefix)
-- [v6.0]: COMBO-04 delay+reverb mix balancing: reverb Mix -0.05 with floor of 0.08 (metal genre 0.12->0.08, not 0.07)
-- [v6.0]: applyCombinationAdjustments() runs as final post-processing step in resolveParameters() — scans full chain context
-- [v6.0]: GENRE_SLOT_PRIORITY table with 9 genres (metal, ambient, worship, blues, rock, jazz, country, funk, pop) — drives genre-aware truncation
-- [v6.0]: matchGenreKey() checks "rock" last as catch-all — "hard rock"/"classic rock" both resolve to "rock" entry
-- [v6.0]: Worship genre reuses ambient priorities (reverb=20, delay=18, modulation=15) — both emphasize atmospheric effects
-- [v6.0]: getEffectPriority(pending, genreHint?) — optional genreHint parameter preserves all existing callers
-- [v6.0]: Pod Go prompt section renamed "Effect Discipline by Genre" -> "Effect Slot Planning by Genre" — fill-all-slots philosophy with exact 4-effect templates
-- [v6.0]: Helix prompt effect discipline includes per-genre DSP0/DSP1 placement guidance (e.g., drive+gate on DSP0, delay+mod on DSP1)
-- [v6.0]: Stomp metal over-budget priority: drive > delay > gate (was drive > delay > mod) — matches new gate inclusion in metal genre
-- [v6.0]: 11 quality checks with expert-consensus thresholds from param-engine.ts (QUAL-01)
-- [v6.0]: COHERE-01 drive palette balance: max 2 user drives (slot=extra_drive), mandatory boost (slot=boost) excluded from count
-- [v6.0]: COHERE-02 reverb soft-mandatory: Plate auto-inserted when clean/ambient snapshots present and no user reverb in effects
-- [v6.0]: COHERE-01/02 placed before COMBO-02 compressor removal — drives capped and reverb inserted before combination rules
-- [v6.0]: Auto-inserted Plate gets intentRole "toggleable" — participates in COMBO-03 truncation and snapshot toggling
-- [v6.0]: Stadium amp Drive check exempted via ampCatalogEra guard (firmware encoding difference)
-- [v6.0]: Quality logger uses real temp files for test verification (ESM spy limitation workaround)
-- [v6.0]: Quality warnings are server-side only -- never included in API response JSON (QUAL-02)
-- [v6.0]: Baseline generator uses Brit Plexi Nrm for rock (plan's "Brit 2204" invalid in HD2 catalog)
-- [v6.0]: COHERE-03 BlockSpec.slot typed as optional string (not narrow "boost") — all chain slots propagate for disambiguation
-- [v6.0]: COHERE-03 classifyEffectSlot returns "extra_drive" for user Minotaur/Scream 808 (was "boost") — only mandatory step 5a gets slot="boost"
-- [v6.0]: COHERE-03 backward compat: !block.slot && BOOST_MODEL_IDS.has() fallback for old presets without slot field
-- [v6.0]: COHERE-04 compressor OFF only for high-gain + lead/crunch; gate/Autoswell always-ON unchanged
-- [v6.0]: COHERE-05 VizBlock.modelId added for type-safe getBlockLabel(); AutoSwell excluded via includes("AutoSwell") guard
-- [v6.0]: COHERE-06 checkDescriptionEffectCoherence maps 7 keywords to block types — advisory only, non-throwing
+- [v6.0]: applyCombinationAdjustments() runs as final post-processing step in resolveParameters()
+- [v6.0]: 11 quality checks with expert-consensus thresholds from param-engine.ts
+- [v6.0]: Quality warnings are server-side only — never included in API response JSON
+- [v6.0-bugsweep]: Pod Go cab bypass fixed — dual-counter buildPgpBlockKeyMap separates snapshot index from DSP index
+- [v6.0-bugsweep]: Autoswell misclassification fixed — classifyEffectSlot now has 3-branch dynamics handling
+- [v6.0-bugsweep]: quality-validate warnings array moved outside try block; null guard added to checkDescriptionEffectCoherence
 
 ### Roadmap Evolution
 
-- v5.0 Phase 67 added: Stadium Integration Quality — fix WAH/VOLUME catalog gap, dual-amp mismatch, schema/prompt integration tests
-- v5.0 Phase 68 added: Token Control and Prompt Caching — cost correction, per-device cache reporting
 - v5.0 complete: 9 phases (61-69), 17 plans, all verified
-- v6.0 Phase 75 added: Preset Musical Coherence — Blackbird Arena analysis revealed 6 systemic issues (missing reverb, boost always-on, comp/gate conflation, effect balance blindness, description-ToneIntent disconnect, snapshot range collapse)
-- v6.0 Phase 76 added: Device Block Budget Calibration — user-reported artificially conservative effect limits (Stadium maxEffectsPerDsp=4 vs real 8+, Helix prompt caps at 6 effects but LT supports 8+, Stomp mislabeled at 2 vs real 4, silent truncation in chain-rules)
+- v6.0 complete: 7 phases (70-76), 15 plans, 32/32 requirements verified, 842 tests
+- v6.0 bugsweep: 3 bugs fixed, 3 doc fixes, merged to main
 
 ### Blockers/Concerns
 
-- **HX Edit Stadium verification:** Stadium presets unblocked but HX Edit import not verified across varied tone goals — required as success criterion for Phase 63.
-- **Expression pedal wiring:** RESOLVED in Phase 70 — EXP_PEDAL_1/2 now assigned in all 4 builders (Helix, Stomp, Pod Go, Stadium=0). 19 TDD tests cover all scenarios.
-- **Artificially conservative block budgets:** RESOLVED in Phase 76 — Stadium maxEffectsPerDsp corrected 4->8, Stomp 2->4, StompXL 5->4, STOMP_MAX_BLOCKS 6->8. Zod .max(10), prompt maxEffects aligned, chain-rules logs truncation warnings. 716 tests pass.
+- **HX Edit Stadium verification:** Stadium presets unblocked but HX Edit import not verified across varied tone goals — carried forward from v5.0
 
 ## Session Continuity
 
 Last session: 2026-03-07
-Stopped at: Completed 75-03-PLAN.md — Phase 75 complete (all 6 COHERE issues resolved)
+Stopped at: v7.0 milestone initialization — defining requirements
 Resume file: None
-Next command: v6.0 Preset Craft Mastery milestone complete — all 7 phases (70-76) done.
+Next command: Define requirements, then /gsd:plan-phase 77
