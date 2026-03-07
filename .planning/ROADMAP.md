@@ -382,8 +382,9 @@ Plans:
 **Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 74-01-PLAN.md — Core validatePresetQuality() function + quality logger (TDD, QUAL-01, QUAL-02)
-- [ ] 74-02-PLAN.md — Pipeline integration + 36-preset baseline generator (QUAL-02, QUAL-03)
+- [ ] 75-01-PLAN.md — Chain-rules structural: COHERE-01 (drive palette balance), COHERE-02 (reverb auto-insert)
+- [ ] 75-02-PLAN.md — Snapshot + types: COHERE-03 (boost slot disambiguation), COHERE-04 (dynamics compressor/gate split)
+- [ ] 75-03-PLAN.md — Frontend + quality: COHERE-05 (block label accuracy), COHERE-06 (description cross-validation)
 
 ## Progress (v6.0)
 
@@ -394,7 +395,7 @@ Plans:
 | 72. Effect Combinations | 2/2 | Complete   | 2026-03-07 | — |
 | 73. Per-Device Craft | 2/2 | Complete   | 2026-03-07 | — |
 | 74. Quality Validation | 2/2 | Complete   | 2026-03-07 | — |
-| 75. Preset Musical Coherence | v6.0 | TBD | Pending | — |
+| 75. Preset Musical Coherence | 3/3 | Complete   | 2026-03-07 | — |
 | 76. Block Budget Calibration | 2/2 | Complete   | 2026-03-07 | — |
 
 ### Phase 75: Preset Musical Coherence
@@ -419,11 +420,12 @@ Plans:
 - AI-selected Minotaur/Scream 808 toggles OFF in clean snapshots (same as other drives)
 - 36-preset baseline: zero regressions, measurable improvement in effect variety
 
-**Plans:** 2 plans
+**Plans:** 3/3 plans complete
 
 Plans:
-- [ ] 74-01-PLAN.md — Core validatePresetQuality() function + quality logger (TDD, QUAL-01, QUAL-02)
-- [ ] 74-02-PLAN.md — Pipeline integration + 36-preset baseline generator (QUAL-02, QUAL-03)
+- [ ] 75-01-PLAN.md — Chain-rules structural: COHERE-01 (drive palette balance), COHERE-02 (reverb auto-insert)
+- [ ] 75-02-PLAN.md — Snapshot + types: COHERE-03 (boost slot disambiguation), COHERE-04 (dynamics compressor/gate split)
+- [ ] 75-03-PLAN.md — Frontend + quality: COHERE-05 (block label accuracy), COHERE-06 (description cross-validation)
 
 ### Phase 76: Device Block Budget Calibration
 

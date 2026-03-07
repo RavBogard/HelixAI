@@ -130,8 +130,9 @@ function classifyEffectSlot(resolved: ResolvedEffect, modelName: string): ChainS
   if (modelName === PARAMETRIC_EQ) return "eq";
   if (modelName === GAIN_BLOCK) return "gain_block";
 
-  // Boost detection: Minotaur or Scream 808 in the boost position
-  if (modelName === MINOTAUR || modelName === SCREAM_808) return "boost";
+  // COHERE-03: User-selected Minotaur/Scream 808 classified as extra_drive (regular drive).
+  // Only mandatory blocks inserted in step 5a get slot="boost" — see buildBlockSpec propagation.
+  // Previously this returned "boost" for these models regardless of source.
 
   // Categorize by catalog / type
   switch (blockType) {
@@ -229,6 +230,7 @@ function buildBlockSpec(
     ...(isDelayOrReverb ? { trails: true } : {}),
     parameters: {},
     ...(pending.intentRole ? { intentRole: pending.intentRole } : {}),
+    ...(pending.slot ? { slot: pending.slot } : {}), // COHERE-03: propagate chain slot for boost disambiguation
   };
 }
 
@@ -447,6 +449,42 @@ export function assembleSignalChain(intent: ToneIntent, caps: DeviceCapabilities
       dsp: getDspForSlot(slot, caps),
       intentRole: effect.role,
     });
+  }
+
+  // COHERE-01: Effect palette balance — max 2 user-selected drives
+  // Only count extra_drive slot, NOT boost slot (mandatory boost is infrastructure, not user choice)
+  const userDrives = userEffects.filter(e => e.slot === "extra_drive");
+  if (userDrives.length > 2) {
+    const sorted = [...userDrives].sort(
+      (a, b) => getEffectPriority(b, intent.genreHint) - getEffectPriority(a, intent.genreHint)
+    );
+    const toDrop = new Set(sorted.slice(2));
+    for (let i = userEffects.length - 1; i >= 0; i--) {
+      if (toDrop.has(userEffects[i])) {
+        console.warn(`[chain-rules] COHERE-01: Dropping excess drive "${userEffects[i].model.name}"`);
+        userEffects.splice(i, 1);
+      }
+    }
+  }
+
+  // COHERE-02: Reverb soft-mandatory insertion
+  // Auto-insert Plate reverb when clean/ambient snapshots present but no reverb in user effects.
+  // Inserted into userEffects BEFORE COMBO-03 truncation so priority-based truncation handles budget overflow.
+  const hasCleanOrAmbient = intent.snapshots.some(
+    s => s.toneRole === "clean" || s.toneRole === "ambient"
+  );
+  const hasUserReverb = userEffects.some(e => e.blockType === "reverb");
+
+  if (hasCleanOrAmbient && !hasUserReverb) {
+    const plateModel = REVERB_MODELS["Plate"]!;
+    userEffects.push({
+      model: plateModel,
+      blockType: "reverb",
+      slot: "reverb",
+      dsp: getDspForSlot("reverb", caps),
+      intentRole: "toggleable",
+    });
+    console.warn("[chain-rules] COHERE-02: Auto-inserted Plate reverb for clean/ambient snapshots");
   }
 
   // COMBO-02: Remove compressor from high-gain chains (unless always_on)

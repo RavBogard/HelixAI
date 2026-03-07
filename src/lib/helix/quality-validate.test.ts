@@ -334,6 +334,118 @@ describe("validatePresetQuality", () => {
   });
 
   // ---------------------------------------------------------------------------
+  // COHERE-06: Description-effect cross-validation
+  // ---------------------------------------------------------------------------
+
+  describe("COHERE-06: description-effect cross-validation", () => {
+    it("warns when description mentions reverb but no reverb block", () => {
+      const preset = makePreset({
+        description: "Lush reverb wash with ambient spaciousness",
+        signalChain: [
+          makeBlock({ type: "amp", parameters: { Drive: 0.25 } }),
+          makeBlock({ type: "cab", position: 1, parameters: { LowCut: 80.0, HighCut: 7000.0 } }),
+          // No reverb block
+        ],
+      });
+      const warnings = validatePresetQuality(preset, helixCaps);
+      const w = warnings.find(w => w.code === "DESC_EFFECT_MISSING");
+      expect(w).toBeDefined();
+      expect(w!.message).toContain("reverb");
+      expect(w!.severity).toBe("warn");
+    });
+
+    it("warns for both reverb and delay when neither present", () => {
+      const preset = makePreset({
+        description: "Lush reverb wash with ambient delay",
+        signalChain: [
+          makeBlock({ type: "amp", parameters: { Drive: 0.25 } }),
+          makeBlock({ type: "cab", position: 1, parameters: { LowCut: 80.0, HighCut: 7000.0 } }),
+        ],
+      });
+      const warnings = validatePresetQuality(preset, helixCaps);
+      const descWarnings = warnings.filter(w => w.code === "DESC_EFFECT_MISSING");
+      expect(descWarnings.length).toBeGreaterThanOrEqual(2);
+      const keywords = descWarnings.map(w => w.message);
+      expect(keywords.some(m => m.includes("reverb"))).toBe(true);
+      expect(keywords.some(m => m.includes("delay"))).toBe(true);
+    });
+
+    it("does NOT warn when description mentions reverb AND reverb block exists", () => {
+      const preset = makePreset({
+        description: "Lush reverb wash",
+        signalChain: [
+          makeBlock({ type: "amp", parameters: { Drive: 0.25 } }),
+          makeBlock({ type: "cab", position: 1, parameters: { LowCut: 80.0, HighCut: 7000.0 } }),
+          makeBlock({ type: "reverb", modelId: "HD2_ReverbGanymede", modelName: "Ganymede", position: 2, parameters: { Mix: 0.20 } }),
+        ],
+      });
+      const warnings = validatePresetQuality(preset, helixCaps);
+      expect(warnings.find(w => w.code === "DESC_EFFECT_MISSING")).toBeUndefined();
+    });
+
+    it("warns when description mentions chorus but no modulation block", () => {
+      const preset = makePreset({
+        description: "Warm chorus shimmer",
+        signalChain: [
+          makeBlock({ type: "amp", parameters: { Drive: 0.25 } }),
+          makeBlock({ type: "cab", position: 1, parameters: { LowCut: 80.0, HighCut: 7000.0 } }),
+        ],
+      });
+      const warnings = validatePresetQuality(preset, helixCaps);
+      const w = warnings.find(w => w.code === "DESC_EFFECT_MISSING" && w.message.includes("chorus"));
+      expect(w).toBeDefined();
+    });
+
+    it("does NOT warn when description is undefined", () => {
+      const preset = makePreset({
+        description: undefined,
+        signalChain: [
+          makeBlock({ type: "amp", parameters: { Drive: 0.25 } }),
+          makeBlock({ type: "cab", position: 1, parameters: { LowCut: 80.0, HighCut: 7000.0 } }),
+        ],
+      });
+      const warnings = validatePresetQuality(preset, helixCaps);
+      expect(warnings.filter(w => w.code === "DESC_EFFECT_MISSING")).toHaveLength(0);
+    });
+
+    it("does NOT warn when description has no effect keywords", () => {
+      const preset = makePreset({
+        description: "Clean amp tone with warm low end",
+        signalChain: [
+          makeBlock({ type: "amp", parameters: { Drive: 0.25 } }),
+          makeBlock({ type: "cab", position: 1, parameters: { LowCut: 80.0, HighCut: 7000.0 } }),
+        ],
+      });
+      const warnings = validatePresetQuality(preset, helixCaps);
+      expect(warnings.filter(w => w.code === "DESC_EFFECT_MISSING")).toHaveLength(0);
+    });
+
+    it("DESC_EFFECT_MISSING has severity warn", () => {
+      const preset = makePreset({
+        description: "Heavy reverb wash",
+        signalChain: [
+          makeBlock({ type: "amp", parameters: { Drive: 0.25 } }),
+          makeBlock({ type: "cab", position: 1, parameters: { LowCut: 80.0, HighCut: 7000.0 } }),
+        ],
+      });
+      const warnings = validatePresetQuality(preset, helixCaps);
+      const w = warnings.find(w => w.code === "DESC_EFFECT_MISSING");
+      expect(w).toBeDefined();
+      expect(w!.severity).toBe("warn");
+    });
+
+    it("description cross-validation is non-throwing", () => {
+      // Even with bizarre inputs, should never throw
+      expect(() => {
+        validatePresetQuality(
+          { description: "reverb delay chorus", signalChain: [] } as unknown as PresetSpec,
+          {} as DeviceCapabilities,
+        );
+      }).not.toThrow();
+    });
+  });
+
+  // ---------------------------------------------------------------------------
   // QualityWarning structure
   // ---------------------------------------------------------------------------
 

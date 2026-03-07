@@ -345,6 +345,192 @@ describe("FX-04: snapshot ChVol balance", () => {
   });
 });
 
+// ============================================================
+// COHERE-03: boost model disambiguation (slot field)
+// ============================================================
+
+describe("COHERE-03: boost model disambiguation", () => {
+  // COHERE-03-1: Mandatory Minotaur (slot="boost") stays ON in crunch/lead/ambient for clean amp
+  it("mandatory Minotaur (slot=boost) stays ON in crunch/lead/ambient snapshots", () => {
+    const intent = cleanIntent(); // clean amp -> mandatory Minotaur with slot="boost"
+    const chain = buildChain(intent);
+    const result = buildSnapshots(chain, standardSnapshots());
+
+    const boostBlock = chain.find(
+      (b) => b.modelName === "Minotaur" && b.slot === "boost"
+    );
+    expect(boostBlock).toBeDefined();
+    const boostKey = findBlockKey(chain, boostBlock!);
+
+    // Mandatory boost: OFF only in clean snapshot for clean amps
+    expect(result[0].blockStates[boostKey]).toBe(false);  // clean
+    expect(result[1].blockStates[boostKey]).toBe(true);   // crunch
+    expect(result[2].blockStates[boostKey]).toBe(true);   // lead
+    expect(result[3].blockStates[boostKey]).toBe(true);   // ambient
+  });
+
+  // COHERE-03-2: User-selected Minotaur (no slot="boost") follows distortion toggle rules
+  it("user-selected Minotaur (no slot=boost) follows distortion toggle rules — OFF in clean", () => {
+    const intent = cleanIntent({
+      effects: [{ modelName: "Minotaur", role: "toggleable" }],
+    });
+    const chain = buildChain(intent);
+    const result = buildSnapshots(chain, standardSnapshots());
+
+    // User Minotaur should NOT have slot="boost"
+    const userMinotaur = chain.find(
+      (b) => b.modelName === "Minotaur"
+    );
+    expect(userMinotaur).toBeDefined();
+    expect(userMinotaur!.slot).not.toBe("boost");
+
+    const minotaurKey = findBlockKey(chain, userMinotaur!);
+
+    // Distortion toggle rules: OFF in clean, ON in crunch/lead
+    expect(result[0].blockStates[minotaurKey]).toBe(false); // clean — OFF (distortion rule)
+    expect(result[1].blockStates[minotaurKey]).toBe(true);  // crunch — ON
+    expect(result[2].blockStates[minotaurKey]).toBe(true);  // lead — ON
+  });
+
+  // COHERE-03-3: Backward compat — BlockSpec without slot field treated as boost via fallback
+  it("backward compat: BlockSpec without slot field but with Minotaur modelId treated as boost", () => {
+    // Manually construct a chain with Minotaur that has NO slot field (old preset format)
+    const ampBlock: BlockSpec = {
+      type: "amp", modelId: "HD2_AmpUSDeluxeNrm", modelName: "US Deluxe Nrm",
+      dsp: 0, position: 1, path: 0, enabled: true, stereo: false, parameters: {},
+    };
+    const minotaurBlock: BlockSpec = {
+      type: "distortion", modelId: "HD2_DistMinotaur", modelName: "Minotaur",
+      dsp: 0, position: 0, path: 0, enabled: true, stereo: false, parameters: {},
+      // NO slot field — simulating old preset format
+    };
+
+    const chain = [minotaurBlock, ampBlock];
+    const result = buildSnapshots(chain, standardSnapshots());
+
+    // Without slot field, fallback to BOOST_MODEL_IDS — treated as boost
+    // Boost on clean amp: OFF in clean snapshot
+    expect(result[0].blockStates["block0"]).toBe(false); // clean — OFF (boost behavior)
+    expect(result[1].blockStates["block0"]).toBe(true);  // crunch — ON (boost behavior)
+    expect(result[2].blockStates["block0"]).toBe(true);  // lead — ON (boost behavior)
+  });
+});
+
+// ============================================================
+// COHERE-04: dynamics type split (compressor vs gate)
+// ============================================================
+
+describe("COHERE-04: dynamics type split", () => {
+  // COHERE-04-1: High-gain chain with Deluxe Comp — compressor OFF in lead snapshot
+  it("high-gain chain: Deluxe Comp (compressor) OFF in lead snapshot", () => {
+    const intent = highGainIntent({
+      effects: [{ modelName: "Deluxe Comp", role: "always_on" }],
+    });
+    const chain = buildChain(intent);
+    const result = buildSnapshots(chain, standardSnapshots());
+
+    const compBlock = chain.find((b) => b.modelName === "Deluxe Comp");
+    expect(compBlock).toBeDefined();
+    const compKey = findBlockKey(chain, compBlock!);
+
+    expect(result[2].blockStates[compKey]).toBe(false); // lead — OFF
+  });
+
+  // COHERE-04-2: High-gain chain with Deluxe Comp — compressor OFF in crunch snapshot
+  it("high-gain chain: Deluxe Comp (compressor) OFF in crunch snapshot", () => {
+    const intent = highGainIntent({
+      effects: [{ modelName: "Deluxe Comp", role: "always_on" }],
+    });
+    const chain = buildChain(intent);
+    const result = buildSnapshots(chain, standardSnapshots());
+
+    const compBlock = chain.find((b) => b.modelName === "Deluxe Comp");
+    expect(compBlock).toBeDefined();
+    const compKey = findBlockKey(chain, compBlock!);
+
+    expect(result[1].blockStates[compKey]).toBe(false); // crunch — OFF
+  });
+
+  // COHERE-04-3: High-gain chain with Deluxe Comp — compressor ON in clean snapshot
+  it("high-gain chain: Deluxe Comp (compressor) ON in clean snapshot", () => {
+    const intent = highGainIntent({
+      effects: [{ modelName: "Deluxe Comp", role: "always_on" }],
+    });
+    const chain = buildChain(intent);
+    const result = buildSnapshots(chain, standardSnapshots());
+
+    const compBlock = chain.find((b) => b.modelName === "Deluxe Comp");
+    expect(compBlock).toBeDefined();
+    const compKey = findBlockKey(chain, compBlock!);
+
+    expect(result[0].blockStates[compKey]).toBe(true); // clean — ON
+  });
+
+  // COHERE-04-4: High-gain chain with Deluxe Comp — compressor ON in ambient snapshot
+  it("high-gain chain: Deluxe Comp (compressor) ON in ambient snapshot", () => {
+    const intent = highGainIntent({
+      effects: [{ modelName: "Deluxe Comp", role: "always_on" }],
+    });
+    const chain = buildChain(intent);
+    const result = buildSnapshots(chain, standardSnapshots());
+
+    const compBlock = chain.find((b) => b.modelName === "Deluxe Comp");
+    expect(compBlock).toBeDefined();
+    const compKey = findBlockKey(chain, compBlock!);
+
+    expect(result[3].blockStates[compKey]).toBe(true); // ambient — ON
+  });
+
+  // COHERE-04-5: Clean amp chain with Deluxe Comp — compressor ON in ALL snapshots
+  it("clean amp chain: Deluxe Comp (compressor) ON in all snapshots", () => {
+    const intent = cleanIntent({
+      effects: [{ modelName: "Deluxe Comp", role: "always_on" }],
+    });
+    const chain = buildChain(intent);
+    const result = buildSnapshots(chain, standardSnapshots());
+
+    const compBlock = chain.find((b) => b.modelName === "Deluxe Comp");
+    expect(compBlock).toBeDefined();
+    const compKey = findBlockKey(chain, compBlock!);
+
+    for (const snapshot of result) {
+      expect(snapshot.blockStates[compKey]).toBe(true);
+    }
+  });
+
+  // COHERE-04-6: High-gain chain with Horizon Gate — gate ON in ALL snapshots
+  it("high-gain chain: Horizon Gate (gate) ON in all snapshots", () => {
+    const intent = highGainIntent(); // Horizon Gate is mandatory for high-gain
+    const chain = buildChain(intent);
+    const result = buildSnapshots(chain, standardSnapshots());
+
+    const gateBlock = chain.find((b) => b.modelName === "Horizon Gate");
+    expect(gateBlock).toBeDefined();
+    const gateKey = findBlockKey(chain, gateBlock!);
+
+    for (const snapshot of result) {
+      expect(snapshot.blockStates[gateKey]).toBe(true);
+    }
+  });
+
+  // COHERE-04-7: Autoswell (category=dynamics) ON in all snapshots
+  it("Autoswell (dynamics, neither compressor nor gate) ON in all snapshots", () => {
+    const intent = cleanIntent({
+      effects: [{ modelName: "Autoswell", role: "always_on" }],
+    });
+    const chain = buildChain(intent);
+    const result = buildSnapshots(chain, standardSnapshots());
+
+    const autoswellBlock = chain.find((b) => b.modelName === "Autoswell");
+    expect(autoswellBlock).toBeDefined();
+    const autoswellKey = findBlockKey(chain, autoswellBlock!);
+
+    for (const snapshot of result) {
+      expect(snapshot.blockStates[autoswellKey]).toBe(true);
+    }
+  });
+});
+
 // Helper: compute the block key for a given block in the chain,
 // using global sequential numbering (excluding cabs).
 // Matches the snapshot-engine's buildBlockKeys() which uses global indices.

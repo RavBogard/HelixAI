@@ -45,12 +45,12 @@ Requirements for Preset Craft Mastery milestone. Each maps to roadmap phases.
 
 ### Preset Musical Coherence
 
-- [ ] **COHERE-01**: Chain-rules enforce effect palette balance — max 2 user-selected drives; at least 1 time-based effect (delay or reverb) when preset has clean/ambient snapshots
-- [ ] **COHERE-02**: Reverb soft-mandatory insertion — auto-insert genre-appropriate reverb (Plate default) when ToneIntent includes clean/ambient snapshot roles but no reverb effect
-- [ ] **COHERE-03**: Boost model disambiguation — snapshot-engine distinguishes mandatory boost (chain-rules inserted, slot="boost") from AI-selected drive (user chose Minotaur/Scream 808 as effect); user-selected boosts follow distortion toggle rules, not always-on
-- [ ] **COHERE-04**: Dynamics type split — separate "compressor" and "gate" block types in chain-rules, snapshot-engine, and frontend; compressor toggles OFF for high-gain lead/rhythm snapshots; gate remains always-on
-- [ ] **COHERE-05**: Frontend block label accuracy — BLOCK_LABEL map distinguishes compressor ("Comp") from gate ("Gate") instead of blanket "Gate" for all dynamics
-- [ ] **COHERE-06**: ToneIntent-description cross-validation — post-planner check warns when description mentions effects (reverb, delay, modulation) not present in ToneIntent.effects; logged as quality warning
+- [x] **COHERE-01**: Chain-rules enforce effect palette balance — max 2 user-selected drives; at least 1 time-based effect (delay or reverb) when preset has clean/ambient snapshots
+- [x] **COHERE-02**: Reverb soft-mandatory insertion — auto-insert genre-appropriate reverb (Plate default) when ToneIntent includes clean/ambient snapshot roles but no reverb effect
+- [x] **COHERE-03**: Boost model disambiguation — snapshot-engine distinguishes mandatory boost (chain-rules inserted, slot="boost") from AI-selected drive (user chose Minotaur/Scream 808 as effect); user-selected boosts follow distortion toggle rules, not always-on
+- [x] **COHERE-04**: Dynamics type split — separate "compressor" and "gate" block types in chain-rules, snapshot-engine, and frontend; compressor toggles OFF for high-gain lead/rhythm snapshots; gate remains always-on
+- [x] **COHERE-05**: Frontend block label accuracy — BLOCK_LABEL map distinguishes compressor ("Comp") from gate ("Gate") instead of blanket "Gate" for all dynamics
+- [x] **COHERE-06**: ToneIntent-description cross-validation — post-planner check warns when description mentions effects (reverb, delay, modulation) not present in ToneIntent.effects; logged as quality warning
 
 ### Device Block Budget Calibration
 
@@ -115,12 +115,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | QUAL-01 | Phase 74 | Complete |
 | QUAL-02 | Phase 74 | Complete |
 | QUAL-03 | Phase 74 | Complete |
-| COHERE-01 | Phase 75 | Pending |
-| COHERE-02 | Phase 75 | Pending |
-| COHERE-03 | Phase 75 | Pending |
-| COHERE-04 | Phase 75 | Pending |
-| COHERE-05 | Phase 75 | Pending |
-| COHERE-06 | Phase 75 | Pending |
+| COHERE-01 | Phase 75 | Complete |
+| COHERE-02 | Phase 75 | Complete |
+| COHERE-03 | Phase 75 | Complete |
+| COHERE-04 | Phase 75 | Complete |
+| COHERE-05 | Phase 75 | Complete |
+| COHERE-06 | Phase 75 | Complete |
 | BUDGET-01 | Phase 76 | Complete |
 | BUDGET-02 | Phase 76 | Complete |
 | BUDGET-03 | Phase 76 | Complete |
