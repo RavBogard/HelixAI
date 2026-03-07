@@ -7,6 +7,7 @@ import {
   buildHlxFile,
   summarizePreset,
   validatePresetSpec,
+  validatePresetQuality,
   buildPgpFile,
   summarizePodGoPreset,
   buildHspFile,
@@ -19,6 +20,7 @@ import {
   resolveFamily,
   getCapabilities,
 } from "@/lib/helix";
+import { logQualityWarnings } from "@/lib/helix/quality-logger";
 import type { PresetSpec, DeviceTarget, SubstitutionMap, DeviceFamily } from "@/lib/helix";
 import type { RigIntent } from "@/lib/helix";
 import { mapRigToSubstitutions, parseRigText } from "@/lib/rig-mapping";
@@ -109,6 +111,15 @@ export async function POST(req: NextRequest) {
 
     // Step 4: Strict validation — fail fast on structural errors
     validatePresetSpec(presetSpec, caps);
+
+    // Step 4.5: Quality validation — advisory warnings, never blocks
+    const qualityWarnings = validatePresetQuality(presetSpec, caps);
+    if (qualityWarnings.length > 0) {
+      logQualityWarnings(qualityWarnings, {
+        device: deviceTarget,
+        presetName: presetSpec.name,
+      });
+    }
 
     // Step 5: Build preset file with device target
     if (isStomp(deviceTarget)) {
