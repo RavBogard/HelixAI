@@ -363,7 +363,11 @@ Plans:
   2. Pod Go presets intelligently prioritize effects based on genre — delay and reverb both present for ambient, drive prioritized for rock
   3. Helix Floor/LT presets use richer effect chains than constrained devices — more creative routing, more effects
   4. Per-device craft is encoded in both planner prompts (creative direction) and chain-rules code (hard limit enforcement) — no prompt-only guidelines that can be violated
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 73-01-PLAN.md — Genre-aware effect priority truncation in chain-rules.ts (CRAFT-02, CRAFT-04 code side)
+- [ ] 73-02-PLAN.md — Per-device prompt craft optimization for Stomp, Pod Go, Helix (CRAFT-01, CRAFT-02, CRAFT-03, CRAFT-04 prompt side)
 
 ### Phase 74: Quality Validation
 
@@ -384,7 +388,7 @@ Plans:
 | 70. Expression Pedal | 1/2 | In Progress|  | — |
 | 71. Effect Intelligence | 2/2 | Complete   | 2026-03-07 | — |
 | 72. Effect Combinations | 2/2 | Complete   | 2026-03-07 | — |
-| 73. Per-Device Craft | v6.0 | TBD | Pending | — |
+| 73. Per-Device Craft | v6.0 | 2 plans | Planned | — |
 | 74. Quality Validation | v6.0 | TBD | Pending | — |
 | 75. Preset Musical Coherence | v6.0 | TBD | Pending | — |
 | 76. Block Budget Calibration | 2/2 | Complete   | 2026-03-07 | — |
