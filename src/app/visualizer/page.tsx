@@ -2,6 +2,7 @@
 
 import { SignalChainCanvas } from "@/components/visualizer/SignalChainCanvas";
 import { ParameterEditorPane } from "@/components/visualizer/ParameterEditorPane";
+import { SnapshotSelectorBar } from "@/components/visualizer/SnapshotSelectorBar";
 
 /**
  * /visualizer page — full-page signal chain visualizer.
@@ -20,6 +21,9 @@ export default function VisualizerPage() {
         <h1 className="text-2xl font-semibold mb-6 font-[family-name:var(--font-primary)]">
           Signal Chain Visualizer
         </h1>
+        <div className="mb-4">
+          <SnapshotSelectorBar />
+        </div>
         <div className="flex">
           <div className="flex-1">
             <SignalChainCanvas />

@@ -238,6 +238,93 @@ describe("ParameterEditorPane parameter rendering", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Phase 81-02: Snapshot reactivity tests
+// ---------------------------------------------------------------------------
+
+describe("ParameterEditorPane snapshot reactivity", () => {
+  it("shows effective value from active snapshot override", () => {
+    const snapshots = makeSnapshots();
+    // Snapshot 0 overrides amp0 Drive to 0.3
+    snapshots[0].parameterOverrides = { amp0: { Drive: 0.3 } };
+
+    useVisualizerStore.setState({
+      baseBlocks: [
+        makeBlock({
+          type: "amp",
+          modelName: "US Double Nrm",
+          position: 0,
+          parameters: { Drive: 0.5 },
+        }),
+      ],
+      snapshots,
+      activeSnapshotIndex: 0,
+      selectedBlockId: "amp0",
+    });
+
+    render(<ParameterEditorPane />);
+    // Display value should show 30% (0.3 override), not 50% (0.5 base)
+    expect(screen.getByText("30%")).toBeTruthy();
+  });
+
+  it("switching snapshot updates displayed parameter values", async () => {
+    const { act } = await import("@testing-library/react");
+    const snapshots = makeSnapshots();
+    snapshots[0].parameterOverrides = { amp0: { Drive: 0.3 } };
+    snapshots[1].parameterOverrides = { amp0: { Drive: 0.7 } };
+
+    useVisualizerStore.setState({
+      baseBlocks: [
+        makeBlock({
+          type: "amp",
+          modelName: "US Double Nrm",
+          position: 0,
+          parameters: { Drive: 0.5 },
+        }),
+      ],
+      snapshots,
+      activeSnapshotIndex: 0,
+      selectedBlockId: "amp0",
+    });
+
+    render(<ParameterEditorPane />);
+    // Snap 0: Drive override = 0.3 -> shows 30%
+    expect(screen.getByText("30%")).toBeTruthy();
+
+    // Switch to snapshot 1
+    act(() => {
+      useVisualizerStore.getState().setActiveSnapshot(1);
+    });
+
+    // Snap 1: Drive override = 0.7 -> shows 70%
+    expect(screen.getByText("70%")).toBeTruthy();
+    expect(screen.queryByText("30%")).toBeNull();
+  });
+
+  it("shows base value when active snapshot has no override", () => {
+    const snapshots = makeSnapshots();
+    // Snapshot 0: empty parameterOverrides
+
+    useVisualizerStore.setState({
+      baseBlocks: [
+        makeBlock({
+          type: "amp",
+          modelName: "US Double Nrm",
+          position: 0,
+          parameters: { Drive: 0.5 },
+        }),
+      ],
+      snapshots,
+      activeSnapshotIndex: 0,
+      selectedBlockId: "amp0",
+    });
+
+    render(<ParameterEditorPane />);
+    // Should show base value: 50%
+    expect(screen.getByText("50%")).toBeTruthy();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Interaction tests
 // ---------------------------------------------------------------------------
 

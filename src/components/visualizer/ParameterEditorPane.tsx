@@ -187,6 +187,14 @@ export function ParameterEditorPane() {
   const setParameterValue = useVisualizerStore((s) => s.setParameterValue);
   const swapBlockModel = useVisualizerStore((s) => s.swapBlockModel);
 
+  // Reactive subscriptions — trigger re-render when snapshot/block state changes
+  const activeSnapshotIndex = useVisualizerStore((s) => s.activeSnapshotIndex);
+  const snapshots = useVisualizerStore((s) => s.snapshots);
+  const baseBlocks = useVisualizerStore((s) => s.baseBlocks);
+  void activeSnapshotIndex;
+  void snapshots;
+  void baseBlocks;
+
   const handleParamChange = useCallback(
     (paramKey: string, value: number | boolean) => {
       if (selectedBlockId) {
