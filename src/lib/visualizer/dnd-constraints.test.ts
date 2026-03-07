@@ -265,8 +265,8 @@ describe("canAddBlock", () => {
   });
 
   it("returns canAdd false when Stomp at maxBlocksTotal", () => {
-    // Stomp maxBlocksTotal = 6 (from STOMP_CONFIG)
-    const blocks: BlockSpec[] = Array.from({ length: 6 }, (_, i) =>
+    // Stomp maxBlocksTotal = 8 (from STOMP_CONFIG)
+    const blocks: BlockSpec[] = Array.from({ length: 8 }, (_, i) =>
       makeBlock({ position: i }),
     );
     const result = canAddBlock(blocks, "helix_stomp");
