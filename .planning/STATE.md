@@ -18,14 +18,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** v7.0 Phase 78 — Signal Chain Canvas (next)
+**Current focus:** v7.0 Phase 78 — Signal Chain Canvas (in progress, plan 78-01 complete)
 
 ## Current Position
 
-Phase: 77 of 83 (API Preview + State Foundation) — COMPLETE, verified
-Plan: 77-01, 77-02 both complete and verified
-Status: Phase 77 complete — ready for Phase 78 planning
-Last activity: 2026-03-07 — Phase 77 verified (2/2 plans, 33 tests, 5/5 requirements)
+Phase: 78 of 83 (Signal Chain Canvas) — IN PROGRESS
+Plan: 78-01 complete, 78-02 pending
+Status: Plan 78-01 complete — BlockTile + BLOCK_UI_REGISTRY done, 27 tests passing
+Last activity: 2026-03-07 — Plan 78-01 executed (2 tasks, 27 tests, VIS-04/VIS-05)
 
 Progress: [████░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 14% (1/7 phases)
 
@@ -54,6 +54,8 @@ Progress: [████░░░░░░░░░░░░░░░░░░░
 - [v7.0]: Store uses standalone selector functions (not in-store computed) per Zustand convention
 - [v7.0]: /api/preview reuses pipeline functions from /api/generate — no code duplication
 - [v7.0]: hydrateVisualizerState always returns exactly 4 snapshots (truncate/pad)
+- [v7.0]: Per-file @vitest-environment jsdom for component tests — preserves fast node environment for non-React tests
+- [v7.0]: BlockTile uses inline style for backgroundColor + Tailwind for state classes — avoids dynamic class generation issues
 
 ### Roadmap Evolution
 
@@ -68,6 +70,6 @@ Progress: [████░░░░░░░░░░░░░░░░░░░
 ## Session Continuity
 
 Last session: 2026-03-07
-Stopped at: Phase 77 verified and closed
+Stopped at: Plan 78-01 complete, executing 78-02
 Resume file: None
-Next command: /gsd:plan-phase 78
+Next command: Continue executing Plan 78-02
