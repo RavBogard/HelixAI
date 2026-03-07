@@ -185,10 +185,10 @@ const SLOT_ORDER: Record<ChainSlot, number> = {
   wah: 0,
   compressor: 1,
   extra_drive: 2,
+  horizon_gate: 2.5, // COMBO-02: gate before boost/amp for high-gain
   boost: 3,
   amp: 4,
   cab: 5,
-  horizon_gate: 6,
   eq: 7,
   modulation: 8,
   delay: 9,
@@ -230,6 +230,34 @@ function buildBlockSpec(
     parameters: {},
     ...(pending.intentRole ? { intentRole: pending.intentRole } : {}),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Effect priority scoring (COMBO-03)
+// ---------------------------------------------------------------------------
+
+/** Score an effect for truncation priority (COMBO-03).
+ * Higher score = more likely to survive budget truncation. */
+function getEffectPriority(pending: PendingBlock): number {
+  let score = 0;
+  // intentRole scoring
+  switch (pending.intentRole) {
+    case "always_on": score += 100; break;
+    case "toggleable": score += 50; break;
+    case "ambient": score += 30; break;
+    default: score += 40; break;
+  }
+  // Slot-based scoring — core tone-shaping effects survive
+  switch (pending.slot) {
+    case "wah": score += 18; break;
+    case "compressor": score += 15; break;
+    case "extra_drive": score += 12; break;
+    case "delay": score += 10; break;
+    case "reverb": score += 8; break;
+    case "modulation": score += 5; break;
+    default: score += 5; break;
+  }
+  return score;
 }
 
 // ---------------------------------------------------------------------------
@@ -384,16 +412,38 @@ export function assembleSignalChain(intent: ToneIntent, caps: DeviceCapabilities
     });
   }
 
-  // Enforce per-device user effect limit (caps.maxEffectsPerDsp)
+  // COMBO-02: Remove compressor from high-gain chains (unless always_on)
+  // High-gain amps produce compressed dynamics naturally; adding a compressor
+  // squeezes dynamics and reduces pick responsiveness.
+  if (ampCategory === "high_gain") {
+    const compressorIdx = userEffects.findIndex(
+      (e) => e.slot === "compressor" && e.intentRole !== "always_on"
+    );
+    if (compressorIdx >= 0) {
+      console.warn(
+        `[chain-rules] COMBO-02: Removing compressor "${userEffects[compressorIdx].model.name}" ` +
+        `from high-gain chain — prevents squeezed dynamics`
+      );
+      userEffects.splice(compressorIdx, 1);
+    }
+  }
+
+  // COMBO-03: Priority-based effect truncation
   // Infinity for Helix (no explicit cap), 4 for Pod Go/Stomp, 8 for Stadium
   if (caps.maxEffectsPerDsp < Infinity && userEffects.length > caps.maxEffectsPerDsp) {
+    // Sort by priority descending (highest priority survives)
+    userEffects.sort((a, b) => getEffectPriority(b) - getEffectPriority(a));
+
     const dropped = userEffects.length - caps.maxEffectsPerDsp;
+    const droppedEffects = userEffects.slice(caps.maxEffectsPerDsp);
     console.warn(
-      `[chain-rules] Effect budget exceeded: ${userEffects.length} effects requested, ` +
-      `max ${caps.maxEffectsPerDsp} for ${caps.family}. Dropping ${dropped} effect(s): ` +
-      userEffects.slice(caps.maxEffectsPerDsp).map(e => e.model.name).join(', ')
+      `[chain-rules] COMBO-03: Effect budget exceeded: dropping ${dropped} lowest-priority effect(s): ` +
+      droppedEffects.map(e => `${e.model.name}(${e.intentRole ?? 'none'})`).join(', ')
     );
     userEffects.length = caps.maxEffectsPerDsp;
+
+    // Re-sort remaining by SLOT_ORDER for correct signal chain position
+    userEffects.sort((a, b) => SLOT_ORDER[a.slot] - SLOT_ORDER[b.slot]);
   }
 
   // Dual-amp: enforce tighter pre-amp effect limit (DUAL-03)

@@ -3,6 +3,7 @@
 
 import { describe, it, expect } from "vitest";
 import { resolveParameters } from "./param-engine";
+import { assembleSignalChain } from "./chain-rules";
 import { getCapabilities } from "./device-family";
 import type { BlockSpec } from "./types";
 import type { ToneIntent } from "./tone-intent";
@@ -289,9 +290,9 @@ describe("resolveParameters", () => {
     expect(result[0].parameters.Feedback).toBe(0.35);
     expect(result[0].parameters.Mix).toBe(0.3);
 
-    // Plate reverb should have its defaults
+    // Plate reverb: defaultParams Mix=0.25, reduced to 0.20 by COMBO-04 (delay present in chain)
     expect(result[1].parameters.DecayTime).toBe(0.5);
-    expect(result[1].parameters.Mix).toBe(0.25);
+    expect(result[1].parameters.Mix).toBe(0.20);
 
     // 70s Chorus should have its defaults
     expect(result[2].parameters.Speed).toBe(0.4);
@@ -805,5 +806,258 @@ describe("effect paramOverrides (INTEL-05)", () => {
     const reverb = result[1];
     // Plate has no paramOverrides — raw defaultParams Mix=0.25
     expect(reverb.parameters.Mix).toBe(0.25);
+  });
+});
+
+// ============================================================
+// COMBO-01: Wah + compressor threshold reduction
+// ============================================================
+// When a wah coexists with a compressor in the same chain, the compressor's
+// threshold-like parameter must be reduced to prevent over-compressing the
+// wah sweep's frequency peaks. Single-value threshold params get -0.10,
+// multi-band threshold params (3-Band Comp) get -0.08.
+
+describe("COMBO-01: wah + compressor threshold reduction", () => {
+  // Helper: build a clean-amp intent with specific effects
+  function comboIntent(effects: Array<{ modelName: string; role: "always_on" | "toggleable" | "ambient" }>): ToneIntent {
+    return makeIntent({
+      ampName: "US Deluxe Nrm",
+      effects,
+    });
+  }
+
+  // COMBO-01-1: Wah + Deluxe Comp — Threshold reduced by at least 0.08
+  it("COMBO-01-1: chain with wah + Deluxe Comp has Threshold at least 0.08 lower than without wah", () => {
+    // WITHOUT wah (baseline)
+    const intentNoWah = comboIntent([
+      { modelName: "Deluxe Comp", role: "toggleable" },
+    ]);
+    const chainNoWah = assembleSignalChain(intentNoWah, defaultCaps);
+    const resolvedNoWah = resolveParameters(chainNoWah, intentNoWah, defaultCaps);
+    const compNoWah = resolvedNoWah.find(b => b.modelName === "Deluxe Comp")!;
+
+    // WITH wah
+    const intentWithWah = comboIntent([
+      { modelName: "UK Wah 846", role: "toggleable" },
+      { modelName: "Deluxe Comp", role: "toggleable" },
+    ]);
+    const chainWithWah = assembleSignalChain(intentWithWah, defaultCaps);
+    const resolvedWithWah = resolveParameters(chainWithWah, intentWithWah, defaultCaps);
+    const compWithWah = resolvedWithWah.find(b => b.modelName === "Deluxe Comp")!;
+
+    const delta = (compNoWah.parameters.Threshold as number) - (compWithWah.parameters.Threshold as number);
+    expect(delta).toBeGreaterThanOrEqual(0.08);
+  });
+
+  // COMBO-01-2: Wah + Red Squeeze — Sensitivity reduced by at least 0.08
+  it("COMBO-01-2: chain with wah + Red Squeeze has Sensitivity at least 0.08 lower than without wah", () => {
+    const intentNoWah = comboIntent([
+      { modelName: "Red Squeeze", role: "toggleable" },
+    ]);
+    const chainNoWah = assembleSignalChain(intentNoWah, defaultCaps);
+    const resolvedNoWah = resolveParameters(chainNoWah, intentNoWah, defaultCaps);
+    const compNoWah = resolvedNoWah.find(b => b.modelName === "Red Squeeze")!;
+
+    const intentWithWah = comboIntent([
+      { modelName: "UK Wah 846", role: "toggleable" },
+      { modelName: "Red Squeeze", role: "toggleable" },
+    ]);
+    const chainWithWah = assembleSignalChain(intentWithWah, defaultCaps);
+    const resolvedWithWah = resolveParameters(chainWithWah, intentWithWah, defaultCaps);
+    const compWithWah = resolvedWithWah.find(b => b.modelName === "Red Squeeze")!;
+
+    const delta = (compNoWah.parameters.Sensitivity as number) - (compWithWah.parameters.Sensitivity as number);
+    expect(delta).toBeGreaterThanOrEqual(0.08);
+  });
+
+  // COMBO-01-3: Wah + LA Studio Comp — PeakReduction reduced by at least 0.08
+  it("COMBO-01-3: chain with wah + LA Studio Comp has PeakReduction at least 0.08 lower than without wah", () => {
+    const intentNoWah = comboIntent([
+      { modelName: "LA Studio Comp", role: "toggleable" },
+    ]);
+    const chainNoWah = assembleSignalChain(intentNoWah, defaultCaps);
+    const resolvedNoWah = resolveParameters(chainNoWah, intentNoWah, defaultCaps);
+    const compNoWah = resolvedNoWah.find(b => b.modelName === "LA Studio Comp")!;
+
+    const intentWithWah = comboIntent([
+      { modelName: "UK Wah 846", role: "toggleable" },
+      { modelName: "LA Studio Comp", role: "toggleable" },
+    ]);
+    const chainWithWah = assembleSignalChain(intentWithWah, defaultCaps);
+    const resolvedWithWah = resolveParameters(chainWithWah, intentWithWah, defaultCaps);
+    const compWithWah = resolvedWithWah.find(b => b.modelName === "LA Studio Comp")!;
+
+    const delta = (compNoWah.parameters.PeakReduction as number) - (compWithWah.parameters.PeakReduction as number);
+    expect(delta).toBeGreaterThanOrEqual(0.08);
+  });
+
+  // COMBO-01-4: Wah + 3-Band Comp — LowThresh, MidThresh, HighThresh each reduced by at least 0.08
+  it("COMBO-01-4: chain with wah + 3-Band Comp has all thresholds at least 0.08 lower than without wah", () => {
+    const intentNoWah = comboIntent([
+      { modelName: "3-Band Comp", role: "toggleable" },
+    ]);
+    const chainNoWah = assembleSignalChain(intentNoWah, defaultCaps);
+    const resolvedNoWah = resolveParameters(chainNoWah, intentNoWah, defaultCaps);
+    const compNoWah = resolvedNoWah.find(b => b.modelName === "3-Band Comp")!;
+
+    const intentWithWah = comboIntent([
+      { modelName: "UK Wah 846", role: "toggleable" },
+      { modelName: "3-Band Comp", role: "toggleable" },
+    ]);
+    const chainWithWah = assembleSignalChain(intentWithWah, defaultCaps);
+    const resolvedWithWah = resolveParameters(chainWithWah, intentWithWah, defaultCaps);
+    const compWithWah = resolvedWithWah.find(b => b.modelName === "3-Band Comp")!;
+
+    const deltaLow = (compNoWah.parameters.LowThresh as number) - (compWithWah.parameters.LowThresh as number);
+    const deltaMid = (compNoWah.parameters.MidThresh as number) - (compWithWah.parameters.MidThresh as number);
+    const deltaHigh = (compNoWah.parameters.HighThresh as number) - (compWithWah.parameters.HighThresh as number);
+    expect(deltaLow).toBeGreaterThanOrEqual(0.08);
+    expect(deltaMid).toBeGreaterThanOrEqual(0.08);
+    expect(deltaHigh).toBeGreaterThanOrEqual(0.08);
+  });
+
+  // COMBO-01-5: Guard — chain WITHOUT wah leaves Deluxe Comp Threshold at model default (0.50)
+  it("COMBO-01-5: chain without wah leaves Deluxe Comp Threshold unchanged at 0.50", () => {
+    const intent = comboIntent([
+      { modelName: "Deluxe Comp", role: "toggleable" },
+    ]);
+    const chain = assembleSignalChain(intent, defaultCaps);
+    const resolved = resolveParameters(chain, intent, defaultCaps);
+    const comp = resolved.find(b => b.modelName === "Deluxe Comp")!;
+    expect(comp.parameters.Threshold).toBe(0.50);
+  });
+});
+
+// ============================================================
+// COMBO-04: Delay + reverb mix balancing
+// ============================================================
+// When delay and reverb coexist, reverb Mix is reduced by 0.05 to prevent
+// wash. The reduction has a floor of 0.08 to keep reverb audible.
+
+describe("COMBO-04: delay + reverb mix balancing", () => {
+  // Helper: build intent with genre and specific effects
+  function comboIntent(
+    genreHint: string | undefined,
+    effects: Array<{ modelName: string; role: "always_on" | "toggleable" | "ambient" }>,
+  ): ToneIntent {
+    return makeIntent({
+      ampName: "US Deluxe Nrm",
+      genreHint,
+      effects,
+    });
+  }
+
+  // COMBO-04-1: Blues genre — reverb Mix reduced from 0.20 to at most 0.15
+  it("COMBO-04-1: blues genre chain with delay+reverb has reverb Mix at least 0.05 lower than reverb-only", () => {
+    // Reverb only
+    const reverbOnlyIntent = comboIntent("blues", [
+      { modelName: "Plate", role: "ambient" },
+    ]);
+    const reverbOnlyChain = assembleSignalChain(reverbOnlyIntent, defaultCaps);
+    const reverbOnlyResolved = resolveParameters(reverbOnlyChain, reverbOnlyIntent, defaultCaps);
+    const reverbOnly = reverbOnlyResolved.find(b => b.type === "reverb")!;
+
+    // Delay + reverb
+    const delayReverbIntent = comboIntent("blues", [
+      { modelName: "Simple Delay", role: "toggleable" },
+      { modelName: "Plate", role: "ambient" },
+    ]);
+    const delayReverbChain = assembleSignalChain(delayReverbIntent, defaultCaps);
+    const delayReverbResolved = resolveParameters(delayReverbChain, delayReverbIntent, defaultCaps);
+    const reverbWithDelay = delayReverbResolved.find(b => b.type === "reverb")!;
+
+    // Delta comparison uses toBeCloseTo to avoid IEEE 754 floating-point precision issues
+    const delta = (reverbOnly.parameters.Mix as number) - (reverbWithDelay.parameters.Mix as number);
+    expect(delta).toBeCloseTo(0.05, 10);
+    expect(reverbWithDelay.parameters.Mix).toBeCloseTo(0.15, 3);
+  });
+
+  // COMBO-04-2: Metal genre — reverb Mix floored at 0.08 (0.12 - 0.05 = 0.07, but floor applies)
+  it("COMBO-04-2: metal genre chain with delay+reverb has reverb Mix floored at 0.08", () => {
+    const intent = comboIntent("metal", [
+      { modelName: "Simple Delay", role: "toggleable" },
+      { modelName: "Plate", role: "ambient" },
+    ]);
+    // Metal uses high-gain amp so compressor will be omitted (COMBO-02), use high-gain amp
+    const metalIntent = makeIntent({
+      ampName: "Cali Rectifire",
+      genreHint: "metal",
+      effects: [
+        { modelName: "Simple Delay", role: "toggleable" },
+        { modelName: "Plate", role: "ambient" },
+      ],
+    });
+    const chain = assembleSignalChain(metalIntent, defaultCaps);
+    const resolved = resolveParameters(chain, metalIntent, defaultCaps);
+    const reverb = resolved.find(b => b.type === "reverb")!;
+    // Metal reverb Mix baseline = 0.12, reduced by 0.05 = 0.07, but floor of 0.08 applies
+    expect(reverb.parameters.Mix).toBe(0.08);
+  });
+
+  // COMBO-04-3: Ambient genre — reverb Mix reduced from 0.50 to 0.45
+  it("COMBO-04-3: ambient genre chain with delay+reverb has reverb Mix at least 0.05 lower", () => {
+    const intent = comboIntent("ambient", [
+      { modelName: "Simple Delay", role: "toggleable" },
+      { modelName: "Plate", role: "ambient" },
+    ]);
+    const chain = assembleSignalChain(intent, defaultCaps);
+    const resolved = resolveParameters(chain, intent, defaultCaps);
+    const reverb = resolved.find(b => b.type === "reverb")!;
+    expect(reverb.parameters.Mix).toBeCloseTo(0.45, 3);
+  });
+
+  // COMBO-04-4: Guard — reverb-only chain has no reduction (reverb Mix at genre baseline)
+  it("COMBO-04-4: chain with reverb only (no delay) has reverb Mix at genre baseline", () => {
+    const intent = comboIntent("blues", [
+      { modelName: "Plate", role: "ambient" },
+    ]);
+    const chain = assembleSignalChain(intent, defaultCaps);
+    const resolved = resolveParameters(chain, intent, defaultCaps);
+    const reverb = resolved.find(b => b.type === "reverb")!;
+    // Blues reverb Mix baseline = 0.20 — no reduction without delay
+    expect(reverb.parameters.Mix).toBe(0.20);
+  });
+
+  // COMBO-04-5: Guard — delay parameters NOT affected by reverb presence
+  it("COMBO-04-5: delay parameters are NOT affected by reverb presence", () => {
+    // Delay only
+    const delayOnlyIntent = comboIntent("blues", [
+      { modelName: "Simple Delay", role: "toggleable" },
+    ]);
+    const delayOnlyChain = assembleSignalChain(delayOnlyIntent, defaultCaps);
+    const delayOnlyResolved = resolveParameters(delayOnlyChain, delayOnlyIntent, defaultCaps);
+    const delayAlone = delayOnlyResolved.find(b => b.type === "delay")!;
+
+    // Delay + reverb
+    const delayReverbIntent = comboIntent("blues", [
+      { modelName: "Simple Delay", role: "toggleable" },
+      { modelName: "Plate", role: "ambient" },
+    ]);
+    const delayReverbChain = assembleSignalChain(delayReverbIntent, defaultCaps);
+    const delayReverbResolved = resolveParameters(delayReverbChain, delayReverbIntent, defaultCaps);
+    const delayWithReverb = delayReverbResolved.find(b => b.type === "delay")!;
+
+    // Delay Time, Feedback, Mix must be identical
+    expect(delayWithReverb.parameters.Time).toBe(delayAlone.parameters.Time);
+    expect(delayWithReverb.parameters.Feedback).toBe(delayAlone.parameters.Feedback);
+    expect(delayWithReverb.parameters.Mix).toBe(delayAlone.parameters.Mix);
+  });
+
+  // COMBO-04-6: Immutability guard — combination adjustments do not mutate input chain
+  it("COMBO-04-6: combination adjustments do not mutate the input chain", () => {
+    const intent = comboIntent("blues", [
+      { modelName: "Simple Delay", role: "toggleable" },
+      { modelName: "Plate", role: "ambient" },
+    ]);
+    const chain = assembleSignalChain(intent, defaultCaps);
+    const resolved = resolveParameters(chain, intent, defaultCaps);
+
+    // The original chain blocks should still have empty parameters
+    for (const block of chain) {
+      expect(block.parameters).toEqual({});
+    }
+
+    // The resolved chain should be a different array
+    expect(resolved).not.toBe(chain);
   });
 });

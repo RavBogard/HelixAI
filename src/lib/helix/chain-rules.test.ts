@@ -93,15 +93,16 @@ describe("assembleSignalChain", () => {
   });
 
   // Test 2: High-gain amp returns correct blocks with Scream 808 and Horizon Gate
-  it("returns blocks: Scream 808 > amp > cab > Horizon Gate > EQ > gain block for high-gain amp", () => {
+  // COMBO-02: Horizon Gate now placed before amp (pre-amp position) for high-gain
+  it("returns blocks: Horizon Gate > Scream 808 > amp > cab > EQ > gain block for high-gain amp", () => {
     const chain = assembleSignalChain(highGainIntent(), HELIX_CAPS);
 
     const names = chain.map((b) => b.modelName);
     expect(names).toEqual([
+      "Horizon Gate",
       "Scream 808",
       "Placater Dirty",
       "4x12 Cali V30",
-      "Horizon Gate",
       "Parametric EQ",
       "Gain Block",
     ]);
@@ -320,16 +321,15 @@ describe("assembleSignalChain", () => {
   });
 
   // Additional: high-gain with effects confirms Horizon Gate placement
-  it("Horizon Gate is placed after cab and before EQ for high-gain amps", () => {
+  // COMBO-02: Horizon Gate is now placed before amp (pre-amp position) for high-gain
+  it("Horizon Gate is placed before amp for high-gain amps", () => {
     const chain = assembleSignalChain(highGainIntent(), HELIX_CAPS);
 
     const names = chain.map((b) => b.modelName);
-    const cabIndex = names.indexOf("4x12 Cali V30");
+    const ampIndex = names.indexOf("Placater Dirty");
     const gateIndex = names.indexOf("Horizon Gate");
-    const eqIndex = names.indexOf("Parametric EQ");
 
-    expect(gateIndex).toBeGreaterThan(cabIndex);
-    expect(gateIndex).toBeLessThan(eqIndex);
+    expect(gateIndex).toBeLessThan(ampIndex);
   });
 
   // Additional: Scream 808 not duplicated if already in effects
@@ -565,6 +565,8 @@ describe("assembleSignalChain", () => {
       vi.spyOn(console, "warn").mockImplementation(() => {});
       const stadiumCaps = getCapabilities("helix_stadium");
 
+      // COMBO-02: Use UK Wah 846 instead of Deluxe Comp — toggleable compressors
+      // are omitted from high-gain chains (Agoura German Xtra Red is high_gain)
       const chain = assembleSignalChain(
         cleanIntent({
           ampName: "Agoura German Xtra Red",
@@ -574,7 +576,7 @@ describe("assembleSignalChain", () => {
             { modelName: "Hall", role: "toggleable" },
             { modelName: "70s Chorus", role: "toggleable" },
             { modelName: "Teemah!", role: "toggleable" },
-            { modelName: "Deluxe Comp", role: "toggleable" },
+            { modelName: "UK Wah 846", role: "toggleable" },
             { modelName: "Stupor OD", role: "toggleable" },
             { modelName: "Heir Apparent", role: "toggleable" },
             { modelName: "Vermin Dist", role: "toggleable" },
@@ -595,6 +597,221 @@ describe("assembleSignalChain", () => {
           !mandatoryNames.has(b.modelName)
       );
       expect(userEffects).toHaveLength(8);
+    });
+  });
+
+  // --- COMBO-02: high-gain gate placement and compressor omission ---
+
+  describe("COMBO-02: high-gain gate placement and compressor omission", () => {
+    // COMBO-02-1: High-gain chain places Horizon Gate BEFORE amp
+    it("high-gain chain places Horizon Gate before amp (pre-amp position)", () => {
+      const chain = assembleSignalChain(highGainIntent(), HELIX_CAPS);
+      const names = chain.map((b) => b.modelName);
+      const gateIndex = names.indexOf("Horizon Gate");
+      const ampIndex = names.indexOf("Placater Dirty");
+
+      expect(gateIndex).toBeGreaterThanOrEqual(0);
+      expect(ampIndex).toBeGreaterThanOrEqual(0);
+      expect(gateIndex).toBeLessThan(ampIndex);
+    });
+
+    // COMBO-02-2: High-gain chain with toggleable compressor omits it
+    it("high-gain chain with toggleable compressor omits compressor from output", () => {
+      const chain = assembleSignalChain(
+        highGainIntent({
+          effects: [{ modelName: "Deluxe Comp", role: "toggleable" }],
+        }),
+        HELIX_CAPS
+      );
+      const names = chain.map((b) => b.modelName);
+      expect(names).not.toContain("Deluxe Comp");
+    });
+
+    // COMBO-02-3: High-gain chain with always_on compressor KEEPS it
+    it("high-gain chain with always_on compressor keeps compressor in output", () => {
+      const chain = assembleSignalChain(
+        highGainIntent({
+          effects: [{ modelName: "Deluxe Comp", role: "always_on" }],
+        }),
+        HELIX_CAPS
+      );
+      const names = chain.map((b) => b.modelName);
+      expect(names).toContain("Deluxe Comp");
+    });
+
+    // COMBO-02-4: Clean chain with compressor still includes it
+    it("clean chain with toggleable compressor still includes compressor", () => {
+      const chain = assembleSignalChain(
+        cleanIntent({
+          effects: [{ modelName: "Deluxe Comp", role: "toggleable" }],
+        }),
+        HELIX_CAPS
+      );
+      const names = chain.map((b) => b.modelName);
+      expect(names).toContain("Deluxe Comp");
+    });
+
+    // COMBO-02-5: High-gain chain gate is between extra_drive and boost
+    it("high-gain Horizon Gate is placed between extra_drive and boost", () => {
+      const chain = assembleSignalChain(
+        highGainIntent({
+          effects: [{ modelName: "Teemah!", role: "toggleable" }],
+        }),
+        HELIX_CAPS
+      );
+      const names = chain.map((b) => b.modelName);
+      const teemahIndex = names.indexOf("Teemah!");
+      const gateIndex = names.indexOf("Horizon Gate");
+      const boostIndex = names.indexOf("Scream 808");
+
+      expect(teemahIndex).toBeGreaterThanOrEqual(0);
+      expect(gateIndex).toBeGreaterThanOrEqual(0);
+      expect(boostIndex).toBeGreaterThanOrEqual(0);
+      // Gate should be after extra_drive (Teemah!) and before boost (Scream 808)
+      expect(gateIndex).toBeGreaterThan(teemahIndex);
+      expect(gateIndex).toBeLessThan(boostIndex);
+    });
+  });
+
+  // --- COMBO-03: priority-based effect truncation ---
+
+  describe("COMBO-03: priority-based effect truncation", () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    // COMBO-03-1: Pod Go with 5 effects drops modulation (lowest priority)
+    it("Pod Go with 5 effects drops modulation (lowest priority) and keeps other 4", () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const podGoCaps = getCapabilities("pod_go");
+
+      const chain = assembleSignalChain(
+        cleanIntent({
+          effects: [
+            { modelName: "UK Wah 846", role: "always_on" },
+            { modelName: "Deluxe Comp", role: "toggleable" },
+            { modelName: "Simple Delay", role: "toggleable" },
+            { modelName: "Hall", role: "toggleable" },
+            { modelName: "70s Chorus", role: "toggleable" },
+          ],
+        }),
+        podGoCaps
+      );
+
+      const names = chain.map((b) => b.modelName);
+      // 70s Chorus (modulation, score ~55) should be dropped
+      expect(names).not.toContain("70s Chorus");
+      // These 4 should survive
+      expect(names).toContain("UK Wah 846");
+      expect(names).toContain("Deluxe Comp");
+      expect(names).toContain("Simple Delay");
+      expect(names).toContain("Hall");
+    });
+
+    // COMBO-03-2: always_on wah survives truncation
+    it("Pod Go with always_on wah and 4 toggleable effects keeps wah", () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const podGoCaps = getCapabilities("pod_go");
+
+      const chain = assembleSignalChain(
+        cleanIntent({
+          effects: [
+            { modelName: "UK Wah 846", role: "always_on" },
+            { modelName: "Deluxe Comp", role: "toggleable" },
+            { modelName: "Simple Delay", role: "toggleable" },
+            { modelName: "Hall", role: "toggleable" },
+            { modelName: "70s Chorus", role: "toggleable" },
+          ],
+        }),
+        podGoCaps
+      );
+
+      const names = chain.map((b) => b.modelName);
+      expect(names).toContain("UK Wah 846");
+    });
+
+    // COMBO-03-3: After truncation, remaining effects are in SLOT_ORDER
+    it("after priority truncation, remaining effects are in correct SLOT_ORDER", () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const podGoCaps = getCapabilities("pod_go");
+
+      const chain = assembleSignalChain(
+        cleanIntent({
+          effects: [
+            { modelName: "UK Wah 846", role: "always_on" },
+            { modelName: "Deluxe Comp", role: "toggleable" },
+            { modelName: "Simple Delay", role: "toggleable" },
+            { modelName: "Hall", role: "toggleable" },
+            { modelName: "70s Chorus", role: "toggleable" },
+          ],
+        }),
+        podGoCaps
+      );
+
+      // Pod Go is single-DSP, all on dsp0 — filter out amp and cab
+      const effectNames = chain
+        .filter((b) => b.type !== "amp" && b.type !== "cab")
+        .map((b) => b.modelName);
+
+      // Wah (0) < Compressor (1) < Delay (9) < Reverb (10)
+      const wahIdx = effectNames.indexOf("UK Wah 846");
+      const compIdx = effectNames.indexOf("Deluxe Comp");
+      const delayIdx = effectNames.indexOf("Simple Delay");
+      const reverbIdx = effectNames.indexOf("Hall");
+
+      if (wahIdx >= 0 && compIdx >= 0) expect(wahIdx).toBeLessThan(compIdx);
+      if (compIdx >= 0 && delayIdx >= 0) expect(compIdx).toBeLessThan(delayIdx);
+      if (delayIdx >= 0 && reverbIdx >= 0) expect(delayIdx).toBeLessThan(reverbIdx);
+    });
+
+    // COMBO-03-4: Helix with same 5 effects does NOT truncate
+    it("Helix (maxEffectsPerDsp=Infinity) with 5 effects does NOT truncate", () => {
+      const chain = assembleSignalChain(
+        cleanIntent({
+          effects: [
+            { modelName: "UK Wah 846", role: "always_on" },
+            { modelName: "Deluxe Comp", role: "toggleable" },
+            { modelName: "Simple Delay", role: "toggleable" },
+            { modelName: "Hall", role: "toggleable" },
+            { modelName: "70s Chorus", role: "toggleable" },
+          ],
+        }),
+        HELIX_CAPS
+      );
+
+      const names = chain.map((b) => b.modelName);
+      // All 5 should be present — no truncation for Helix
+      expect(names).toContain("UK Wah 846");
+      expect(names).toContain("Deluxe Comp");
+      expect(names).toContain("Simple Delay");
+      expect(names).toContain("Hall");
+      expect(names).toContain("70s Chorus");
+    });
+
+    // COMBO-03-5: console.warn is logged with dropped effect names
+    it("logs console.warn with dropped effect names when truncation occurs", () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const podGoCaps = getCapabilities("pod_go");
+
+      assembleSignalChain(
+        cleanIntent({
+          effects: [
+            { modelName: "UK Wah 846", role: "always_on" },
+            { modelName: "Deluxe Comp", role: "toggleable" },
+            { modelName: "Simple Delay", role: "toggleable" },
+            { modelName: "Hall", role: "toggleable" },
+            { modelName: "70s Chorus", role: "toggleable" },
+          ],
+        }),
+        podGoCaps
+      );
+
+      const comboWarn = warnSpy.mock.calls.find(
+        (call) => typeof call[0] === "string" && call[0].includes("COMBO-03")
+      );
+      expect(comboWarn).toBeDefined();
+      // Should mention the dropped effect name
+      expect(comboWarn![0]).toContain("70s Chorus");
     });
   });
 
