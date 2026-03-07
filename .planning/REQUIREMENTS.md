@@ -9,11 +9,11 @@ Requirements for Preset Craft Mastery milestone. Each maps to roadmap phases.
 
 ### Expression Pedal
 
-- [ ] **EXP-01**: Wah blocks are assigned to expression pedal controller with Position parameter mapped — pressing EXP pedal sweeps the wah on hardware
-- [ ] **EXP-02**: Volume blocks are assigned to expression pedal controller with Position/Volume parameter mapped — pressing EXP pedal controls volume on hardware
-- [ ] **EXP-03**: Expression pedal assignments respect per-device capability — Helix (3 EXP), Stomp (2 EXP), Pod Go (1 EXP), Stadium (0 EXP, skipped)
+- [x] **EXP-01**: Wah blocks are assigned to expression pedal controller with Position parameter mapped — pressing EXP pedal sweeps the wah on hardware
+- [x] **EXP-02**: Volume blocks are assigned to expression pedal controller with Position/Volume parameter mapped — pressing EXP pedal controls volume on hardware
+- [x] **EXP-03**: Expression pedal assignments respect per-device capability — Helix (3 EXP), Stomp (2 EXP), Pod Go (1 EXP), Stadium (0 EXP, skipped)
 - [ ] **EXP-04**: Expression pedal assignments do not conflict with snapshot controller assignments — snapshot-exclusion guard prevents last-write-wins collision
-- [ ] **EXP-05**: Expression pedal @min/@max values are appropriate per block type — wah sweep 0.0-1.0, volume pedal heel-down not silent
+- [x] **EXP-05**: Expression pedal @min/@max values are appropriate per block type — wah sweep 0.0-1.0, volume pedal heel-down not silent
 
 ### Effect Intelligence
 
@@ -52,6 +52,14 @@ Requirements for Preset Craft Mastery milestone. Each maps to roadmap phases.
 - [ ] **COHERE-05**: Frontend block label accuracy — BLOCK_LABEL map distinguishes compressor ("Comp") from gate ("Gate") instead of blanket "Gate" for all dynamics
 - [ ] **COHERE-06**: ToneIntent-description cross-validation — post-planner check warns when description mentions effects (reverb, delay, modulation) not present in ToneIntent.effects; logged as quality warning
 
+### Device Block Budget Calibration
+
+- [ ] **BUDGET-01**: DeviceCapabilities `maxEffectsPerDsp` matches real hardware user-effect slot count for ALL families — verified against Line 6 specs
+- [ ] **BUDGET-02**: Prompt-level `maxEffects` guidance matches DeviceCapabilities — no mismatch between what AI is told to generate and what chain-rules allows through
+- [ ] **BUDGET-03**: Stadium block budget reflects actual DSP capacity — at least 8 user effects (not capped at 4)
+- [ ] **BUDGET-04**: Helix LT/Floor prompt allows 8+ effects per DSP path — reflecting real usage patterns, not arbitrary conservative cap
+- [ ] **BUDGET-05**: Chain-rules effect truncation logs a warning when effects are dropped — silent truncation becomes visible during development
+
 ## Future Requirements
 
 Deferred to future release. Tracked but not in current roadmap.
@@ -86,11 +94,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| EXP-01 | Phase 70 | Pending |
-| EXP-02 | Phase 70 | Pending |
-| EXP-03 | Phase 70 | Pending |
+| EXP-01 | Phase 70 | Complete |
+| EXP-02 | Phase 70 | Complete |
+| EXP-03 | Phase 70 | Complete |
 | EXP-04 | Phase 70 | Pending |
-| EXP-05 | Phase 70 | Pending |
+| EXP-05 | Phase 70 | Complete |
 | INTEL-01 | Phase 71 | Pending |
 | INTEL-02 | Phase 71 | Pending |
 | INTEL-03 | Phase 71 | Pending |
@@ -113,12 +121,17 @@ Which phases cover which requirements. Updated during roadmap creation.
 | COHERE-04 | Phase 75 | Pending |
 | COHERE-05 | Phase 75 | Pending |
 | COHERE-06 | Phase 75 | Pending |
+| BUDGET-01 | Phase 76 | Pending |
+| BUDGET-02 | Phase 76 | Pending |
+| BUDGET-03 | Phase 76 | Pending |
+| BUDGET-04 | Phase 76 | Pending |
+| BUDGET-05 | Phase 76 | Pending |
 
 **Coverage:**
-- v6.0 requirements: 27 total
-- Mapped to phases: 27
+- v6.0 requirements: 32 total
+- Mapped to phases: 32
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-06*
-*Last updated: 2026-03-06 after Phase 75 addition (Blackbird Arena analysis)*
+*Last updated: 2026-03-06 after Phase 76 addition (device block budget calibration)*
