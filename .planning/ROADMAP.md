@@ -146,7 +146,7 @@
 ### v7.0 Interactive Signal Chain Visualizer
 
 - [x] **Phase 77: API Preview + State Foundation** — Two-step API endpoint, Zustand visualizer store, deterministic hydration pipeline (2/2 plans, 33 tests)
-- [ ] **Phase 78: Signal Chain Canvas** — Device-specific block rendering (dual DSP rows, single DSP, Pod Go fixed layout) with color-coded tiles and selection
+- [x] **Phase 78: Signal Chain Canvas** — Device-specific block rendering (dual DSP rows, single DSP, Pod Go fixed layout) with color-coded tiles and selection (2/2 plans, 91 tests)
 - [ ] **Phase 79: Drag-and-Drop Reordering** — Block reordering within and across DSP rows, constraint validation, block add/remove
 - [ ] **Phase 80: Parameter Editing** — Side panel with schema registry, 7 control types, human-readable display transforms, model swapping
 - [ ] **Phase 81: Snapshot System** — 4-snapshot switcher with per-snapshot parameter overlays and bypass state toggling
@@ -180,7 +180,10 @@ Plans:
   3. A Pod Go preset renders the fixed architecture layout (Wah-Vol-FX1-Amp-Cab-EQ-FX2-FX3-FX4) with non-flexible blocks visually locked
   4. Each block tile is color-coded by category (amp=yellow/wide, delay=green, reverb=orange, etc.) using BLOCK_UI_REGISTRY with distinct icons
   5. Bypassed blocks in the active snapshot appear visually dimmed compared to active blocks
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [x] 78-01-PLAN.md -- BLOCK_UI_REGISTRY + BlockTile component (27 tests)
+- [x] 78-02-PLAN.md -- Device layouts + SignalChainCanvas + ParameterEditorPane + /visualizer page (31 tests)
 
 ### Phase 79: Drag-and-Drop Reordering
 **Goal**: Users can reorder blocks in their signal chain via drag-and-drop with full hardware constraint enforcement — invalid moves are rejected, block limits are enforced, and users can add or remove blocks to customize the chain
@@ -247,7 +250,7 @@ Phases execute in numeric order: 77 -> 78 -> 79 -> 80 -> 81 -> 82 -> 83
 | Phase | Milestone | Plans | Status | Completed |
 |-------|-----------|-------|--------|-----------|
 | 77. API Preview + State Foundation | v7.0 | 2 plans | Complete | 2026-03-07 |
-| 78. Signal Chain Canvas | v7.0 | TBD | Not started | - |
+| 78. Signal Chain Canvas | v7.0 | 2 plans | Complete | 2026-03-07 |
 | 79. Drag-and-Drop Reordering | v7.0 | TBD | Not started | - |
 | 80. Parameter Editing | v7.0 | TBD | Not started | - |
 | 81. Snapshot System | v7.0 | TBD | Not started | - |
@@ -255,5 +258,5 @@ Phases execute in numeric order: 77 -> 78 -> 79 -> 80 -> 81 -> 82 -> 83
 | 83. Download Integration + Diffing | v7.0 | TBD | Not started | - |
 
 ---
-*Last updated: 2026-03-07 after Phase 77 complete (2/2 plans, 33 tests, verified)*
+*Last updated: 2026-03-07 after Phase 78 complete (2/2 plans, 91 tests, verified)*
 *Full phase details for completed milestones archived in `.planning/milestones/`*

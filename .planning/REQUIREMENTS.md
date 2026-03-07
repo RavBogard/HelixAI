@@ -9,12 +9,12 @@ Requirements for Interactive Signal Chain Visualizer milestone. Each maps to roa
 
 ### Signal Chain Visualization
 
-- [ ] **VIS-01**: Dual-DSP devices (Helix Floor/LT/Rack/Stadium) render two horizontal block rows (DSP 0 and DSP 1) with correct per-DSP block population
-- [ ] **VIS-02**: Single-DSP devices (Stomp/StompXL) render one horizontal block row with correct total block count
-- [ ] **VIS-03**: Pod Go renders fixed architecture layout (Wah→Vol→FX1→Amp→Cab→EQ→FX2→FX3→FX4) with visually locked positions for non-flexible blocks
-- [ ] **VIS-04**: Each block renders as color-coded tile with category icon per BLOCK_UI_REGISTRY — 14 block types mapped to distinct colorHex, iconName, and widthMode (amp=yellow/wide, delay=green/standard, reverb=orange, etc.)
-- [ ] **VIS-05**: Bypassed blocks (from active snapshot's blockStates) render as visually dimmed/grayed to indicate they are inactive in the current snapshot
-- [ ] **VIS-06**: Selected block highlights visually and opens the ParameterEditorPane side panel
+- [x] **VIS-01**: Dual-DSP devices (Helix Floor/LT/Rack) render two horizontal block rows (DSP 0 and DSP 1) with correct per-DSP block population. Note: Stadium renders as single-DSP (dspCount=1 per chain-rules)
+- [x] **VIS-02**: Single-DSP devices (Stomp/StompXL/Stadium) render one horizontal block row with correct total block count
+- [x] **VIS-03**: Pod Go renders fixed architecture layout (Wah→Vol→FX1→Amp→Cab→EQ→FX2→FX3→FX4) with visually locked positions for non-flexible blocks
+- [x] **VIS-04**: Each block renders as color-coded tile with category icon per BLOCK_UI_REGISTRY — 14 block types mapped to distinct colorHex, iconName, and widthMode (amp=yellow/wide, delay=green/standard, reverb=orange, etc.)
+- [x] **VIS-05**: Bypassed blocks (from active snapshot's blockStates) render as visually dimmed/grayed to indicate they are inactive in the current snapshot
+- [x] **VIS-06**: Selected block highlights visually and opens the ParameterEditorPane side panel
 
 ### Drag and Drop
 
@@ -106,12 +106,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| VIS-01 | Phase 78 | Pending |
-| VIS-02 | Phase 78 | Pending |
-| VIS-03 | Phase 78 | Pending |
-| VIS-04 | Phase 78 | Pending |
-| VIS-05 | Phase 78 | Pending |
-| VIS-06 | Phase 78 | Pending |
+| VIS-01 | Phase 78 | Verified |
+| VIS-02 | Phase 78 | Verified |
+| VIS-03 | Phase 78 | Verified |
+| VIS-04 | Phase 78 | Verified |
+| VIS-05 | Phase 78 | Verified |
+| VIS-06 | Phase 78 | Verified |
 | DND-01 | Phase 79 | Pending |
 | DND-02 | Phase 79 | Pending |
 | DND-03 | Phase 79 | Pending |
