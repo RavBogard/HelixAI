@@ -8,7 +8,7 @@ progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 12
-  completed_plans: 12
+  completed_plans: 13
 ---
 
 # Project State
@@ -23,16 +23,17 @@ See: .planning/PROJECT.md (updated 2026-03-06)
 ## Current Position
 
 Phase: Phase 75 — Preset Musical Coherence
-Plan: 1/3 complete
-Status: Phase 75 Plan 01 complete — COHERE-01 drive palette balance + COHERE-02 reverb auto-insert
-Last activity: 2026-03-07 — Phase 75 Plan 01 complete (chain-rules drive limit + Plate reverb auto-insert)
+Plan: 2/3 complete
+Status: Phase 75 Plan 02 complete — COHERE-03 boost disambiguation + COHERE-04 dynamics split
+Last activity: 2026-03-07 — Phase 75 Plan 02 complete (slot-based boost detection + compressor toggle-off for high-gain)
 
 Progress: [████████████████████████████████] 100% (6/7 phases, 13/15 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 13 (this milestone)
+- Total plans completed: 14 (this milestone)
+- Phase 75: Plan 02 in ~6 min (COHERE-03 boost disambiguation + COHERE-04 dynamics split, TDD, 10 new tests)
 - Phase 75: Plan 01 in ~6 min (COHERE-01 drive palette balance + COHERE-02 reverb auto-insert, TDD, 9 new tests)
 - Phase 74: Plan 02 in ~5 min (pipeline integration + baseline generator/compare scripts)
 - Phase 74: Plan 01 in ~4 min (validatePresetQuality + quality logger, TDD, 23 new tests)
@@ -93,6 +94,10 @@ Progress: [███████████████████████
 - [v6.0]: Quality logger uses real temp files for test verification (ESM spy limitation workaround)
 - [v6.0]: Quality warnings are server-side only -- never included in API response JSON (QUAL-02)
 - [v6.0]: Baseline generator uses Brit Plexi Nrm for rock (plan's "Brit 2204" invalid in HD2 catalog)
+- [v6.0]: COHERE-03 BlockSpec.slot typed as optional string (not narrow "boost") — all chain slots propagate for disambiguation
+- [v6.0]: COHERE-03 classifyEffectSlot returns "extra_drive" for user Minotaur/Scream 808 (was "boost") — only mandatory step 5a gets slot="boost"
+- [v6.0]: COHERE-03 backward compat: !block.slot && BOOST_MODEL_IDS.has() fallback for old presets without slot field
+- [v6.0]: COHERE-04 compressor OFF only for high-gain + lead/crunch; gate/Autoswell always-ON unchanged
 
 ### Roadmap Evolution
 
@@ -111,6 +116,6 @@ Progress: [███████████████████████
 ## Session Continuity
 
 Last session: 2026-03-07
-Stopped at: Completed 75-01-PLAN.md — COHERE-01 drive palette balance + COHERE-02 reverb auto-insert
+Stopped at: Completed 75-02-PLAN.md — COHERE-03 boost disambiguation + COHERE-04 dynamics split
 Resume file: None
-Next command: Continue Phase 75 — Plan 02 (snapshot-engine updates) or Plan 03 (quality validation).
+Next command: Continue Phase 75 — Plan 03 (quality validation updates).

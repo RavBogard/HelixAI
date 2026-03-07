@@ -395,7 +395,7 @@ Plans:
 | 72. Effect Combinations | 2/2 | Complete   | 2026-03-07 | — |
 | 73. Per-Device Craft | 2/2 | Complete   | 2026-03-07 | — |
 | 74. Quality Validation | 2/2 | Complete   | 2026-03-07 | — |
-| 75. Preset Musical Coherence | 1/3 | In Progress|  | — |
+| 75. Preset Musical Coherence | 2/3 | In Progress|  | — |
 | 76. Block Budget Calibration | 2/2 | Complete   | 2026-03-07 | — |
 
 ### Phase 75: Preset Musical Coherence
@@ -420,7 +420,7 @@ Plans:
 - AI-selected Minotaur/Scream 808 toggles OFF in clean snapshots (same as other drives)
 - 36-preset baseline: zero regressions, measurable improvement in effect variety
 
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [ ] 75-01-PLAN.md — Chain-rules structural: COHERE-01 (drive palette balance), COHERE-02 (reverb auto-insert)
