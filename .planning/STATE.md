@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Preset Craft Mastery
 status: active
-last_updated: "2026-03-06"
+last_updated: "2026-03-07"
 progress:
   total_phases: 6
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  completed_phases: 1
+  total_plans: 2
+  completed_plans: 2
 ---
 
 # Project State
@@ -18,21 +18,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-06)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** v6.0 Preset Craft Mastery — Phase 70 (Expression Pedal Controller Assignment) ready to plan
+**Current focus:** v6.0 Preset Craft Mastery — Phase 70 complete, Phase 71 ready to plan
 
 ## Current Position
 
-Phase: Phase 70 ready to plan — Expression Pedal Controller Assignment
-Plan: —
-Status: Roadmap complete, ready to plan Phase 70
-Last activity: 2026-03-06 — Phase 75 added (Preset Musical Coherence) from Blackbird Arena analysis
+Phase: Phase 70 COMPLETE — Expression Pedal Controller Assignment
+Plan: 2/2 complete
+Status: Phase 70 done, ready to plan Phase 71
+Last activity: 2026-03-07 — Phase 70 complete (EXP pedal controllers wired into all 4 builders)
 
-Progress: [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0% (0/6 phases complete)
+Progress: [█████░░░░░░░░░░░░░░░░░░░░░░░░░░░] 17% (1/6 phases complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 0 (this milestone)
+- Total plans completed: 2 (this milestone)
+- Phase 70: 2 plans in ~5 min total (avg 2.5 min/plan)
 - Prior milestone avg: ~5 min/plan (v5.0)
 
 *Updated after each plan completion*
@@ -64,11 +65,11 @@ Progress: [░░░░░░░░░░░░░░░░░░░░░░░
 ### Blockers/Concerns
 
 - **HX Edit Stadium verification:** Stadium presets unblocked but HX Edit import not verified across varied tone goals — required as success criterion for Phase 63.
-- **Expression pedal wiring:** EXP_PEDAL constants never used in any builder — critical user-facing bug affecting wah and volume blocks across ALL device families.
+- **Expression pedal wiring:** RESOLVED in Phase 70 — EXP_PEDAL_1/2 now assigned in all 4 builders (Helix, Stomp, Pod Go, Stadium=0). 19 TDD tests cover all scenarios.
 
 ## Session Continuity
 
-Last session: 2026-03-06
-Stopped at: v6.0 roadmap created — 5 phases (70-74), 21 requirements, ready to plan Phase 70
+Last session: 2026-03-07
+Stopped at: Phase 70 complete — EXP pedal controllers wired into all 4 builders with 19 TDD tests
 Resume file: None
-Next command: /gsd:plan-phase 70
+Next command: /gsd:plan-phase 71

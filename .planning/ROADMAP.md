@@ -296,7 +296,7 @@ Plans:
 
 #### Phase Summary
 
-- [ ] **Phase 70: Expression Pedal Controller Assignment** — Fix P0 hardware bug: wah and volume blocks get @controller entries so expression pedals actually work on hardware
+- [x] **Phase 70: Expression Pedal Controller Assignment** — Fix P0 hardware bug: wah and volume blocks get @controller entries so expression pedals actually work on hardware
 - [ ] **Phase 71: Per-Model Effect Intelligence** — Genre-aware delay/reverb/wah model selection guidance in prompts + effectParamOverrides for models with known bad defaults
 - [ ] **Phase 72: Effect Combination Logic** — Deterministic cross-effect parameter interactions: wah+comp threshold, high-gain gate placement, delay+reverb balance, priority ordering for device budgets
 - [ ] **Phase 73: Per-Device Craft Optimization** — Device-specific tone optimization in both prompts (creative direction) and code (hard limit enforcement) for Stomp, Pod Go, Helix, and Stadium
@@ -313,11 +313,12 @@ Plans:
   3. Pod Go presets emit only EXP1 assignments (1 physical pedal); Stadium presets emit zero EXP entries (0 physical pedals)
   4. No EXP controller assignment conflicts with any snapshot controller assignment — snapshot-exclusion guard prevents collision
   5. EXP @min/@max values are musically appropriate — wah sweep 0.0-1.0, volume heel-down not silent
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans executed
+**Status:** COMPLETE
 
 Plans:
-- [ ] 70-01-PLAN.md — EXP pedal assignment in preset-builder.ts (Helix LT/Floor) and stomp-builder.ts (Stomp/XL) with TDD tests
-- [ ] 70-02-PLAN.md — EXP pedal assignment in podgo-builder.ts (Pod Go, 1 pedal), snapshot-exclusion guard, cross-device integration tests
+- [x] 70-01-PLAN.md — EXP pedal assignment in preset-builder.ts (Helix LT/Floor) and stomp-builder.ts (Stomp/XL) with TDD tests
+- [x] 70-02-PLAN.md — EXP pedal assignment in podgo-builder.ts (Pod Go, 1 pedal), snapshot-exclusion guard, cross-device integration tests
 
 ### Phase 71: Per-Model Effect Intelligence
 
