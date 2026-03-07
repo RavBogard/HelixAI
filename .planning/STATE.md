@@ -6,9 +6,9 @@ status: active
 last_updated: "2026-03-07"
 progress:
   total_phases: 7
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 4
-  completed_plans: 8
+  completed_plans: 10
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** v7.0 Phase 82 — Controllers + Parameter Dependencies (IN PROGRESS)
+**Current focus:** v7.0 Phase 83 — Download Integration (NEXT)
 
 ## Current Position
 
-Phase: 82 of 83 (Controllers + Parameter Dependencies) — IN PROGRESS
-Plan: 82-01 complete, 82-02 in progress
-Status: Plan 82-01 done — controller extraction + dependency rules (48 new tests, 270 total)
-Last activity: 2026-03-07 — Plan 82-01 complete (EXP extraction, FS extraction, dependency evaluator, hydration pipeline)
+Phase: 82 of 83 (Controllers + Parameter Dependencies) — COMPLETE
+Plan: 82-01 complete, 82-02 complete
+Status: Phase 82 done — controller/footswitch extraction, dependency rules, UI wiring (64 new tests, 286 total)
+Last activity: 2026-03-07 — Phase 82 complete (EXP/FS extraction, dependency evaluator, store, BlockTile FS badges, ParameterEditorPane EXP badges + DualHandleSlider + dependency rules)
 
-Progress: [████████████████████████░░░░░░░░] 71% (5/7 phases)
+Progress: [██████████████████████████████░░] 86% (6/7 phases)
 
 ## Performance Metrics
 
@@ -61,6 +61,8 @@ Progress: [███████████████████████
 - [v7.0]: MODEL_CATALOGS_BY_TYPE maps block types to model catalogs for same-type model swap dropdown
 - [v7.0]: swapBlockModel enhanced with lookupModelByModelId to hydrate Knowledge Layer defaults on model swap
 - [v7.0]: Reactive subscription pattern for snapshot-dependent components — subscribe to activeSnapshotIndex + snapshots via hook, use getState() for computed selectors
+- [v7.0]: DualHandleSlider is read-only for Phase 82 — display-only EXP range visualization
+- [v7.0]: evaluateDependencies is pure function called in ParameterEditorPane render — no store coupling for dependency rules
 
 ### Roadmap Evolution
 
@@ -75,6 +77,6 @@ Progress: [███████████████████████
 ## Session Continuity
 
 Last session: 2026-03-07
-Stopped at: Phase 82, plan 82-01 complete
+Stopped at: Phase 82 COMPLETE
 Resume file: None
-Next command: Phase 82-02 execution (UI wiring)
+Next command: Phase 83 execution (Download Integration)

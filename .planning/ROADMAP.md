@@ -150,7 +150,7 @@
 - [x] **Phase 79: Drag-and-Drop Reordering** — Block reordering within and across DSP rows, constraint validation, block add/remove (2/2 plans, 157 tests)
 - [x] **Phase 80: Parameter Editing** — Side panel with schema registry, 7 control types, human-readable display transforms, model swapping (2/2 plans, 203 tests)
 - [x] **Phase 81: Snapshot System** — 4-snapshot switcher with per-snapshot parameter overlays and bypass state toggling (2/2 plans, 222 tests)
-- [ ] **Phase 82: Controllers + Parameter Dependencies** — Read-only controller assignment badges, expression pedal dual-handle sliders, reactive parameter dependency rules
+- [x] **Phase 82: Controllers + Parameter Dependencies** — Read-only controller assignment badges, expression pedal dual-handle sliders, reactive parameter dependency rules (completed 2026-03-07)
 - [ ] **Phase 83: Download Integration + Diffing** — /api/download endpoint compiling modified state to device files, diff-optimized payloads, state diffing
 
 ## Phase Details
@@ -263,7 +263,7 @@ Phases execute in numeric order: 77 -> 78 -> 79 -> 80 -> 81 -> 82 -> 83
 | 79. Drag-and-Drop Reordering | v7.0 | 2/2 plans | Complete | 2026-03-07 |
 | 80. Parameter Editing | v7.0 | 2/2 plans | Complete | 2026-03-07 |
 | 81. Snapshot System | v7.0 | 2/2 plans | Complete | 2026-03-07 |
-| 82. Controllers + Dependencies | 1/2 | In Progress|  | - |
+| 82. Controllers + Dependencies | 2/2 | Complete    | 2026-03-07 | - |
 | 83. Download Integration + Diffing | v7.0 | TBD | Not started | - |
 
 ---
