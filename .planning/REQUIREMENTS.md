@@ -12,7 +12,7 @@ Requirements for Preset Craft Mastery milestone. Each maps to roadmap phases.
 - [x] **EXP-01**: Wah blocks are assigned to expression pedal controller with Position parameter mapped — pressing EXP pedal sweeps the wah on hardware
 - [x] **EXP-02**: Volume blocks are assigned to expression pedal controller with Position/Volume parameter mapped — pressing EXP pedal controls volume on hardware
 - [x] **EXP-03**: Expression pedal assignments respect per-device capability — Helix (3 EXP), Stomp (2 EXP), Pod Go (1 EXP), Stadium (0 EXP, skipped)
-- [ ] **EXP-04**: Expression pedal assignments do not conflict with snapshot controller assignments — snapshot-exclusion guard prevents last-write-wins collision
+- [x] **EXP-04**: Expression pedal assignments do not conflict with snapshot controller assignments — snapshot-exclusion guard prevents last-write-wins collision
 - [x] **EXP-05**: Expression pedal @min/@max values are appropriate per block type — wah sweep 0.0-1.0, volume pedal heel-down not silent
 
 ### Effect Intelligence
@@ -97,7 +97,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EXP-01 | Phase 70 | Complete |
 | EXP-02 | Phase 70 | Complete |
 | EXP-03 | Phase 70 | Complete |
-| EXP-04 | Phase 70 | Pending |
+| EXP-04 | Phase 70 | Complete |
 | EXP-05 | Phase 70 | Complete |
 | INTEL-01 | Phase 71 | Complete |
 | INTEL-02 | Phase 71 | Complete |
