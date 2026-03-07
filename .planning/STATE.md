@@ -22,10 +22,10 @@ See: .planning/PROJECT.md (updated 2026-03-07)
 
 ## Current Position
 
-Phase: 78 of 83 (Signal Chain Canvas) — VERIFIED COMPLETE
-Plan: 78-01 complete, 78-02 complete
-Status: Phase verified — 6/6 requirements passed, 91 tests, 5 feature commits
-Last activity: 2026-03-07 — Phase 78 verified (VIS-01 through VIS-06 all passed)
+Phase: 79 of 83 (Drag-and-Drop Reordering) — IN PROGRESS
+Plan: 79-01 complete, 79-02 pending
+Status: Plan 79-01 complete — DnD constraint engine + store actions, 75 tests, 4 TDD commits
+Last activity: 2026-03-07 — Plan 79-01 complete (constraint engine + store actions)
 
 Progress: [████████░░░░░░░░░░░░░░░░░░░░░░░░] 29% (2/7 phases)
 
@@ -70,6 +70,6 @@ Progress: [████████░░░░░░░░░░░░░░░
 ## Session Continuity
 
 Last session: 2026-03-07
-Stopped at: Phase 78 verified complete
+Stopped at: Plan 79-01 complete, executing Plan 79-02
 Resume file: None
-Next command: Plan and execute Phase 79 (Drag-and-Drop Reordering)
+Next command: Continue Phase 79 execution (Plan 79-02 — DnD UI)

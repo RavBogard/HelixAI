@@ -195,7 +195,10 @@ Plans:
   3. Attempting to drag a fixed Pod Go block (amp, cab, wah, volume, eq) does nothing and shows a descriptive error message
   4. Clicking an empty slot opens a model browser to add a new effect, and clicking the X button on a block tile removes it
   5. Adding a block is prevented when device block limits are reached — the UI communicates why the add failed
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [x] 79-01-PLAN.md -- DnD constraint engine + addBlock/removeBlock/reorderBlock store actions (TDD, 75 tests)
+- [ ] 79-02-PLAN.md -- DnD UI with @dnd-kit, block remove buttons, model browser dropdown
 
 ### Phase 80: Parameter Editing
 **Goal**: Users can click any block to open a parameter editor side panel showing all editable parameters with human-readable controls — sliders show real units (dB, Hz, ms, %), dropdowns for discrete values, toggles for booleans — and users can swap a block's model with deterministic parameter hydration
