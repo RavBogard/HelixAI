@@ -249,7 +249,10 @@ Plans:
   1. Clicking "Download" sends the modified VisualizerState to /api/download and returns a valid .hlx/.pgp/.hsp file that loads on the target device without errors
   2. The download payload is diff-optimized — calculateStateDiff() transmits only chain reordering, model swaps, and modified snapshot data, not the entire state
   3. A preset that the user did not modify at all produces a minimal (near-empty) diff and downloads identically to a direct generation
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 83-01-PLAN.md -- TDD: calculateStateDiff + dehydrateToPresetSpec + /api/download endpoint
+- [ ] 83-02-PLAN.md -- DownloadButton component + visualizer page wiring
 
 ## Progress (v7.0)
 
@@ -264,7 +267,7 @@ Phases execute in numeric order: 77 -> 78 -> 79 -> 80 -> 81 -> 82 -> 83
 | 80. Parameter Editing | v7.0 | 2/2 plans | Complete | 2026-03-07 |
 | 81. Snapshot System | v7.0 | 2/2 plans | Complete | 2026-03-07 |
 | 82. Controllers + Dependencies | 2/2 | Complete    | 2026-03-07 | - |
-| 83. Download Integration + Diffing | v7.0 | TBD | Not started | - |
+| 83. Download Integration + Diffing | v7.0 | 2 plans | Not started | - |
 
 ---
 *Last updated: 2026-03-07 after Phase 81 complete (2/2 plans, 222 tests, 5/7 phases done)*
