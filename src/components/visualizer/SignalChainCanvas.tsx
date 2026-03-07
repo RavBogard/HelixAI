@@ -34,6 +34,7 @@ import type { BlockSpec } from "@/lib/helix/types";
 import type { VisualizerStoreState } from "@/lib/visualizer/store";
 import type { DeviceLayout, PodGoSlotConfig } from "@/lib/visualizer/device-layout";
 import { BlockTile } from "./BlockTile";
+import { ModelBrowserDropdown } from "./ModelBrowserDropdown";
 
 // ---------------------------------------------------------------------------
 // SortableBlockTile — wraps BlockTile with @dnd-kit useSortable
@@ -333,6 +334,7 @@ export function SignalChainCanvas() {
   const reorderBlock = useVisualizerStore((s) => s.reorderBlock);
   const moveBlock = useVisualizerStore((s) => s.moveBlock);
   const removeBlock = useVisualizerStore((s) => s.removeBlock);
+  const addBlock = useVisualizerStore((s) => s.addBlock);
 
   // Error message state — shown for 3 seconds on constraint violations
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -460,6 +462,27 @@ export function SignalChainCanvas() {
     [],
   );
 
+  // --- Model selection from dropdown ---
+  const handleModelSelect = useCallback(
+    (blockType: BlockSpec["type"], modelId: string, modelName: string) => {
+      if (!addingAtSlot) return;
+      const result = addBlock(
+        { type: blockType, modelId, modelName },
+        addingAtSlot.dsp,
+        addingAtSlot.position,
+      );
+      if (!result.success) {
+        setErrorMessage(result.error ?? "Failed to add block");
+      }
+      setAddingAtSlot(null);
+    },
+    [addingAtSlot, addBlock],
+  );
+
+  const handleDropdownClose = useCallback(() => {
+    setAddingAtSlot(null);
+  }, []);
+
   // Empty state
   if (baseBlocks.length === 0) {
     return (
@@ -530,6 +553,20 @@ export function SignalChainCanvas() {
       >
         {errorMessage ?? ""}
       </div>
+
+      {/* Model browser dropdown — shown when addingAtSlot is set */}
+      {addingAtSlot && (
+        <div className="relative" data-testid="model-browser-container">
+          <ModelBrowserDropdown
+            targetDsp={addingAtSlot.dsp}
+            targetPosition={addingAtSlot.position}
+            onSelect={handleModelSelect}
+            onClose={handleDropdownClose}
+            disabled={!addCheck.canAdd}
+            disabledReason={addCheck.reason}
+          />
+        </div>
+      )}
     </DndContext>
   );
 }
