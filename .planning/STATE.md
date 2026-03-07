@@ -22,17 +22,18 @@ See: .planning/PROJECT.md (updated 2026-03-06)
 
 ## Current Position
 
-Phase: Phase 74 — Quality Validation (COMPLETE)
-Plan: 2/2 complete
-Status: Phase 74 complete — quality validation pipeline + 36-preset baseline generator
-Last activity: 2026-03-07 — Phase 74 Plan 02 complete (pipeline integration + baseline scripts)
+Phase: Phase 75 — Preset Musical Coherence
+Plan: 1/3 complete
+Status: Phase 75 Plan 01 complete — COHERE-01 drive palette balance + COHERE-02 reverb auto-insert
+Last activity: 2026-03-07 — Phase 75 Plan 01 complete (chain-rules drive limit + Plate reverb auto-insert)
 
-Progress: [████████████████████████████████] 100% (6/7 phases, 12/12 plans)
+Progress: [████████████████████████████████] 100% (6/7 phases, 13/15 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 12 (this milestone)
+- Total plans completed: 13 (this milestone)
+- Phase 75: Plan 01 in ~6 min (COHERE-01 drive palette balance + COHERE-02 reverb auto-insert, TDD, 9 new tests)
 - Phase 74: Plan 02 in ~5 min (pipeline integration + baseline generator/compare scripts)
 - Phase 74: Plan 01 in ~4 min (validatePresetQuality + quality logger, TDD, 23 new tests)
 - Phase 73: Plan 02 in ~4 min (prompt optimization for all 3 device families, 9 new tests)
@@ -84,6 +85,10 @@ Progress: [███████████████████████
 - [v6.0]: Helix prompt effect discipline includes per-genre DSP0/DSP1 placement guidance (e.g., drive+gate on DSP0, delay+mod on DSP1)
 - [v6.0]: Stomp metal over-budget priority: drive > delay > gate (was drive > delay > mod) — matches new gate inclusion in metal genre
 - [v6.0]: 11 quality checks with expert-consensus thresholds from param-engine.ts (QUAL-01)
+- [v6.0]: COHERE-01 drive palette balance: max 2 user drives (slot=extra_drive), mandatory boost (slot=boost) excluded from count
+- [v6.0]: COHERE-02 reverb soft-mandatory: Plate auto-inserted when clean/ambient snapshots present and no user reverb in effects
+- [v6.0]: COHERE-01/02 placed before COMBO-02 compressor removal — drives capped and reverb inserted before combination rules
+- [v6.0]: Auto-inserted Plate gets intentRole "toggleable" — participates in COMBO-03 truncation and snapshot toggling
 - [v6.0]: Stadium amp Drive check exempted via ampCatalogEra guard (firmware encoding difference)
 - [v6.0]: Quality logger uses real temp files for test verification (ESM spy limitation workaround)
 - [v6.0]: Quality warnings are server-side only -- never included in API response JSON (QUAL-02)
@@ -106,6 +111,6 @@ Progress: [███████████████████████
 ## Session Continuity
 
 Last session: 2026-03-07
-Stopped at: Completed 74-02-PLAN.md — pipeline integration + baseline generator (QUAL-02/QUAL-03)
+Stopped at: Completed 75-01-PLAN.md — COHERE-01 drive palette balance + COHERE-02 reverb auto-insert
 Resume file: None
-Next command: Phase 74 complete. Next milestone phase or /gsd:plan-phase for Phase 75.
+Next command: Continue Phase 75 — Plan 02 (snapshot-engine updates) or Plan 03 (quality validation).
