@@ -328,19 +328,20 @@ export function resolveParameters(
   const secondTopology: TopologyTag = secondAmpModel?.topology ?? "not_applicable";
 
   // Build new array — never mutate input
-  return chain.map((block) => {
+  const resolved = chain.map((block) => {
     // For dual-amp: blocks on path 1 use second amp's category/topology (DUAL-04)
     const isSecondaryPath = block.path === 1;
     const effectiveCategory = isSecondaryPath ? secondAmpCategory : ampCategory;
     const effectiveTopology = isSecondaryPath ? secondTopology : topology;
 
-    const resolved: BlockSpec = {
+    return {
       ...block,
       // Thread caps, tempoHint, delaySubdivision, and guitarType through to resolveBlockParams
       parameters: resolveBlockParams(block, effectiveCategory, effectiveTopology, genreProfile, caps, tempoHint, delaySubdivision, guitarType),
-    };
-    return resolved;
+    } satisfies BlockSpec;
   });
+
+  return applyCombinationAdjustments(resolved);
 }
 
 /**
@@ -616,4 +617,56 @@ function resolveDefaultParams(
   }
 
   return params;
+}
+
+// ============================================================
+// COMBINATION ADJUSTMENTS (COMBO-01, COMBO-04)
+// ============================================================
+// Post-processing step: adjusts parameters based on which effects
+// coexist in the same chain. Runs AFTER per-block resolution.
+// Returns a new array — never mutates input.
+
+/** Threshold-like parameter keys for compressors (single-value) — reduced by 0.10 when wah present */
+const COMPRESSOR_THRESHOLD_KEYS = ["Threshold", "Sensitivity", "PeakReduction"];
+/** Multi-band threshold keys (3-Band Comp) — reduced by 0.08 when wah present */
+const COMPRESSOR_MULTI_THRESH_KEYS = ["LowThresh", "MidThresh", "HighThresh"];
+
+function isCompressorBlock(block: BlockSpec): boolean {
+  return block.type === "dynamics" && block.modelId.startsWith("HD2_Compressor");
+}
+
+function applyCombinationAdjustments(chain: BlockSpec[]): BlockSpec[] {
+  const hasWah = chain.some(b => b.type === "wah");
+  const hasDelay = chain.some(b => b.type === "delay");
+
+  return chain.map(block => {
+    const params = { ...block.parameters };
+    let changed = false;
+
+    // COMBO-01: Wah + compressor → reduce compressor threshold/sensitivity
+    if (hasWah && isCompressorBlock(block)) {
+      for (const key of COMPRESSOR_THRESHOLD_KEYS) {
+        if (key in params && typeof params[key] === "number") {
+          params[key] = Math.max(0.0, (params[key] as number) - 0.10);
+          changed = true;
+        }
+      }
+      for (const key of COMPRESSOR_MULTI_THRESH_KEYS) {
+        if (key in params && typeof params[key] === "number") {
+          params[key] = Math.max(0.0, (params[key] as number) - 0.08);
+          changed = true;
+        }
+      }
+    }
+
+    // COMBO-04: Delay + reverb → reduce reverb mix (floor 0.08)
+    if (hasDelay && block.type === "reverb") {
+      if ("Mix" in params && typeof params.Mix === "number") {
+        params.Mix = Math.max(0.08, (params.Mix as number) - 0.05);
+        changed = true;
+      }
+    }
+
+    return changed ? { ...block, parameters: params } : block;
+  });
 }

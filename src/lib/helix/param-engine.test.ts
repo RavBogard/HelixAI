@@ -290,9 +290,9 @@ describe("resolveParameters", () => {
     expect(result[0].parameters.Feedback).toBe(0.35);
     expect(result[0].parameters.Mix).toBe(0.3);
 
-    // Plate reverb should have its defaults
+    // Plate reverb: defaultParams Mix=0.25, reduced to 0.20 by COMBO-04 (delay present in chain)
     expect(result[1].parameters.DecayTime).toBe(0.5);
-    expect(result[1].parameters.Mix).toBe(0.25);
+    expect(result[1].parameters.Mix).toBe(0.20);
 
     // 70s Chorus should have its defaults
     expect(result[2].parameters.Speed).toBe(0.4);
@@ -966,8 +966,9 @@ describe("COMBO-04: delay + reverb mix balancing", () => {
     const delayReverbResolved = resolveParameters(delayReverbChain, delayReverbIntent, defaultCaps);
     const reverbWithDelay = delayReverbResolved.find(b => b.type === "reverb")!;
 
+    // Delta comparison uses toBeCloseTo to avoid IEEE 754 floating-point precision issues
     const delta = (reverbOnly.parameters.Mix as number) - (reverbWithDelay.parameters.Mix as number);
-    expect(delta).toBeGreaterThanOrEqual(0.05);
+    expect(delta).toBeCloseTo(0.05, 10);
     expect(reverbWithDelay.parameters.Mix).toBeCloseTo(0.15, 3);
   });
 
