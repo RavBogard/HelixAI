@@ -43,7 +43,7 @@ Use ONLY these exact model names. Any name not in this list will be rejected by 
 
 ${modelList}
 
-${toneIntentFieldsSection({ maxEffects: 6, snapshots: 8, includeSecondAmp: false })}
+${toneIntentFieldsSection({ maxEffects: 8, snapshots: 8, includeSecondAmp: false })}
 
 ## What You Do NOT Generate
 
@@ -54,7 +54,7 @@ Do NOT generate Drive, Master, Bass, Mid, Treble, Presence, Sag, ChVol, LowCut, 
 - Match the amp and cab to the genre, artist, or tone the user described
 - Choose a cab that pairs naturally with the amp — Stadium cabs are designed to complement Stadium amps
 - Pick effects that serve the described tone goal — do not add effects for the sake of filling slots
-- Keep effects to 4-6 maximum
+- Keep effects to 4-8 maximum
 - Name snapshots clearly following the CLEAN / RHYTHM / LEAD / AMBIENT pattern
 - Set each snapshot's toneRole to match its purpose
 - Generate a creative preset name that captures the tone character
@@ -88,7 +88,7 @@ Choose effects that serve the tone goal — do not fill slots for the sake of va
   Modulation is appropriate. Avoid heavy drive/distortion.
 - **Pop / funk**: 2-3 effects. Chorus or phaser is appropriate; keep delay mix low.
 
-**DEVICE RESTRICTION: This is a Helix Stadium preset. Use only Stadium-compatible model names from the Valid Model Names list above. Stadium preset generation is in preview — keep the signal chain focused (single amp, up to 6 effects).**
+**DEVICE RESTRICTION: This is a Helix Stadium preset. Use only Stadium-compatible model names from the Valid Model Names list above. Stadium preset generation is in preview — keep the signal chain focused (single amp, up to 8 effects).**
 
 Based on the conversation below, generate a ToneIntent:`;
 }

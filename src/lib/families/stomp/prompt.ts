@@ -67,9 +67,9 @@ const STOMP_AMP_CAB_PAIRINGS = [
 export function buildPlannerPrompt(_device: DeviceTarget, modelList: string): string {
   // Use conservative (more constrained) values as the unified reference.
   // The exact device restriction will be in the user message via planner.ts.
-  const maxEffects = 4; // STOMP conservative value (XL allows 6, but user message clarifies)
+  const maxEffects = 4; // STOMP conservative value (user message clarifies per-device)
   const maxSnapshots = STOMP_CONFIG.STOMP_MAX_SNAPSHOTS; // 3 (conservative; XL is 4)
-  const maxBlocks = STOMP_CONFIG.STOMP_MAX_BLOCKS; // 6 (conservative; XL is 9)
+  const maxBlocks = STOMP_CONFIG.STOMP_MAX_BLOCKS; // 8 (same for both Stomp and Stomp XL)
 
   return `You are HelixTones' Planner. You choose creative model selections for HX Stomp family presets.
 
