@@ -56,6 +56,29 @@ describe("helix/buildPlannerPrompt", () => {
     expect(prompt).toContain("secondAmpName");
   });
 
+  it("contains genre-informed effect model selection section", () => {
+    expect(prompt).toContain("## Genre-Informed Effect Model Selection");
+  });
+
+  it("genre-effect section appears before 'Based on the conversation'", () => {
+    const sectionIdx = prompt.indexOf("## Genre-Informed Effect Model Selection");
+    const endIdx = prompt.indexOf("Based on the conversation");
+    expect(sectionIdx).toBeGreaterThan(-1);
+    expect(sectionIdx).toBeLessThan(endIdx);
+  });
+
+  it("contains delay genre table with Transistor Tape", () => {
+    expect(prompt).toContain("Transistor Tape");
+  });
+
+  it("contains reverb genre table with '63 Spring", () => {
+    expect(prompt).toContain("'63 Spring");
+  });
+
+  it("contains wah genre table with Fassel", () => {
+    expect(prompt).toContain("Fassel");
+  });
+
   it("helix_lt and helix_floor return identical prompt text (single cache entry)", () => {
     const ltPrompt = buildPlannerPrompt("helix_lt", sampleModelList);
     const floorPrompt = buildPlannerPrompt("helix_floor", sampleModelList);
