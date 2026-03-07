@@ -722,3 +722,88 @@ describe("FX-01: guitar-type EQ shaping", () => {
     expect(scResult[1].parameters).toEqual(hbResult[1].parameters);
   });
 });
+
+// ============================================================
+// INTEL-05: effect paramOverrides in resolveDefaultParams
+// ============================================================
+// These tests verify that per-model paramOverrides are applied in the
+// resolution pipeline: defaultParams -> paramOverrides -> genre overrides -> tempo override.
+// paramOverrides fix model-inherent defaults; genre overrides still win (user intent).
+
+describe("effect paramOverrides (INTEL-05)", () => {
+  // Test 1: Ganymede reverb WITHOUT genre hint gets paramOverrides Mix=0.25 (not default 0.35)
+  it("Ganymede reverb without genre hint gets Mix=0.25 (paramOverrides wins over defaultParams 0.35)", () => {
+    const chain: BlockSpec[] = [
+      makeBlock({ type: "amp", modelId: "HD2_AmpUSDeluxeNrm", modelName: "US Deluxe Nrm" }),
+      makeBlock({ type: "reverb", modelId: "HD2_ReverbGanymede", modelName: "Ganymede" }),
+    ];
+    const intent = makeIntent(); // no genreHint
+    const result = resolveParameters(chain, intent, defaultCaps);
+    const reverb = result[1];
+    expect(reverb.parameters.Mix).toBe(0.25);
+  });
+
+  // Test 2: Heliosphere delay WITHOUT genre hint gets paramOverrides Feedback=0.28 (not default 0.35)
+  it("Heliosphere delay without genre hint gets Feedback=0.28 (paramOverrides wins over defaultParams 0.35)", () => {
+    const chain: BlockSpec[] = [
+      makeBlock({ type: "amp", modelId: "HD2_AmpUSDeluxeNrm", modelName: "US Deluxe Nrm" }),
+      makeBlock({ type: "delay", modelId: "HD2_DelayHeliosphere", modelName: "Heliosphere" }),
+    ];
+    const intent = makeIntent(); // no genreHint
+    const result = resolveParameters(chain, intent, defaultCaps);
+    const delay = result[1];
+    expect(delay.parameters.Feedback).toBe(0.28);
+  });
+
+  // Test 3: Ganymede reverb WITH blues genre hint — genre Mix=0.20 wins over paramOverrides Mix=0.25
+  it("Ganymede reverb with blues genre hint gets genre Mix (genre overrides win over paramOverrides)", () => {
+    const chain: BlockSpec[] = [
+      makeBlock({ type: "amp", modelId: "HD2_AmpUSDeluxeNrm", modelName: "US Deluxe Nrm" }),
+      makeBlock({ type: "reverb", modelId: "HD2_ReverbGanymede", modelName: "Ganymede" }),
+    ];
+    const intent = makeIntent({ genreHint: "blues" });
+    const result = resolveParameters(chain, intent, defaultCaps);
+    const reverb = result[1];
+    // Blues genre reverb Mix=0.20 should win over paramOverrides Mix=0.25
+    expect(reverb.parameters.Mix).toBe(0.20);
+  });
+
+  // Test 4: Cosmos Echo delay WITH ambient genre hint — genre Feedback=0.50 wins over paramOverrides Feedback=0.28
+  it("Cosmos Echo delay with ambient genre hint gets genre Feedback (genre overrides win over paramOverrides)", () => {
+    const chain: BlockSpec[] = [
+      makeBlock({ type: "amp", modelId: "HD2_AmpUSDeluxeNrm", modelName: "US Deluxe Nrm" }),
+      makeBlock({ type: "delay", modelId: "HD2_DelayCosmosEcho", modelName: "Cosmos Echo" }),
+    ];
+    const intent = makeIntent({ genreHint: "ambient" });
+    const result = resolveParameters(chain, intent, defaultCaps);
+    const delay = result[1];
+    // Ambient genre delay Feedback=0.50 should win over paramOverrides Feedback=0.28
+    expect(delay.parameters.Feedback).toBe(0.50);
+  });
+
+  // Test 5: Simple Delay (no paramOverrides) with genre hint — genre overrides still apply normally (regression guard)
+  it("Simple Delay (no paramOverrides) with blues genre hint still gets genre Feedback=0.20", () => {
+    const chain: BlockSpec[] = [
+      makeBlock({ type: "amp", modelId: "HD2_AmpUSDeluxeNrm", modelName: "US Deluxe Nrm" }),
+      makeBlock({ type: "delay", modelId: "HD2_DelaySimpleDelay", modelName: "Simple Delay" }),
+    ];
+    const intent = makeIntent({ genreHint: "blues" });
+    const result = resolveParameters(chain, intent, defaultCaps);
+    const delay = result[1];
+    // Blues genre delay Feedback=0.20 should override Simple Delay defaultParams Feedback=0.35
+    expect(delay.parameters.Feedback).toBe(0.20);
+  });
+
+  // Test 6: Plate reverb (no paramOverrides) without genre hint — gets raw defaultParams (regression guard)
+  it("Plate reverb (no paramOverrides) without genre hint gets raw defaultParams Mix=0.25", () => {
+    const chain: BlockSpec[] = [
+      makeBlock({ type: "amp", modelId: "HD2_AmpUSDeluxeNrm", modelName: "US Deluxe Nrm" }),
+      makeBlock({ type: "reverb", modelId: "HD2_ReverbPlate", modelName: "Plate" }),
+    ];
+    const intent = makeIntent(); // no genreHint
+    const result = resolveParameters(chain, intent, defaultCaps);
+    const reverb = result[1];
+    // Plate has no paramOverrides — raw defaultParams Mix=0.25
+    expect(reverb.parameters.Mix).toBe(0.25);
+  });
+});
