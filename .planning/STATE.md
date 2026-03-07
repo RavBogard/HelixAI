@@ -18,14 +18,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** Generated presets must sound professional enough to compete with custom presets that people pay experts for — mix-ready out of the box, dynamically responsive, signal-chain intelligent
-**Current focus:** v7.0 Phase 80 — Parameter Editing (COMPLETE, verifying)
+**Current focus:** v7.0 Phase 81 — Snapshot System (IN PROGRESS)
 
 ## Current Position
 
-Phase: 80 of 83 (Parameter Editing) — COMPLETE
-Plan: 80-01 complete, 80-02 complete
-Status: Both plans done — parameter schema registry + ParameterEditorPane UI (52 tests, 203 visualizer total)
-Last activity: 2026-03-07 — Plan 80-02 complete (schema-driven controls, model swap, 16 tests)
+Phase: 81 of 83 (Snapshot System) — IN PROGRESS
+Plan: 81-01 complete, 81-02 pending
+Status: Plan 81-01 done — toggleBlockBypass + SnapshotSelectorBar (14 new tests, 218 visualizer total)
+Last activity: 2026-03-07 — Plan 81-01 complete (toggleBlockBypass action, SnapshotSelectorBar component, TDD)
 
 Progress: [████████████████░░░░░░░░░░░░░░░░] 57% (4/7 phases)
 
@@ -74,6 +74,6 @@ Progress: [████████████████░░░░░░░
 ## Session Continuity
 
 Last session: 2026-03-07
-Stopped at: Phase 80 complete, pending transition to Phase 81
+Stopped at: Phase 81 plan 81-01 complete, executing plan 81-02
 Resume file: None
-Next command: Execute Phase 81 (Snapshot System)
+Next command: Continue Phase 81 execution (Plan 81-02)
