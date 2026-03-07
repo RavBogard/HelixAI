@@ -47,6 +47,9 @@ Progress: [░░░░░░░░░░░░░░░░░░░░░░░
 - [v7.0]: Deterministic parameter hydration over AI re-prompting — model swaps use Knowledge Layer defaults, no tokens consumed
 - [v7.0]: Two-step API (preview + download) — separates AI generation from user editing
 - [v7.0]: Snapshot editing writes to overlay, not base — parameterOverrides preserve base state integrity
+- [v7.0]: Visualizer lives on new `/visualizer` route — separate full-page, not inline in chat
+- [v7.0]: Model browser (DND-07) scoped to categorized dropdown for v7.0 — full search/filter deferred to v7.1
+- [v7.0]: Parameter schema needs `userVisible` filter — internal cab IR params (AmpCabZFir, etc.) hidden from editor
 
 ### Roadmap Evolution
 
