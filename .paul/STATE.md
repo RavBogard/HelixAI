@@ -5,37 +5,43 @@
 See: .paul/PROJECT.md (updated 2026-03-08)
 
 **Core value:** Guitarists and bassists can get professional-quality, device-specific Line 6 presets tailored to their exact rig and tonal preferences — without deep technical knowledge of their hardware.
-**Current focus:** Awaiting next milestone
+**Current focus:** v1.1 Post-Release Stabilization — build safety, type hygiene, Gemini migration
 
 ## Current Position
 
-Milestone: Awaiting next milestone
-Phase: None active
-Plan: None
-Status: Milestone v1.0 Production Release complete — ready for next
-Last activity: 2026-03-08 — Milestone completed
+Milestone: v1.1 Post-Release Stabilization
+Phase: 1 of 1 (Build & Type Safety Sweep) — Not Started
+Plan: None yet
+Status: Ready to plan
+Last activity: 2026-03-08 — v1.1 milestone created after 3 consecutive Vercel build failures
 
 Progress:
 - v1.0 Production Release: [██████████] 100% ✓
+- v1.1 Post-Release Stabilization: [░░░░░░░░░░] 0%
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ○        ○        ○     [Milestone complete - ready for next]
+  ○        ○        ○     [Ready to plan Phase 1]
 ```
 
 ## Accumulated Context
 
 ### Decisions
-- Nothing off the table for quality — willing to switch AI platforms, rewrite, or consolidate.
-- **Phase 4 decision: Switch planner from Claude Sonnet to Gemini 3 Flash.** Consolidate to single Gemini SDK (keep Claude only for vision). Gemini 3 Flash: 86% quality, 100% schema, $0.006/gen vs Claude Sonnet: 82% quality, 83% schema, $0.046/gen.
-- CRIT-15 Pod Go block key mapping verified correct — no bug.
-- Lead gain reduced 2.5→2.0 dB for clipping safety.
+- **Phase 4 decision: Switch planner from Claude Sonnet to Gemini 3 Flash.** Migration NOT YET EXECUTED — planner.ts still uses Claude Sonnet.
 - Helix Native device ID 2162690 UNVERIFIED — estimated from Line 6 sequence.
-- Helix Native maps to helix family, Variax explicitly excluded (no VDI jack).
-- v1.0 quality gate: all 10 device targets pass full pipeline + quality validation.
+
+### Known Issues (v1.1 scope)
+- 3 consecutive Vercel build failures after v1.0 tag:
+  1. `VARIAX_MODEL_NAMES` not exported from tone-intent.ts (fixed: 70a72b6)
+  2. Duplicate `getCatalogNames` + Zod 4 internal API break (fixed: 66b6a95)
+  3. `helix_native` missing from device type unions in page.tsx (fixed: 6ccb087)
+- Missing local deps: zustand, @dnd-kit/core, @dnd-kit/sortable, @dnd-kit/utilities, jsdom
+- Stale worktree: `.claude/worktrees/condescending-khorana/` causes duplicate test file detection
+- 12 critical invalid AI prompt amp names (Phase 1 audit) — verify status
+- Planner migration to Gemini 3 Flash not executed
 
 ### Deferred Issues
 All remaining audit issues tracked in `.paul/phases/01-audit-preset-quality/01-01-AUDIT-REPORT.md`.
@@ -44,16 +50,16 @@ All remaining audit issues tracked in `.paul/phases/01-audit-preset-quality/01-0
 - None
 
 ### Git State
-Last commit: c0cdfe7
+Last commit: 6ccb087
 Branch: main
 Feature branches merged: none
 
 ## Session Continuity
 
 Last session: 2026-03-08
-Stopped at: Milestone v1.0 Production Release complete
-Next action: /paul:discuss-milestone or /paul:milestone
-Resume file: .paul/MILESTONES.md
+Stopped at: v1.1 milestone created, ready to plan Phase 1
+Next action: /paul:plan for Phase 1 (Build & Type Safety Sweep)
+Resume file: .paul/ROADMAP.md
 
 ---
 *STATE.md — Updated after every significant action*
