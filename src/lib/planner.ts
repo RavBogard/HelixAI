@@ -1,38 +1,103 @@
 // src/lib/planner.ts
-// Claude Planner module — generates ToneIntents via structured output.
+// Gemini Planner module — generates ToneIntents via structured output.
 // The Planner makes creative choices only (amp, cab, effects, snapshots).
 // All numeric parameters are handled by the Knowledge Layer (Phase 2).
 
-import Anthropic from "@anthropic-ai/sdk";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { getToneIntentSchema, getModelListForPrompt, VARIAX_MODEL_NAMES, getCapabilities, STOMP_CONFIG } from "@/lib/helix";
+import { createGeminiClient, getModelId } from "@/lib/gemini";
+import {
+  getToneIntentSchema,
+  getModelListForPrompt,
+  VARIAX_MODEL_NAMES,
+  getCapabilities,
+  STOMP_CONFIG,
+  HELIX_AMP_NAMES,
+  HELIX_CAB_NAMES,
+  HELIX_EFFECT_NAMES,
+  STOMP_AMP_NAMES,
+  STOMP_CAB_NAMES,
+  STOMP_EFFECT_NAMES,
+  PODGO_AMP_NAMES,
+  PODGO_CAB_NAMES,
+  PODGO_EFFECT_NAMES,
+  STADIUM_AMP_NAMES,
+  STADIUM_CAB_NAMES,
+  STADIUM_EFFECT_NAMES,
+} from "@/lib/helix";
 import type { ToneIntent, DeviceTarget, DeviceFamily } from "@/lib/helix";
-import { logUsage, estimateClaudeCost } from "@/lib/usage-logger";
+import { logUsage, estimateGeminiCost } from "@/lib/usage-logger";
 import { getFamilyPlannerPrompt } from "@/lib/prompt-router";
 
+function getCatalogNames(family: string): { ampNames: string[]; cabNames: string[]; effectNames: string[] } {
+  switch (family) {
+    case "stomp": return { ampNames: [...STOMP_AMP_NAMES], cabNames: [...STOMP_CAB_NAMES], effectNames: [...STOMP_EFFECT_NAMES] };
+    case "podgo": return { ampNames: [...PODGO_AMP_NAMES], cabNames: [...PODGO_CAB_NAMES], effectNames: [...PODGO_EFFECT_NAMES] };
+    case "stadium": return { ampNames: [...STADIUM_AMP_NAMES], cabNames: [...STADIUM_CAB_NAMES], effectNames: [...STADIUM_EFFECT_NAMES] };
+    default: return { ampNames: [...HELIX_AMP_NAMES], cabNames: [...HELIX_CAB_NAMES], effectNames: [...HELIX_EFFECT_NAMES] };
+  }
+}
+
+function buildGeminiJsonSchema(family: string): Record<string, unknown> {
+  const { ampNames, cabNames, effectNames } = getCatalogNames(family);
+  return {
+    type: "object",
+    properties: {
+      ampName: { type: "string", enum: ampNames },
+      cabName: { type: "string", enum: cabNames },
+      secondAmpName: { type: "string", enum: ampNames },
+      secondCabName: { type: "string", enum: cabNames },
+      guitarType: { type: "string", enum: ["single_coil", "humbucker", "p90"] },
+      genreHint: { type: "string" },
+      effects: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            modelName: { type: "string", enum: effectNames },
+            role: { type: "string", enum: ["always_on", "toggleable", "ambient"] },
+          },
+          required: ["modelName", "role"],
+        },
+      },
+      snapshots: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            toneRole: { type: "string", enum: ["clean", "crunch", "lead", "ambient"] },
+          },
+          required: ["name", "toneRole"],
+        },
+      },
+      variaxModel: { type: "string", enum: [...VARIAX_MODEL_NAMES] },
+      tempoHint: { type: "integer" },
+      delaySubdivision: { type: "string", enum: ["quarter", "dotted_eighth", "eighth", "triplet"] },
+      presetName: { type: "string" },
+      description: { type: "string" },
+      guitarNotes: { type: "string" },
+    },
+    required: ["ampName", "cabName", "guitarType", "effects", "snapshots"],
+  };
+}
+
 /**
- * Call Claude Planner to generate a ToneIntent from conversation history.
+ * Call Gemini Planner to generate a ToneIntent from conversation history.
  *
- * Uses structured output (output_config with zodOutputFormat) so Claude's
- * constrained decoding guarantees valid JSON matching the family-specific ToneIntent schema.
+ * Uses Gemini structured output (responseJsonSchema) so constrained decoding
+ * guarantees valid JSON matching the family-specific ToneIntent schema.
  * Belt-and-suspenders: Zod validates the response after parsing to catch
  * any constraints that JSON Schema cannot express (min/max/minItems).
  *
  * @param device - Optional device target for device-specific model filtering (PGMOD-04)
  * @param toneContext - Optional rig emulation context string appended to user message only.
- *   Appended to the USER message (not the system prompt) to preserve prompt caching.
- *   The system prompt hash is unchanged; cache_control: ephemeral remains effective.
  */
-export async function callClaudePlanner(
+export async function callGeminiPlanner(
   messages: Array<{ role: string; content: string }>,
   device?: DeviceTarget,
   family?: DeviceFamily,
   toneContext?: string,
 ): Promise<ToneIntent> {
-  const apiKey = process.env.CLAUDE_API_KEY;
-  if (!apiKey) throw new Error("CLAUDE_API_KEY environment variable is required");
-
-  const client = new Anthropic({ apiKey });
+  const ai = createGeminiClient();
   const effectiveDevice = device ?? "helix_lt";
   const caps = getCapabilities(effectiveDevice);
   const modelList = getModelListForPrompt(caps);
@@ -44,16 +109,12 @@ export async function callClaudePlanner(
     .join("\n\n");
 
   // Append rig context to user message content only — NOT the system prompt.
-  // This preserves prompt caching: the system prompt hash is unchanged because
-  // getFamilyPlannerPrompt() is called with the same arguments regardless of toneContext.
   const userContent = toneContext
     ? `${conversationText}\n\n---\n\n${toneContext}`
     : conversationText;
 
   // Stomp cache unification: device-specific restriction goes in user message
   // so helix_stomp and helix_stomp_xl share a single system prompt cache entry.
-  // The system prompt uses shared values (8 blocks, 3 snapshots) as reference;
-  // this restriction overrides with exact per-device values.
   const resolvedFamily = family ?? "helix";
   let stompRestriction = "";
   if (resolvedFamily === "stomp") {
@@ -66,62 +127,60 @@ export async function callClaudePlanner(
   }
   const finalUserContent = userContent + stompRestriction;
 
-  const response = await client.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 4096,
-    system: [
-      {
-        type: "text" as const,
-        text: systemPrompt,
-        cache_control: { type: "ephemeral" as const, ttl: "1h" },
-      },
-    ],
-    messages: [{ role: "user", content: finalUserContent }],
-    output_config: {
-      format: zodOutputFormat(getToneIntentSchema(family ?? "helix")),
+  const modelId = getModelId(false); // standard tier for planner
+  const jsonSchema = buildGeminiJsonSchema(resolvedFamily);
+
+  const response = await ai.models.generateContent({
+    model: modelId,
+    contents: finalUserContent,
+    config: {
+      systemInstruction: systemPrompt,
+      responseMimeType: "application/json",
+      responseJsonSchema: jsonSchema as Record<string, unknown>,
+      maxOutputTokens: 4096,
     },
   });
 
-  // Token usage logging (AUDIT-01)
-  const { usage } = response;
-  const cacheRead = usage.cache_read_input_tokens ?? 0;
-  const cacheWrite = usage.cache_creation_input_tokens ?? 0;
-  const costUsd = estimateClaudeCost(usage);
-  const cacheHit = cacheRead > 0;
+  // Token usage logging
+  const usage = response.usageMetadata;
+  const inputTokens = usage?.promptTokenCount ?? 0;
+  const outputTokens = usage?.candidatesTokenCount ?? 0;
+  const cachedTokens = usage?.cachedContentTokenCount ?? 0;
+  const totalTokens = usage?.totalTokenCount ?? (inputTokens + outputTokens);
+  const costUsd = estimateGeminiCost(usage ?? {}, modelId);
+  const cacheHit = cachedTokens > 0;
 
   // Always log to console — Vercel captures this in function logs
   console.log(
-    `[planner] tokens=${usage.input_tokens}in/${usage.output_tokens}out` +
-    ` cache=${cacheHit ? "HIT" : "MISS"}(read=${cacheRead},write=${cacheWrite})` +
+    `[planner] model=${modelId} tokens=${inputTokens}in/${outputTokens}out` +
+    ` cache=${cacheHit ? "HIT" : "MISS"}(cached=${cachedTokens})` +
     ` cost=$${costUsd.toFixed(4)} device=${effectiveDevice}`
   );
 
   logUsage({
     timestamp: new Date().toISOString(),
     endpoint: "generate",
-    model: "claude-sonnet-4-6",
-    input_tokens: usage.input_tokens,
-    output_tokens: usage.output_tokens,
-    cache_creation_input_tokens: cacheWrite || null,
-    cache_read_input_tokens: cacheRead || null,
-    total_tokens: usage.input_tokens + usage.output_tokens,
+    model: modelId,
+    input_tokens: inputTokens,
+    output_tokens: outputTokens,
+    cache_creation_input_tokens: null,
+    cache_read_input_tokens: cachedTokens || null,
+    total_tokens: totalTokens,
     cost_usd: costUsd,
     cache_hit: cacheHit,
     device: effectiveDevice,
   });
 
-  // Extract text from response content
-  const textBlock = response.content.find((block) => block.type === "text");
-  if (!textBlock || textBlock.type !== "text") {
-    throw new Error("Claude returned no text content");
+  // Extract text from response
+  const text = response.text;
+  if (!text) {
+    throw new Error("Gemini returned no text content");
   }
 
   // Sanitize before Zod validation.
-  // zodOutputFormat strips min/max constraints from JSON Schema, so Claude's
-  // constrained decoding does NOT enforce string length limits. We truncate
-  // snapshot names here to avoid Zod rejecting valid-intent-but-too-long names
-  // (e.g., "CLEAN CHIME" → "CLEAN CHIM", "AMBIENT PAD" → "AMBIENT PA").
-  const raw = JSON.parse(textBlock.text);
+  // Structured output may not enforce string length limits. We truncate
+  // snapshot names here to avoid Zod rejecting valid-intent-but-too-long names.
+  const raw = JSON.parse(text);
   if (Array.isArray(raw.snapshots)) {
     raw.snapshots = raw.snapshots.map((s: { name?: string; toneRole?: string }) => ({
       ...s,
@@ -129,7 +188,7 @@ export async function callClaudePlanner(
     }));
   }
 
-  // Strip invalid variaxModel before Zod validation — Claude occasionally
+  // Strip invalid variaxModel before Zod validation — model occasionally
   // hallucinates model names (e.g., "Strat" instead of "Spank")
   if (raw.variaxModel && !VARIAX_MODEL_NAMES.includes(raw.variaxModel)) {
     delete raw.variaxModel;

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { callClaudePlanner } from "@/lib/planner";
+import { callGeminiPlanner } from "@/lib/planner";
 import {
   assembleSignalChain,
   resolveParameters,
@@ -86,10 +86,10 @@ export async function POST(req: NextRequest) {
       toneContext = buildToneContext(substitutionMap);
     }
 
-    // Step 1: Claude Planner generates ToneIntent (creative choices only)
+    // Step 1: Gemini Planner generates ToneIntent (creative choices only)
     // Pass device target so planner filters model list for Pod Go (PGMOD-04)
     // Pass toneContext so planner prioritizes rig-matched models (Phase 20)
-    const toneIntent = await callClaudePlanner(messages, deviceTarget, deviceFamily, toneContext);
+    const toneIntent = await callGeminiPlanner(messages, deviceTarget, deviceFamily, toneContext);
 
     // Step 2: Knowledge Layer pipeline (deterministic)
     // Resolve capabilities once, pass to all Knowledge Layer functions (KLAYER-04)

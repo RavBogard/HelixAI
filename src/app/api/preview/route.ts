@@ -7,7 +7,7 @@
 // Step 1 of two-step API: preview (this) + download (Phase 83).
 
 import { NextRequest, NextResponse } from "next/server";
-import { callClaudePlanner } from "@/lib/planner";
+import { callGeminiPlanner } from "@/lib/planner";
 import {
   assembleSignalChain,
   resolveParameters,
@@ -71,8 +71,8 @@ export async function POST(req: NextRequest) {
 
     // --- Pipeline: identical to /api/generate Steps 1-4 ---
 
-    // Step 1: Claude Planner generates ToneIntent (creative choices only — AI tokens here)
-    const toneIntent = await callClaudePlanner(messages, deviceTarget, deviceFamily, toneContext);
+    // Step 1: Gemini Planner generates ToneIntent (creative choices only — AI tokens here)
+    const toneIntent = await callGeminiPlanner(messages, deviceTarget, deviceFamily, toneContext);
 
     // Step 2: Knowledge Layer pipeline (deterministic — zero AI tokens)
     const caps = getCapabilities(deviceTarget);
