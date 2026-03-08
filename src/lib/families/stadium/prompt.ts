@@ -70,7 +70,7 @@ ${buildAmpCabPairingTable()}
 
 Choosing the recommended cab improves FOH translation and ensures the amp's character is preserved.
 
-${genreEffectModelSection()}
+${genreEffectModelSection("stadium")}
 
 ## Stadium-Specific Features
 

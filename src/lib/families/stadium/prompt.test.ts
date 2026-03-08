@@ -67,6 +67,15 @@ describe("stadium/buildPlannerPrompt", () => {
   it("contains wah genre table with Fassel", () => {
     expect(prompt).toContain("Fassel");
   });
+
+  it("contains Stadium-specific arena/FOH context in effect section", () => {
+    expect(prompt).toContain("Arena Caution");
+    expect(prompt).toContain("headroom");
+  });
+
+  it("contains FOH translation tips", () => {
+    expect(prompt).toContain("FOH Translation Tips");
+  });
 });
 
 describe("stadium/buildPlannerPrompt - cabAffinity data integrity", () => {

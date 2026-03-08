@@ -10,22 +10,22 @@ See: .paul/PROJECT.md (updated 2026-03-08)
 ## Current Position
 
 Milestone: v2.0 — Device Intelligence & UX Overhaul
-Phase: 2 of 5 (Device-Specific Preset Intelligence)
+Phase: 3 of 5 (AI Conciseness Overhaul)
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-03-08 — Phase 1 complete, transitioned to Phase 2
+Last activity: 2026-03-08 — Phase 2 complete, transitioned to Phase 3
 
 Progress:
 - v1.0 Production Release: [██████████] 100% ✓
 - v1.1 Post-Release Stabilization: [██████████] 100% ✓
-- v2.0 Device Intelligence & UX Overhaul: [██░░░░░░░░] 20%
+- v2.0 Device Intelligence & UX Overhaul: [████░░░░░░] 40%
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ✓        ✓        ✓     [Phase 1 complete — ready for Phase 2]
+  ○        ○        ○     [Ready for next PLAN]
 ```
 
 ## Accumulated Context
@@ -35,11 +35,12 @@ PLAN ──▶ APPLY ──▶ UNIFY
 - Manual JSON schema for Gemini planner (buildGeminiJsonSchema) — v1.1 Phase 1
 - Removed @anthropic-ai/sdk entirely; vision migrated to Gemini — v2.0 Phase 1
 - MODEL_STANDARD upgraded to gemini-3-flash-preview globally — v2.0 Phase 1
+- Per-family effect intelligence via DeviceFamily switch — v2.0 Phase 2
 
 ### Known Issues (v2.0 scope)
 - Chat→Planner architecture: two separate contexts with lossy text handoff — evaluate unified approach
 - AI chat responses too wordy — users missing important information
-- Presets not optimized per device — generic across families
+- ~~Presets not optimized per device — generic across families~~ (resolved Phase 2)
 - UI needs modernization for usability and readability
 
 ### Deferred Issues
@@ -49,15 +50,15 @@ All remaining audit issues tracked in `.paul/phases/01-audit-preset-quality/01-0
 - None
 
 ### Git State
-Last commit: 754fe37
+Last commit: c5edcc9
 Branch: main
 Feature branches merged: none
 
 ## Session Continuity
 
 Last session: 2026-03-08
-Stopped at: Phase 1 complete, ready to plan Phase 2
-Next action: /paul:plan for Phase 2 (Device-Specific Preset Intelligence)
+Stopped at: Phase 2 complete, ready to plan Phase 3
+Next action: /paul:plan for Phase 3 (AI Conciseness Overhaul)
 Resume file: .paul/ROADMAP.md
 
 ---

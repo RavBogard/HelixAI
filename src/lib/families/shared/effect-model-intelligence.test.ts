@@ -1,5 +1,5 @@
 // src/lib/families/shared/effect-model-intelligence.test.ts
-// TDD RED: Tests for genre-informed effect model selection prompt section
+// Tests for genre-informed effect model selection prompt section
 // and per-model paramOverrides on effect models (INTEL-01 through INTEL-05)
 
 import { describe, it, expect } from "vitest";
@@ -32,11 +32,83 @@ describe("genreEffectModelSection (INTEL-01/02/03/04)", () => {
     expect(section).toContain("Funk");
   });
 
-  it("contains Avoid column entries (e.g., Heliosphere avoided for Blues delay)", () => {
-    expect(section).toContain("Heliosphere");
-    // The table should have an Avoid column with entries
+  it("defaults to helix variant (contains Avoid column)", () => {
     expect(section).toContain("Avoid");
   });
+});
+
+// ============================================================
+// Per-family variants produce distinct content
+// ============================================================
+
+describe("genreEffectModelSection per-family variants", () => {
+  const helix = genreEffectModelSection("helix");
+  const stomp = genreEffectModelSection("stomp");
+  const podgo = genreEffectModelSection("podgo");
+  const stadium = genreEffectModelSection("stadium");
+
+  it("all four families produce different output", () => {
+    expect(helix).not.toBe(stomp);
+    expect(stomp).not.toBe(podgo);
+    expect(podgo).not.toBe(stadium);
+    expect(helix).not.toBe(stadium);
+  });
+
+  // Helix: dual-DSP layering
+  it("helix variant mentions dual-DSP and layering", () => {
+    expect(helix).toContain("dual-DSP");
+    expect(helix).toContain("DSP1");
+    expect(helix).toContain("Layering Opportunities");
+  });
+
+  it("helix variant contains Avoid column", () => {
+    expect(helix).toContain("Avoid");
+  });
+
+  // Stomp: priority-based
+  it("stomp variant contains Priority column", () => {
+    expect(stomp).toContain("Priority");
+    expect(stomp).toContain("Priority 1");
+  });
+
+  it("stomp variant contains budget guidance", () => {
+    expect(stomp).toContain("Budget Guidance");
+    expect(stomp).toContain("Drop order");
+  });
+
+  // Pod Go: 4-slot templates
+  it("podgo variant contains 4-slot templates", () => {
+    expect(podgo).toContain("4-Slot");
+    expect(podgo).toContain("Slot 1");
+    expect(podgo).toContain("Swap Option");
+  });
+
+  it("podgo variant enforces filling all slots", () => {
+    expect(podgo).toContain("Choose ALL 4");
+    expect(podgo).toContain("unused slot");
+  });
+
+  // Stadium: arena/FOH context
+  it("stadium variant contains arena and FOH context", () => {
+    expect(stadium).toContain("arena");
+    expect(stadium).toContain("FOH");
+    expect(stadium).toContain("Arena Caution");
+  });
+
+  it("stadium variant mentions headroom", () => {
+    expect(stadium).toContain("headroom");
+  });
+
+  // All families contain core model names
+  it.each(["helix", "stomp", "podgo", "stadium"] as const)(
+    "%s variant contains Transistor Tape, Plate, and Fassel",
+    (family) => {
+      const section = genreEffectModelSection(family);
+      expect(section).toContain("Transistor Tape");
+      expect(section).toContain("Plate");
+      expect(section).toContain("Fassel");
+    },
+  );
 });
 
 // ============================================================

@@ -3,7 +3,8 @@
 // Verifies trade-off language, STOMP_CONFIG usage, cross-family isolation.
 
 import { describe, it, expect } from "vitest";
-import { buildPlannerPrompt, getSystemPrompt } from "./prompt";
+import { buildPlannerPrompt, getSystemPrompt, STOMP_AMP_CAB_PAIRINGS } from "./prompt";
+import { AMP_MODELS } from "@/lib/helix/models";
 import { buildPlannerPrompt as helixBuildPlannerPrompt } from "../helix/prompt";
 import { STOMP_CONFIG } from "@/lib/helix/config";
 import { getCapabilities } from "@/lib/helix/device-family";
@@ -32,6 +33,16 @@ describe("stomp/buildPlannerPrompt", () => {
 
   it("contains wah genre table with Fassel", () => {
     expect(stompPrompt).toContain("Fassel");
+  });
+
+  it("contains Stomp-specific Priority column in effect section", () => {
+    expect(stompPrompt).toContain("Priority");
+    expect(stompPrompt).toContain("Priority 1");
+  });
+
+  it("contains Stomp budget guidance with drop order", () => {
+    expect(stompPrompt).toContain("Budget Guidance");
+    expect(stompPrompt).toContain("Drop order");
   });
 
   it("does NOT contain Agoura_ amp names (cross-family isolation)", () => {
@@ -124,5 +135,16 @@ describe("prompt/capability alignment", () => {
     // Prompt provides a practical cap of 8, even though chain-rules allows Infinity
     expect(helixPrompt).toContain("up to 8 effects");
     expect(caps.maxEffectsPerDsp).toBe(Infinity);
+  });
+});
+
+describe("stomp/prompt data integrity", () => {
+  it("all amp names in STOMP_AMP_CAB_PAIRINGS exist in the model catalog", () => {
+    const catalogAmpNames = new Set(Object.keys(AMP_MODELS));
+    for (const pairing of STOMP_AMP_CAB_PAIRINGS) {
+      for (const amp of pairing.amps) {
+        expect(catalogAmpNames.has(amp), `"${amp}" not found in AMP_MODELS catalog`).toBe(true);
+      }
+    }
   });
 });

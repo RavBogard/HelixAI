@@ -12,7 +12,7 @@ import { genreEffectModelSection } from "../shared/effect-model-intelligence";
 import type { DeviceTarget } from "@/lib/helix/types";
 
 // HD2 amp-to-cab pairings — Pod Go family, no Agoura models
-const PODGO_AMP_CAB_PAIRINGS = [
+export const PODGO_AMP_CAB_PAIRINGS = [
   {
     ampFamily: "Fender Deluxe / Vibrolux / Twin",
     amps: ["US Deluxe Nrm", "US Deluxe Vib", "Fullerton Nrm"],
@@ -30,7 +30,7 @@ const PODGO_AMP_CAB_PAIRINGS = [
   },
   {
     ampFamily: "Marshall Plexi / JCM800",
-    amps: ["Brit Plexi Nrm", "Brit Plexi Brt", "Brit 2204"],
+    amps: ["Brit Plexi Nrm", "Brit Plexi Brt", "Line 6 2204 Mod"],
     recommendedCabs: ["4x12 Greenback25", "4x12 Brit V30"],
   },
   {
@@ -40,7 +40,7 @@ const PODGO_AMP_CAB_PAIRINGS = [
   },
   {
     ampFamily: "Bogner / Friedman / 5150",
-    amps: ["Placater Dirty", "Placater Clean", "PV 5150"],
+    amps: ["Placater Dirty", "Placater Clean", "PV Panama"],
     recommendedCabs: ["4x12 XXL V30", "4x12 Uber V30"],
   },
 ];
@@ -83,7 +83,7 @@ ${gainStagingSection()}
 
 ${ampCabPairingSection(PODGO_AMP_CAB_PAIRINGS)}
 
-${genreEffectModelSection()}
+${genreEffectModelSection("podgo")}
 
 ## Effect Slot Planning by Genre (Pod Go — exactly 4 effect slots, no exceptions)
 

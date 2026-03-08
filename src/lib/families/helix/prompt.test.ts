@@ -3,7 +3,8 @@
 // Verifies dual-DSP routing, cross-family isolation, and cache identity.
 
 import { describe, it, expect } from "vitest";
-import { buildPlannerPrompt, getSystemPrompt } from "./prompt";
+import { buildPlannerPrompt, getSystemPrompt, HELIX_AMP_CAB_PAIRINGS } from "./prompt";
+import { AMP_MODELS } from "@/lib/helix/models";
 
 const sampleModelList = "## AMPS\n- TestAmp1\n- TestAmp2\n## CABS\n- TestCab1\n## EFFECTS\n- TestEffect1";
 
@@ -79,6 +80,11 @@ describe("helix/buildPlannerPrompt", () => {
     expect(prompt).toContain("Fassel");
   });
 
+  it("contains Helix-specific dual-DSP layering in effect section", () => {
+    expect(prompt).toContain("Layering Opportunities");
+    expect(prompt).toContain("dual-DSP");
+  });
+
   it("helix_lt and helix_floor return identical prompt text (single cache entry)", () => {
     const ltPrompt = buildPlannerPrompt("helix_lt", sampleModelList);
     const floorPrompt = buildPlannerPrompt("helix_floor", sampleModelList);
@@ -127,5 +133,16 @@ describe("helix/getSystemPrompt", () => {
     const ltPrompt = getSystemPrompt("helix_lt");
     const floorPrompt = getSystemPrompt("helix_floor");
     expect(ltPrompt).toBe(floorPrompt);
+  });
+});
+
+describe("helix/prompt data integrity", () => {
+  it("all amp names in HELIX_AMP_CAB_PAIRINGS exist in the model catalog", () => {
+    const catalogAmpNames = new Set(Object.keys(AMP_MODELS));
+    for (const pairing of HELIX_AMP_CAB_PAIRINGS) {
+      for (const amp of pairing.amps) {
+        expect(catalogAmpNames.has(amp), `"${amp}" not found in AMP_MODELS catalog`).toBe(true);
+      }
+    }
   });
 });

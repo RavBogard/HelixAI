@@ -13,7 +13,7 @@ import { STOMP_CONFIG } from "@/lib/helix/config";
 import type { DeviceTarget } from "@/lib/helix/types";
 
 // HD2 amp-to-cab pairings — Stomp family, no Agoura models
-const STOMP_AMP_CAB_PAIRINGS = [
+export const STOMP_AMP_CAB_PAIRINGS = [
   {
     ampFamily: "Fender Deluxe / Vibrolux / Twin",
     amps: ["US Deluxe Nrm", "US Deluxe Vib", "Fullerton Nrm"],
@@ -31,7 +31,7 @@ const STOMP_AMP_CAB_PAIRINGS = [
   },
   {
     ampFamily: "Marshall Plexi / JCM800",
-    amps: ["Brit Plexi Nrm", "Brit Plexi Brt", "Brit 2204"],
+    amps: ["Brit Plexi Nrm", "Brit Plexi Brt", "Line 6 2204 Mod"],
     recommendedCabs: ["4x12 Greenback25", "4x12 Brit V30"],
   },
   {
@@ -41,7 +41,7 @@ const STOMP_AMP_CAB_PAIRINGS = [
   },
   {
     ampFamily: "Bogner / Friedman / Diezel / 5150",
-    amps: ["Placater Dirty", "Placater Clean", "Das Benzin Mega", "PV 5150"],
+    amps: ["Placater Dirty", "Placater Clean", "Das Benzin Mega", "PV Panama"],
     recommendedCabs: ["4x12 XXL V30", "4x12 Uber V30"],
   },
   {
@@ -103,7 +103,7 @@ ${gainStagingSection()}
 
 ${ampCabPairingSection(STOMP_AMP_CAB_PAIRINGS)}
 
-${genreEffectModelSection()}
+${genreEffectModelSection("stomp")}
 
 ## Effect Discipline by Genre (HX Stomp family — ${maxBlocks} block slots)
 

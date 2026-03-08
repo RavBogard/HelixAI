@@ -12,7 +12,7 @@ import { genreEffectModelSection } from "../shared/effect-model-intelligence";
 import type { DeviceTarget } from "@/lib/helix/types";
 
 // HD2 amp-to-cab pairings — Helix family only, no Agoura models
-const HELIX_AMP_CAB_PAIRINGS = [
+export const HELIX_AMP_CAB_PAIRINGS = [
   {
     ampFamily: "Fender Deluxe / Vibrolux / Twin",
     amps: ["US Deluxe Nrm", "US Deluxe Vib", "Fullerton Nrm", "Fullerton Jump"],
@@ -35,17 +35,17 @@ const HELIX_AMP_CAB_PAIRINGS = [
   },
   {
     ampFamily: "Marshall JCM800 / JVM",
-    amps: ["Brit 2204", "Brit J-45 Nrm", "Brit J-45 Brt"],
+    amps: ["Line 6 2204 Mod", "Brit J45 Nrm", "Brit J45 Brt"],
     recommendedCabs: ["4x12 Brit V30", "4x12 Greenback25"],
   },
   {
     ampFamily: "Mesa Boogie Mark / Rectifier",
-    amps: ["Cali Rectifire", "Cali IV Lead", "Cali IV Rhythm 1", "Cali IV Rhythm 2"],
+    amps: ["Cali Rectifire", "Cali IV Lead"],
     recommendedCabs: ["4x12 Cali V30", "4x12 XXL V30"],
   },
   {
     ampFamily: "Bogner / Friedman / Diezel / 5150",
-    amps: ["Placater Dirty", "Placater Clean", "Derailed Ingrid", "Das Benzin Mega", "PV 5150"],
+    amps: ["Placater Dirty", "Placater Clean", "Derailed Ingrid", "Das Benzin Mega", "PV Panama"],
     recommendedCabs: ["4x12 XXL V30", "4x12 Uber V30"],
   },
   {
@@ -98,7 +98,7 @@ ${gainStagingSection()}
 
 ${ampCabPairingSection(HELIX_AMP_CAB_PAIRINGS)}
 
-${genreEffectModelSection()}
+${genreEffectModelSection("helix")}
 
 ## Effect Discipline by Genre
 

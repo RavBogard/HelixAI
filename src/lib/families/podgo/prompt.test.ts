@@ -3,7 +3,8 @@
 // Verifies 4-slot empowering framing, hard limit enforcement, cross-family isolation.
 
 import { describe, it, expect } from "vitest";
-import { buildPlannerPrompt, getSystemPrompt } from "./prompt";
+import { buildPlannerPrompt, getSystemPrompt, PODGO_AMP_CAB_PAIRINGS } from "./prompt";
+import { AMP_MODELS } from "@/lib/helix/models";
 
 const sampleModelList = "## AMPS\n- TestAmp1\n- TestAmp2\n## CABS\n- TestCab1\n## EFFECTS\n- TestEffect1";
 
@@ -67,6 +68,16 @@ describe("podgo/buildPlannerPrompt", () => {
   it("contains wah genre table with Fassel", () => {
     expect(prompt).toContain("Fassel");
   });
+
+  it("contains Pod Go 4-Slot effect templates", () => {
+    expect(prompt).toContain("4-Slot");
+    expect(prompt).toContain("Swap Option");
+  });
+
+  it("enforces filling all 4 slots", () => {
+    expect(prompt).toContain("Choose ALL 4");
+    expect(prompt).toContain("unused slot");
+  });
 });
 
 describe("CRAFT-02: genre-intelligent slot planning", () => {
@@ -107,5 +118,16 @@ describe("podgo/getSystemPrompt", () => {
 
   it("does not mention dual-amp support (Pod Go has none)", () => {
     expect(prompt).toContain("NO dual-amp");
+  });
+});
+
+describe("podgo/prompt data integrity", () => {
+  it("all amp names in PODGO_AMP_CAB_PAIRINGS exist in the model catalog", () => {
+    const catalogAmpNames = new Set(Object.keys(AMP_MODELS));
+    for (const pairing of PODGO_AMP_CAB_PAIRINGS) {
+      for (const amp of pairing.amps) {
+        expect(catalogAmpNames.has(amp), `"${amp}" not found in AMP_MODELS catalog`).toBe(true);
+      }
+    }
   });
 });
