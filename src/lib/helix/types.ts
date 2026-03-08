@@ -193,6 +193,7 @@ export type DeviceTarget =
   | "pod_go_xl"
   | "helix_stadium"
   | "helix_stadium_xl"
+  | "helix_native"
   | "helix_stomp"
   | "helix_stomp_xl";
 
@@ -206,13 +207,14 @@ export const DEVICE_IDS: Record<DeviceTarget, number> = {
   pod_go_xl: 2162695,       // PLACEHOLDER: Pod Go XL not yet a real product — uses pod_go ID
   helix_stadium: 2490368,   // Source: FluidSolo Stadium_Metal_Rhythm.hsp, meta.device_id, 2026-03-04 (Phase 31)
   helix_stadium_xl: 0,      // UNVERIFIED: real product (June 2025) but device ID not in corpus
+  helix_native: 2162690,    // UNVERIFIED: estimated from Line 6 device ID sequence (0x210002)
   helix_stomp: 2162694,     // Confirmed from Swell_Delay.hlx (HX Stomp hardware export, 2026-03-04)
   helix_stomp_xl: 2162699,  // Confirmed from The_Kids_Are_D.hlx (HX Stomp XL hardware export, 2026-03-04)
 } as const;
 
 /** Returns true if the device target is a Helix (LT, Floor, or Rack) */
 export function isHelix(device: DeviceTarget): boolean {
-  return device === "helix_lt" || device === "helix_floor" || device === "helix_rack";
+  return device === "helix_lt" || device === "helix_floor" || device === "helix_rack" || device === "helix_native";
 }
 
 /** Returns true if the device target is a Pod Go (any variant) */
@@ -230,9 +232,9 @@ export function isStomp(device: DeviceTarget): boolean {
   return device === "helix_stomp" || device === "helix_stomp_xl";
 }
 
-/** Returns true if the device supports Variax (VDI input). Helix Floor, LT, Rack, Stomp, Stomp XL all have VDI. Pod Go and Stadium do not. */
+/** Returns true if the device supports Variax (VDI input). Helix Floor, LT, Rack, Stomp, Stomp XL all have VDI. Pod Go, Stadium, and Native (software) do not. */
 export function isVariaxSupported(device: DeviceTarget): boolean {
-  return isHelix(device) || isStomp(device);
+  return (isHelix(device) && device !== "helix_native") || isStomp(device);
 }
 
 // ---------------------------------------------------------------------------

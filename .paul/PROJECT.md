@@ -1,7 +1,7 @@
 # Project: helixtones.com
 
 ## Description
-An AI-powered preset builder for Line 6 products. Supports Helix Floor/Rack/LT/Native (Native support TBD), Stadium and Stadium XL, HX Stomp and Stomp XL, and Pod Go. It understands each device family's hardware specs, limitations, and capabilities, then builds professional-quality presets with appropriate snapshots, stomps, and signal chains. Uses AI to interview users about their existing guitar/bass rig and desired tone, then generates downloadable presets that compete with professional presets for sale.
+An AI-powered preset builder for Line 6 products. Supports Helix Floor/Rack/LT/Native, Stadium and Stadium XL, HX Stomp and Stomp XL, and Pod Go. It understands each device family's hardware specs, limitations, and capabilities, then builds professional-quality presets with appropriate snapshots, stomps, and signal chains. Uses AI to interview users about their existing guitar/bass rig and desired tone, then generates downloadable presets that compete with professional presets for sale.
 
 ## Core Value
 Guitarists and bassists can get professional-quality, device-specific Line 6 presets tailored to their exact rig and tonal preferences — without deep technical knowledge of their hardware.
@@ -17,6 +17,7 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 - ✓ DSP ordering validation (advisory warnings) — Phase 3
 - ✓ AI platform benchmarked (6 providers x 6 scenarios) — Phase 4
 - ✓ Gemini 3 Flash selected as planner (100% schema, 86% quality, $0.006/gen) — Phase 4
+- ✓ Helix Native fully supported as device target — Phase 5
 
 ### Must Have
 - [To be defined during planning]
@@ -38,6 +39,8 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 | Lead gain 2.5→2.0 dB | Phase 3 | Prevent clipping with ChVol 0.80 |
 | Switch planner to Gemini 3 Flash | Phase 4 | 100% schema compliance, 86% quality, 8x cheaper than Claude Sonnet. Newer gen for longevity. |
 | Consolidate to single Gemini SDK | Phase 4 | Chat already Gemini; planner switching too. Claude retained only for vision. |
+| Helix Native device ID 2162690 UNVERIFIED | Phase 5 | Estimated from Line 6 sequence — confirm from real .hlx export |
+| Native maps to helix family, no Variax | Phase 5 | Same DSP/catalog as Floor; no VDI jack (DAW plugin) |
 
 ## Constraints
 - [To be identified during planning]
@@ -54,4 +57,4 @@ Quick Reference:
 - /ui-ux-pro-max → Frontend / UI / UX (required)
 
 ---
-*Last updated: 2026-03-08 after Phase 4*
+*Last updated: 2026-03-08 after Phase 5*

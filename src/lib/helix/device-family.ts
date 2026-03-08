@@ -214,6 +214,7 @@ export function resolveFamily(device: DeviceTarget): DeviceFamily {
     case "helix_lt":
     case "helix_floor":
     case "helix_rack":
+    case "helix_native":
       return "helix";
 
     case "helix_stomp":
@@ -249,6 +250,7 @@ export function getCapabilities(device: DeviceTarget): DeviceCapabilities {
     case "helix_lt":
     case "helix_floor":
     case "helix_rack":
+    case "helix_native":
       return HELIX_CAPABILITIES;
 
     case "helix_stomp":

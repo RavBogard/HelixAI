@@ -77,6 +77,7 @@ function getBlockLabel(block: { type: string; modelId: string }): string {
 const DEVICE_OPTIONS = [
   { id: "helix_lt" as const, label: "LT", desc: "Helix LT" },
   { id: "helix_floor" as const, label: "FLOOR", desc: "Helix Floor" },
+  { id: "helix_native" as const, label: "NATIVE", desc: "Helix Native" },
   { id: "helix_stadium" as const, label: "STADIUM", desc: "Helix Stadium" },
   { id: "pod_go" as const, label: "POD GO", desc: "Pod Go" },
   { id: "helix_stomp" as const, label: "STOMP", desc: "HX Stomp" },
@@ -86,6 +87,7 @@ const DEVICE_OPTIONS = [
 const DEVICE_LABELS: Record<typeof DEVICE_OPTIONS[number]["id"], string> = {
   helix_lt: "Helix LT",
   helix_floor: "Helix Floor",
+  helix_native: "Helix Native",
   helix_stadium: "Helix Stadium",
   pod_go: "Pod Go",
   helix_stomp: "HX Stomp",
