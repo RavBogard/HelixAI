@@ -26,6 +26,7 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 - ✓ Vision migrated from Claude to Gemini — zero Anthropic dependencies remain — v2.0 Phase 1
 - ✓ Standard model tier upgraded to gemini-3-flash-preview — v2.0 Phase 1
 - ✓ Per-family effect intelligence: Helix (dual-DSP layering), Stomp (priority-based), Pod Go (4-slot templates), Stadium (arena/FOH) — v2.0 Phase 2
+- ✓ AI chat conciseness: structured summaries, bolded key info, 2-3 exchange interviews — v2.0 Phase 3
 
 ### Must Have
 - [To be defined during planning]
@@ -51,6 +52,7 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 | Upgrade MODEL_STANDARD to gemini-3-flash-preview | v2.0 Phase 1 | User-directed; affects all callers (planner, vision, chat) globally |
 | Manual JSON schema for Gemini planner | v1.1 Phase 1 | Used buildGeminiJsonSchema() instead of zod-to-json-schema — avoids dependency and Gemini $ref incompatibility |
 | Per-family effect prompt parameterization via DeviceFamily switch | v2.0 Phase 2 | Each family gets structurally different effect guidance matching hardware constraints |
+| Keep two-context chat→planner architecture | v2.0 Phase 3 | Chat uses Google Search (incompatible with structured output), separation of concerns works well, full conversation history passed to planner (not lossy), unified would bloat system prompt |
 | Helix Native device ID 2162690 UNVERIFIED | Phase 5 | Estimated from Line 6 sequence — confirm from real .hlx export |
 | Native maps to helix family, no Variax | Phase 5 | Same DSP/catalog as Floor; no VDI jack (DAW plugin) |
 | v1.0 quality gate: all 10 targets pipeline-tested | Phase 6 | Pod Go, Stadium, Native, Rack — all pass full pipeline + quality validation |
@@ -70,4 +72,4 @@ Quick Reference:
 - /ui-ux-pro-max → Frontend / UI / UX (required)
 
 ---
-*Last updated: 2026-03-08 after v2.0 Phase 2*
+*Last updated: 2026-03-08 after v2.0 Phase 3*

@@ -105,7 +105,7 @@ describe("podgo/getSystemPrompt", () => {
   });
 
   it("contains empowering language about constraints", () => {
-    expect(prompt).toMatch(/plenty|make every one count|quality over quantity/i);
+    expect(prompt).toMatch(/plenty|every effect earns|make every one count|quality over quantity|focused preset/i);
   });
 
   it("does NOT contain Agoura_ amp names", () => {
@@ -117,7 +117,19 @@ describe("podgo/getSystemPrompt", () => {
   });
 
   it("does not mention dual-amp support (Pod Go has none)", () => {
-    expect(prompt).toContain("NO dual-amp");
+    expect(prompt).toMatch(/no dual-amp|NO dual-amp|no dual.amp/i);
+  });
+
+  it("contains conciseness directives", () => {
+    expect(prompt).toContain("Be concise");
+    expect(prompt).toContain("Bold key info");
+    expect(prompt).toContain("One question per response");
+  });
+
+  it("contains structured READY_TO_GENERATE format", () => {
+    expect(prompt).toContain("**Amp:**");
+    expect(prompt).toContain("**Effects:**");
+    expect(prompt).toContain("**Snapshots:**");
   });
 });
 

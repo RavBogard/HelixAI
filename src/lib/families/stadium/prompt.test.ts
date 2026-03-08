@@ -105,7 +105,7 @@ describe("stadium/getSystemPrompt", () => {
   });
 
   it("contains monitor mix references", () => {
-    expect(prompt).toMatch(/monitor/i);
+    expect(prompt).toMatch(/monitor|PA/i);
   });
 
   it("does NOT contain Placater (HD2 amp name)", () => {
@@ -126,5 +126,17 @@ describe("stadium/getSystemPrompt", () => {
 
   it("references Stadium-specific features", () => {
     expect(prompt).toContain("7-band Parametric EQ");
+  });
+
+  it("contains conciseness directives", () => {
+    expect(prompt).toContain("Be concise");
+    expect(prompt).toContain("Bold key info");
+    expect(prompt).toContain("One question per response");
+  });
+
+  it("contains structured READY_TO_GENERATE format", () => {
+    expect(prompt).toContain("**Amp:**");
+    expect(prompt).toContain("**Effects:**");
+    expect(prompt).toContain("**Snapshots:**");
   });
 });

@@ -129,6 +129,18 @@ describe("helix/getSystemPrompt", () => {
     expect(prompt).toContain("8 snapshots");
   });
 
+  it("contains conciseness directives", () => {
+    expect(prompt).toContain("Be concise");
+    expect(prompt).toContain("Bold key info");
+    expect(prompt).toContain("One question per response");
+  });
+
+  it("contains structured READY_TO_GENERATE format", () => {
+    expect(prompt).toContain("**Amp:**");
+    expect(prompt).toContain("**Effects:**");
+    expect(prompt).toContain("**Snapshots:**");
+  });
+
   it("helix_lt and helix_floor return identical chat prompt (single cache entry)", () => {
     const ltPrompt = getSystemPrompt("helix_lt");
     const floorPrompt = getSystemPrompt("helix_floor");

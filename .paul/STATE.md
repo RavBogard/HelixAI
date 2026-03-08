@@ -10,15 +10,15 @@ See: .paul/PROJECT.md (updated 2026-03-08)
 ## Current Position
 
 Milestone: v2.0 — Device Intelligence & UX Overhaul
-Phase: 3 of 5 (AI Conciseness Overhaul)
+Phase: 4 of 5 (UI/UX Redesign — Layout & Chat)
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-03-08 — Phase 2 complete, transitioned to Phase 3
+Last activity: 2026-03-08 — Phase 3 complete, transitioned to Phase 4
 
 Progress:
 - v1.0 Production Release: [██████████] 100% ✓
 - v1.1 Post-Release Stabilization: [██████████] 100% ✓
-- v2.0 Device Intelligence & UX Overhaul: [████░░░░░░] 40%
+- v2.0 Device Intelligence & UX Overhaul: [██████░░░░] 60%
 
 ## Loop Position
 
@@ -36,10 +36,11 @@ PLAN ──▶ APPLY ──▶ UNIFY
 - Removed @anthropic-ai/sdk entirely; vision migrated to Gemini — v2.0 Phase 1
 - MODEL_STANDARD upgraded to gemini-3-flash-preview globally — v2.0 Phase 1
 - Per-family effect intelligence via DeviceFamily switch — v2.0 Phase 2
+- Keep two-context chat→planner architecture (decided, not a debt) — v2.0 Phase 3
 
 ### Known Issues (v2.0 scope)
-- Chat→Planner architecture: two separate contexts with lossy text handoff — evaluate unified approach
-- AI chat responses too wordy — users missing important information
+- ~~Chat→Planner architecture: two separate contexts with lossy text handoff~~ (decided: keep two-context, v2.0 Phase 3)
+- ~~AI chat responses too wordy — users missing important information~~ (resolved Phase 3)
 - ~~Presets not optimized per device — generic across families~~ (resolved Phase 2)
 - UI needs modernization for usability and readability
 
@@ -50,15 +51,15 @@ All remaining audit issues tracked in `.paul/phases/01-audit-preset-quality/01-0
 - None
 
 ### Git State
-Last commit: c5edcc9
+Last commit: (pending phase commit)
 Branch: main
 Feature branches merged: none
 
 ## Session Continuity
 
 Last session: 2026-03-08
-Stopped at: Phase 2 complete, ready to plan Phase 3
-Next action: /paul:plan for Phase 3 (AI Conciseness Overhaul)
+Stopped at: Phase 3 complete, ready to plan Phase 4
+Next action: /paul:plan for Phase 4 (UI/UX Redesign — Layout & Chat)
 Resume file: .paul/ROADMAP.md
 
 ---

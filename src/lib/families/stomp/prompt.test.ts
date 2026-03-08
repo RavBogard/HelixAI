@@ -102,11 +102,23 @@ describe("stomp/getSystemPrompt", () => {
   });
 
   it("contains budget-conscious personality", () => {
-    expect(prompt).toMatch(/make every one count|slots count/i);
+    expect(prompt).toMatch(/make every one count|slots count|every effect earns|trade-offs/i);
   });
 
   it("contains dream-then-trim approach", () => {
     expect(prompt).toContain("Dream First, Then Trim");
+  });
+
+  it("contains conciseness directives", () => {
+    expect(prompt).toContain("Be concise");
+    expect(prompt).toContain("Bold key info");
+    expect(prompt).toContain("One question per response");
+  });
+
+  it("contains structured READY_TO_GENERATE format", () => {
+    expect(prompt).toContain("**Amp:**");
+    expect(prompt).toContain("**Effects:**");
+    expect(prompt).toContain("**Snapshots:**");
   });
 
   it("does NOT contain Agoura_ amp names", () => {
