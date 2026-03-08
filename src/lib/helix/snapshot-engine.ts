@@ -33,13 +33,18 @@ const ROLE_CHVOL: Record<string, number> = {
 
 // ---------------------------------------------------------------------------
 // Gain Block dB per role (SNAP-03)
-// Lead gets +2.5 dB for audible presence above other snapshots
+// Values are RAW dB applied to the Gain Block (Volume/FX Return block).
+// NOT normalized 0-1 — these are actual dB values written to the preset.
+// The Gain Block's "Gain" parameter accepts dB directly:
+//   0.0 = unity gain, 2.0 = +2dB boost, -3.0 = -3dB cut.
+// Lead gets a boost to cut through the mix; other roles stay at unity.
+// MED-08: Lead reduced from 2.5→2.0 to prevent clipping with ChVol 0.80.
 // ---------------------------------------------------------------------------
 
 const ROLE_GAIN_DB: Record<string, number> = {
   clean: 0.0,
   crunch: 0.0,
-  lead: 2.5,
+  lead: 2.0,
   ambient: 0.0,
 };
 
@@ -50,7 +55,7 @@ const ROLE_GAIN_DB: Record<string, number> = {
 const ROLE_DESCRIPTION: Record<string, string> = {
   clean: "Clean tone with transparent dynamics and natural amp response",
   crunch: "Rhythm crunch with controlled gain and tight low end",
-  lead: "Lead tone with +2.5 dB boost for cutting through the mix",
+  lead: "Lead tone with +2.0 dB boost for cutting through the mix",
   ambient: "Ambient wash with modulation, delay, and reverb fully engaged",
 };
 
@@ -245,11 +250,24 @@ export function buildSnapshots(
       });
     }
 
+    // ═══════════════════════════════════════════════════════════════════
     // DUAL-AMP BYPASS TOGGLE (DUAL-05)
-    // Convention: clean/crunch use primary amp, lead/ambient use secondary amp
-    // Note: cabs are excluded from blockEntries (handled separately by preset-builder).
-    // Amp bypass is sufficient — when an amp is bypassed on its path, the cab on that
-    // same path naturally produces no amp signal.
+    // ═══════════════════════════════════════════════════════════════════
+    // Primary amp (path=0): Clean/crunch tones — typically a lower-gain amp
+    // Secondary amp (path=1): Lead/ambient tones — typically a higher-gain amp
+    //
+    // The snapshot engine toggles amps per role:
+    //   clean/crunch → primary ON, secondary BYPASSED
+    //   lead/ambient → primary BYPASSED, secondary ON
+    //
+    // Both amps receive the same ChVol override per role (ROLE_CHVOL).
+    // Amp selection (which model goes on which path) is determined by
+    // chain-rules.ts, NOT by snapshot-engine. This engine only toggles.
+    //
+    // Cabs are excluded from blockEntries (handled separately by
+    // preset-builder). Amp bypass is sufficient — when an amp is bypassed
+    // on its path, the cab on that same path naturally produces no signal.
+    // ═══════════════════════════════════════════════════════════════════
     if (isDualAmp && primaryAmpEntry && secondaryAmpEntry) {
       const usePrimary = role === "clean" || role === "crunch";
       blockStates[primaryAmpEntry.key] = usePrimary;

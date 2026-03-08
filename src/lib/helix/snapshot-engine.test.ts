@@ -258,8 +258,8 @@ describe("buildSnapshots", () => {
     expect(result[2].parameterOverrides[ampKey].ChVol).toBe(0.80); // lead
   });
 
-  // Test 11: parameterOverrides include Gain Block: lead=+2.5 dB, others=0.0 dB (SNAP-03)
-  it("parameterOverrides: Gain Block lead=2.5 dB, others=0.0 dB", () => {
+  // Test 11: parameterOverrides include Gain Block: lead=+2.0 dB, others=0.0 dB (SNAP-03, MED-08)
+  it("parameterOverrides: Gain Block lead=2.0 dB, others=0.0 dB", () => {
     const intent = cleanIntent();
     const chain = buildChain(intent);
     const result = buildSnapshots(chain, standardSnapshots());
@@ -270,7 +270,7 @@ describe("buildSnapshots", () => {
     expect(result[0].parameterOverrides[gainKey]).toBeDefined();
     expect(result[0].parameterOverrides[gainKey].Gain).toBe(0.0); // clean
     expect(result[1].parameterOverrides[gainKey].Gain).toBe(0.0); // rhythm
-    expect(result[2].parameterOverrides[gainKey].Gain).toBe(2.5); // lead (+2.5 dB)
+    expect(result[2].parameterOverrides[gainKey].Gain).toBe(2.0); // lead (+2.0 dB, MED-08)
     expect(result[3].parameterOverrides[gainKey].Gain).toBe(0.0); // ambient
   });
 

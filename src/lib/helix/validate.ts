@@ -192,6 +192,52 @@ export function validatePresetSpec(spec: PresetSpec, caps: DeviceCapabilities): 
       throw new Error(`DSP1 exceeds ${caps.maxBlocksPerDsp}-block limit (${dsp1Count} blocks)`);
     }
   }
+
+  // 8. DSP ordering advisory check (MED-02)
+  validateDspOrdering(spec, caps);
+}
+
+// ---------------------------------------------------------------------------
+// DSP ordering validation (MED-02)
+// Advisory check: warns if blocks within a DSP are out of expected order.
+// Uses block type to infer expected position — not a hard error since
+// chain-rules.ts may have valid reasons for non-standard ordering.
+// ---------------------------------------------------------------------------
+
+const BLOCK_TYPE_ORDER: Record<string, number> = {
+  distortion: 2,  // wah/comp/drive/boost all before amp
+  dynamics: 1,    // compressor before distortion
+  amp: 4,
+  cab: 5,
+  eq: 7,
+  modulation: 8,
+  delay: 9,
+  reverb: 10,
+  volume: 11,     // gain block at end
+};
+
+function validateDspOrdering(spec: PresetSpec, caps: DeviceCapabilities): void {
+  function checkOrdering(blocks: PresetSpec["signalChain"], dspLabel: string): void {
+    let prevOrder = -1;
+    let prevName = "";
+    for (const block of blocks) {
+      const order = BLOCK_TYPE_ORDER[block.type] ?? 6;
+      if (order < prevOrder) {
+        console.warn(
+          `[validate] DSP ordering: ${block.modelName} (${block.type}) appears after ${prevName} on ${dspLabel} — expected earlier in chain`
+        );
+      }
+      prevOrder = order;
+      prevName = block.modelName;
+    }
+  }
+
+  if (caps.dspCount === 1) {
+    checkOrdering(spec.signalChain, "dsp0");
+  } else {
+    checkOrdering(spec.signalChain.filter(b => b.dsp === 0), "dsp0");
+    checkOrdering(spec.signalChain.filter(b => b.dsp === 1), "dsp1");
+  }
 }
 
 export interface ValidationResult {

@@ -12,6 +12,9 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 - ✓ Correct signal chain ordering (Horizon Gate post-cab) — Phase 2
 - ✓ Correct gain staging defaults (Scream 808, non-MV amps, high-gain Drive) — Phase 2
 - ✓ Correct volume balancing (ambient ChVol, reverb floor) — Phase 2
+- ✓ Safe lead snapshot volume levels (2.0 dB gain boost) — Phase 3
+- ✓ Pod Go block key mapping verified correct — Phase 3
+- ✓ DSP ordering validation (advisory warnings) — Phase 3
 
 ### Must Have
 - [To be defined during planning]
@@ -29,6 +32,8 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 | Pre-cab blocks on DSP0, post-cab on DSP1 | Phase 2 | Proper dual-DSP routing for Helix devices |
 | COMBO-01 compressor keys correct as-is | Phase 2 | Threshold/Sensitivity/PeakReduction match actual models |
 | Ambient mix boost is layered design, not double-apply | Phase 2 | param-engine base + snapshot-engine boost = correct |
+| CRIT-15 Pod Go block key mapping is correct | Phase 3 | dspIdx counts cabs, snapshotIdx skips — intentional offset |
+| Lead gain 2.5→2.0 dB | Phase 3 | Prevent clipping with ChVol 0.80 |
 
 ## Constraints
 - [To be identified during planning]
@@ -45,4 +50,4 @@ Quick Reference:
 - /ui-ux-pro-max → Frontend / UI / UX (required)
 
 ---
-*Last updated: 2026-03-08 after Phase 2*
+*Last updated: 2026-03-08 after Phase 3*
