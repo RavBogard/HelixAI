@@ -2,324 +2,16 @@
 
 import { useState, useRef, useEffect, useCallback, Suspense } from "react";
 import Image from "next/image";
-import ReactMarkdown from "react-markdown";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { Footer } from "@/components/Footer";
 import { DonationCard } from "@/components/DonationCard";
-
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-}
-
-// Signal chain block data from PresetSpec
-interface VizBlock {
-  type: string;
-  modelId: string;
-  modelName: string;
-  dsp: number;
-  enabled: boolean;
-}
-
-// Snapshot data from PresetSpec
-interface VizSnapshot {
-  name: string;
-  ledColor: number;
-  description: string;
-}
-
-// LED color number → CSS color mapping (matches Helix hardware colors)
-const LED_CSS: Record<number, string> = {
-  1: "#ef4444",   // Red
-  2: "#f97316",   // Orange
-  3: "#eab308",   // Yellow
-  4: "#22c55e",   // Green
-  5: "#06b6d4",   // Turquoise
-  6: "#3b82f6",   // Blue
-  7: "#a855f7",   // Purple
-  8: "#e5e7eb",   // White
-};
-
-// Block type -> display label (COHERE-05: dynamics handled by getBlockLabel)
-const BLOCK_LABEL: Record<string, string> = {
-  distortion: "Drive",
-  amp: "Amp",
-  cab: "Cab",
-  eq: "EQ",
-  volume: "Gain",
-  modulation: "Mod",
-  delay: "Delay",
-  reverb: "Reverb",
-  wah: "Wah",
-  pitch: "Pitch",
-  send_return: "FX Loop",
-};
-
-// COHERE-05: Context-aware block label — distinguishes compressor from gate
-function getBlockLabel(block: { type: string; modelId: string }): string {
-  if (block.type === "dynamics") {
-    // Compressor IDs: HD2_Compressor* (except HD2_CompressorAutoSwell which is a swell effect)
-    if (block.modelId.startsWith("HD2_Compressor") && !block.modelId.includes("AutoSwell")) {
-      return "Comp";
-    }
-    // Gate IDs: HD2_Gate*
-    if (block.modelId.startsWith("HD2_Gate")) {
-      return "Gate";
-    }
-    // Autoswell and unknown dynamics
-    return "Dynamics";
-  }
-  return BLOCK_LABEL[block.type] || block.type;
-}
-
-// Phase 66: device picker options — single source of truth for both rig-upload and chat-flow pickers
-const DEVICE_OPTIONS = [
-  { id: "helix_lt" as const, label: "LT", desc: "Helix LT" },
-  { id: "helix_floor" as const, label: "FLOOR", desc: "Helix Floor" },
-  { id: "helix_native" as const, label: "NATIVE", desc: "Helix Native" },
-  { id: "helix_stadium" as const, label: "STADIUM", desc: "Helix Stadium" },
-  { id: "pod_go" as const, label: "POD GO", desc: "Pod Go" },
-  { id: "helix_stomp" as const, label: "STOMP", desc: "HX Stomp" },
-  { id: "helix_stomp_xl" as const, label: "STOMP XL", desc: "HX Stomp XL" },
-] as const;
-
-const DEVICE_LABELS: Record<typeof DEVICE_OPTIONS[number]["id"], string> = {
-  helix_lt: "Helix LT",
-  helix_floor: "Helix Floor",
-  helix_native: "Helix Native",
-  helix_stadium: "Helix Stadium",
-  pod_go: "Pod Go",
-  helix_stomp: "HX Stomp",
-  helix_stomp_xl: "HX Stomp XL",
-};
-
-function SignalChainViz({ blocks }: { blocks: VizBlock[] }) {
-  return (
-    <div className="overflow-x-auto pb-1">
-      <div className="flex items-center gap-1.5 min-w-0">
-        {blocks.map((block, i) => (
-          <div key={i} className="flex items-center gap-1.5 flex-shrink-0">
-            <div
-              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg border text-center min-w-[64px] transition-opacity ${
-                block.enabled
-                  ? "bg-[var(--hlx-elevated)] border-[var(--hlx-border-warm)]"
-                  : "bg-[var(--hlx-surface)] border-[var(--hlx-border)] opacity-40"
-              }`}
-            >
-              <span className="text-[10px] font-semibold tracking-wide uppercase text-[var(--hlx-text-muted)]">
-                {getBlockLabel(block)}
-              </span>
-              <span className="text-[11px] text-[var(--hlx-text-sub)] leading-tight max-w-[80px] truncate">
-                {block.modelName}
-              </span>
-              <span
-                className="w-[5px] h-[5px] rounded-full mt-0.5"
-                style={{
-                  background: block.enabled ? "var(--hlx-green)" : "var(--hlx-text-muted)",
-                  boxShadow: block.enabled ? "0 0 6px var(--hlx-green)" : "none",
-                }}
-              />
-            </div>
-            {i < blocks.length - 1 && (
-              <svg width="12" height="12" viewBox="0 0 12 12" className="flex-shrink-0 text-[var(--hlx-text-muted)]">
-                <path d="M2 6h8M7 3l3 3-3 3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ToneDescriptionCard({
-  name,
-  description,
-  ampName,
-  cabName,
-  effects,
-  snapshots,
-  guitarNotes,
-}: {
-  name: string;
-  description: string;
-  ampName: string;
-  cabName: string;
-  effects: VizBlock[];
-  snapshots: VizSnapshot[];
-  guitarNotes?: string;
-}) {
-  return (
-    <div className="space-y-4">
-      {/* Amp → Cab pair */}
-      <div className="flex items-center gap-2 text-[0.8125rem]">
-        <span className="text-[var(--hlx-text-muted)] text-[11px] uppercase tracking-wide font-semibold">Signal</span>
-        <span className="text-[var(--hlx-text)]">{ampName}</span>
-        <span className="text-[var(--hlx-text-muted)]">&rarr;</span>
-        <span className="text-[var(--hlx-text)]">{cabName}</span>
-      </div>
-
-      {/* Effects list */}
-      {effects.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {effects.map((fx, i) => (
-            <span
-              key={i}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[var(--hlx-elevated)] border border-[var(--hlx-border)] text-[11px] text-[var(--hlx-text-sub)]"
-            >
-              <span className="text-[var(--hlx-text-muted)] font-semibold uppercase text-[9px]">
-                {getBlockLabel(fx)}
-              </span>
-              {fx.modelName}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Snapshots */}
-      <div className="flex flex-wrap gap-2">
-        {snapshots.map((snap, i) => (
-          <span
-            key={i}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[var(--hlx-surface)] border border-[var(--hlx-border)] text-[11px] text-[var(--hlx-text-sub)]"
-          >
-            <span
-              className="w-[6px] h-[6px] rounded-full flex-shrink-0"
-              style={{
-                background: LED_CSS[snap.ledColor] || LED_CSS[7],
-                boxShadow: `0 0 6px ${LED_CSS[snap.ledColor] || LED_CSS[7]}40`,
-              }}
-            />
-            {snap.name}
-          </span>
-        ))}
-      </div>
-
-      {/* Guitar notes */}
-      {guitarNotes && (
-        <div className="text-[0.8125rem] text-[var(--hlx-text-sub)] leading-relaxed border-l-2 border-[var(--hlx-border-warm)] pl-3 italic">
-          {guitarNotes}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// SubstitutionCard (Phase 21)
-// Renders the list of physical pedal → Helix model substitutions produced by
-// /api/map. Shown in the upload panel after vision extraction, before Generate.
-// ---------------------------------------------------------------------------
-
-interface SubstitutionEntryDisplay {
-  physicalPedal: string;
-  helixModel: string;
-  helixModelDisplayName: string;
-  substitutionReason: string;
-  confidence: "direct" | "close" | "approximate";
-  parameterMapping?: Record<string, number>;
-}
-
-function SubstitutionCard({ entries }: { entries: SubstitutionEntryDisplay[] }) {
-  if (entries.length === 0) return null;
-
-  return (
-    <div className="space-y-2">
-      <p className="text-[11px] uppercase tracking-widest text-[var(--hlx-text-muted)] font-semibold">
-        Helix Substitutions
-      </p>
-      <div className="space-y-2">
-        {entries.map((entry, i) => {
-          const isApproximate = entry.confidence === "approximate";
-          const isClose = entry.confidence === "close";
-          const isDirect = entry.confidence === "direct";
-
-          // Safety guard: never render an HD2_ internal ID in the UI.
-          // helixModelDisplayName is always human-readable per rig-intent.ts,
-          // but this guard protects against future regressions.
-          const displayName = entry.helixModelDisplayName.startsWith("HD2_")
-            ? entry.helixModel.replace(/^HD2_/, "").replace(/_/g, " ")
-            : entry.helixModelDisplayName;
-
-          return (
-            <div
-              key={i}
-              className={`rounded-lg border px-3 py-2.5 transition-all ${
-                isDirect
-                  ? "border-[var(--hlx-border-warm)] bg-[var(--hlx-elevated)]"
-                  : isClose
-                  ? "border-yellow-900/40 bg-[var(--hlx-surface)]"
-                  : "border-orange-900/30 bg-[var(--hlx-surface)] opacity-70"
-              }`}
-            >
-              {/* Header row: Physical → Helix name + confidence badge */}
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-[0.8125rem] text-[var(--hlx-text)] font-medium truncate">
-                    {entry.physicalPedal}
-                  </span>
-                  <svg
-                    className="w-3 h-3 text-[var(--hlx-text-muted)] flex-shrink-0"
-                    fill="none"
-                    viewBox="0 0 12 12"
-                  >
-                    <path
-                      d="M2 6h8M7 3l3 3-3 3"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                  <span
-                    className={`text-[0.8125rem] font-semibold flex-shrink-0 ${
-                      isDirect
-                        ? "text-[var(--hlx-amber)]"
-                        : isClose
-                        ? "text-yellow-400"
-                        : "text-orange-400"
-                    }`}
-                  >
-                    {displayName}
-                  </span>
-                </div>
-
-                <span
-                  className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide flex-shrink-0 ${
-                    isDirect
-                      ? "bg-green-950/40 text-green-400 border border-green-900/30"
-                      : isClose
-                      ? "bg-yellow-950/40 text-yellow-400 border border-yellow-900/30"
-                      : "bg-orange-950/30 text-orange-400 border border-orange-900/30"
-                  }`}
-                >
-                  {isDirect ? "Exact match" : isClose ? "Best match" : "Approximate"}
-                </span>
-              </div>
-
-              {/* Substitution reason */}
-              <p className="text-[11px] text-[var(--hlx-text-muted)] mt-1.5 leading-relaxed">
-                {entry.substitutionReason}
-              </p>
-
-              {/* Escape hatch panel — only for approximate (unknown pedal) entries */}
-              {isApproximate && (
-                <div className="mt-2 rounded-md bg-orange-950/20 border border-orange-900/20 px-2.5 py-2">
-                  <p className="text-[11px] text-orange-300/90 leading-relaxed">
-                    We don&apos;t have <strong>{entry.physicalPedal}</strong> in our
-                    database. You can describe its sound instead, or we&apos;ll treat it
-                    as an overdrive-type pedal.
-                  </p>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
+import { DevicePicker, DEVICE_OPTIONS, DEVICE_LABELS, type DeviceId } from "@/components/DevicePicker";
+import { ChatMessage, type Message } from "@/components/chat/ChatMessage";
+import { ChatInput } from "@/components/chat/ChatInput";
+import { SuggestionChips } from "@/components/chat/SuggestionChips";
+import { PresetCard, SubstitutionCard, type PresetCardData, type SubstitutionEntryDisplay } from "@/components/PresetCard";
+import { WelcomeScreen } from "@/components/WelcomeScreen";
 
 function HomeContent() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -328,25 +20,10 @@ function HomeContent() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [readyToGenerate, setReadyToGenerate] = useState(false);
   // CHANGE 4-B: add substitutionMap? to generatedPreset state type
-  const [generatedPreset, setGeneratedPreset] = useState<{
-    preset: Record<string, unknown>;
-    summary: string;
-    spec: Record<string, unknown> & { name?: string };
-    toneIntent: Record<string, unknown>;
-    device: string;
-    fileExtension?: string;
-    substitutionMap?: Array<{
-      physicalPedal: string;
-      helixModel: string;
-      helixModelDisplayName: string;
-      substitutionReason: string;
-      confidence: "direct" | "close" | "approximate";
-      parameterMapping?: Record<string, number>;
-    }>;
-  } | null>(null);
+  const [generatedPreset, setGeneratedPreset] = useState<PresetCardData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [premiumKey, setPremiumKey] = useState<string | null>(null);
-  const [selectedDevice, setSelectedDevice] = useState<"helix_lt" | "helix_floor" | "helix_native" | "pod_go" | "helix_stadium" | "helix_stomp" | "helix_stomp_xl">("helix_lt");
+  const [selectedDevice, setSelectedDevice] = useState<DeviceId>("helix_lt");
   // Phase 66: device lock state — true after device is chosen for a conversation (lock-in UX)
   const [deviceLocked, setDeviceLocked] = useState(false);
   // Phase 66: needs-picker state — true when resuming a legacy conversation with null/empty device (FRONT-04)
@@ -371,14 +48,7 @@ function HomeContent() {
   } | null>(null);
   const [visionError, setVisionError] = useState<string | null>(null);
   // CHANGE 4-A: rig mapping state (Phase 20) — populated after generate when rigIntent was provided
-  const [substitutionMap, setSubstitutionMap] = useState<Array<{
-    physicalPedal: string;
-    helixModel: string;
-    helixModelDisplayName: string;
-    substitutionReason: string;
-    confidence: "direct" | "close" | "approximate";
-    parameterMapping?: Record<string, number>;
-  }> | null>(null);
+  const [substitutionMap, setSubstitutionMap] = useState<SubstitutionEntryDisplay[] | null>(null);
   // Phase 21: mapping loading state — true while /api/map is in flight
   const [isMappingLoading, setIsMappingLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -482,14 +152,6 @@ function HomeContent() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
-
-  // Auto-resize textarea
-  useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.style.height = "auto";
-      inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 150) + "px";
-    }
-  }, [input]);
 
   // Phase 21: Re-run /api/map when the user changes device after vision extraction.
   // Ensures SubstitutionCard shows device-appropriate model names (Pod Go vs Helix LT).
@@ -714,7 +376,7 @@ function HomeContent() {
   // CHANGE 4-C: pass rigIntent in generate body; store substitutionMap from response
   // overrideMessages: used by handleRigGenerate() when calling from the welcome screen,
   // where React state hasn't flushed yet. Falls back to messages state for the chat flow.
-  async function generatePreset(overrideMessages?: Message[], overrideDevice?: "helix_lt" | "helix_floor" | "helix_native" | "pod_go" | "helix_stadium" | "helix_stomp" | "helix_stomp_xl") {
+  async function generatePreset(overrideMessages?: Message[], overrideDevice?: DeviceId) {
     setIsResumingConversation(false); // User is regenerating
     setIsGenerating(true);
     setError(null);
@@ -806,7 +468,7 @@ function HomeContent() {
   // Injects a synthetic user message so the /api/generate route's messages.length > 0
   // guard passes, then calls generatePreset() with the local message list before React
   // flushes state. Switches the UI to the chat flow by setting messages state.
-  async function handleRigGenerate(overrideDevice?: "helix_lt" | "helix_floor" | "helix_native" | "pod_go" | "helix_stadium" | "helix_stomp" | "helix_stomp_xl") {
+  async function handleRigGenerate(overrideDevice?: DeviceId) {
     const syntheticMsg: Message = {
       role: "user",
       content: "Build a preset from my pedal rig",
@@ -922,7 +584,7 @@ function HomeContent() {
 
       // Restore device — null-safe (FRONT-04): legacy rows have null/empty device
       if (data.device) {
-        setSelectedDevice(data.device as "helix_lt" | "helix_floor" | "helix_native" | "pod_go" | "helix_stadium" | "helix_stomp" | "helix_stomp_xl");
+        setSelectedDevice(data.device as DeviceId);
         setDeviceLocked(true);   // Resumed conversation = device already chosen
         setNeedsDevicePicker(false);
       } else {
@@ -953,13 +615,6 @@ function HomeContent() {
     } finally {
       // Phase 28: UXP-02 — always clear loading state
       setIsLoadingConversation(false)
-    }
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
     }
   }
 
@@ -1080,6 +735,12 @@ function HomeContent() {
     }
   }
 
+  // Shared handler for submitting chat from either welcome or chat input
+  function handleChatSubmit() {
+    if (!input.trim() || isStreaming) return;
+    sendMessage();
+  }
+
   return (
     <div className="relative z-10 flex flex-col h-screen max-w-5xl mx-auto">
       {/* Hidden file input — always in DOM so rigFileInputRef is never null */}
@@ -1154,170 +815,32 @@ function HomeContent() {
           </div>
         ) : messages.length === 0 ? (
           /* --- Welcome Screen --- */
-          <div className="flex flex-col items-center justify-center h-full text-center gap-9 hlx-stagger">
-            {/* Hero: Large centered logo + wordmark */}
-            <div className="space-y-6">
-              {/* Big logo with amber glow */}
-              <div className="flex justify-center">
-                <div className="relative">
-                  {/* Ambient radial glow behind logo */}
-                  <div
-                    className="absolute rounded-3xl"
-                    style={{
-                      inset: "-48px",
-                      background:
-                        "radial-gradient(ellipse at 50% 60%, rgba(240,144,10,0.25) 0%, transparent 68%)",
-                    }}
-                  />
-                  <Image
-                    src="/logo.jpg"
-                    alt="HelixTones"
-                    width={320}
-                    height={320}
-                    className="relative rounded-3xl"
-                    style={{
-                      boxShadow:
-                        "0 0 0 1px rgba(240,144,10,0.35), 0 0 100px rgba(240,144,10,0.32), 0 24px 80px rgba(0,0,0,0.7)",
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* Wordmark + subtitle */}
-              <div className="space-y-3">
-                <h1
-                  className="hlx-font-display hlx-hero-text font-black leading-none"
-                  style={{
-                    fontSize: "clamp(2.75rem, 7vw, 4.25rem)",
-                    letterSpacing: "0.14em",
-                  }}
-                >
-                  helixtones
-                </h1>
-                <p
-                  className="text-[var(--hlx-text-sub)] max-w-sm leading-relaxed mx-auto"
-                  style={{ fontSize: "0.9375rem" }}
-                >
-                  Describe an artist, a song, a genre, or just a vibe &mdash;
-                  I&apos;ll build you a studio-quality Helix preset.
-                </p>
-              </div>
-            </div>
-
-            {/* Phase 66: Device picker — must select before chatting (FRONT-01) */}
-            <div className="flex flex-col items-center gap-3 w-full max-w-sm">
-              <p className="text-[11px] text-[var(--hlx-text-muted)] uppercase tracking-widest font-semibold">
-                Which device are you building for?
-              </p>
-              <div className="grid grid-cols-3 gap-2.5 w-full">
-                {DEVICE_OPTIONS.map(({ id, label, desc }) => (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => { setSelectedDevice(id); setNeedsDevicePicker(false); }}
-                    className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all cursor-pointer ${
-                      selectedDevice === id
-                        ? "border-[var(--hlx-amber)] bg-[var(--hlx-elevated)] shadow-[0_0_18px_rgba(240,144,10,0.15)]"
-                        : "border-[var(--hlx-border)] bg-[var(--hlx-surface)] hover:border-[var(--hlx-border-warm)] hover:bg-[var(--hlx-elevated)]"
-                    }`}
-                  >
-                    <span className="text-[12px] font-bold tracking-wider text-[var(--hlx-text)]" style={{ fontFamily: "var(--font-mono)" }}>{label}</span>
-                    <span className="text-[10px] text-[var(--hlx-text-muted)]">{desc}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
+          <WelcomeScreen
+            selectedDevice={selectedDevice}
+            onDeviceSelect={(id) => { setSelectedDevice(id); setNeedsDevicePicker(false); }}
+          >
             {/* Inline input form — centered, matches card grid width */}
-            <form onSubmit={sendMessage} className="flex gap-2 items-end w-full max-w-2xl">
-              {/* Camera button */}
-              <button
-                type="button"
-                title="Analyze my pedal rig"
-                onClick={() => rigFileInputRef.current?.click()}
-                className={`relative flex-shrink-0 w-[44px] h-[44px] rounded-[11px] border flex items-center justify-center transition-all ${
-                  rigIntent
-                    ? "border-[var(--hlx-amber)] bg-[rgba(240,144,10,0.08)] text-[var(--hlx-amber)]"
-                    : rigImages.length > 0
-                    ? "border-[var(--hlx-border-warm)] bg-[var(--hlx-elevated)] text-[var(--hlx-text-sub)]"
-                    : "border-[var(--hlx-border)] bg-[var(--hlx-surface)] text-[var(--hlx-text-muted)] hover:text-[var(--hlx-text-sub)] hover:border-[var(--hlx-border-warm)]"
-                }`}
-              >
-                {isVisionLoading ? (
-                  <svg className="hlx-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                ) : (
-                  <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                )}
-                {rigImages.length > 0 && !isVisionLoading && !rigIntent && (
-                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-[var(--hlx-amber)] rounded-full text-[9px] text-[var(--hlx-void)] flex items-center justify-center font-bold leading-none">
-                    {rigImages.length}
-                  </span>
-                )}
-              </button>
-
-              <div className="flex-1">
-                <textarea
-                  ref={inputRef}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Describe the tone you're after..."
-                  rows={1}
-                  className="hlx-input"
-                  disabled={isStreaming}
-                />
-              </div>
-
-              {rigImages.length > 0 && !rigIntent && !isVisionLoading && (
-                <button
-                  type="button"
-                  onClick={callVision}
-                  className="flex-shrink-0 h-[44px] px-3 rounded-[11px] border border-[var(--hlx-amber)] bg-[rgba(240,144,10,0.06)] text-[var(--hlx-amber)] text-[0.8125rem] font-semibold transition-all hover:bg-[rgba(240,144,10,0.12)] whitespace-nowrap"
-                >
-                  Analyze
-                </button>
-              )}
-
-              <button
-                type="submit"
-                disabled={!input.trim() || isStreaming}
-                className="hlx-send"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19V5m0 0l-7 7m7-7l7 7" />
-                </svg>
-              </button>
-            </form>
+            <ChatInput
+              value={input}
+              onChange={setInput}
+              onSubmit={handleChatSubmit}
+              onCameraClick={() => rigFileInputRef.current?.click()}
+              onAnalyze={callVision}
+              isStreaming={isStreaming}
+              isVisionLoading={isVisionLoading}
+              rigImageCount={rigImages.length}
+              rigAnalyzed={!!rigIntent}
+              inputRef={inputRef}
+              formClassName="flex gap-2 items-end w-full max-w-2xl"
+            />
 
             {/* Suggestion cards — 2×3 grid */}
-            <div className="grid grid-cols-3 gap-2.5 w-full max-w-2xl">
-              {[
-                "Mark Knopfler\u2019s Sultans of Swing tone",
-                "SRV Texas blues crunch",
-                "Modern worship ambient clean",
-                "80s new wave jangly clean",
-                "Metallica Black Album rhythm",
-                "Edge of U2 dotted-eighth delays",
-              ].map((suggestion) => (
-                <button
-                  key={suggestion}
-                  onClick={() => {
-                    setInput(suggestion);
-                    inputRef.current?.focus();
-                  }}
-                  className="text-left p-4 rounded-xl border border-[var(--hlx-border)] bg-[var(--hlx-surface)] text-[0.8rem] leading-snug text-[var(--hlx-text-sub)] hover:border-[rgba(240,144,10,0.22)] hover:bg-[var(--hlx-elevated)] hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(0,0,0,0.35)] transition-all duration-200"
-                  style={{ fontFamily: "var(--font-mono), monospace" }}
-                >
-                  {suggestion}
-                </button>
-              ))}
-            </div>
+            <SuggestionChips
+              onSelect={(text) => {
+                setInput(text);
+                inputRef.current?.focus();
+              }}
+            />
 
             {/* --- Rig analysis results (Phase 23: shown after camera upload + analyze) --- */}
             {(isVisionLoading || rigIntent || visionError) && (
@@ -1387,30 +910,13 @@ function HomeContent() {
                       <p className="text-[11px] text-[var(--hlx-text-muted)] uppercase tracking-widest font-semibold text-center">
                         Which device are you building for?
                       </p>
-                      <div className="grid grid-cols-3 gap-2">
-                        {DEVICE_OPTIONS.map(({ id, label, desc }) => (
-                          <button
-                            key={id}
-                            disabled={isGenerating}
-                            onClick={() => { setSelectedDevice(id); handleRigGenerate(id); }}
-                            className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
-                              isGenerating && selectedDevice === id
-                                ? "border-[var(--hlx-amber)] bg-[var(--hlx-elevated)] shadow-[0_0_18px_rgba(240,144,10,0.15)]"
-                                : "border-[var(--hlx-border)] bg-[var(--hlx-surface)] hover:border-[var(--hlx-border-warm)] hover:bg-[var(--hlx-elevated)]"
-                            }`}
-                          >
-                            {isGenerating && selectedDevice === id ? (
-                              <svg className="hlx-spin h-4 w-4 text-[var(--hlx-amber)]" viewBox="0 0 24 24" fill="none">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                              </svg>
-                            ) : (
-                              <span className="text-[12px] font-bold tracking-wider text-[var(--hlx-text)]" style={{ fontFamily: "var(--font-mono)" }}>{label}</span>
-                            )}
-                            <span className="text-[10px] text-[var(--hlx-text-muted)]">{desc}</span>
-                          </button>
-                        ))}
-                      </div>
+                      <DevicePicker
+                        selected={selectedDevice}
+                        onSelect={(id) => { setSelectedDevice(id); handleRigGenerate(id); }}
+                        disabled={isGenerating}
+                        showSpinner={isGenerating}
+                        className="grid grid-cols-3 gap-2 w-full"
+                      />
                       <p className="text-[11px] text-[var(--hlx-text-muted)] text-center leading-relaxed">
                         Or describe your tone in the chat below for a more tailored result
                       </p>
@@ -1420,34 +926,17 @@ function HomeContent() {
 
               </div>
             )}
-
-          </div>
+          </WelcomeScreen>
         ) : (
           /* --- Chat Flow --- */
           <div className="space-y-5">
             {messages.map((msg, i) => (
-              <div
+              <ChatMessage
                 key={i}
-                className={`hlx-msg flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-              >
-                {msg.role === "assistant" ? (
-                  <div className="hlx-msg-ai max-w-[88%]">
-                    <div
-                      className={`message-content text-[0.9375rem] leading-relaxed text-[var(--hlx-text-sub)] ${
-                        isStreaming && i === messages.length - 1 ? "typing-cursor" : ""
-                      }`}
-                    >
-                      <ReactMarkdown>{msg.content}</ReactMarkdown>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="hlx-msg-user max-w-[80%]">
-                    <div className="text-[0.9375rem] leading-relaxed text-[var(--hlx-text)]">
-                      {msg.content}
-                    </div>
-                  </div>
-                )}
-              </div>
+                message={msg}
+                isLatest={i === messages.length - 1}
+                isStreaming={isStreaming}
+              />
             ))}
 
             {/* --- Phase 27: Download Stored Preset (resumed conversation) --- */}
@@ -1476,30 +965,13 @@ function HomeContent() {
                     <p className="text-[11px] text-[var(--hlx-text-muted)] uppercase tracking-widest font-semibold">
                       Select your device to generate
                     </p>
-                    <div className="grid grid-cols-3 gap-3 w-full max-w-sm">
-                      {DEVICE_OPTIONS.map(({ id, label, desc }) => (
-                        <button
-                          key={id}
-                          disabled={isGenerating}
-                          onClick={() => { setSelectedDevice(id); setNeedsDevicePicker(false); setDeviceLocked(true); generatePreset(undefined, id); }}
-                          className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
-                            isGenerating && selectedDevice === id
-                              ? "border-[var(--hlx-amber)] bg-[var(--hlx-elevated)] shadow-[0_0_22px_rgba(240,144,10,0.18)]"
-                              : "border-[var(--hlx-border)] bg-[var(--hlx-surface)] hover:border-[var(--hlx-border-warm)] hover:bg-[var(--hlx-elevated)] hover:shadow-[0_0_14px_rgba(240,144,10,0.07)]"
-                          }`}
-                        >
-                          {isGenerating && selectedDevice === id ? (
-                            <svg className="hlx-spin h-5 w-5 text-[var(--hlx-amber)]" viewBox="0 0 24 24" fill="none">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                            </svg>
-                          ) : (
-                            <span className="text-[13px] font-bold tracking-wider text-[var(--hlx-text)]" style={{ fontFamily: "var(--font-mono)" }}>{label}</span>
-                          )}
-                          <span className="text-[11px] text-[var(--hlx-text-muted)]">{desc}</span>
-                        </button>
-                      ))}
-                    </div>
+                    <DevicePicker
+                      selected={selectedDevice}
+                      onSelect={(id) => { setSelectedDevice(id); setNeedsDevicePicker(false); setDeviceLocked(true); generatePreset(undefined, id); }}
+                      disabled={isGenerating}
+                      showSpinner={isGenerating}
+                      className="grid grid-cols-3 gap-3 w-full max-w-sm"
+                    />
                   </>
                 ) : (
                   /* Normal flow: device already locked — show badge + Generate button */
@@ -1531,81 +1003,9 @@ function HomeContent() {
             )}
 
             {/* --- Single Preset Result --- */}
-            {generatedPreset && (() => {
-              const spec = generatedPreset.spec as Record<string, unknown>;
-              const chain = (spec.signalChain || []) as VizBlock[];
-              const snaps = (spec.snapshots || []) as VizSnapshot[];
-              const intent = generatedPreset.toneIntent as Record<string, unknown>;
-              const ampBlock = chain.find((b) => b.type === "amp");
-              const cabBlock = chain.find((b) => b.type === "cab");
-              const effectBlocks = chain.filter(
-                (b) => !["amp", "cab", "eq", "volume", "dynamics"].includes(b.type)
-              );
-
-              return (
-                <div className="hlx-preset-card space-y-5 max-w-2xl mx-auto">
-                  {/* Header */}
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5">
-                      <span className="hlx-led hlx-led-warm" />
-                      <h3 className="hlx-font-display text-base font-semibold text-[var(--hlx-text)]">
-                        {generatedPreset.spec?.name || "HelixTones Preset"}
-                      </h3>
-                      {/* Device badge — tells user which device this preset targets */}
-                      <span
-                        className="px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider border border-[var(--hlx-border)] text-[var(--hlx-text-muted)] bg-[var(--hlx-elevated)]"
-                        style={{ fontFamily: "var(--font-mono)" }}
-                      >
-                        {generatedPreset.device === "helix_lt" ? "LT"
-                          : generatedPreset.device === "helix_floor" ? "FLOOR"
-                          : generatedPreset.device === "helix_stadium" ? "STADIUM"
-                          : generatedPreset.device === "helix_stomp" ? "STOMP"
-                          : generatedPreset.device === "helix_stomp_xl" ? "STOMP XL"
-                          : "POD GO"}
-                      </span>
-                    </div>
-                    <button onClick={downloadPreset} className="hlx-download text-xs px-3 py-1.5">
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                      </svg>
-                      Download {generatedPreset.fileExtension || ".hlx"}
-                    </button>
-                  </div>
-
-                  <div className="hlx-rack" />
-
-                  {/* Signal Chain Visualization (FXUI-01) */}
-                  {chain.length > 0 && (
-                    <div>
-                      <p className="text-[10px] uppercase tracking-widest text-[var(--hlx-text-muted)] font-semibold mb-2">
-                        Signal Chain
-                      </p>
-                      <SignalChainViz blocks={chain} />
-                    </div>
-                  )}
-
-                  <div className="hlx-rack" />
-
-                  {/* Tone Description Card (FXUI-02) */}
-                  <ToneDescriptionCard
-                    name={(spec.name as string) || "Preset"}
-                    description={(spec.description as string) || ""}
-                    ampName={ampBlock?.modelName || (intent.ampName as string) || "Unknown Amp"}
-                    cabName={cabBlock?.modelName || (intent.cabName as string) || "Unknown Cab"}
-                    effects={effectBlocks}
-                    snapshots={snaps}
-                    guitarNotes={(spec.guitarNotes as string) || (intent.guitarNotes as string) || undefined}
-                  />
-
-                  <div className="hlx-rack" />
-
-                  {/* Summary */}
-                  <div className="text-[0.8125rem] text-[var(--hlx-text-sub)] leading-relaxed message-content">
-                    <ReactMarkdown>{generatedPreset.summary || ""}</ReactMarkdown>
-                  </div>
-                </div>
-              );
-            })()}
+            {generatedPreset && (
+              <PresetCard data={generatedPreset} onDownload={downloadPreset} />
+            )}
 
             {/* Phase 28: UXP-01 — Sign-in prompt for anonymous users after preset download */}
             {showSignInBanner && (
@@ -1704,75 +1104,20 @@ function HomeContent() {
 
       {/* --- Input Area (chat mode only) --- */}
       {messages.length > 0 && (
-      <div className="px-6 pb-6 pt-2">
-        <form onSubmit={sendMessage} className="flex gap-2 items-end">
-          {/* Camera button — opens file picker for rig photo upload */}
-          <button
-            type="button"
-            title="Analyze my pedal rig"
-            onClick={() => rigFileInputRef.current?.click()}
-            className={`relative flex-shrink-0 w-[44px] h-[44px] rounded-[11px] border flex items-center justify-center transition-all ${
-              rigIntent
-                ? "border-[var(--hlx-amber)] bg-[rgba(240,144,10,0.08)] text-[var(--hlx-amber)]"
-                : rigImages.length > 0
-                ? "border-[var(--hlx-border-warm)] bg-[var(--hlx-elevated)] text-[var(--hlx-text-sub)]"
-                : "border-[var(--hlx-border)] bg-[var(--hlx-surface)] text-[var(--hlx-text-muted)] hover:text-[var(--hlx-text-sub)] hover:border-[var(--hlx-border-warm)]"
-            }`}
-          >
-            {isVisionLoading ? (
-              <svg className="hlx-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-            ) : (
-              <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            )}
-            {/* Count badge — shown when images are staged but not yet analyzed */}
-            {rigImages.length > 0 && !isVisionLoading && !rigIntent && (
-              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-[var(--hlx-amber)] rounded-full text-[9px] text-[var(--hlx-void)] flex items-center justify-center font-bold leading-none">
-                {rigImages.length}
-              </span>
-            )}
-          </button>
-
-          <div className="flex-1">
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Describe the tone you're after..."
-              rows={1}
-              className="hlx-input"
-              disabled={isStreaming}
-            />
-          </div>
-
-          {/* Analyze button — appears when photos are staged but not yet analyzed */}
-          {rigImages.length > 0 && !rigIntent && !isVisionLoading && (
-            <button
-              type="button"
-              onClick={callVision}
-              className="flex-shrink-0 h-[44px] px-3 rounded-[11px] border border-[var(--hlx-amber)] bg-[rgba(240,144,10,0.06)] text-[var(--hlx-amber)] text-[0.8125rem] font-semibold transition-all hover:bg-[rgba(240,144,10,0.12)] whitespace-nowrap"
-            >
-              Analyze
-            </button>
-          )}
-
-          <button
-            type="submit"
-            disabled={!input.trim() || isStreaming}
-            className="hlx-send"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19V5m0 0l-7 7m7-7l7 7" />
-            </svg>
-          </button>
-        </form>
-      </div>
+        <div className="px-6 pb-6 pt-2">
+          <ChatInput
+            value={input}
+            onChange={setInput}
+            onSubmit={handleChatSubmit}
+            onCameraClick={() => rigFileInputRef.current?.click()}
+            onAnalyze={callVision}
+            isStreaming={isStreaming}
+            isVisionLoading={isVisionLoading}
+            rigImageCount={rigImages.length}
+            rigAnalyzed={!!rigIntent}
+            inputRef={inputRef}
+          />
+        </div>
       )}
       {/* Phase 50: Fixed donation card — triggered by Support link (header/footer) */}
       <DonationCard
