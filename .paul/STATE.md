@@ -10,22 +10,22 @@ See: .paul/PROJECT.md (updated 2026-03-08)
 ## Current Position
 
 Milestone: v2.0 — Device Intelligence & UX Overhaul
-Phase: 4 of 5 (UI/UX Redesign — Layout & Chat) — Complete
-Plan: 04-03 complete (3/3 plans done)
-Status: Phase 4 complete — transition required
-Last activity: 2026-03-08 — Completed Phase 4 (3 plans: component extraction, visual redesign, preset card)
+Phase: 5 of 5 (Polish & Integration Testing) — Complete
+Plan: 05-01 complete (1/1 plans done)
+Status: v2.0 MILESTONE COMPLETE — all 5 phases finished
+Last activity: 2026-03-08 — Phase 5 complete, v2.0 milestone closed
 
 Progress:
 - v1.0 Production Release: [██████████] 100% ✓
 - v1.1 Post-Release Stabilization: [██████████] 100% ✓
-- v2.0 Device Intelligence & UX Overhaul: [█████████░] 85%
+- v2.0 Device Intelligence & UX Overhaul: [██████████] 100% ✓
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ✓        ✓        ✓     [Loop complete — ready for next PLAN]
+  ✓        ✓        ✓     [Loop complete — v2.0 milestone finished]
 ```
 
 ## Accumulated Context
@@ -42,7 +42,7 @@ PLAN ──▶ APPLY ──▶ UNIFY
 - ~~Chat→Planner architecture: two separate contexts with lossy text handoff~~ (decided: keep two-context, v2.0 Phase 3)
 - ~~AI chat responses too wordy — users missing important information~~ (resolved Phase 3)
 - ~~Presets not optimized per device — generic across families~~ (resolved Phase 2)
-- UI needs modernization for usability and readability
+- ~~UI needs modernization for usability and readability~~ (resolved Phase 4)
 
 ### Deferred Issues
 All remaining audit issues tracked in `.paul/phases/01-audit-preset-quality/01-01-AUDIT-REPORT.md`.
@@ -58,9 +58,9 @@ Feature branches merged: none
 ## Session Continuity
 
 Last session: 2026-03-08
-Stopped at: Phase 4 complete — transition required
-Next action: Commit Phase 4, update ROADMAP, then /paul:plan for Phase 5
-Resume file: .paul/phases/04-ui-ux-redesign-layout-chat/04-03-SUMMARY.md
+Stopped at: v2.0 milestone complete
+Next action: /paul:complete-milestone or /paul:milestone for v3.0
+Resume file: .paul/ROADMAP.md
 
 ---
 *STATE.md — Updated after every significant action*

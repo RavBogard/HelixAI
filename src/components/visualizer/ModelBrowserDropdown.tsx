@@ -114,6 +114,8 @@ export function ModelBrowserDropdown({
           {/* Category header */}
           <button
             type="button"
+            aria-expanded={expandedCategory === category.label}
+            aria-label={`${category.label} effects`}
             className="w-full text-left text-xs text-gray-400 uppercase font-mono px-3 py-1.5 sticky top-0 bg-gray-800 hover:text-gray-200 transition-colors flex items-center justify-between"
             onClick={() => handleCategoryClick(category.label)}
           >

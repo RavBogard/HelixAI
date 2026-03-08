@@ -42,7 +42,8 @@ export function ChatInput({
       el.style.height = "auto";
       el.style.height = Math.min(el.scrollHeight, 150) + "px";
     }
-  }, [textareaRef]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     resizeTextarea();
@@ -68,6 +69,7 @@ export function ChatInput({
       <button
         type="button"
         title="Analyze my pedal rig"
+        aria-label="Upload rig photo"
         onClick={onCameraClick}
         className={`relative flex-shrink-0 w-[44px] h-[44px] rounded-[11px] border flex items-center justify-center transition-all ${
           rigAnalyzed
@@ -112,6 +114,7 @@ export function ChatInput({
       {showAnalyze && (
         <button
           type="button"
+          aria-label="Analyze rig photo"
           onClick={onAnalyze}
           className="flex-shrink-0 h-[44px] px-3 rounded-[11px] border border-[var(--hlx-amber)] bg-[rgba(240,144,10,0.06)] text-[var(--hlx-amber)] text-[0.8125rem] font-semibold transition-all hover:bg-[rgba(240,144,10,0.12)] whitespace-nowrap"
         >
@@ -121,6 +124,7 @@ export function ChatInput({
 
       <button
         type="submit"
+        aria-label="Send message"
         disabled={!value.trim() || isStreaming}
         className="hlx-send"
       >

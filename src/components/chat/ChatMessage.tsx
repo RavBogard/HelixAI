@@ -16,6 +16,8 @@ interface ChatMessageProps {
 export function ChatMessage({ message, isLatest, isStreaming }: ChatMessageProps) {
   return (
     <div
+      role="article"
+      aria-label={message.role === "assistant" ? "AI message" : "Your message"}
       className={`hlx-msg flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
     >
       {message.role === "assistant" ? (

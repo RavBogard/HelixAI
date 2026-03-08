@@ -28,6 +28,8 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 - ✓ Per-family effect intelligence: Helix (dual-DSP layering), Stomp (priority-based), Pod Go (4-slot templates), Stadium (arena/FOH) — v2.0 Phase 2
 - ✓ AI chat conciseness: structured summaries, bolded key info, 2-3 exchange interviews — v2.0 Phase 3
 - ✓ UI/UX redesign: component extraction, chat typography/responsive, PresetCard visual polish — v2.0 Phase 4
+- ✓ WCAG 2.1 AA accessibility: aria-live chat, labeled controls, color contrast compliance — v2.0 Phase 5
+- ✓ Test infrastructure: vitest jsdom default, npm test scripts, 1201 tests passing — v2.0 Phase 5
 
 ### Must Have
 - [To be defined during planning]
@@ -57,6 +59,8 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 | Helix Native device ID 2162690 UNVERIFIED | Phase 5 | Estimated from Line 6 sequence — confirm from real .hlx export |
 | Native maps to helix family, no Variax | Phase 5 | Same DSP/catalog as Floor; no VDI jack (DAW plugin) |
 | v1.0 quality gate: all 10 targets pipeline-tested | Phase 6 | Pod Go, Stadium, Native, Rack — all pass full pipeline + quality validation |
+| --hlx-text-muted lightened #524840 → #8a7b6e | v2.0 Phase 5 | WCAG AA contrast compliance (~4.5:1 on --hlx-surface) |
+| DevicePicker uses radiogroup/radio semantics | v2.0 Phase 5 | Single-choice selection, not tabs — aria-checked for state |
 
 ## Constraints
 - [To be identified during planning]
@@ -73,4 +77,4 @@ Quick Reference:
 - /ui-ux-pro-max → Frontend / UI / UX (required)
 
 ---
-*Last updated: 2026-03-08 after v2.0 Phase 3*
+*Last updated: 2026-03-08 after v2.0 Phase 5 (milestone complete)*

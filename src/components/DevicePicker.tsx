@@ -40,11 +40,14 @@ export function DevicePicker({
   className = "grid grid-cols-3 gap-2.5 w-full",
 }: DevicePickerProps) {
   return (
-    <div className={className}>
+    <div role="radiogroup" aria-label="Select your Line 6 device" className={className}>
       {DEVICE_OPTIONS.map(({ id, label, desc }) => (
         <button
           key={id}
           type="button"
+          role="radio"
+          aria-checked={selected === id}
+          aria-label={desc}
           disabled={disabled}
           onClick={() => onSelect(id)}
           className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${

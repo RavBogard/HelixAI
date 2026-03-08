@@ -929,7 +929,7 @@ function HomeContent() {
           </WelcomeScreen>
         ) : (
           /* --- Chat Flow --- */
-          <div className="space-y-6">
+          <div className="space-y-6" aria-live="polite" aria-atomic="false">
             {messages.map((msg, i) => (
               <ChatMessage
                 key={i}

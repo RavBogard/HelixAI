@@ -4,7 +4,37 @@ Completed milestone log for this project.
 
 | Milestone | Completed | Duration | Stats |
 |-----------|-----------|----------|-------|
+| v1.1 Post-Release Stabilization | 2026-03-08 | 1 day | 1 phase, 3 plans |
 | v1.0 Production Release | 2026-03-08 | 1 day | 6 phases, 6 plans |
+
+---
+
+## v1.1 Post-Release Stabilization
+
+**Completed:** 2026-03-08
+**Duration:** 1 day
+
+### Stats
+
+| Metric | Value |
+|--------|-------|
+| Phases | 1 |
+| Plans | 3 |
+| Files changed | 12 |
+
+### Key Accomplishments
+
+- Fixed 3 consecutive Vercel build failures (missing exports, duplicate functions, missing type unions)
+- Restored missing local dependencies (zustand, @dnd-kit/*, @testing-library/react, jsdom)
+- Cleaned stale worktrees causing duplicate test runs
+- Audited and fixed 7 invalid AI prompt amp names + added data integrity tests
+- Migrated planner from Claude Sonnet to Gemini 3 Flash (completing v1.0 Phase 4 decision)
+
+### Key Decisions
+
+| Decision | Phase | Rationale |
+|----------|-------|-----------|
+| Manual JSON schema for Gemini planner | 1 | buildGeminiJsonSchema() avoids zod-to-json-schema dependency and Gemini $ref incompatibility |
 
 ---
 

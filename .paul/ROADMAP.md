@@ -5,8 +5,8 @@ Build an AI-powered preset builder that interviews users about their rig and ton
 
 ## Current Milestone
 **v2.0 — Device Intelligence & UX Overhaul** (v2.0.0)
-Status: 🚧 In Progress
-Phases: 4 of 5 complete
+Status: ✅ Complete
+Phases: 5 of 5 complete
 
 ## Phases
 
@@ -16,7 +16,7 @@ Phases: 4 of 5 complete
 | 2 | Device-Specific Preset Intelligence | 1/1 | ✅ Complete | 2026-03-08 |
 | 3 | AI Conciseness Overhaul | 1/1 | ✅ Complete | 2026-03-08 |
 | 4 | UI/UX Redesign — Layout & Chat | 3/3 | ✅ Complete | 2026-03-08 |
-| 5 | Polish & Integration Testing | TBD | Not started | - |
+| 5 | Polish & Integration Testing | 1/1 | ✅ Complete | 2026-03-08 |
 
 ## Phase Details
 
@@ -73,4 +73,4 @@ Focus: Cross-device E2E testing of new prompts + UI. Accessibility audit. Perfor
 </details>
 
 ---
-*Roadmap updated: 2026-03-08 — Phase 3 complete*
+*Roadmap updated: 2026-03-08 — v2.0 milestone complete (all 5 phases)*
