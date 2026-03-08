@@ -40,12 +40,10 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { GoogleGenAI } from "@google/genai";
 
 // Project imports — use relative paths since scripts/ isn't under @/
-import { getToneIntentSchema, VARIAX_MODEL_NAMES } from "../src/lib/helix/tone-intent";
+import { getToneIntentSchema } from "../src/lib/helix/tone-intent";
 import { getCapabilities, resolveFamily } from "../src/lib/helix/device-family";
-import { getModelListForPrompt } from "../src/lib/helix/models";
+import { getModelListForPrompt, AMP_MODELS, CAB_MODELS, STADIUM_AMPS, VARIAX_MODEL_NAMES } from "../src/lib/helix/models";
 import { getFamilyPlannerPrompt } from "../src/lib/prompt-router";
-import { AMP_MODELS, CAB_MODELS } from "../src/lib/helix/models";
-import { STADIUM_AMPS } from "../src/lib/helix/models";
 import { HELIX_AMP_NAMES, HELIX_CAB_NAMES, HELIX_EFFECT_NAMES } from "../src/lib/helix/catalogs/helix-catalog";
 import { STOMP_AMP_NAMES, STOMP_CAB_NAMES, STOMP_EFFECT_NAMES } from "../src/lib/helix/catalogs/stomp-catalog";
 import { PODGO_AMP_NAMES, PODGO_CAB_NAMES, PODGO_EFFECT_NAMES } from "../src/lib/helix/catalogs/podgo-catalog";
