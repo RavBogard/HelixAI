@@ -1,20 +1,21 @@
 // src/lib/rig-vision.ts
-// Server-side module: Anthropic vision call + JSON extraction for pedal identification.
+// Server-side module: Gemini vision call + JSON extraction for pedal identification.
 // Imported ONLY by src/app/api/vision/route.ts — NOT by any client component.
 //
 // Architecture: The route receives base64 images from the client, calls this module,
 // and returns { rigIntent: RigIntent }. The client (page.tsx) handles compression
-// and the fetch call; this module handles the Anthropic SDK interaction.
+// and the fetch call; this module handles the Gemini SDK interaction.
 
-import Anthropic from "@anthropic-ai/sdk";
+import { createGeminiClient, getModelId } from "@/lib/gemini";
 import { RigIntentSchema } from "@/lib/helix";
 import type { RigIntent } from "@/lib/helix";
+import { logUsage, estimateGeminiCost } from "@/lib/usage-logger";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-/** One image ready to send to the Anthropic vision API. */
+/** One image ready to send to the Gemini vision API. */
 export interface VisionImage {
   /** Raw base64 string — NO "data:image/...;base64," prefix. */
   data: string;
@@ -67,9 +68,9 @@ Your job is to analyze photos of guitar effect pedals and return structured JSON
 // ---------------------------------------------------------------------------
 
 /**
- * Extract the first valid JSON object from a Claude text response.
+ * Extract the first valid JSON object from a Gemini text response.
  *
- * Strategy 1: Direct parse — optimal path when Claude follows the system prompt
+ * Strategy 1: Direct parse — optimal path when Gemini follows the system prompt
  *             and returns raw JSON with no surrounding text.
  * Strategy 2: JSON code fence — extracts content from ```json ... ``` blocks.
  * Strategy 3: Bare object — finds first { to last } and parses that substring.
@@ -108,55 +109,14 @@ export function extractJson(text: string): unknown {
 }
 
 // ---------------------------------------------------------------------------
-// User Content Builder
-// ---------------------------------------------------------------------------
-
-/**
- * Build the user content array for the Anthropic messages call.
- *
- * Interleaves text labels ("Pedal photo 1:", "Pedal photo 2:", ...) with
- * base64 image blocks. A final text block instructs Claude to analyze all
- * photos and return only the JSON object.
- *
- * Official pattern from Anthropic docs: images before text for best performance.
- * Here we use interleaved labels so Claude can correctly assign imageIndex values.
- */
-function buildVisionUserContent(
-  images: VisionImage[]
-): Anthropic.MessageParam["content"] {
-  const content: Anthropic.MessageParam["content"] = [];
-
-  for (let i = 0; i < images.length; i++) {
-    content.push({ type: "text", text: `Pedal photo ${i + 1}:` });
-    content.push({
-      type: "image",
-      source: {
-        type: "base64",
-        media_type: images[i].mediaType,
-        data: images[i].data,
-      },
-    });
-  }
-
-  content.push({
-    type: "text",
-    text: `Analyze the ${images.length} pedal photo(s) above. For each pedal you can identify, return one entry in the pedals array. If multiple pedals appear in a single photo, return one entry per pedal with the same imageIndex. Return only the JSON object — no other text.`,
-  });
-
-  return content;
-}
-
-// ---------------------------------------------------------------------------
 // Main Export
 // ---------------------------------------------------------------------------
 
 /**
- * Call Claude Sonnet 4.6 with vision to extract pedal information from images.
+ * Call Gemini with vision to extract pedal information from images.
  *
- * CRITICAL: Does NOT use output_config / zodOutputFormat.
- * Vision calls require a user content array (text + image blocks), which is
- * incompatible with output_config in the current Anthropic SDK. JSON is
- * extracted from the text response via extractJson() and validated with
+ * Sends base64 images via Gemini's inlineData content format and extracts
+ * structured JSON from the text response. JSON is validated with
  * RigIntentSchema.parse().
  *
  * @param images - Array of compressed, base64-encoded images (max 3)
@@ -165,30 +125,65 @@ function buildVisionUserContent(
 export async function callRigVisionPlanner(
   images: VisionImage[]
 ): Promise<RigIntent> {
-  const apiKey = process.env.CLAUDE_API_KEY;
-  if (!apiKey) throw new Error("CLAUDE_API_KEY environment variable is required");
+  const ai = createGeminiClient();
+  const modelId = getModelId(false); // standard tier — gemini-2.5-flash
 
-  const client = new Anthropic({ apiKey });
-
-  const response = await client.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 1024,
-    system: VISION_SYSTEM_PROMPT,
-    messages: [
+  const response = await ai.models.generateContent({
+    model: modelId,
+    contents: [
       {
         role: "user",
-        content: buildVisionUserContent(images),
+        parts: [
+          ...images.flatMap((img, i) => [
+            { text: `Pedal photo ${i + 1}:` },
+            { inlineData: { mimeType: img.mediaType, data: img.data } },
+          ]),
+          {
+            text: `Analyze the ${images.length} pedal photo(s) above. For each pedal you can identify, return one entry in the pedals array. If multiple pedals appear in a single photo, return one entry per pedal with the same imageIndex. Return only the JSON object — no other text.`,
+          },
+        ],
       },
     ],
-    // NO output_config — incompatible with image content block arrays.
-    // NO betas — not needed for base64 image vision calls.
+    config: {
+      systemInstruction: VISION_SYSTEM_PROMPT,
+      maxOutputTokens: 1024,
+    },
   });
 
-  const textBlock = response.content.find((block) => block.type === "text");
-  if (!textBlock || textBlock.type !== "text") {
-    throw new Error("Claude vision returned no text content");
+  // Token usage logging
+  const usage = response.usageMetadata;
+  const inputTokens = usage?.promptTokenCount ?? 0;
+  const outputTokens = usage?.candidatesTokenCount ?? 0;
+  const cachedTokens = usage?.cachedContentTokenCount ?? 0;
+  const totalTokens = usage?.totalTokenCount ?? (inputTokens + outputTokens);
+  const costUsd = estimateGeminiCost(usage ?? {}, modelId);
+  const cacheHit = cachedTokens > 0;
+
+  console.log(
+    `[vision] model=${modelId} tokens=${inputTokens}in/${outputTokens}out` +
+    ` cache=${cacheHit ? "HIT" : "MISS"}(cached=${cachedTokens})` +
+    ` cost=$${costUsd.toFixed(4)}`
+  );
+
+  logUsage({
+    timestamp: new Date().toISOString(),
+    endpoint: "generate",
+    model: modelId,
+    input_tokens: inputTokens,
+    output_tokens: outputTokens,
+    cache_creation_input_tokens: null,
+    cache_read_input_tokens: cachedTokens || null,
+    total_tokens: totalTokens,
+    cost_usd: costUsd,
+    cache_hit: cacheHit,
+    device: undefined,
+  });
+
+  const text = response.text;
+  if (!text) {
+    throw new Error("Gemini vision returned no text content");
   }
 
-  const raw = extractJson(textBlock.text);
+  const raw = extractJson(text);
   return RigIntentSchema.parse(raw);
 }

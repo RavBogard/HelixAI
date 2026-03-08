@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 
 // Model tiers
-const MODEL_STANDARD = "gemini-2.5-flash";
+const MODEL_STANDARD = "gemini-3-flash-preview";
 const MODEL_PREMIUM = "gemini-3.1-pro-preview";
 
 export function getModelId(premium: boolean): string {

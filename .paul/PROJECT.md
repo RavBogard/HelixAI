@@ -23,6 +23,8 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 - ✓ Build stability restored (3 Vercel build failures fixed) — v1.1 Phase 1
 - ✓ Data integrity: 7 invalid AI prompt amp names corrected + tests added — v1.1 Phase 1
 - ✓ Planner migrated to Gemini 3 Flash (Claude Sonnet removed from planner) — v1.1 Phase 1
+- ✓ Vision migrated from Claude to Gemini — zero Anthropic dependencies remain — v2.0 Phase 1
+- ✓ Standard model tier upgraded to gemini-3-flash-preview — v2.0 Phase 1
 
 ### Must Have
 - [To be defined during planning]
@@ -44,6 +46,8 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 | Lead gain 2.5→2.0 dB | Phase 3 | Prevent clipping with ChVol 0.80 |
 | Switch planner to Gemini 3 Flash | Phase 4 | 100% schema compliance, 86% quality, 8x cheaper than Claude Sonnet. Newer gen for longevity. |
 | Consolidate to single Gemini SDK | Phase 4 | Chat already Gemini; planner switching too. Claude retained only for vision. |
+| Remove @anthropic-ai/sdk entirely | v2.0 Phase 1 | Vision migrated to Gemini; single SDK, single API key (GEMINI_API_KEY) |
+| Upgrade MODEL_STANDARD to gemini-3-flash-preview | v2.0 Phase 1 | User-directed; affects all callers (planner, vision, chat) globally |
 | Manual JSON schema for Gemini planner | v1.1 Phase 1 | Used buildGeminiJsonSchema() instead of zod-to-json-schema — avoids dependency and Gemini $ref incompatibility |
 | Helix Native device ID 2162690 UNVERIFIED | Phase 5 | Estimated from Line 6 sequence — confirm from real .hlx export |
 | Native maps to helix family, no Variax | Phase 5 | Same DSP/catalog as Floor; no VDI jack (DAW plugin) |
@@ -64,4 +68,4 @@ Quick Reference:
 - /ui-ux-pro-max → Frontend / UI / UX (required)
 
 ---
-*Last updated: 2026-03-08 after v1.1 Phase 1*
+*Last updated: 2026-03-08 after v2.0 Phase 1*

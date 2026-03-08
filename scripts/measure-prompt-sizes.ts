@@ -1,18 +1,12 @@
 // scripts/measure-prompt-sizes.ts
-// Diagnostic script: measures actual token counts for all five device family planner prompts.
+// Diagnostic script: measures estimated token counts for all device family planner prompts.
 //
-// This script calls Anthropic's countTokens endpoint (free, no generation charge).
+// Uses character-based estimation (~4 chars per token) since this is a diagnostic tool.
 // It is a manual diagnostic tool — do NOT include in automated test suites.
 //
 // Usage:
-//   CLAUDE_API_KEY=sk-ant-xxx npx tsx scripts/measure-prompt-sizes.ts
-//
-// Purpose:
-//   - Confirm all families exceed the 2,048-token caching minimum for Sonnet 4.6
-//   - Diagnose whether Stomp variants share identical prompt text (cache unification)
-//   - Report character and token counts per family for prompt size auditing
+//   npx tsx scripts/measure-prompt-sizes.ts
 
-import Anthropic from "@anthropic-ai/sdk";
 import { getFamilyPlannerPrompt } from "@/lib/prompt-router";
 import { getCapabilities, getModelListForPrompt } from "@/lib/helix";
 import type { DeviceTarget } from "@/lib/helix";
@@ -29,34 +23,23 @@ const DEVICE_TARGETS: DeviceTarget[] = [
   "helix_stadium",
 ];
 
-const MODEL = "claude-sonnet-4-6";
-
-// Claude prompt caching minimum token threshold for Sonnet 4.6
+// Gemini prompt caching minimum token threshold
 const CACHE_MIN_TOKENS = 2048;
+
+// Rough token estimation: ~4 characters per token (standard approximation)
+function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 4);
+}
 
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
 async function main(): Promise<void> {
-  // Validate API key before making any calls
-  const apiKey = process.env.CLAUDE_API_KEY;
-  if (!apiKey) {
-    console.error(
-      "Error: CLAUDE_API_KEY environment variable is required.\n" +
-        "Usage: CLAUDE_API_KEY=sk-ant-xxx npx tsx scripts/measure-prompt-sizes.ts",
-    );
-    process.exit(1);
-  }
-
-  const client = new Anthropic({ apiKey });
-
-  console.log("Measuring planner prompt token counts via countTokens API...");
-  console.log(`Model: ${MODEL}`);
+  console.log("Measuring planner prompt token counts (character-based estimation)...");
   console.log(`Cache threshold: ${CACHE_MIN_TOKENS} tokens`);
   console.log("");
 
-  // Collect results for summary table
   const results: Array<{
     device: DeviceTarget;
     tokens: number;
@@ -70,40 +53,22 @@ async function main(): Promise<void> {
     const modelList = getModelListForPrompt(caps);
     const systemPrompt = getFamilyPlannerPrompt(device, modelList);
 
-    // Call countTokens with cache_control block matching planner.ts setup (ttl: "1h")
-    const countResult = await client.messages.countTokens({
-      model: MODEL,
-      system: [
-        {
-          type: "text",
-          text: systemPrompt,
-          cache_control: { type: "ephemeral", ttl: "1h" },
-        },
-      ],
-      messages: [
-        {
-          role: "user",
-          content: "Measure tokens only.",
-        },
-      ],
-    });
-
-    const tokens = countResult.input_tokens;
     const chars = systemPrompt.length;
+    const tokens = estimateTokens(systemPrompt);
     const belowThreshold = tokens < CACHE_MIN_TOKENS;
 
     results.push({ device, tokens, chars, promptText: systemPrompt, belowThreshold });
 
     const flag = belowThreshold ? " *** BELOW CACHE THRESHOLD ***" : "";
-    console.log(`${device}: ${tokens} tokens (${chars} chars)${flag}`);
+    console.log(`${device}: ~${tokens} tokens (${chars} chars)${flag}`);
   }
 
   // ---------------------------------------------------------------------------
   // Summary table
   // ---------------------------------------------------------------------------
-  console.log("\n=== Prompt Token Summary ===");
+  console.log("\n=== Prompt Token Summary (estimated) ===");
   console.log(
-    `${"Device".padEnd(20)} ${"Tokens".padStart(8)} ${"Chars".padStart(8)} ${"Cacheable?".padStart(12)}`,
+    `${"Device".padEnd(20)} ${"~Tokens".padStart(8)} ${"Chars".padStart(8)} ${"Cacheable?".padStart(12)}`,
   );
   console.log("-".repeat(52));
 
@@ -114,24 +79,19 @@ async function main(): Promise<void> {
     );
   }
 
-  // Flag any device below the cache threshold
   const belowThresholdDevices = results.filter((r) => r.belowThreshold);
   if (belowThresholdDevices.length > 0) {
     console.log(
-      "\n*** WARNING: The following devices are below the 2,048-token cache minimum:",
+      "\n*** WARNING: The following devices are below the estimated cache minimum:",
     );
     for (const { device, tokens } of belowThresholdDevices) {
       console.log(
-        `  - ${device}: ${tokens} tokens (${CACHE_MIN_TOKENS - tokens} tokens short)`,
+        `  - ${device}: ~${tokens} tokens (${CACHE_MIN_TOKENS - tokens} tokens short)`,
       );
     }
-    console.log(
-      "  These devices will NOT benefit from prompt caching." +
-        " Consider adding content or using a shared prompt bucket.",
-    );
   } else {
     console.log(
-      `\nAll ${results.length} device families exceed the ${CACHE_MIN_TOKENS}-token cache threshold.`,
+      `\nAll ${results.length} device families exceed the ${CACHE_MIN_TOKENS}-token cache threshold (estimated).`,
     );
   }
 

@@ -3,12 +3,12 @@
 // AI Platform Evaluation Benchmark Harness (Phase 4, Plan 04-01)
 //
 // Usage:
-//   npx tsx scripts/ai-eval-harness.ts --provider=claude-sonnet
-//   npx tsx scripts/ai-eval-harness.ts --provider=claude-haiku --scenario=0
+//   npx tsx scripts/ai-eval-harness.ts --provider=gemini-flash
+//   npx tsx scripts/ai-eval-harness.ts --provider=gemini-pro --scenario=0
 //   npx tsx scripts/ai-eval-harness.ts --provider=all
 //
-// Providers: claude-sonnet, claude-haiku, gemini-flash, gemini-pro, all
-// Requires: CLAUDE_API_KEY, GEMINI_API_KEY in .env.local
+// Providers: gemini-flash, gemini-pro, gemini-3-flash, gemini-3.1-pro, all
+// Requires: GEMINI_API_KEY in .env.local
 
 import * as path from "path";
 import * as fs from "fs";
@@ -35,8 +35,6 @@ function loadEnvFile(filePath: string): void {
 loadEnvFile(path.resolve(process.cwd(), ".env.eval"));
 loadEnvFile(path.resolve(process.cwd(), ".env.local"));
 
-import Anthropic from "@anthropic-ai/sdk";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { GoogleGenAI } from "@google/genai";
 
 // Project imports — use relative paths since scripts/ isn't under @/
@@ -48,7 +46,7 @@ import { HELIX_AMP_NAMES, HELIX_CAB_NAMES, HELIX_EFFECT_NAMES } from "../src/lib
 import { STOMP_AMP_NAMES, STOMP_CAB_NAMES, STOMP_EFFECT_NAMES } from "../src/lib/helix/catalogs/stomp-catalog";
 import { PODGO_AMP_NAMES, PODGO_CAB_NAMES, PODGO_EFFECT_NAMES } from "../src/lib/helix/catalogs/podgo-catalog";
 import { STADIUM_AMP_NAMES, STADIUM_CAB_NAMES, STADIUM_EFFECT_NAMES } from "../src/lib/helix/catalogs/stadium-catalog";
-import { CLAUDE_SONNET_PRICE, GEMINI_FLASH_PRICE } from "../src/lib/usage-logger";
+import { GEMINI_FLASH_PRICE } from "../src/lib/usage-logger";
 
 import { SCENARIOS, type EvalScenario } from "./ai-eval-scenarios";
 import type { DeviceTarget } from "../src/lib/helix/types";
@@ -57,18 +55,16 @@ import type { DeviceTarget } from "../src/lib/helix/types";
 // Provider config
 // ---------------------------------------------------------------------------
 
-type ProviderKey = "claude-sonnet" | "claude-haiku" | "gemini-flash" | "gemini-pro" | "gemini-3-flash" | "gemini-3.1-pro";
+type ProviderKey = "gemini-flash" | "gemini-pro" | "gemini-3-flash" | "gemini-3.1-pro";
 
 interface ProviderConfig {
   key: ProviderKey;
   name: string;
-  vendor: "anthropic" | "google";
+  vendor: "google";
   model: string;
 }
 
 const PROVIDERS: Record<ProviderKey, ProviderConfig> = {
-  "claude-sonnet": { key: "claude-sonnet", name: "Claude Sonnet 4.6", vendor: "anthropic", model: "claude-sonnet-4-6" },
-  "claude-haiku": { key: "claude-haiku", name: "Claude Haiku 4.5", vendor: "anthropic", model: "claude-haiku-4-5-20251001" },
   "gemini-flash": { key: "gemini-flash", name: "Gemini 2.5 Flash", vendor: "google", model: "gemini-2.5-flash" },
   "gemini-pro": { key: "gemini-pro", name: "Gemini 2.5 Pro", vendor: "google", model: "gemini-2.5-pro" },
   "gemini-3-flash": { key: "gemini-3-flash", name: "Gemini 3 Flash", vendor: "google", model: "gemini-3-flash-preview" },
@@ -80,14 +76,6 @@ const GEMINI_PRO_PRICE = {
   input_per_mtok: 1.25,
   output_per_mtok: 10.0,
   cache_read_per_mtok: 0.125,
-};
-
-// Claude Haiku pricing (per 1M tokens)
-const CLAUDE_HAIKU_PRICE = {
-  input_per_mtok: 0.80,
-  output_per_mtok: 4.0,
-  cache_write_per_mtok: 1.6,
-  cache_read_per_mtok: 0.08,
 };
 
 // Gemini 3 Flash pricing (per 1M tokens)
@@ -300,123 +288,6 @@ function buildGeminiJsonSchema(family: string): Record<string, unknown> {
 // Provider callers
 // ---------------------------------------------------------------------------
 
-async function callClaude(
-  provider: ProviderConfig,
-  scenario: EvalScenario,
-): Promise<EvalResult> {
-  const apiKey = process.env.CLAUDE_API_KEY;
-  if (!apiKey) throw new Error("CLAUDE_API_KEY required");
-
-  const client = new Anthropic({ apiKey });
-  const device = scenario.device;
-  const family = resolveFamily(device);
-  const caps = getCapabilities(device);
-  const modelList = getModelListForPrompt(caps);
-  const systemPrompt = getFamilyPlannerPrompt(device, modelList);
-  const schema = getToneIntentSchema(family);
-
-  const conversationText = scenario.messages
-    .map((msg) => `${msg.role}: ${msg.content}`)
-    .join("\n\n");
-
-  const start = performance.now();
-  let result: EvalResult;
-
-  try {
-    const response = await client.messages.create({
-      model: provider.model,
-      max_tokens: 4096,
-      system: [{ type: "text" as const, text: systemPrompt }],
-      messages: [{ role: "user", content: conversationText }],
-      output_config: {
-        format: zodOutputFormat(schema),
-      },
-    });
-
-    const latencyMs = performance.now() - start;
-    const { usage } = response;
-
-    const textBlock = response.content.find((b) => b.type === "text");
-    if (!textBlock || textBlock.type !== "text") throw new Error("No text content");
-
-    const raw = JSON.parse(textBlock.text);
-
-    // Sanitize snapshot names (same as planner.ts)
-    if (Array.isArray(raw.snapshots)) {
-      raw.snapshots = raw.snapshots.map((s: { name?: string }) => ({
-        ...s,
-        name: typeof s.name === "string" ? s.name.slice(0, 10) : s.name,
-      }));
-    }
-    // Strip invalid variaxModel
-    if (raw.variaxModel && !VARIAX_MODEL_NAMES.includes(raw.variaxModel)) {
-      delete raw.variaxModel;
-    }
-
-    // Validate with Zod
-    let schemaCompliance = 0;
-    let parsed = raw;
-    try {
-      parsed = schema.parse(raw);
-      schemaCompliance = 1;
-    } catch {
-      schemaCompliance = 0;
-    }
-
-    // Cost estimation
-    const MTok = 1_000_000;
-    const pricing = provider.key === "claude-haiku" ? CLAUDE_HAIKU_PRICE : CLAUDE_SONNET_PRICE;
-    const costUsd =
-      (usage.input_tokens / MTok) * pricing.input_per_mtok +
-      (usage.output_tokens / MTok) * pricing.output_per_mtok;
-
-    result = {
-      provider: provider.key,
-      providerName: provider.name,
-      scenario: scenario.id,
-      scenarioName: scenario.name,
-      device: scenario.device,
-      genre: scenario.genre,
-      schemaCompliance,
-      modelValidity: schemaCompliance === 1 ? 1 : scoreModelValidity(raw, device),
-      appropriateness: scoreAppropriateness(parsed, scenario, device),
-      effectDiversity: scoreEffectDiversity(parsed),
-      overallScore: 0,
-      latencyMs,
-      inputTokens: usage.input_tokens,
-      outputTokens: usage.output_tokens,
-      costUsd,
-      ampName: parsed.ampName,
-      cabName: parsed.cabName,
-      effects: parsed.effects?.map((e: { modelName: string }) => e.modelName),
-      snapshots: parsed.snapshots?.map((s: { name: string; toneRole: string }) => `${s.name} (${s.toneRole})`),
-    };
-  } catch (err: unknown) {
-    const latencyMs = performance.now() - start;
-    result = {
-      provider: provider.key,
-      providerName: provider.name,
-      scenario: scenario.id,
-      scenarioName: scenario.name,
-      device: scenario.device,
-      genre: scenario.genre,
-      schemaCompliance: 0,
-      modelValidity: 0,
-      appropriateness: 0,
-      effectDiversity: 0,
-      overallScore: 0,
-      latencyMs,
-      inputTokens: 0,
-      outputTokens: 0,
-      costUsd: 0,
-      error: err instanceof Error ? `${err.message}\n${err.stack?.split("\n").slice(0, 4).join("\n")}` : String(err),
-    };
-  }
-
-  result.overallScore = computeOverall(result);
-  return result;
-}
-
 async function callGemini(
   provider: ProviderConfig,
   scenario: EvalScenario,
@@ -553,9 +424,7 @@ function computeOverall(r: EvalResult): number {
 
 async function runOne(provider: ProviderConfig, scenario: EvalScenario): Promise<EvalResult> {
   console.log(`  [${provider.key}] Scenario ${scenario.id}: ${scenario.name} (${scenario.device})...`);
-  const result = provider.vendor === "anthropic"
-    ? await callClaude(provider, scenario)
-    : await callGemini(provider, scenario);
+  const result = await callGemini(provider, scenario);
 
   const status = result.schemaCompliance === 1 ? "PASS" : "FAIL";
   console.log(
@@ -656,17 +525,17 @@ function printSummary(allResults: EvalResult[]) {
 
 async function main() {
   const args = process.argv.slice(2);
-  const providerArg = args.find((a) => a.startsWith("--provider="))?.split("=")[1] ?? "claude-sonnet";
+  const providerArg = args.find((a) => a.startsWith("--provider="))?.split("=")[1] ?? "gemini-flash";
   const scenarioArg = args.find((a) => a.startsWith("--scenario="))?.split("=")[1];
   const scenarioFilter = scenarioArg !== undefined ? parseInt(scenarioArg, 10) : undefined;
   const outputArg = args.find((a) => a.startsWith("--output="))?.split("=")[1];
 
   const providerKeys: ProviderKey[] = providerArg === "all"
-    ? ["claude-sonnet", "claude-haiku", "gemini-flash", "gemini-pro", "gemini-3-flash", "gemini-3.1-pro"]
+    ? ["gemini-flash", "gemini-pro", "gemini-3-flash", "gemini-3.1-pro"]
     : [providerArg as ProviderKey];
 
   if (providerKeys.some((k) => !PROVIDERS[k])) {
-    console.error(`Invalid provider. Valid: claude-sonnet, claude-haiku, gemini-flash, gemini-pro, gemini-3-flash, gemini-3.1-pro, all`);
+    console.error(`Invalid provider. Valid: gemini-flash, gemini-pro, gemini-3-flash, gemini-3.1-pro, all`);
     process.exit(1);
   }
 
