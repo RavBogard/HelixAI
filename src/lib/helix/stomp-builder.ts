@@ -25,22 +25,60 @@ import { getCapabilities } from "./device-family";
 // Block type integer encoding (same values as preset-builder.ts getBlockType)
 // Source: empirically confirmed from real Helix .hlx exports
 // ---------------------------------------------------------------------------
+// Block @type values (reverse-engineered from real .hlx presets):
+// 0 = generic effect (distortion, dynamics, modulation, eq, wah, pitch, volume, send_return)
+// 3 = amp
+// 4 = cab
+// 7 = delay, reverb (time-based effects)
 function getBlockType(type: string): number {
   switch (type) {
     case "amp": return 3;
     case "cab": return 4;
-    case "distortion": return 0;
     case "delay": return 7;
     case "reverb": return 7;
-    case "modulation": return 4;
+    case "distortion": return 0;
+    case "modulation": return 0;
     case "dynamics": return 0;
     case "eq": return 0;
     case "wah": return 0;
     case "pitch": return 0;
     case "volume": return 0;
-    case "send_return": return 9;
+    case "send_return": return 0;
     default: return 0;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Footswitch indices for HX Stomp family
+// HX Stomp: 3 footswitches (FS1-FS3), indices 0-2
+// HX Stomp XL: 5 footswitches (FS1-FS5), indices 0-4
+// ---------------------------------------------------------------------------
+const STOMP_FS_INDICES = [0, 1, 2];
+const STOMP_XL_FS_INDICES = [0, 1, 2, 3, 4];
+
+// Block types that should be assigned to stomp switches (user-toggleable effects)
+const STOMP_BLOCK_TYPES = new Set([
+  "distortion", "delay", "reverb", "modulation",
+  "dynamics", "wah", "pitch", "volume",
+]);
+
+// Footswitch LED colors (color_index * 65536)
+const FS_LED_COLORS: Record<string, number> = {
+  distortion: 131072,   // red
+  dynamics: 65536,       // white
+  delay: 327680,         // green
+  reverb: 458752,        // blue
+  modulation: 393216,    // turquoise
+  eq: 262144,            // yellow
+  wah: 196608,           // orange
+  pitch: 524288,         // purple
+  volume: 65536,         // white
+};
+
+// A stomp assignment: which block key is assigned to which footswitch index
+interface StompAssignment {
+  blockKey: string;
+  fsIndex: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -159,6 +197,7 @@ function buildStompSnapshot(
   spec: SnapshotSpec,
   allBlocks: BlockSpec[],
   tempo: number,
+  stompAssignments: StompAssignment[] = [],
 ): HlxSnapshot {
   const blocks: { dsp0?: Record<string, boolean> } = { dsp0: {} };
   const controllers: {
@@ -202,11 +241,14 @@ function buildStompSnapshot(
     }
   }
 
+  // Compute @pedalstate from stomp assignments + block states
+  const pedalstate = computeStompPedalState(spec.blockStates, stompAssignments, blockKeyMap);
+
   return {
     "@name": spec.name.substring(0, 10).toUpperCase(),
     "@tempo": tempo,
     "@valid": true,
-    "@pedalstate": 2,
+    "@pedalstate": pedalstate,
     "@ledcolor": spec.ledColor,
     "@custom_name": false,
     blocks,
@@ -364,18 +406,25 @@ export function buildStompFile(
   // Build dsp0 with all blocks (chain-rules ensures all on dsp0 for Stomp)
   const dsp0 = buildStompDsp(spec.signalChain, useVariaxInput);
 
+  // Get stomp assignments early — needed for @pedalstate in snapshots
+  const stompAssignmentsForSnapshots = getStompFsAssignments(spec.signalChain, device);
+
   // Build snapshot slots (8 total: fill first maxSnapshots, rest are empty)
   const snapshotEntries: Record<string, HlxSnapshot> = {};
   for (let i = 0; i < 8; i++) {
     const snapshotSpec = snapshots[i];
     if (snapshotSpec) {
-      snapshotEntries[`snapshot${i}`] = buildStompSnapshot(snapshotSpec, spec.signalChain, spec.tempo);
+      snapshotEntries[`snapshot${i}`] = buildStompSnapshot(snapshotSpec, spec.signalChain, spec.tempo, stompAssignmentsForSnapshots);
     } else {
       snapshotEntries[`snapshot${i}`] = buildEmptySnapshot(i);
     }
   }
 
   const controller = buildControllerSection(spec, maxSnapshots, device);
+
+  // Build footswitch section with actual stomp assignments
+  const footswitch = buildStompFootswitchSection(spec.signalChain, device);
+  const stompAssignments = getStompFsAssignments(spec.signalChain, device);
 
   const tone = {
     dsp0,
@@ -389,7 +438,7 @@ export function buildStompFile(
     snapshot6: snapshotEntries["snapshot6"],
     snapshot7: snapshotEntries["snapshot7"],
     controller,
-    footswitch: { dsp0: {}, dsp1: {} },
+    footswitch,
     global: {
       "@model": "@global_params",
       "@topology0": "A" as const,
@@ -427,6 +476,114 @@ export function buildStompFile(
     },
     schema: "L6Preset",
   };
+}
+
+// ---------------------------------------------------------------------------
+// Stomp footswitch assignment
+// ---------------------------------------------------------------------------
+
+/**
+ * Get stomp footswitch assignments for HX Stomp / Stomp XL.
+ * Assigns toggleable effects to available footswitches (3 for Stomp, 5 for XL).
+ */
+function getStompFsAssignments(
+  allBlocks: BlockSpec[],
+  device: "helix_stomp" | "helix_stomp_xl",
+): StompAssignment[] {
+  const fsIndices = device === "helix_stomp_xl" ? STOMP_XL_FS_INDICES : STOMP_FS_INDICES;
+  const assignments: StompAssignment[] = [];
+  const candidates: { block: BlockSpec; blockKey: string }[] = [];
+  let idx = 0;
+
+  for (const block of allBlocks) {
+    if (block.type === "cab") continue;
+    const blockKey = `block${idx}`;
+    idx++;
+
+    if (STOMP_BLOCK_TYPES.has(block.type)) {
+      candidates.push({ block, blockKey });
+    }
+  }
+
+  const toAssign = candidates.slice(0, fsIndices.length);
+  for (let i = 0; i < toAssign.length; i++) {
+    assignments.push({
+      blockKey: toAssign[i].blockKey,
+      fsIndex: fsIndices[i],
+    });
+  }
+
+  return assignments;
+}
+
+/**
+ * Build the footswitch section for HX Stomp / Stomp XL.
+ */
+function buildStompFootswitchSection(
+  allBlocks: BlockSpec[],
+  device: "helix_stomp" | "helix_stomp_xl",
+): Record<string, unknown> {
+  const footswitch: Record<string, Record<string, unknown>> = {
+    dsp0: {},
+    dsp1: {},
+  };
+
+  const fsIndices = device === "helix_stomp_xl" ? STOMP_XL_FS_INDICES : STOMP_FS_INDICES;
+  const candidates: { block: BlockSpec; blockKey: string }[] = [];
+  let idx = 0;
+
+  for (const block of allBlocks) {
+    if (block.type === "cab") continue;
+    const blockKey = `block${idx}`;
+    idx++;
+
+    if (STOMP_BLOCK_TYPES.has(block.type)) {
+      candidates.push({ block, blockKey });
+    }
+  }
+
+  const toAssign = candidates.slice(0, fsIndices.length);
+  for (let i = 0; i < toAssign.length; i++) {
+    const { block, blockKey } = toAssign[i];
+    footswitch.dsp0[blockKey] = {
+      "@fs_enabled": true,
+      "@fs_index": fsIndices[i],
+      "@fs_label": block.modelName.substring(0, 16),
+      "@fs_ledcolor": FS_LED_COLORS[block.type] || 65536,
+      "@fs_momentary": false,
+      "@fs_primary": true,
+    };
+  }
+
+  return footswitch;
+}
+
+/**
+ * Compute @pedalstate bitmask from stomp assignments and block states.
+ */
+function computeStompPedalState(
+  blockStates: Record<string, boolean>,
+  stompAssignments: StompAssignment[],
+  blockKeyMap: Map<string, { dsp: number; perDspKey: string }>,
+): number {
+  let pedalstate = 2; // Base value: snapshot mode indicator
+
+  for (const assignment of stompAssignments) {
+    // Find which global block key maps to this per-DSP key
+    let blockEnabled = false;
+    for (const [globalKey, mapping] of Array.from(blockKeyMap.entries())) {
+      if (mapping.perDspKey === assignment.blockKey) {
+        blockEnabled = blockStates[globalKey] ?? false;
+        break;
+      }
+    }
+
+    if (blockEnabled) {
+      pedalstate |= (1 << assignment.fsIndex);
+    }
+  }
+
+  return pedalstate;
 }
 
 /**

@@ -4,50 +4,49 @@
 Build an AI-powered preset builder that interviews users about their rig and tone preferences, then generates professional-quality Line 6 presets across all supported device families.
 
 ## Current Milestone
-**v2.0 — Device Intelligence & UX Overhaul** (v2.0.0)
-Status: ✅ Complete
-Phases: 5 of 5 complete
+**v3.0 — Preset Format Correctness & Quality** (v3.0.0)
+Status: Complete
+Phases: 1 of 1 complete
 
 ## Phases
 
 | Phase | Name | Plans | Status | Completed |
 |-------|------|-------|--------|-----------|
-| 1 | Gemini Unification & Architecture | 1/1 | ✅ Complete | 2026-03-08 |
-| 2 | Device-Specific Preset Intelligence | 1/1 | ✅ Complete | 2026-03-08 |
-| 3 | AI Conciseness Overhaul | 1/1 | ✅ Complete | 2026-03-08 |
-| 4 | UI/UX Redesign — Layout & Chat | 3/3 | ✅ Complete | 2026-03-08 |
-| 5 | Polish & Integration Testing | 1/1 | ✅ Complete | 2026-03-08 |
+| 1 | Preset Format Correctness Audit & Fix | 1/1 | ✅ Complete | 2026-03-08 |
 
 ## Phase Details
 
-### Phase 1: Gemini Unification & Architecture
+### Phase 1: Preset Format Correctness Audit & Fix
 
-Focus: Migrate rig-vision from Claude to Gemini. Remove @anthropic-ai/sdk entirely. Research whether chat→planner two-context handoff should become a unified single context now that everything is Gemini — prototype both approaches, benchmark quality, and make the architectural call with evidence.
+Focus: Deep audit and fix of all preset file format issues across every device builder. Reverse-engineer correct .hlx format values, fix DSP0→DSP1 routing, overhaul footswitch/stomp assignment system to be device-aware and comprehensive, and verify block @type IDs against real firmware. Not a bandaid — systematic validation of every serialization value.
 
-### Phase 2: Device-Specific Preset Intelligence
-
-Focus: Audit each device family's presets against real-world best practices. Tune prompts per device to exploit unique hardware capabilities — dual-DSP routing (Helix), Agoura amp models (Stadium), DSP budgets (Stomp/Stomp XL), effect slot limits (Pod Go), snapshot counts per device.
-
-### Phase 3: AI Conciseness Overhaul
-
-Focus: Rewrite all 4 family chat prompts for brevity and scannability. Users complain the AI is too wordy and they miss the important parts. Key info (amp names, effect choices, snapshot plans) should be bold/highlighted. Shorter responses overall. Apply architecture decision from Phase 1 to prompt structure.
-
-### Phase 4: UI/UX Redesign — Layout & Chat
-
-Focus: Full page restructure + chat redesign. Dark theme, typography, responsive, accessibility. Device picker, chat flow, header/sidebar modernization. Chat bubbles redesigned for scannability. ToneCard/preset summary redesign. Visualizer improvements. Make important info impossible to miss. /ui-ux-pro-max design guidelines applied.
-
-### Phase 5: Polish & Integration Testing
-
-Focus: Cross-device E2E testing of new prompts + UI. Accessibility audit. Performance pass. Mobile QA at 375px, 768px, 1024px, 1440px breakpoints.
+Key issues driving this phase:
+- DSP0 output routes to physical out instead of DSP1 (broken signal chain)
+- Stomp assignments limited to 4 footswitches (should assign all toggleable effects)
+- HX Stomp builder has zero footswitch assignments
+- Block @type values need firmware verification
 
 ## Constraints
 
-- Fully Gemini — remove ALL Anthropic/Claude dependencies
-- Architecture decision (unified vs two-context) made in Phase 1 with evidence
-- Preserve preset file format compatibility (.hlx/.pgp/.hsp)
-- Keep Next.js 16 + Tailwind 4 stack
+- Preserve preset file format compatibility (.hlx/.pgp/.hsp container structure)
+- Do not change signal chain ordering logic (chain-rules.ts)
+- Do not change parameter values (param-engine.ts)
+- Do not change snapshot roles or gain staging
 
 ## Completed Milestones
+
+<details>
+<summary>v2.0 Device Intelligence & UX Overhaul - 2026-03-08 (5 phases)</summary>
+
+| Phase | Name | Plans | Completed |
+|-------|------|-------|-----------|
+| 1 | Gemini Unification & Architecture | 1 | 2026-03-08 |
+| 2 | Device-Specific Preset Intelligence | 1 | 2026-03-08 |
+| 3 | AI Conciseness Overhaul | 1 | 2026-03-08 |
+| 4 | UI/UX Redesign — Layout & Chat | 3 | 2026-03-08 |
+| 5 | Polish & Integration Testing | 1 | 2026-03-08 |
+
+</details>
 
 <details>
 <summary>v1.1 Post-Release Stabilization - 2026-03-08 (1 phase)</summary>
@@ -73,4 +72,4 @@ Focus: Cross-device E2E testing of new prompts + UI. Accessibility audit. Perfor
 </details>
 
 ---
-*Roadmap updated: 2026-03-08 — v2.0 milestone complete (all 5 phases)*
+*Roadmap updated: 2026-03-08 — v3.0 milestone started (preset format correctness)*

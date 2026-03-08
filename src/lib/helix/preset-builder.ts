@@ -78,7 +78,8 @@ function buildTone(spec: PresetSpec, device: DeviceTarget = "helix_lt"): HlxTone
   // Variax: use Multi input (@input=3) when variaxModel is set on a supported device (VARIAX-04)
   const useVariaxInput = !!(spec.variaxModel && isVariaxSupported(device));
 
-  const dsp0 = buildDsp(dsp0Blocks, 0, isDualAmp, useVariaxInput);
+  const dsp1HasBlocks = dsp1Blocks.length > 0;
+  const dsp0 = buildDsp(dsp0Blocks, 0, isDualAmp, useVariaxInput, dsp1HasBlocks);
   const dsp1 = buildDsp(dsp1Blocks, 1);
 
   // Build footswitch section FIRST — we need stomp assignments for @pedalstate
@@ -130,10 +131,16 @@ function buildTone(spec: PresetSpec, device: DeviceTarget = "helix_lt"): HlxTone
   return tone;
 }
 
-function buildDsp(blocks: BlockSpec[], dspIndex: number, isDualAmp?: boolean, useVariaxInput?: boolean): HlxDsp {
+function buildDsp(blocks: BlockSpec[], dspIndex: number, isDualAmp?: boolean, useVariaxInput?: boolean, dsp1HasBlocks?: boolean): HlxDsp {
+  // DSP routing (reverse-engineered from real .hlx presets):
+  // dsp0.outputA.@output: 2 = route to DSP1 (Flow 2), 1 = physical 1/4" out
+  // dsp1.inputA.@input: 0 = receive from DSP0, 1 = Guitar In (separate input)
+  const dsp0Output = (dspIndex === 0 && dsp1HasBlocks) ? 2 : 1;
+  const dsp1Input = (dspIndex === 1) ? 0 : undefined;
+
   const dsp: HlxDsp = {
     inputA: {
-      "@input": (dspIndex === 0 && useVariaxInput) ? 3 : 1, // 1 = Guitar In, 3 = Multi (Guitar + VDI for Variax)
+      "@input": dsp1Input !== undefined ? dsp1Input : ((dspIndex === 0 && useVariaxInput) ? 3 : 1),
       "@model": dspIndex === 0 ? "HD2_AppDSPFlow1Input" : "HD2_AppDSPFlow2Input",
       noiseGate: dspIndex === 0,
       decay: dspIndex === 0 ? 0.5 : 0.1,
@@ -141,7 +148,7 @@ function buildDsp(blocks: BlockSpec[], dspIndex: number, isDualAmp?: boolean, us
     },
     outputA: {
       "@model": "HD2_AppDSPFlowOutput",
-      "@output": 1,
+      "@output": dspIndex === 0 ? dsp0Output : 1,
       pan: 0.5,
       gain: 0.0,
     },
@@ -542,8 +549,14 @@ const FS_LED_COLORS: Record<string, number> = {
   volume: 65536,         // white
 };
 
-// Helix LT footswitch indices: FS5-FS8 = indices 7-10 (top row, used for stomps)
-const STOMP_FS_INDICES = [7, 8, 9, 10];
+// Helix footswitch indices (reverse-engineered from real .hlx presets):
+// In Snap/Stomp mode: indices 7-10 (FS8-FS11) = top row stomps (primary)
+// In Stomp mode: indices 2-5 (FS3-FS6) also available (secondary)
+// Assign primary first, then secondary, to maximize user control.
+// Index 13 = expression pedal (not a stomp switch).
+const HELIX_STOMP_FS_PRIMARY = [7, 8, 9, 10];   // Top row: always stomp in Snap/Stomp mode
+const HELIX_STOMP_FS_SECONDARY = [2, 3, 4, 5];   // Bottom row: stomp in Stomp mode only
+const HELIX_STOMP_FS_ALL = [...HELIX_STOMP_FS_PRIMARY, ...HELIX_STOMP_FS_SECONDARY];
 
 // Block types that should be assigned to stomp switches (user-toggleable effects)
 const STOMP_BLOCK_TYPES = new Set([
@@ -553,7 +566,8 @@ const STOMP_BLOCK_TYPES = new Set([
 
 /**
  * Get stomp assignments (which blocks are assigned to which footswitches).
- * Used by buildFootswitchSection for the .hlx and by buildSnapshot for @pedalstate.
+ * Assigns ALL toggleable effects to footswitches — primary indices first (top row,
+ * visible in Snap/Stomp mode), then secondary (bottom row, visible in Stomp mode).
  */
 function getStompAssignments(allBlocks: BlockSpec[]): StompAssignment[] {
   const assignments: StompAssignment[] = [];
@@ -574,12 +588,13 @@ function getStompAssignments(allBlocks: BlockSpec[]): StompAssignment[] {
     }
   }
 
-  const toAssign = candidates.slice(0, STOMP_FS_INDICES.length);
+  // Assign ALL candidates to footswitches (primary first, then secondary)
+  const toAssign = candidates.slice(0, HELIX_STOMP_FS_ALL.length);
   for (let i = 0; i < toAssign.length; i++) {
     assignments.push({
       dspKey: toAssign[i].dspKey,
       blockKey: toAssign[i].blockKey,
-      fsIndex: STOMP_FS_INDICES[i],
+      fsIndex: HELIX_STOMP_FS_ALL[i],
     });
   }
 
@@ -617,14 +632,14 @@ function buildFootswitchSection(allBlocks: BlockSpec[]): Record<string, unknown>
     }
   }
 
-  // Assign up to 4 blocks to FS5-FS8 (indices 7-10)
-  const toAssign = stompCandidates.slice(0, STOMP_FS_INDICES.length);
+  // Assign ALL toggleable blocks to footswitches (primary + secondary indices)
+  const toAssign = stompCandidates.slice(0, HELIX_STOMP_FS_ALL.length);
 
   for (let i = 0; i < toAssign.length; i++) {
     const { block, dspKey, blockKey } = toAssign[i];
     footswitch[dspKey][blockKey] = {
       "@fs_enabled": true,
-      "@fs_index": STOMP_FS_INDICES[i],
+      "@fs_index": HELIX_STOMP_FS_ALL[i],
       "@fs_label": block.modelName.substring(0, 16),
       "@fs_ledcolor": FS_LED_COLORS[block.type] || 65536,
       "@fs_momentary": false,
@@ -635,20 +650,25 @@ function buildFootswitchSection(allBlocks: BlockSpec[]): Record<string, unknown>
   return footswitch;
 }
 
+// Block @type values (reverse-engineered from real .hlx presets):
+// 0 = generic effect (distortion, dynamics, modulation, eq, wah, pitch, volume, send_return)
+// 3 = amp
+// 4 = cab (only used when cab is a block entry, normally cabs are separate cab0/cab1 keys)
+// 7 = delay, reverb (time-based effects)
 function getBlockType(type: string): number {
   switch (type) {
     case "amp": return 3;
     case "cab": return 4;
-    case "distortion": return 0;
     case "delay": return 7;
     case "reverb": return 7;
-    case "modulation": return 4;
+    case "distortion": return 0;
+    case "modulation": return 0;
     case "dynamics": return 0;
     case "eq": return 0;
     case "wah": return 0;
     case "pitch": return 0;
     case "volume": return 0;
-    case "send_return": return 9;
+    case "send_return": return 0;
     default: return 0;
   }
 }
