@@ -173,8 +173,8 @@ function getDspForSlot(slot: ChainSlot, caps: DeviceCapabilities): 0 | 1 {
     case "boost":
     case "amp":
     case "cab":
-    case "horizon_gate":
       return 0;
+    case "horizon_gate":  // post-cab: DSP1 for dual-DSP devices
     case "eq":
     case "modulation":
     case "delay":
@@ -189,7 +189,7 @@ const SLOT_ORDER: Record<ChainSlot, number> = {
   wah: 0,
   compressor: 1,
   extra_drive: 2,
-  horizon_gate: 2.5, // COMBO-02: gate before boost/amp for high-gain
+  horizon_gate: 5.5, // CHAIN-06: post-cab gate to properly suppress amp noise/hiss
   boost: 3,
   amp: 4,
   cab: 5,
@@ -558,14 +558,14 @@ export function assembleSignalChain(intent: ToneIntent, caps: DeviceCapabilities
     }
   }
 
-  // 5b. Horizon Gate for high_gain only (after cab, before EQ)
+  // 5b. Horizon Gate for high_gain only (post-cab, before EQ — gates amp noise/hiss)
   if (ampCategory === "high_gain") {
     const gateModel = DYNAMICS_MODELS[HORIZON_GATE]!;
     mandatoryBlocks.push({
       model: gateModel,
       blockType: "dynamics",
       slot: "horizon_gate",
-      dsp: 0,
+      dsp: getDspForSlot("horizon_gate", caps),
     });
   }
 

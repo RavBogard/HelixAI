@@ -168,7 +168,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     ampFamily: "Matchless",
     paramOverrides: { Drive: 0.55, Master: 1.0 },  // AMP-04: DC-30 Class A non-MV
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.40, Bass: 0.50, Mid: 0.55, Treble: 0.55, ChVol: 0.7, Master: 0.90, Sag: 0.65, Hum: 0.1, Ripple: 0.1, Bias: 0.70, BiasX: 0.60 },
+    defaultParams: { Drive: 0.40, Bass: 0.50, Mid: 0.55, Treble: 0.55, ChVol: 0.7, Master: 1.0, Sag: 0.65, Hum: 0.1, Ripple: 0.1, Bias: 0.70, BiasX: 0.60 },
   },
   "WhoWatt 100": {
     id: "HD2_AmpWhoWatt100",
@@ -181,7 +181,7 @@ export const AMP_MODELS: Record<string, HelixModel> = {
     ampFamily: "Hiwatt",
     paramOverrides: { Drive: 0.40, Master: 1.0 },  // AMP-04: extreme headroom non-MV; lower Drive
     blockType: BLOCK_TYPES.AMP,
-    defaultParams: { Drive: 0.40, Bass: 0.50, Mid: 0.55, Treble: 0.55, ChVol: 0.7, Master: 0.90, Presence: 0.50, Sag: 0.60, Hum: 0.05, Ripple: 0.05, Bias: 0.60, BiasX: 0.50 },
+    defaultParams: { Drive: 0.40, Bass: 0.50, Mid: 0.55, Treble: 0.55, ChVol: 0.7, Master: 1.0, Presence: 0.50, Sag: 0.60, Hum: 0.05, Ripple: 0.05, Bias: 0.60, BiasX: 0.50 },
   },
   "Grammatico Nrm": {
     id: "HD2_AmpGrammaticoNrm",
@@ -915,7 +915,7 @@ export const CAB_MODELS: Record<string, HelixModel> = {
 // DISTORTION / OVERDRIVE MODELS
 // ============================================================
 export const DISTORTION_MODELS: Record<string, HelixModel> = {
-  "Scream 808": { id: "HD2_DistScream808", name: "Scream 808", basedOn: "Ibanez TS808 Tube Screamer", category: "overdrive", blockType: BLOCK_TYPES.DISTORTION, defaultParams: { Gain: 0.0, Tone: 0.0, Level: 1.0 } },
+  "Scream 808": { id: "HD2_DistScream808", name: "Scream 808", basedOn: "Ibanez TS808 Tube Screamer", category: "overdrive", blockType: BLOCK_TYPES.DISTORTION, defaultParams: { Gain: 0.50, Tone: 0.50, Level: 0.0 } },
   "Minotaur": { id: "HD2_DistMinotaur", name: "Minotaur", basedOn: "Klon Centaur", category: "overdrive", blockType: BLOCK_TYPES.DISTORTION, defaultParams: { Gain: 0.20, Treble: 0.50, Output: 0.60 } },
   "Teemah!": { id: "HD2_DistTeemah", name: "Teemah!", basedOn: "Paul Cochrane Timmy", category: "overdrive", blockType: BLOCK_TYPES.DISTORTION, defaultParams: { Drive: 0.5, Bass: 0.5, Treble: 0.5, Level: 0.5 } },
   "Kinky Boost": { id: "HD2_DistKinkyBoost", name: "Kinky Boost", basedOn: "Xotic EP Booster", category: "boost", blockType: BLOCK_TYPES.DISTORTION, defaultParams: { Boost: true, Bright: true, Drive: 0.56 } },

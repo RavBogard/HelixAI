@@ -28,7 +28,7 @@ const ROLE_CHVOL: Record<string, number> = {
   clean: 0.68,
   crunch: 0.72,
   lead: 0.80,
-  ambient: 0.65,
+  ambient: 0.70,
 };
 
 // ---------------------------------------------------------------------------

@@ -44,7 +44,7 @@ const AMP_DEFAULTS: Record<AmpCategory, Record<string, number>> = {
     Presence: 0.45, Hum: 0.15, Ripple: 0.12, BiasX: 0.50,
   },
   high_gain: {
-    Drive: 0.40, Master: 0.45, ChVol: 0.70, Sag: 0.25,
+    Drive: 0.55, Master: 0.45, ChVol: 0.70, Sag: 0.25,
     Bias: 0.75, Bass: 0.33, Mid: 0.53, Treble: 0.55,
     Presence: 0.50, Hum: 0.08, Ripple: 0.05, BiasX: 0.48,
   },
@@ -662,7 +662,7 @@ function applyCombinationAdjustments(chain: BlockSpec[]): BlockSpec[] {
     // COMBO-04: Delay + reverb → reduce reverb mix (floor 0.08)
     if (hasDelay && block.type === "reverb") {
       if ("Mix" in params && typeof params.Mix === "number") {
-        params.Mix = Math.max(0.08, (params.Mix as number) - 0.05);
+        params.Mix = Math.max(0.15, (params.Mix as number) - 0.05);
         changed = true;
       }
     }

@@ -96,17 +96,17 @@ describe("assembleSignalChain", () => {
   });
 
   // Test 2: High-gain amp returns correct blocks with Scream 808 and Horizon Gate
-  // COMBO-02: Horizon Gate now placed before amp (pre-amp position) for high-gain
+  // CHAIN-06: Horizon Gate now placed post-cab (gates amp noise/hiss) for high-gain
   // COHERE-02: Plate reverb auto-inserted (default high-gain helper has clean+ambient snapshots)
-  it("returns blocks: Horizon Gate > Scream 808 > amp > cab > EQ > Plate > gain block for high-gain amp", () => {
+  it("returns blocks: Scream 808 > amp > cab > Horizon Gate > EQ > Plate > gain block for high-gain amp", () => {
     const chain = assembleSignalChain(highGainIntent(), HELIX_CAPS);
 
     const names = chain.map((b) => b.modelName);
     expect(names).toEqual([
-      "Horizon Gate",
       "Scream 808",
       "Placater Dirty",
       "4x12 Cali V30",
+      "Horizon Gate",
       "Parametric EQ",
       "Plate",
       "Gain Block",
@@ -326,15 +326,15 @@ describe("assembleSignalChain", () => {
   });
 
   // Additional: high-gain with effects confirms Horizon Gate placement
-  // COMBO-02: Horizon Gate is now placed before amp (pre-amp position) for high-gain
-  it("Horizon Gate is placed before amp for high-gain amps", () => {
+  // CHAIN-06: Horizon Gate is now placed post-cab (gates amp noise) for high-gain
+  it("Horizon Gate is placed after cab for high-gain amps", () => {
     const chain = assembleSignalChain(highGainIntent(), HELIX_CAPS);
 
     const names = chain.map((b) => b.modelName);
-    const ampIndex = names.indexOf("Placater Dirty");
+    const cabIndex = names.indexOf("4x12 Cali V30");
     const gateIndex = names.indexOf("Horizon Gate");
 
-    expect(gateIndex).toBeLessThan(ampIndex);
+    expect(gateIndex).toBeGreaterThan(cabIndex);
   });
 
   // Additional: Scream 808 not duplicated if already in effects
@@ -621,16 +621,16 @@ describe("assembleSignalChain", () => {
   // --- COMBO-02: high-gain gate placement and compressor omission ---
 
   describe("COMBO-02: high-gain gate placement and compressor omission", () => {
-    // COMBO-02-1: High-gain chain places Horizon Gate BEFORE amp
-    it("high-gain chain places Horizon Gate before amp (pre-amp position)", () => {
+    // COMBO-02-1: High-gain chain places Horizon Gate AFTER cab (post-cab gate)
+    it("high-gain chain places Horizon Gate after cab (post-cab position)", () => {
       const chain = assembleSignalChain(highGainIntent(), HELIX_CAPS);
       const names = chain.map((b) => b.modelName);
       const gateIndex = names.indexOf("Horizon Gate");
-      const ampIndex = names.indexOf("Placater Dirty");
+      const cabIndex = names.indexOf("4x12 Cali V30");
 
       expect(gateIndex).toBeGreaterThanOrEqual(0);
-      expect(ampIndex).toBeGreaterThanOrEqual(0);
-      expect(gateIndex).toBeLessThan(ampIndex);
+      expect(cabIndex).toBeGreaterThanOrEqual(0);
+      expect(gateIndex).toBeGreaterThan(cabIndex);
     });
 
     // COMBO-02-2: High-gain chain with toggleable compressor omits it
@@ -669,8 +669,8 @@ describe("assembleSignalChain", () => {
       expect(names).toContain("Deluxe Comp");
     });
 
-    // COMBO-02-5: High-gain chain gate is between extra_drive and boost
-    it("high-gain Horizon Gate is placed between extra_drive and boost", () => {
+    // COMBO-02-5: High-gain chain gate is post-cab, after all pre-amp effects
+    it("high-gain Horizon Gate is placed after cab, not between drives", () => {
       const chain = assembleSignalChain(
         highGainIntent({
           effects: [{ modelName: "Teemah!", role: "toggleable" }],
@@ -678,16 +678,16 @@ describe("assembleSignalChain", () => {
         HELIX_CAPS
       );
       const names = chain.map((b) => b.modelName);
-      const teemahIndex = names.indexOf("Teemah!");
+      const cabIndex = names.indexOf("4x12 Cali V30");
       const gateIndex = names.indexOf("Horizon Gate");
-      const boostIndex = names.indexOf("Scream 808");
+      const eqIndex = names.indexOf("Parametric EQ");
 
-      expect(teemahIndex).toBeGreaterThanOrEqual(0);
+      expect(cabIndex).toBeGreaterThanOrEqual(0);
       expect(gateIndex).toBeGreaterThanOrEqual(0);
-      expect(boostIndex).toBeGreaterThanOrEqual(0);
-      // Gate should be after extra_drive (Teemah!) and before boost (Scream 808)
-      expect(gateIndex).toBeGreaterThan(teemahIndex);
-      expect(gateIndex).toBeLessThan(boostIndex);
+      expect(eqIndex).toBeGreaterThanOrEqual(0);
+      // Gate should be after cab and before EQ
+      expect(gateIndex).toBeGreaterThan(cabIndex);
+      expect(gateIndex).toBeLessThan(eqIndex);
     });
   });
 

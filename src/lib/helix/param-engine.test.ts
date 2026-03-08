@@ -934,7 +934,7 @@ describe("COMBO-01: wah + compressor threshold reduction", () => {
 // COMBO-04: Delay + reverb mix balancing
 // ============================================================
 // When delay and reverb coexist, reverb Mix is reduced by 0.05 to prevent
-// wash. The reduction has a floor of 0.08 to keep reverb audible.
+// wash. The reduction has a floor of 0.15 to keep reverb audible.
 
 describe("COMBO-04: delay + reverb mix balancing", () => {
   // Helper: build intent with genre and specific effects
@@ -974,8 +974,8 @@ describe("COMBO-04: delay + reverb mix balancing", () => {
     expect(reverbWithDelay.parameters.Mix).toBeCloseTo(0.15, 3);
   });
 
-  // COMBO-04-2: Metal genre — reverb Mix floored at 0.08 (0.12 - 0.05 = 0.07, but floor applies)
-  it("COMBO-04-2: metal genre chain with delay+reverb has reverb Mix floored at 0.08", () => {
+  // COMBO-04-2: Metal genre — reverb Mix floored at 0.15 (0.12 - 0.05 = 0.07, but floor applies)
+  it("COMBO-04-2: metal genre chain with delay+reverb has reverb Mix floored at 0.15", () => {
     const intent = comboIntent("metal", [
       { modelName: "Simple Delay", role: "toggleable" },
       { modelName: "Plate", role: "ambient" },
@@ -992,8 +992,8 @@ describe("COMBO-04: delay + reverb mix balancing", () => {
     const chain = assembleSignalChain(metalIntent, defaultCaps);
     const resolved = resolveParameters(chain, metalIntent, defaultCaps);
     const reverb = resolved.find(b => b.type === "reverb")!;
-    // Metal reverb Mix baseline = 0.12, reduced by 0.05 = 0.07, but floor of 0.08 applies
-    expect(reverb.parameters.Mix).toBe(0.08);
+    // Metal reverb Mix baseline = 0.12, reduced by 0.05 = 0.07, but floor of 0.15 applies
+    expect(reverb.parameters.Mix).toBe(0.15);
   });
 
   // COMBO-04-3: Ambient genre — reverb Mix reduced from 0.50 to 0.45
