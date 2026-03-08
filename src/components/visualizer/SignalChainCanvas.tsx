@@ -143,16 +143,25 @@ function EmptySlot({
   label: string;
   onClick?: () => void;
 }) {
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        className="w-20 h-16 rounded-lg border border-dashed border-gray-600 flex items-center justify-center cursor-pointer hover:border-gray-400 hover:text-gray-300"
+        data-testid={`empty-slot-${label.toLowerCase()}`}
+        onClick={onClick}
+        aria-label={`Add block to ${label} slot`}
+      >
+        <span className="text-xs text-gray-500">{`+ ${label}`}</span>
+      </button>
+    );
+  }
   return (
     <div
-      className={[
-        "w-20 h-16 rounded-lg border border-dashed border-gray-600 flex items-center justify-center",
-        onClick ? "cursor-pointer hover:border-gray-400 hover:text-gray-300" : "",
-      ].filter(Boolean).join(" ")}
+      className="w-20 h-16 rounded-lg border border-dashed border-gray-600 flex items-center justify-center"
       data-testid={`empty-slot-${label.toLowerCase()}`}
-      onClick={onClick}
     >
-      <span className="text-xs text-gray-500">{onClick ? `+ ${label}` : label}</span>
+      <span className="text-xs text-gray-500">{label}</span>
     </div>
   );
 }
@@ -363,8 +372,30 @@ export function SignalChainCanvas() {
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
 
-  // Get full state for computed selectors
-  const state = useVisualizerStore.getState();
+  // Build reactive state object from subscribed values for computed selectors.
+  // Using getState() here would produce a stale snapshot — subscribing ensures
+  // layout children re-render when store updates.
+  const presetName = useVisualizerStore((s) => s.presetName);
+  const description = useVisualizerStore((s) => s.description);
+  const tempo = useVisualizerStore((s) => s.tempo);
+  const state: VisualizerStoreState = {
+    device, baseBlocks, snapshots, activeSnapshotIndex, selectedBlockId,
+    controllerAssignments: useVisualizerStore.getState().controllerAssignments,
+    footswitchAssignments: useVisualizerStore.getState().footswitchAssignments,
+    presetName, description, tempo,
+    originalBaseBlocks: useVisualizerStore.getState().originalBaseBlocks,
+    originalSnapshots: useVisualizerStore.getState().originalSnapshots,
+    hydrate: useVisualizerStore.getState().hydrate,
+    setActiveSnapshot: useVisualizerStore.getState().setActiveSnapshot,
+    selectBlock: useVisualizerStore.getState().selectBlock,
+    setParameterValue: useVisualizerStore.getState().setParameterValue,
+    moveBlock: useVisualizerStore.getState().moveBlock,
+    toggleBlockBypass: useVisualizerStore.getState().toggleBlockBypass,
+    swapBlockModel: useVisualizerStore.getState().swapBlockModel,
+    addBlock: useVisualizerStore.getState().addBlock,
+    removeBlock: useVisualizerStore.getState().removeBlock,
+    reorderBlock: useVisualizerStore.getState().reorderBlock,
+  };
 
   // --- DnD event handlers ---
 

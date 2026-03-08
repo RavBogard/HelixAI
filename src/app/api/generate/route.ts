@@ -28,6 +28,13 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function POST(req: NextRequest) {
   try {
+    // Auth gate: require a valid session to prevent unauthenticated AI cost exposure
+    const authSupabase = await createSupabaseServerClient();
+    const { data: { user: authUser } } = await authSupabase.auth.getUser();
+    if (!authUser) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+
     const { messages, device, rigIntent, rigText, conversationId } = await req.json();
 
     // Resolve device target — supports helix_lt, helix_floor, pod_go, helix_stadium, helix_stomp, helix_stomp_xl

@@ -176,6 +176,15 @@ export function calculateStateDiff(
     const origSnap = i < originalSnapshots.length ? originalSnapshots[i] : undefined;
     const currSnap = i < currentSnapshots.length ? currentSnapshots[i] : undefined;
 
+    // Detect added or removed snapshots as changes
+    if (!origSnap && currSnap) {
+      snapshotChanges.push({ index: i, blockStates: { ...currSnap.blockStates }, parameterOverrides: { ...currSnap.parameterOverrides } });
+      continue;
+    }
+    if (origSnap && !currSnap) {
+      snapshotChanges.push({ index: i, blockStates: {}, parameterOverrides: {} });
+      continue;
+    }
     if (!origSnap || !currSnap) continue;
 
     const changedBlockStates: Record<string, boolean> = {};

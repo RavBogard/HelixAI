@@ -8,7 +8,8 @@ export async function GET(request: NextRequest) {
   // Validate CRON_SECRET to prevent unauthorized calls
   // Vercel automatically sends CRON_SECRET as a Bearer token in cron requests
   const authHeader = request.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const secret = process.env.CRON_SECRET
+  if (!secret || authHeader !== `Bearer ${secret}`) {
     return new NextResponse('Unauthorized', { status: 401 })
   }
 

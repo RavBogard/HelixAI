@@ -135,7 +135,8 @@ export const useVisualizerStore = create<VisualizerStoreState>((set, get) => ({
   },
 
   setActiveSnapshot(index) {
-    const clamped = Math.max(0, Math.min(3, index));
+    const state = get();
+    const clamped = Math.max(0, Math.min(state.snapshots.length - 1, index));
     set({ activeSnapshotIndex: clamped });
   },
 
@@ -356,12 +357,12 @@ export function getEffectiveBlockState(
 
   const snapshot = state.snapshots[state.activeSnapshotIndex];
   const overrides = snapshot?.parameterOverrides?.[blockId] ?? {};
-  const bypassed = snapshot?.blockStates?.[blockId] ?? block.enabled;
+  const enabledState = snapshot?.blockStates?.[blockId] ?? block.enabled;
 
   return {
     ...block,
     parameters: { ...block.parameters, ...overrides },
-    enabled: bypassed,
+    enabled: enabledState,
   };
 }
 

@@ -91,17 +91,18 @@ export function BlockTile({
         </span>
       )}
       {onRemove && !isLocked && (
-        <span
-          role="button"
+        <button
+          type="button"
           className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/60 text-white text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-opacity cursor-pointer"
           data-testid={`remove-btn-${blockId}`}
+          aria-label={`Remove ${block.modelName}`}
           onClick={(e) => {
             e.stopPropagation();
             onRemove(blockId);
           }}
         >
           x
-        </span>
+        </button>
       )}
       {footswitchAssignment && (
         <span

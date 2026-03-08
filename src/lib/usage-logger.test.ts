@@ -235,10 +235,11 @@ describe("estimateClaudeCost", () => {
 describe("estimateGeminiCost", () => {
   it("Test 5: returns correct USD value for known inputs", () => {
     // 1000 input + 500 output + 200 cachedContent
-    // input:  1000 / 1_000_000 * 0.30 = 0.0003
-    // output:  500 / 1_000_000 * 2.50 = 0.00125
+    // nonCachedInput = 1000 - 200 = 800
+    // input:  800 / 1_000_000 * 0.30 = 0.00024
+    // output: 500 / 1_000_000 * 2.50 = 0.00125
     // cache_read: 200 / 1_000_000 * 0.03 = 0.000006
-    // total = 0.0003 + 0.00125 + 0.000006 = 0.001556
+    // total = 0.00024 + 0.00125 + 0.000006 = 0.001496
     const cost = estimateGeminiCost(
       {
         promptTokenCount: 1000,
@@ -249,7 +250,7 @@ describe("estimateGeminiCost", () => {
       "gemini-2.5-flash",
     );
 
-    expect(cost).toBeCloseTo(0.001556, 6);
+    expect(cost).toBeCloseTo(0.001496, 6);
   });
 
   it("returns zero cost for zero tokens", () => {

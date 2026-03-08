@@ -4,7 +4,7 @@
 // Downloads the current visualizer state as a device-correct preset file.
 // Uses calculateStateDiff to gate the API call: no changes = no round-trip.
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useVisualizerStore } from "@/lib/visualizer/store";
 import { calculateStateDiff } from "@/lib/visualizer/state-diff";
 
@@ -28,6 +28,10 @@ export function DownloadButton() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [noChanges, setNoChanges] = useState(false);
+  const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup timer on unmount
+  useEffect(() => () => { if (errorTimerRef.current) clearTimeout(errorTimerRef.current) }, []);
 
   const isEmpty = baseBlocks.length === 0;
 
@@ -106,7 +110,8 @@ export function DownloadButton() {
       const message =
         err instanceof Error ? err.message : "Download failed";
       setError(message);
-      setTimeout(() => setError(null), 5000);
+      if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+      errorTimerRef.current = setTimeout(() => setError(null), 5000);
     } finally {
       setIsDownloading(false);
     }

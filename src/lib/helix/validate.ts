@@ -370,6 +370,19 @@ export function validateAndFixPresetSpec(spec: PresetSpec): ValidationResult {
         continue;
       }
 
+      // Stadium Parametric EQ: uses real Hz/dB/Q/slope values — skip clamping
+      if (block.type === "eq" && block.modelId?.startsWith("HX2_EQParametric")) {
+        continue;
+      }
+
+      // Modulation/dynamics blocks with firmware-verified Level > 1.0 or integer params
+      if (key === "Level" && (block.type === "modulation" || block.type === "dynamics")) {
+        if (typeof value === "number" && value >= -20.0 && value <= 20.0) continue;
+      }
+      if (key === "Mode" || key === "SyncSelect1" || key === "SyncSelect2") {
+        if (typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 16) continue;
+      }
+
       if (typeof value === "number" && (value < 0 || value > 1)) {
         block.parameters[key] = Math.max(0, Math.min(1, value));
         fixed = true;

@@ -247,8 +247,9 @@ function buildPgpSnapshot(
     }
   }
 
-  // Ensure ALL blocks have a bypass state (using DSP index, which includes cabs)
+  // Ensure ALL non-cab blocks have a bypass state (cab blocks don't appear in snapshot bypass table)
   for (let i = 0; i < allBlocks.length; i++) {
+    if (allBlocks[i].type === "cab") continue;
     const key = `block${i}`;
     if (!(key in blocks)) {
       blocks[key] = allBlocks[i].enabled;
@@ -394,7 +395,13 @@ function buildPgpControllerSection(spec: PresetSpec): Record<string, unknown> {
     // EXP1 -> wah Position
     const wahBlock = spec.signalChain.find(b => b.type === "wah");
     if (wahBlock) {
-      const wahKey = blockKeyMap.get(`block${spec.signalChain.indexOf(wahBlock)}`);
+      // Count non-cab blocks before the wah to get the correct snapshot index
+      let wahNonCabIdx = 0;
+      for (const b of spec.signalChain) {
+        if (b === wahBlock) break;
+        if (b.type !== "cab") wahNonCabIdx++;
+      }
+      const wahKey = blockKeyMap.get(`block${wahNonCabIdx}`);
       if (wahKey) {
         if (!controller.dsp0[wahKey]) {
           controller.dsp0[wahKey] = {};
@@ -416,7 +423,13 @@ function buildPgpControllerSection(spec: PresetSpec): Record<string, unknown> {
         b => b.type === "volume" && b.modelName !== "Gain Block"
       );
       if (volBlock) {
-        const volKey = blockKeyMap.get(`block${spec.signalChain.indexOf(volBlock)}`);
+        // Count non-cab blocks before the volume pedal to get the correct snapshot index
+        let volNonCabIdx = 0;
+        for (const b of spec.signalChain) {
+          if (b === volBlock) break;
+          if (b.type !== "cab") volNonCabIdx++;
+        }
+        const volKey = blockKeyMap.get(`block${volNonCabIdx}`);
         if (volKey) {
           if (!controller.dsp0[volKey]) {
             controller.dsp0[volKey] = {};

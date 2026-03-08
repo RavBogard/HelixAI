@@ -612,7 +612,7 @@ function resolveDefaultParams(
     // Dual Delay uses "Left Time" / "Right Time" keys (space in key name)
     if ("Left Time" in params) {
       params["Left Time"] = clamped;
-      params["Right Time"] = Math.min(1.0, clamped * 0.75); // dotted-eighth offset for ping-pong
+      params["Right Time"] = Math.min(1.0, Math.max(0.01, quarterNoteTime * 0.75)); // dotted-eighth offset from base quarter note for ping-pong
     }
   }
 
@@ -659,7 +659,7 @@ function applyCombinationAdjustments(chain: BlockSpec[]): BlockSpec[] {
       }
     }
 
-    // COMBO-04: Delay + reverb → reduce reverb mix (floor 0.08)
+    // COMBO-04: Delay + reverb → reduce reverb mix (floor 0.15)
     if (hasDelay && block.type === "reverb") {
       if ("Mix" in params && typeof params.Mix === "number") {
         params.Mix = Math.max(0.15, (params.Mix as number) - 0.05);

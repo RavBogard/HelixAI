@@ -23,7 +23,6 @@ export function SnapshotSelectorBar() {
             key={index}
             type="button"
             role="tab"
-            aria-pressed={isActive}
             aria-selected={isActive}
             className={[
               "px-3 py-1.5 rounded text-sm font-medium transition-colors",

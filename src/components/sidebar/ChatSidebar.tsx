@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { ConversationList } from './ConversationList'
 
@@ -16,7 +16,11 @@ export function ChatSidebar() {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const deleteErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const router = useRouter()
+
+  // Cleanup timer on unmount
+  useEffect(() => () => { if (deleteErrorTimerRef.current) clearTimeout(deleteErrorTimerRef.current) }, [])
 
   const fetchConversations = useCallback(async () => {
     try {
@@ -54,12 +58,14 @@ export function ChatSidebar() {
       if (!res.ok) {
         setConversations(prev) // Rollback
         setDeleteError('Failed to delete. Please try again.')
-        setTimeout(() => setDeleteError(null), 3000)
+        if (deleteErrorTimerRef.current) clearTimeout(deleteErrorTimerRef.current)
+        deleteErrorTimerRef.current = setTimeout(() => setDeleteError(null), 3000)
       }
     } catch {
       setConversations(prev) // Rollback
       setDeleteError('Failed to delete. Please try again.')
-      setTimeout(() => setDeleteError(null), 3000)
+      if (deleteErrorTimerRef.current) clearTimeout(deleteErrorTimerRef.current)
+      deleteErrorTimerRef.current = setTimeout(() => setDeleteError(null), 3000)
     }
   }
 

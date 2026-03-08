@@ -53,6 +53,8 @@ function HomeContent() {
   const [isMappingLoading, setIsMappingLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  // Bug sweep #17: AbortController for SSE stream — abort on unmount or startOver
+  const abortRef = useRef<AbortController | null>(null);
   // Phase 23: rig file input ref — camera button in prompt bar
   const rigFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -159,10 +161,10 @@ function HomeContent() {
   // only fires when selectedDevice changes, so the closure value is always current.
   useEffect(() => {
     if (rigIntent) {
-      callMap(rigIntent);
+      callMap(rigIntent, selectedDevice);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDevice]);
+  }, [selectedDevice, rigIntent]);
 
   // Phase 25: Serialize chat state to sessionStorage before OAuth redirect.
   // Called by AuthButton (Plan 02) before triggering OAuth redirect.
@@ -272,6 +274,10 @@ function HomeContent() {
     const assistantMessage: Message = { role: "assistant", content: "" };
     setMessages([...newMessages, assistantMessage]);
 
+    // Bug sweep #17: abort any in-flight SSE stream before starting a new one
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
+
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -282,6 +288,7 @@ function HomeContent() {
           device: selectedDevice,  // Phase 66: send device for per-family prompts (FRONT-02)
           ...(convId ? { conversationId: convId } : {}),
         }),
+        signal: abortRef.current.signal,
       });
 
       if (!res.ok) {
@@ -365,6 +372,8 @@ function HomeContent() {
           });
       }
     } catch (err) {
+      // Bug sweep #17: suppress AbortError — user intentionally cancelled the stream
+      if (err instanceof DOMException && err.name === "AbortError") return;
       const message = err instanceof Error ? err.message : "Something went wrong";
       setError(message);
       setMessages(newMessages);
@@ -620,6 +629,8 @@ function HomeContent() {
 
   // CHANGE 4-D: clear substitutionMap on startOver
   function startOver() {
+    // Bug sweep #17: abort any in-flight SSE stream
+    abortRef.current?.abort();
     setMessages([]);
     setInput("");
     setReadyToGenerate(false);
@@ -651,7 +662,8 @@ function HomeContent() {
 
   // Phase 21: standalone mapping helper — called after callVision() and on device change.
   // Non-fatal: if /api/map fails, vision result is preserved and Generate still works.
-  async function callMap(rigIntentData: NonNullable<typeof rigIntent>) {
+  // Bug sweep #18: device param avoids stale closure over selectedDevice
+  async function callMap(rigIntentData: NonNullable<typeof rigIntent>, device: DeviceId) {
     setIsMappingLoading(true);
     setSubstitutionMap(null);
     try {
@@ -660,7 +672,7 @@ function HomeContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           rigIntent: rigIntentData,
-          device: selectedDevice,
+          device,
         }),
       });
       if (mapRes.ok) {
@@ -726,7 +738,7 @@ function HomeContent() {
 
       // Phase 21: Automatically chain into /api/map. Non-fatal — vision result is preserved
       // even if mapping fails. isMappingLoading takes over the loading indicator.
-      await callMap(data.rigIntent);
+      await callMap(data.rigIntent, selectedDevice);
     } catch (err) {
       setVisionError(
         err instanceof Error ? err.message : "Vision extraction failed"

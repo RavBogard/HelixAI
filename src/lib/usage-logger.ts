@@ -101,8 +101,9 @@ export function estimateGeminiCost(
   const output = usage.candidatesTokenCount ?? 0;
   const cached = usage.cachedContentTokenCount ?? 0;
 
+  const nonCachedInput = input - cached;
   return (
-    (input / MTok) * GEMINI_FLASH_PRICE.input_per_mtok +
+    (nonCachedInput / MTok) * GEMINI_FLASH_PRICE.input_per_mtok +
     (output / MTok) * GEMINI_FLASH_PRICE.output_per_mtok +
     (cached / MTok) * GEMINI_FLASH_PRICE.cache_read_per_mtok
   );

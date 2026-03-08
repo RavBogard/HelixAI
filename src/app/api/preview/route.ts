@@ -22,9 +22,20 @@ import type { PresetSpec, DeviceTarget, SubstitutionMap, DeviceFamily } from "@/
 import type { RigIntent } from "@/lib/helix";
 import { mapRigToSubstitutions, parseRigText } from "@/lib/rig-mapping";
 import { hydrateVisualizerState } from "@/lib/visualizer/hydrate";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function POST(req: NextRequest) {
   try {
+    // Auth gate: require a valid session to prevent unauthenticated AI cost exposure
+    const authSupabase = await createSupabaseServerClient();
+    const { data: { user: authUser } } = await authSupabase.auth.getUser();
+    if (!authUser) {
+      return NextResponse.json(
+        { success: false, error: "Authentication required" },
+        { status: 401 },
+      );
+    }
+
     const { messages, device, rigIntent, rigText, conversationId } = await req.json();
 
     // --- Validate required fields ---

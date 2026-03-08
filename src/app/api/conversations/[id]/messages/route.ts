@@ -26,7 +26,14 @@ export async function POST(
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  const { role, content } = await request.json()
+  let role: string, content: string;
+  try {
+    const body = await request.json();
+    role = body.role;
+    content = body.content;
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  }
 
   if (role !== 'user' && role !== 'assistant') {
     return NextResponse.json({ error: 'role must be user or assistant' }, { status: 400 })

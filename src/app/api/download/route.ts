@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
     }
 
     // --- Return binary response ---
-    const sanitizedName = presetName.replace(/[^a-zA-Z0-9_\- ]/g, "_");
+    const sanitizedName = presetName.slice(0, 100).replace(/[^a-zA-Z0-9_\- ]/g, "_");
 
     return new Response(new Uint8Array(fileBuffer), {
       status: 200,

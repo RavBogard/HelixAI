@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 interface Conversation {
   id: string
@@ -39,16 +39,21 @@ function deviceLabel(device: string): string {
 
 export function ConversationList({ conversations, onSelect, onDelete }: ConversationListProps) {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Cleanup timer on unmount
+  useEffect(() => () => { if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current) }, [])
 
   function handleDeleteClick(e: React.MouseEvent, id: string) {
     e.stopPropagation()
+    if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current)
     if (confirmDelete === id) {
       onDelete(id)
       setConfirmDelete(null)
     } else {
       setConfirmDelete(id)
       // Auto-cancel confirm after 3 seconds
-      setTimeout(() => setConfirmDelete(prev => prev === id ? null : prev), 3000)
+      confirmTimerRef.current = setTimeout(() => setConfirmDelete(prev => prev === id ? null : prev), 3000)
     }
   }
 

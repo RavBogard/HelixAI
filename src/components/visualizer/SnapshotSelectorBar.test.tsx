@@ -45,14 +45,14 @@ describe("SnapshotSelectorBar", () => {
     expect(screen.getByTestId("snapshot-btn-3")).toBeDefined();
   });
 
-  it("highlights active snapshot button with aria-pressed", () => {
+  it("highlights active snapshot button with aria-selected", () => {
     useVisualizerStore.setState({ activeSnapshotIndex: 2 });
     render(<SnapshotSelectorBar />);
 
-    expect(screen.getByTestId("snapshot-btn-2").getAttribute("aria-pressed")).toBe("true");
-    expect(screen.getByTestId("snapshot-btn-0").getAttribute("aria-pressed")).toBe("false");
-    expect(screen.getByTestId("snapshot-btn-1").getAttribute("aria-pressed")).toBe("false");
-    expect(screen.getByTestId("snapshot-btn-3").getAttribute("aria-pressed")).toBe("false");
+    expect(screen.getByTestId("snapshot-btn-2").getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByTestId("snapshot-btn-0").getAttribute("aria-selected")).toBe("false");
+    expect(screen.getByTestId("snapshot-btn-1").getAttribute("aria-selected")).toBe("false");
+    expect(screen.getByTestId("snapshot-btn-3").getAttribute("aria-selected")).toBe("false");
   });
 
   it("clicking snapshot button calls setActiveSnapshot", () => {

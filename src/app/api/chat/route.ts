@@ -8,6 +8,15 @@ import type { DeviceTarget } from "@/lib/helix";
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const { messages, premiumKey, conversationId } = body;
+
+  // Input validation: messages must be a non-empty array
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return new Response(JSON.stringify({ error: "messages is required and must be a non-empty array" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   const device: DeviceTarget = body.device ?? "helix_lt";
   const premium = isPremiumKey(premiumKey);
 

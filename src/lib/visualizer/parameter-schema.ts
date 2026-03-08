@@ -19,7 +19,9 @@ export type SchemaType =
 
 export interface ParameterSchemaDef {
   type: SchemaType;
+  /** Minimum value in display space (e.g., 0 for percentage, -12 for EQ gain dB). Use fromDisplayValue() to convert to raw. */
   min: number;
+  /** Maximum value in display space (e.g., 100 for percentage, 12 for EQ gain dB). Use fromDisplayValue() to convert to raw. */
   max: number;
   step: number;
   unit: string;

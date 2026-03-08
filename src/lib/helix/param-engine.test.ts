@@ -605,9 +605,9 @@ describe("FX-03: tempo-synced delay Time", () => {
     const result = resolveParameters(chain, intent, defaultCaps);
     const delay = result[1];
     // Left Time: quarter=0.25 * 0.5(eighth) = 0.125
-    // Right Time: 0.125 * 0.75 = 0.09375 (dotted-eighth offset for ping-pong)
+    // Right Time: quarterNoteTime * 0.75 = 0.25 * 0.75 = 0.1875 (dotted-eighth offset from base quarter note)
     expect(delay.parameters["Left Time"]).toBeCloseTo(0.125, 3);
-    expect(delay.parameters["Right Time"]).toBeCloseTo(0.09375, 4);
+    expect(delay.parameters["Right Time"]).toBeCloseTo(0.1875, 4);
   });
 });
 
