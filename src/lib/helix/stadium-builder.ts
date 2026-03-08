@@ -55,8 +55,7 @@ const CAB_TYPES = new Set(["cab"]);
 const STADIUM_MODEL_BASE_OVERRIDES: Record<string, string> = {
   // Horizon Gate uses HX2_ prefix in all professional Stadium presets
   "HD2_GateHorizonGate": "HX2_GateHorizonGate",
-  // Stadium Parametric EQ is a different model (HX2_ prefix, no "7Band" in name)
-  "HD2_EQParametric7Band": "HX2_EQParametric",
+  // Stadium Parametric EQ uses HX2_ prefix; regular HD2_EQParametric also maps to HX2_
   "HD2_EQParametric": "HX2_EQParametric",
 };
 

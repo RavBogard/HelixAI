@@ -122,17 +122,17 @@ const MINOTAUR_PARAMS: Record<AmpCategory, Record<string, number>> = {
   high_gain: { Gain: 0.25, Treble: 0.50, Output: 0.60 }, // fallback, typically Scream 808 used for high-gain
 };
 
-// Scream 808 (TS808) — uses Drive/Tone/Level
+// Scream 808 (TS808) — uses Gain/Tone/Level (verified against firmware .hsp files)
 const SCREAM_808_PARAMS: Record<string, number> = {
-  Drive: 0.15, Tone: 0.50, Level: 0.60,
+  Gain: 0.15, Tone: 0.50, Level: 0.60,
 };
 
 // ============================================================
 // GATE PARAMETER TABLE
 // ============================================================
 
-const HORIZON_GATE_PARAMS: Record<string, number> = {
-  Threshold: 0.50, Decay: 0.40,
+const HORIZON_GATE_PARAMS: Record<string, number | boolean> = {
+  "Gate Range": false, Level: 0.0, Mode: 1, Sensitivity: 0.1,
 };
 
 // ============================================================

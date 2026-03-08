@@ -915,10 +915,10 @@ export const CAB_MODELS: Record<string, HelixModel> = {
 // DISTORTION / OVERDRIVE MODELS
 // ============================================================
 export const DISTORTION_MODELS: Record<string, HelixModel> = {
-  "Scream 808": { id: "HD2_DistScream808", name: "Scream 808", basedOn: "Ibanez TS808 Tube Screamer", category: "overdrive", blockType: BLOCK_TYPES.DISTORTION, defaultParams: { Drive: 0.10, Tone: 0.45, Level: 0.65 } },
+  "Scream 808": { id: "HD2_DistScream808", name: "Scream 808", basedOn: "Ibanez TS808 Tube Screamer", category: "overdrive", blockType: BLOCK_TYPES.DISTORTION, defaultParams: { Gain: 0.0, Tone: 0.0, Level: 1.0 } },
   "Minotaur": { id: "HD2_DistMinotaur", name: "Minotaur", basedOn: "Klon Centaur", category: "overdrive", blockType: BLOCK_TYPES.DISTORTION, defaultParams: { Gain: 0.20, Treble: 0.50, Output: 0.60 } },
   "Teemah!": { id: "HD2_DistTeemah", name: "Teemah!", basedOn: "Paul Cochrane Timmy", category: "overdrive", blockType: BLOCK_TYPES.DISTORTION, defaultParams: { Drive: 0.5, Bass: 0.5, Treble: 0.5, Level: 0.5 } },
-  "Kinky Boost": { id: "HD2_DistKinkyBoost", name: "Kinky Boost", basedOn: "Xotic EP Booster", category: "boost", blockType: BLOCK_TYPES.DISTORTION, defaultParams: { Boost: 0.5 } },
+  "Kinky Boost": { id: "HD2_DistKinkyBoost", name: "Kinky Boost", basedOn: "Xotic EP Booster", category: "boost", blockType: BLOCK_TYPES.DISTORTION, defaultParams: { Boost: true, Bright: true, Drive: 0.56 } },
   "Compulsive Drive": { id: "HD2_DistCompulsiveDrive", name: "Compulsive Drive", basedOn: "Fulltone OCD", category: "overdrive", blockType: BLOCK_TYPES.DISTORTION, defaultParams: { Drive: 0.5, Tone: 0.5, Volume: 0.5 } },
   "Heir Apparent": { id: "HD2_DistHeirApparent", name: "Heir Apparent", basedOn: "Analogman Prince of Tone", category: "overdrive", blockType: BLOCK_TYPES.DISTORTION, defaultParams: { Drive: 0.5, Tone: 0.5, Volume: 0.5 } },
   "Hedgehog D9": { id: "HD2_DistHedgehogD9", name: "Hedgehog D9", basedOn: "MXR Distortion+", category: "distortion", blockType: BLOCK_TYPES.DISTORTION, defaultParams: { Distortion: 0.5, Output: 0.5 } },
@@ -1009,7 +1009,7 @@ export const MODULATION_MODELS: Record<string, HelixModel> = {
   "PlastiChorus": { id: "HD2_ChorusPlastiChorus", name: "PlastiChorus", basedOn: "TC Electronic SCF Stereo Chorus", category: "chorus", blockType: BLOCK_TYPES.MODULATION, defaultParams: { Speed: 0.4, Depth: 0.5, Tone: 0.5, Mix: 0.5, Level: 0.0 } },
   "Trinity Chorus": { id: "HD2_ChorusTrinityChorus", name: "Trinity Chorus", basedOn: "Dytronics Tri-Stereo Chorus", category: "chorus", blockType: BLOCK_TYPES.MODULATION, defaultParams: { Speed: 0.4, Depth: 0.5, Tone: 0.5, Mix: 0.5, SpreadLR: 0.5, Level: 0.0 } },
   "Courtesan Flange": { id: "HD2_FlangerCourtesanFlange", name: "Courtesan Flange", basedOn: "MXR Flanger", category: "flanger", blockType: BLOCK_TYPES.MODULATION, defaultParams: { Speed: 0.4, Depth: 0.5, Manual: 0.5, Feedback: 0.5, Mix: 0.5, Level: 0.0 } },
-  "Script Mod Phase": { id: "HD2_PhaserScriptModPhase", name: "Script Mod Phase", basedOn: "MXR Phase 90 (Script Logo)", category: "phaser", blockType: BLOCK_TYPES.MODULATION, defaultParams: { Speed: 0.4, Mix: 0.5, Level: 0.0 } },
+  "Script Mod Phase": { id: "HD2_PhaserScriptModPhase", name: "Script Mod Phase", basedOn: "MXR Phase 90 (Script Logo)", category: "phaser", blockType: BLOCK_TYPES.MODULATION, defaultParams: { Rate: 0.07, Mix: 0.5, Level: 2.0, SyncSelect1: 6, TempoSync1: false } },
   "Ubiquitous Vibe": { id: "HD2_PhaserUbiquitousVibe", name: "Ubiquitous Vibe", basedOn: "Shin-ei Uni-Vibe", category: "vibe", blockType: BLOCK_TYPES.MODULATION, defaultParams: { Speed: 0.4, Intensity: 0.5, Mix: 0.5, Level: 0.0 } },
   "Optical Trem": { id: "HD2_TremoloOpticalTrem", name: "Optical Trem", basedOn: "Fender Optical Tremolo", category: "tremolo", blockType: BLOCK_TYPES.MODULATION, defaultParams: { Speed: 0.5, Intensity: 0.5, Level: 0.0 } },
   "Harmonic Tremolo": { id: "HD2_TremoloHarmonic", name: "Harmonic Tremolo", basedOn: "Line 6 Original Harmonic Trem", category: "tremolo", blockType: BLOCK_TYPES.MODULATION, defaultParams: { Speed: 0.5, Intensity: 0.5, Tone: 0.5, Mix: 0.5, Level: 0.0 } },
@@ -1038,7 +1038,7 @@ export const DYNAMICS_MODELS: Record<string, HelixModel> = {
   "Opto Comp": { id: "HD2_CompressorOptoComp", name: "Opto Comp", basedOn: "Line 6 Original Optical Compressor", category: "compressor", blockType: BLOCK_TYPES.DYNAMICS, defaultParams: { Sensitivity: 0.5, Level: 0.5 } },
   "Noise Gate": { id: "HD2_GateNoiseGate", name: "Noise Gate", basedOn: "Line 6 Original", category: "gate", blockType: BLOCK_TYPES.DYNAMICS, defaultParams: { Threshold: 0.5, Decay: 0.5 } },
   "Hard Gate": { id: "HD2_GateHardGate", name: "Hard Gate", basedOn: "Line 6 Original (Hard Cut)", category: "gate", blockType: BLOCK_TYPES.DYNAMICS, defaultParams: { "Open Threshold": 0.5, "Close Threshold": 0.4, "Hold Time": 0.1, Decay: 0.1 } },
-  "Horizon Gate": { id: "HD2_GateHorizonGate", name: "Horizon Gate", basedOn: "Horizon Devices Precision Drive (gate)", category: "gate", blockType: BLOCK_TYPES.DYNAMICS, defaultParams: { Threshold: 0.5, Decay: 0.5 } },
+  "Horizon Gate": { id: "HD2_GateHorizonGate", name: "Horizon Gate", basedOn: "Horizon Devices Precision Drive (gate)", category: "gate", blockType: BLOCK_TYPES.DYNAMICS, defaultParams: { "Gate Range": false, Level: 0.0, Mode: 1, Sensitivity: 0.1 } },
   "Autoswell": { id: "HD2_CompressorAutoSwell", name: "Autoswell", basedOn: "Line 6 Original Auto Volume Swell", category: "dynamics", blockType: BLOCK_TYPES.DYNAMICS, defaultParams: { RiseTime: 0.5, Level: 0.5 } },
 };
 
@@ -1565,17 +1565,19 @@ export const STADIUM_AMPS: Record<string, HelixModel> = {
 // ============================================================
 export const STADIUM_EQ_MODELS: Record<string, HelixModel> = {
   "Stadium Parametric EQ": {
-    id: "HD2_EQParametric7Band",
+    id: "HX2_EQParametric",
     name: "Stadium Parametric EQ",
-    basedOn: "Line 6 Stadium 7-Band Parametric EQ",
+    basedOn: "Line 6 Stadium Parametric EQ",
     category: "parametric",
     defaultParams: {
-      LowFreq: 0.10, LowGain: 0.50,
-      LowMidFreq: 0.25, LowMidGain: 0.50, LowMidQ: 0.50,
-      MidFreq: 0.45, MidGain: 0.50, MidQ: 0.50,
-      HighMidFreq: 0.65, HighMidGain: 0.50, HighMidQ: 0.50,
-      HighFreq: 0.80, HighGain: 0.50,
+      HighCut: 20000.0, HighCutEnable: false, HighCutSlope: 1,
+      HighEnable: true, HighFreq: 5000.0, HighGain: 0.0, HighQ: 0.707,
+      HighShelfEnable: true, HighShelfFreq: 8000.0, HighShelfGain: 0.0,
       Level: 0.0,
+      LowCut: 150.0, LowCutEnable: true, LowCutSlope: 1,
+      LowEnable: true, LowFreq: 150.0, LowGain: 0.0, LowQ: 0.707,
+      LowShelfEnable: true, LowShelfFreq: 80.0, LowShelfGain: 0.0,
+      MidEnable: true, MidFreq: 2000.0, MidGain: 0.0, MidQ: 0.707,
     },
     blockType: BLOCK_TYPES.EQ,
     stadiumOnly: true,

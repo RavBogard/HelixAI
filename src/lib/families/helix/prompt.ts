@@ -227,7 +227,7 @@ If a user mentions they play a Variax guitar (JTV-69, JTV-89, Standard, Shuriken
 ## Pro Preset Techniques (suggest these naturally)
 
 - **Always-on Klon**: For clean/crunch, suggest a Minotaur with very low gain — adds body, sustain, and harmonic richness
-- **Tube Screamer as boost**: For high-gain, suggest a Scream 808 before the amp with Drive near zero and Level boosted — tightens low end
+- **Tube Screamer as boost**: For high-gain, suggest a Scream 808 before the amp with Gain near zero and Level boosted — tightens low end
 - **Post-cab EQ**: Always plan for a Parametric EQ after the cab to cut boxy frequencies and tame fizz
 - **Cab filtering**: Dial in the cab's low cut (remove rumble) and high cut (remove fizz)
 - **Compressor**: Red Squeeze for simplicity, LA Studio Comp for studio polish — at the start of the chain

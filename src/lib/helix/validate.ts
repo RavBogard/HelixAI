@@ -140,6 +140,20 @@ export function validatePresetSpec(spec: PresetSpec, caps: DeviceCapabilities): 
         continue;
       }
 
+      // Stadium Parametric EQ (HX2_EQParametric): uses real Hz/dB/Q/slope values — skip 0-1 check
+      if (block.type === "eq" && block.modelId.startsWith("HX2_EQParametric")) {
+        continue;
+      }
+
+      // Modulation/dynamics blocks with firmware-verified Level > 1.0 or integer params
+      // (e.g., Script Mod Phase Level: 2.0 dB, SyncSelect1: 6, Horizon Gate Mode: 1)
+      if (key === "Level" && (block.type === "modulation" || block.type === "dynamics")) {
+        if (value >= -20.0 && value <= 20.0) continue;
+      }
+      if (key === "Mode" || key === "SyncSelect1" || key === "SyncSelect2") {
+        if (Number.isInteger(value) && value >= 0 && value <= 16) continue;
+      }
+
       // All other params: 0.0-1.0 normalized
       if (value < 0.0 || value > 1.0) {
         throw new Error(`Parameter '${key}' value ${value} out of range for block '${block.modelName}' (expected 0.0-1.0)`);

@@ -234,8 +234,8 @@ describe("resolveParameters", () => {
     expect(crunchResult[0].parameters.Gain).toBeLessThanOrEqual(0.30);
   });
 
-  // Test 10: Scream 808 boost parameters
-  it("sets Scream 808 with Drive 0.10-0.20, Tone 0.50, Level 0.50-0.70", () => {
+  // Test 10: Scream 808 boost parameters (firmware uses Gain, not Drive)
+  it("sets Scream 808 with Gain 0.10-0.20, Tone 0.50, Level 0.50-0.70", () => {
     const chain: BlockSpec[] = [
       makeBlock({ type: "distortion", modelId: "HD2_DistScream808", modelName: "Scream 808" }),
     ];
@@ -243,15 +243,15 @@ describe("resolveParameters", () => {
     const result = resolveParameters(chain, intent, defaultCaps);
     const boost = result[0];
 
-    expect(boost.parameters.Drive).toBeGreaterThanOrEqual(0.10);
-    expect(boost.parameters.Drive).toBeLessThanOrEqual(0.20);
+    expect(boost.parameters.Gain).toBeGreaterThanOrEqual(0.10);
+    expect(boost.parameters.Gain).toBeLessThanOrEqual(0.20);
     expect(boost.parameters.Tone).toBe(0.50);
     expect(boost.parameters.Level).toBeGreaterThanOrEqual(0.50);
     expect(boost.parameters.Level).toBeLessThanOrEqual(0.70);
   });
 
-  // Test 11: Horizon Gate parameters
-  it("sets Horizon Gate Threshold 0.50 and Decay 0.40", () => {
+  // Test 11: Horizon Gate parameters (firmware uses Gate Range/Level/Mode/Sensitivity)
+  it("sets Horizon Gate with correct firmware params", () => {
     const chain: BlockSpec[] = [
       makeBlock({ type: "dynamics", modelId: "HD2_GateHorizonGate", modelName: "Horizon Gate" }),
     ];
@@ -259,8 +259,10 @@ describe("resolveParameters", () => {
     const result = resolveParameters(chain, intent, defaultCaps);
     const gate = result[0];
 
-    expect(gate.parameters.Threshold).toBe(0.50);
-    expect(gate.parameters.Decay).toBe(0.40);
+    expect(gate.parameters["Gate Range"]).toBe(false);
+    expect(gate.parameters.Level).toBe(0.0);
+    expect(gate.parameters.Mode).toBe(1);
+    expect(gate.parameters.Sensitivity).toBe(0.1);
   });
 
   // Test 12: Gain Block gets Gain 0.0 dB (NOT normalized)
