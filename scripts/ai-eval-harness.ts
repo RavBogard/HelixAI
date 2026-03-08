@@ -158,9 +158,7 @@ function getAmpCategory(ampName: string, device: DeviceTarget): "clean" | "crunc
 
 function scoreModelValidity(parsed: Record<string, unknown>, device: DeviceTarget): number {
   const family = resolveFamily(device);
-  const schema = getToneIntentSchema(family);
-  const ampNames = schema._def?.schema?._def?.shape?.()?.ampName?._def?.values;
-  const cabNames = schema._def?.schema?._def?.shape?.()?.cabName?._def?.values;
+  const { ampNames, cabNames } = getCatalogNames(family);
 
   let valid = 0;
   let total = 0;
