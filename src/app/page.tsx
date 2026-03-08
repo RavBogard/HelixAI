@@ -346,7 +346,7 @@ function HomeContent() {
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [premiumKey, setPremiumKey] = useState<string | null>(null);
-  const [selectedDevice, setSelectedDevice] = useState<"helix_lt" | "helix_floor" | "pod_go" | "helix_stadium" | "helix_stomp" | "helix_stomp_xl">("helix_lt");
+  const [selectedDevice, setSelectedDevice] = useState<"helix_lt" | "helix_floor" | "helix_native" | "pod_go" | "helix_stadium" | "helix_stomp" | "helix_stomp_xl">("helix_lt");
   // Phase 66: device lock state — true after device is chosen for a conversation (lock-in UX)
   const [deviceLocked, setDeviceLocked] = useState(false);
   // Phase 66: needs-picker state — true when resuming a legacy conversation with null/empty device (FRONT-04)
@@ -714,7 +714,7 @@ function HomeContent() {
   // CHANGE 4-C: pass rigIntent in generate body; store substitutionMap from response
   // overrideMessages: used by handleRigGenerate() when calling from the welcome screen,
   // where React state hasn't flushed yet. Falls back to messages state for the chat flow.
-  async function generatePreset(overrideMessages?: Message[], overrideDevice?: "helix_lt" | "helix_floor" | "pod_go" | "helix_stadium" | "helix_stomp" | "helix_stomp_xl") {
+  async function generatePreset(overrideMessages?: Message[], overrideDevice?: "helix_lt" | "helix_floor" | "helix_native" | "pod_go" | "helix_stadium" | "helix_stomp" | "helix_stomp_xl") {
     setIsResumingConversation(false); // User is regenerating
     setIsGenerating(true);
     setError(null);
@@ -806,7 +806,7 @@ function HomeContent() {
   // Injects a synthetic user message so the /api/generate route's messages.length > 0
   // guard passes, then calls generatePreset() with the local message list before React
   // flushes state. Switches the UI to the chat flow by setting messages state.
-  async function handleRigGenerate(overrideDevice?: "helix_lt" | "helix_floor" | "pod_go" | "helix_stadium" | "helix_stomp" | "helix_stomp_xl") {
+  async function handleRigGenerate(overrideDevice?: "helix_lt" | "helix_floor" | "helix_native" | "pod_go" | "helix_stadium" | "helix_stomp" | "helix_stomp_xl") {
     const syntheticMsg: Message = {
       role: "user",
       content: "Build a preset from my pedal rig",
@@ -922,7 +922,7 @@ function HomeContent() {
 
       // Restore device — null-safe (FRONT-04): legacy rows have null/empty device
       if (data.device) {
-        setSelectedDevice(data.device as "helix_lt" | "helix_floor" | "pod_go" | "helix_stadium" | "helix_stomp" | "helix_stomp_xl");
+        setSelectedDevice(data.device as "helix_lt" | "helix_floor" | "helix_native" | "pod_go" | "helix_stadium" | "helix_stomp" | "helix_stomp_xl");
         setDeviceLocked(true);   // Resumed conversation = device already chosen
         setNeedsDevicePicker(false);
       } else {
