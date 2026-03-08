@@ -27,6 +27,7 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 - ✓ Standard model tier upgraded to gemini-3-flash-preview — v2.0 Phase 1
 - ✓ Per-family effect intelligence: Helix (dual-DSP layering), Stomp (priority-based), Pod Go (4-slot templates), Stadium (arena/FOH) — v2.0 Phase 2
 - ✓ AI chat conciseness: structured summaries, bolded key info, 2-3 exchange interviews — v2.0 Phase 3
+- ✓ UI/UX redesign: component extraction, chat typography/responsive, PresetCard visual polish — v2.0 Phase 4
 
 ### Must Have
 - [To be defined during planning]

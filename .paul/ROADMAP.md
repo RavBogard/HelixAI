@@ -6,7 +6,7 @@ Build an AI-powered preset builder that interviews users about their rig and ton
 ## Current Milestone
 **v2.0 — Device Intelligence & UX Overhaul** (v2.0.0)
 Status: 🚧 In Progress
-Phases: 3 of 5 complete
+Phases: 4 of 5 complete
 
 ## Phases
 
@@ -15,7 +15,7 @@ Phases: 3 of 5 complete
 | 1 | Gemini Unification & Architecture | 1/1 | ✅ Complete | 2026-03-08 |
 | 2 | Device-Specific Preset Intelligence | 1/1 | ✅ Complete | 2026-03-08 |
 | 3 | AI Conciseness Overhaul | 1/1 | ✅ Complete | 2026-03-08 |
-| 4 | UI/UX Redesign — Layout & Chat | 1/TBD | Planning | - |
+| 4 | UI/UX Redesign — Layout & Chat | 3/3 | ✅ Complete | 2026-03-08 |
 | 5 | Polish & Integration Testing | TBD | Not started | - |
 
 ## Phase Details

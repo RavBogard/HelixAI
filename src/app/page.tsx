@@ -929,7 +929,7 @@ function HomeContent() {
           </WelcomeScreen>
         ) : (
           /* --- Chat Flow --- */
-          <div className="space-y-5">
+          <div className="space-y-6">
             {messages.map((msg, i) => (
               <ChatMessage
                 key={i}
@@ -1104,7 +1104,7 @@ function HomeContent() {
 
       {/* --- Input Area (chat mode only) --- */}
       {messages.length > 0 && (
-        <div className="px-6 pb-6 pt-2">
+        <div className="hlx-input-bar">
           <ChatInput
             value={input}
             onChange={setInput}

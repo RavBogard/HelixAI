@@ -21,7 +21,7 @@ export function ChatMessage({ message, isLatest, isStreaming }: ChatMessageProps
       {message.role === "assistant" ? (
         <div className="hlx-msg-ai max-w-[88%]">
           <div
-            className={`message-content text-[0.9375rem] leading-relaxed text-[var(--hlx-text-sub)] ${
+            className={`message-content text-[var(--hlx-text-sub)] ${
               isStreaming && isLatest ? "typing-cursor" : ""
             }`}
           >

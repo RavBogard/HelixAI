@@ -68,26 +68,14 @@ function SignalChainViz({ blocks }: { blocks: VizBlock[] }) {
       <div className="flex items-center gap-1.5 min-w-0">
         {blocks.map((block, i) => (
           <div key={i} className="flex items-center gap-1.5 flex-shrink-0">
-            <div
-              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg border text-center min-w-[64px] transition-opacity ${
-                block.enabled
-                  ? "bg-[var(--hlx-elevated)] border-[var(--hlx-border-warm)]"
-                  : "bg-[var(--hlx-surface)] border-[var(--hlx-border)] opacity-40"
-              }`}
-            >
-              <span className="text-[10px] font-semibold tracking-wide uppercase text-[var(--hlx-text-muted)]">
+            <div className="hlx-signal-block" data-disabled={!block.enabled ? "true" : undefined}>
+              <span className="hlx-signal-block-label">
                 {getBlockLabel(block)}
               </span>
-              <span className="text-[11px] text-[var(--hlx-text-sub)] leading-tight max-w-[80px] truncate">
+              <span className="hlx-signal-block-name">
                 {block.modelName}
               </span>
-              <span
-                className="w-[5px] h-[5px] rounded-full mt-0.5"
-                style={{
-                  background: block.enabled ? "var(--hlx-green)" : "var(--hlx-text-muted)",
-                  boxShadow: block.enabled ? "0 0 6px var(--hlx-green)" : "none",
-                }}
-              />
+              <span className="hlx-signal-led" />
             </div>
             {i < blocks.length - 1 && (
               <svg width="12" height="12" viewBox="0 0 12 12" className="flex-shrink-0 text-[var(--hlx-text-muted)]">
@@ -118,7 +106,7 @@ function ToneDescriptionCard({
     <div className="space-y-4">
       {/* Amp → Cab pair */}
       <div className="flex items-center gap-2 text-[0.8125rem]">
-        <span className="text-[var(--hlx-text-muted)] text-[11px] uppercase tracking-wide font-semibold">Signal</span>
+        <span className="hlx-section-label" style={{ marginBottom: 0 }}>Signal</span>
         <span className="text-[var(--hlx-text)]">{ampName}</span>
         <span className="text-[var(--hlx-text-muted)]">&rarr;</span>
         <span className="text-[var(--hlx-text)]">{cabName}</span>
@@ -128,11 +116,8 @@ function ToneDescriptionCard({
       {effects.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {effects.map((fx, i) => (
-            <span
-              key={i}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[var(--hlx-elevated)] border border-[var(--hlx-border)] text-[11px] text-[var(--hlx-text-sub)]"
-            >
-              <span className="text-[var(--hlx-text-muted)] font-semibold uppercase text-[9px]">
+            <span key={i} className="hlx-effect-tag">
+              <span className="hlx-effect-tag-label">
                 {getBlockLabel(fx)}
               </span>
               {fx.modelName}
@@ -144,10 +129,7 @@ function ToneDescriptionCard({
       {/* Snapshots */}
       <div className="flex flex-wrap gap-2">
         {snapshots.map((snap, i) => (
-          <span
-            key={i}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[var(--hlx-surface)] border border-[var(--hlx-border)] text-[11px] text-[var(--hlx-text-sub)]"
-          >
+          <span key={i} className="hlx-snapshot-badge">
             <span
               className="w-[6px] h-[6px] rounded-full flex-shrink-0"
               style={{
@@ -215,23 +197,26 @@ export function PresetCard({ data, onDownload }: PresetCardProps) {
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <span className="hlx-led hlx-led-warm" />
-          <h3 className="hlx-font-display text-base font-semibold text-[var(--hlx-text)]">
+          <h3 className="hlx-font-display text-lg font-semibold text-[var(--hlx-text)]">
             {data.spec?.name || "HelixTones Preset"}
           </h3>
           {/* Device badge — tells user which device this preset targets */}
           <span
-            className="px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider border border-[var(--hlx-border)] text-[var(--hlx-text-muted)] bg-[var(--hlx-elevated)]"
-            style={{ fontFamily: "var(--font-mono)" }}
+            className="hlx-confidence-badge"
+            data-level="direct"
+            style={{ fontFamily: "var(--font-mono)", letterSpacing: "0.06em" }}
           >
             {data.device === "helix_lt" ? "LT"
               : data.device === "helix_floor" ? "FLOOR"
               : data.device === "helix_stadium" ? "STADIUM"
               : data.device === "helix_stomp" ? "STOMP"
               : data.device === "helix_stomp_xl" ? "STOMP XL"
+              : data.device === "helix_native" ? "NATIVE"
+              : data.device === "helix_rack" ? "RACK"
               : "POD GO"}
           </span>
         </div>
-        <button onClick={onDownload} className="hlx-download text-xs px-3 py-1.5">
+        <button onClick={onDownload} className="hlx-download" style={{ minHeight: "44px" }}>
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
           </svg>
@@ -244,9 +229,7 @@ export function PresetCard({ data, onDownload }: PresetCardProps) {
       {/* Signal Chain Visualization (FXUI-01) */}
       {chain.length > 0 && (
         <div>
-          <p className="text-[10px] uppercase tracking-widest text-[var(--hlx-text-muted)] font-semibold mb-2">
-            Signal Chain
-          </p>
+          <p className="hlx-section-label">Signal Chain</p>
           <SignalChainViz blocks={chain} />
         </div>
       )}
@@ -283,15 +266,9 @@ export function SubstitutionCard({ entries }: { entries: SubstitutionEntryDispla
 
   return (
     <div className="space-y-2">
-      <p className="text-[11px] uppercase tracking-widest text-[var(--hlx-text-muted)] font-semibold">
-        Helix Substitutions
-      </p>
+      <p className="hlx-section-label">Helix Substitutions</p>
       <div className="space-y-2">
         {entries.map((entry, i) => {
-          const isApproximate = entry.confidence === "approximate";
-          const isClose = entry.confidence === "close";
-          const isDirect = entry.confidence === "direct";
-
           // Safety guard: never render an HD2_ internal ID in the UI.
           // helixModelDisplayName is always human-readable per rig-intent.ts,
           // but this guard protects against future regressions.
@@ -299,17 +276,14 @@ export function SubstitutionCard({ entries }: { entries: SubstitutionEntryDispla
             ? entry.helixModel.replace(/^HD2_/, "").replace(/_/g, " ")
             : entry.helixModelDisplayName;
 
+          const confidenceClass = entry.confidence === "direct"
+            ? "hlx-confidence-direct"
+            : entry.confidence === "close"
+            ? "hlx-confidence-close"
+            : "hlx-confidence-approximate";
+
           return (
-            <div
-              key={i}
-              className={`rounded-lg border px-3 py-2.5 transition-all ${
-                isDirect
-                  ? "border-[var(--hlx-border-warm)] bg-[var(--hlx-elevated)]"
-                  : isClose
-                  ? "border-yellow-900/40 bg-[var(--hlx-surface)]"
-                  : "border-orange-900/30 bg-[var(--hlx-surface)] opacity-70"
-              }`}
-            >
+            <div key={i} className={`hlx-substitution-row ${confidenceClass}`}>
               {/* Header row: Physical → Helix name + confidence badge */}
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-2 min-w-0">
@@ -331,9 +305,9 @@ export function SubstitutionCard({ entries }: { entries: SubstitutionEntryDispla
                   </svg>
                   <span
                     className={`text-[0.8125rem] font-semibold flex-shrink-0 ${
-                      isDirect
+                      entry.confidence === "direct"
                         ? "text-[var(--hlx-amber)]"
-                        : isClose
+                        : entry.confidence === "close"
                         ? "text-yellow-400"
                         : "text-orange-400"
                     }`}
@@ -342,16 +316,8 @@ export function SubstitutionCard({ entries }: { entries: SubstitutionEntryDispla
                   </span>
                 </div>
 
-                <span
-                  className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide flex-shrink-0 ${
-                    isDirect
-                      ? "bg-green-950/40 text-green-400 border border-green-900/30"
-                      : isClose
-                      ? "bg-yellow-950/40 text-yellow-400 border border-yellow-900/30"
-                      : "bg-orange-950/30 text-orange-400 border border-orange-900/30"
-                  }`}
-                >
-                  {isDirect ? "Exact match" : isClose ? "Best match" : "Approximate"}
+                <span className="hlx-confidence-badge" data-level={entry.confidence}>
+                  {entry.confidence === "direct" ? "Exact match" : entry.confidence === "close" ? "Best match" : "Approximate"}
                 </span>
               </div>
 
@@ -361,7 +327,7 @@ export function SubstitutionCard({ entries }: { entries: SubstitutionEntryDispla
               </p>
 
               {/* Escape hatch panel — only for approximate (unknown pedal) entries */}
-              {isApproximate && (
+              {entry.confidence === "approximate" && (
                 <div className="mt-2 rounded-md bg-orange-950/20 border border-orange-900/20 px-2.5 py-2">
                   <p className="text-[11px] text-orange-300/90 leading-relaxed">
                     We don&apos;t have <strong>{entry.physicalPedal}</strong> in our

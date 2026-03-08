@@ -15,7 +15,7 @@ export function WelcomeScreen({
   children,
 }: WelcomeScreenProps) {
   return (
-    <div className="flex flex-col items-center justify-center h-full text-center gap-9 hlx-stagger">
+    <div className="flex flex-col items-center justify-center h-full text-center gap-7 hlx-stagger">
       {/* Hero: Large centered logo + wordmark */}
       <div className="space-y-6">
         {/* Big logo with amber glow */}
@@ -33,8 +33,8 @@ export function WelcomeScreen({
             <Image
               src="/logo.jpg"
               alt="HelixTones"
-              width={320}
-              height={320}
+              width={280}
+              height={280}
               className="relative rounded-3xl"
               style={{
                 boxShadow:
@@ -56,8 +56,8 @@ export function WelcomeScreen({
             helixtones
           </h1>
           <p
-            className="text-[var(--hlx-text-sub)] max-w-sm leading-relaxed mx-auto"
-            style={{ fontSize: "0.9375rem" }}
+            className="text-[var(--hlx-text-sub)] max-w-md leading-relaxed mx-auto"
+            style={{ fontSize: "1rem" }}
           >
             Describe an artist, a song, a genre, or just a vibe &mdash;
             I&apos;ll build you a studio-quality Helix preset.

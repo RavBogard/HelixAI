@@ -16,13 +16,13 @@ interface SuggestionChipsProps {
 
 export function SuggestionChips({ onSelect, disabled = false }: SuggestionChipsProps) {
   return (
-    <div className="grid grid-cols-3 gap-2.5 w-full max-w-2xl">
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-2.5 w-full max-w-2xl">
       {SUGGESTIONS.map((suggestion) => (
         <button
           key={suggestion}
           disabled={disabled}
           onClick={() => onSelect(suggestion)}
-          className="text-left p-4 rounded-xl border border-[var(--hlx-border)] bg-[var(--hlx-surface)] text-[0.8rem] leading-snug text-[var(--hlx-text-sub)] hover:border-[rgba(240,144,10,0.22)] hover:bg-[var(--hlx-elevated)] hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(0,0,0,0.35)] transition-all duration-200"
+          className="text-left p-3 rounded-xl border border-[var(--hlx-border)] bg-[var(--hlx-surface)] text-[0.8rem] leading-snug text-[var(--hlx-text-sub)] hover:border-[rgba(240,144,10,0.22)] hover:bg-[var(--hlx-elevated)] hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(0,0,0,0.35)] transition-all duration-200 cursor-pointer"
           style={{ fontFamily: "var(--font-mono), monospace" }}
         >
           {suggestion}
