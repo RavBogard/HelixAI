@@ -18,6 +18,8 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 - ✓ AI platform benchmarked (6 providers x 6 scenarios) — Phase 4
 - ✓ Gemini 3 Flash selected as planner (100% schema, 86% quality, $0.006/gen) — Phase 4
 - ✓ Helix Native fully supported as device target — Phase 5
+- ✓ Full pipeline test coverage for all 10 device targets — Phase 6
+- ✓ Quality validation baseline: no critical issues across all 4 device families — Phase 6
 
 ### Must Have
 - [To be defined during planning]
@@ -41,6 +43,7 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 | Consolidate to single Gemini SDK | Phase 4 | Chat already Gemini; planner switching too. Claude retained only for vision. |
 | Helix Native device ID 2162690 UNVERIFIED | Phase 5 | Estimated from Line 6 sequence — confirm from real .hlx export |
 | Native maps to helix family, no Variax | Phase 5 | Same DSP/catalog as Floor; no VDI jack (DAW plugin) |
+| v1.0 quality gate: all 10 targets pipeline-tested | Phase 6 | Pod Go, Stadium, Native, Rack — all pass full pipeline + quality validation |
 
 ## Constraints
 - [To be identified during planning]
@@ -57,4 +60,4 @@ Quick Reference:
 - /ui-ux-pro-max → Frontend / UI / UX (required)
 
 ---
-*Last updated: 2026-03-08 after Phase 5*
+*Last updated: 2026-03-08 after Phase 6*

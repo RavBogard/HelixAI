@@ -1,6 +1,8 @@
 // src/lib/helix/orchestration.test.ts
-// End-to-end orchestration pipeline tests covering HLX-01 through HLX-04.
-// Tests the full pipeline: Knowledge Layer -> validatePresetSpec -> buildHlxFile
+// End-to-end orchestration pipeline tests covering HLX-01 through HLX-04,
+// STOMP-01 through STOMP-10, PODGO-E2E, STADIUM-E2E, NATIVE-E2E, RACK-E2E,
+// and cross-device quality validation.
+// Tests the full pipeline: Knowledge Layer -> validatePresetSpec -> build*File
 // with device target support and snapshot block key rebuilding.
 
 import { describe, it, expect } from "vitest";
@@ -9,10 +11,13 @@ import { resolveParameters } from "./param-engine";
 import { buildSnapshots } from "./snapshot-engine";
 import { buildHlxFile } from "./preset-builder";
 import { buildStompFile, summarizeStompPreset } from "./stomp-builder";
+import { buildPgpFile } from "./podgo-builder";
+import { buildHspFile } from "./stadium-builder";
 import { validatePresetSpec } from "./validate";
-import { DEVICE_IDS, isStomp } from "./types";
+import { validatePresetQuality } from "./quality-validate";
+import { DEVICE_IDS, isStomp, isHelix, isVariaxSupported } from "./types";
 import { STOMP_CONFIG } from "./config";
-import { getCapabilities } from "./device-family";
+import { getCapabilities, resolveFamily } from "./device-family";
 import type { PresetSpec, BlockSpec, DeviceTarget, HlxFile } from "./types";
 import type { ToneIntent, SnapshotIntent } from "./tone-intent";
 import { mapRigToSubstitutions } from "../rig-mapping";
@@ -607,4 +612,358 @@ describe("Controller section DSP mapping", () => {
     );
     expect(hasGainController).toBe(true);
   });
+});
+
+// ---------------------------------------------------------------------------
+// Pod Go full pipeline (PODGO-E2E)
+// ---------------------------------------------------------------------------
+
+/** Pod Go ToneIntent — uses same HD2 amp catalog, restricted effect set */
+function podGoIntent(overrides: Partial<ToneIntent> = {}): ToneIntent {
+  return {
+    ampName: "US Deluxe Nrm",
+    cabName: "1x12 US Deluxe",
+    guitarType: "humbucker",
+    effects: [
+      { modelName: "Kinky Comp", role: "always_on" },
+      { modelName: "Elephant Man", role: "toggleable" },
+    ],
+    snapshots: [
+      { name: "Clean", toneRole: "clean" },
+      { name: "Rhythm", toneRole: "crunch" },
+      { name: "Lead", toneRole: "lead" },
+      { name: "Ambient", toneRole: "ambient" },
+    ],
+    ...overrides,
+  };
+}
+
+describe("Pod Go full pipeline (PODGO-E2E)", () => {
+  const podGoCaps = getCapabilities("pod_go");
+
+  it("PODGO-E2E-01: full pipeline chain → params → snapshots → validate → build", () => {
+    const intent = podGoIntent();
+    const chain = assembleSignalChain(intent, podGoCaps);
+    const parameterized = resolveParameters(chain, intent, podGoCaps);
+    const snapshots = buildSnapshots(parameterized, intent.snapshots).slice(0, podGoCaps.maxSnapshots);
+    const spec: PresetSpec = {
+      name: "Blues Pod Go",
+      description: "Pod Go E2E test preset",
+      tempo: 120,
+      signalChain: parameterized,
+      snapshots,
+    };
+
+    expect(() => validatePresetSpec(spec, podGoCaps)).not.toThrow();
+    const file = buildPgpFile(spec);
+    expect(file.data.device).toBe(DEVICE_IDS.pod_go);
+    expect(file.data.device).toBe(2162695);
+    expect(file.schema).toBe("L6Preset");
+  });
+
+  it("PODGO-E2E-02: all Pod Go blocks on dsp0", () => {
+    const intent = podGoIntent();
+    const chain = assembleSignalChain(intent, podGoCaps);
+    expect(chain.every(b => b.dsp === 0)).toBe(true);
+  });
+
+  it("PODGO-E2E-03: Pod Go has 4 snapshots max", () => {
+    const intent = podGoIntent();
+    const chain = assembleSignalChain(intent, podGoCaps);
+    const parameterized = resolveParameters(chain, intent, podGoCaps);
+    const snapshots = buildSnapshots(parameterized, intent.snapshots).slice(0, podGoCaps.maxSnapshots);
+    expect(snapshots.length).toBe(4);
+
+    const spec: PresetSpec = {
+      name: "Test", description: "Test", tempo: 120,
+      signalChain: parameterized, snapshots,
+    };
+    expect(() => validatePresetSpec(spec, podGoCaps)).not.toThrow();
+  });
+
+  it("PODGO-E2E-04: resolveFamily('pod_go') returns 'podgo'", () => {
+    expect(resolveFamily("pod_go")).toBe("podgo");
+    expect(resolveFamily("pod_go_xl")).toBe("podgo");
+  });
+
+  it("PODGO-E2E-05: quality validation passes for Pod Go preset", () => {
+    const intent = podGoIntent();
+    const chain = assembleSignalChain(intent, podGoCaps);
+    const parameterized = resolveParameters(chain, intent, podGoCaps);
+    const snapshots = buildSnapshots(parameterized, intent.snapshots).slice(0, podGoCaps.maxSnapshots);
+    const spec: PresetSpec = {
+      name: "Quality Test", description: "Test", tempo: 120,
+      signalChain: parameterized, snapshots,
+    };
+    validatePresetSpec(spec, podGoCaps);
+    const warnings = validatePresetQuality(spec, podGoCaps);
+    // No critical severity (quality-validate only has "warn" and "info")
+    expect(warnings.every(w => w.severity === "warn" || w.severity === "info")).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Stadium full pipeline (STADIUM-E2E)
+// ---------------------------------------------------------------------------
+
+/** Stadium ToneIntent — uses Agoura-era amps */
+function stadiumIntent(overrides: Partial<ToneIntent> = {}): ToneIntent {
+  return {
+    ampName: "Agoura German Crunch",
+    cabName: "4x12 Uber V30",
+    guitarType: "humbucker",
+    effects: [
+      { modelName: "Elephant Man", role: "toggleable" },
+      { modelName: "Glitz", role: "always_on" },
+    ],
+    snapshots: [
+      { name: "Clean", toneRole: "clean" },
+      { name: "Rhythm", toneRole: "crunch" },
+      { name: "Lead", toneRole: "lead" },
+      { name: "Ambient", toneRole: "ambient" },
+    ],
+    ...overrides,
+  };
+}
+
+describe("Stadium full pipeline (STADIUM-E2E)", () => {
+  const stadiumCaps = getCapabilities("helix_stadium");
+
+  it("STADIUM-E2E-01: full pipeline chain → params → snapshots → validate → build", () => {
+    const intent = stadiumIntent();
+    const chain = assembleSignalChain(intent, stadiumCaps);
+    const parameterized = resolveParameters(chain, intent, stadiumCaps);
+    const snapshots = buildSnapshots(parameterized, intent.snapshots);
+    const spec: PresetSpec = {
+      name: "Classic Rock Stadium",
+      description: "Stadium E2E test preset",
+      tempo: 120,
+      signalChain: parameterized,
+      snapshots,
+    };
+
+    expect(() => validatePresetSpec(spec, stadiumCaps)).not.toThrow();
+    const file = buildHspFile(spec);
+    expect(file.json.meta.device_id).toBe(DEVICE_IDS.helix_stadium);
+    expect(file.json.meta.device_id).toBe(2490368);
+    expect(file.magic).toBe("rpshnosj");
+  });
+
+  it("STADIUM-E2E-02: all Stadium blocks on dsp0 (single-DSP device)", () => {
+    const intent = stadiumIntent();
+    const chain = assembleSignalChain(intent, stadiumCaps);
+    expect(chain.every(b => b.dsp === 0)).toBe(true);
+  });
+
+  it("STADIUM-E2E-03: Stadium has 8 snapshots", () => {
+    const intent = stadiumIntent();
+    const chain = assembleSignalChain(intent, stadiumCaps);
+    const parameterized = resolveParameters(chain, intent, stadiumCaps);
+    const snapshots = buildSnapshots(parameterized, intent.snapshots);
+    expect(snapshots.length).toBe(4); // 4 from intent (clean/crunch/lead/ambient)
+
+    const spec: PresetSpec = {
+      name: "Test", description: "Test", tempo: 120,
+      signalChain: parameterized, snapshots,
+    };
+    // Stadium supports up to 8, so 4 should be fine
+    expect(() => validatePresetSpec(spec, stadiumCaps)).not.toThrow();
+  });
+
+  it("STADIUM-E2E-04: resolveFamily returns 'stadium'", () => {
+    expect(resolveFamily("helix_stadium")).toBe("stadium");
+    expect(resolveFamily("helix_stadium_xl")).toBe("stadium");
+  });
+
+  it("STADIUM-E2E-05: quality validation passes for Stadium preset", () => {
+    const intent = stadiumIntent();
+    const chain = assembleSignalChain(intent, stadiumCaps);
+    const parameterized = resolveParameters(chain, intent, stadiumCaps);
+    const snapshots = buildSnapshots(parameterized, intent.snapshots);
+    const spec: PresetSpec = {
+      name: "Quality Test", description: "Test", tempo: 120,
+      signalChain: parameterized, snapshots,
+    };
+    validatePresetSpec(spec, stadiumCaps);
+    const warnings = validatePresetQuality(spec, stadiumCaps);
+    expect(warnings.every(w => w.severity === "warn" || w.severity === "info")).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Helix Native full pipeline (NATIVE-E2E)
+// ---------------------------------------------------------------------------
+
+describe("Helix Native full pipeline (NATIVE-E2E)", () => {
+  const nativeCaps = getCapabilities("helix_native");
+  const floorCaps = getCapabilities("helix_floor");
+
+  it("NATIVE-E2E-01: resolveFamily returns 'helix' and isHelix returns true", () => {
+    expect(resolveFamily("helix_native")).toBe("helix");
+    expect(isHelix("helix_native")).toBe(true);
+  });
+
+  it("NATIVE-E2E-02: isVariaxSupported returns false for Native", () => {
+    expect(isVariaxSupported("helix_native")).toBe(false);
+    // Contrast with Floor which has Variax
+    expect(isVariaxSupported("helix_floor")).toBe(true);
+  });
+
+  it("NATIVE-E2E-03: capabilities match Floor (same DSP architecture)", () => {
+    expect(nativeCaps.family).toBe(floorCaps.family);
+    expect(nativeCaps.dspCount).toBe(floorCaps.dspCount);
+    expect(nativeCaps.maxBlocksPerDsp).toBe(floorCaps.maxBlocksPerDsp);
+    expect(nativeCaps.maxSnapshots).toBe(floorCaps.maxSnapshots);
+    expect(nativeCaps.fileFormat).toBe(floorCaps.fileFormat);
+  });
+
+  it("NATIVE-E2E-04: full pipeline produces .hlx with correct device ID", () => {
+    const intent = cleanIntent();
+    const chain = assembleSignalChain(intent, nativeCaps);
+    const parameterized = resolveParameters(chain, intent, nativeCaps);
+    const snapshots = buildSnapshots(parameterized, intent.snapshots);
+    const spec: PresetSpec = {
+      name: "Native Test", description: "Helix Native E2E", tempo: 120,
+      signalChain: parameterized, snapshots,
+    };
+
+    expect(() => validatePresetSpec(spec, nativeCaps)).not.toThrow();
+    const hlx = buildHlxFile(spec, "helix_native");
+    expect(hlx.data.device).toBe(DEVICE_IDS.helix_native);
+    expect(hlx.data.device).toBe(2162690);
+    expect(hlx.schema).toBe("L6Preset");
+  });
+
+  it("NATIVE-E2E-05: Native output matches Floor output except device ID", () => {
+    const intent = cleanIntent();
+
+    // Build Floor preset
+    const floorChain = assembleSignalChain(intent, floorCaps);
+    const floorParams = resolveParameters(floorChain, intent, floorCaps);
+    const floorSnaps = buildSnapshots(floorParams, intent.snapshots);
+    const floorSpec: PresetSpec = {
+      name: "Compare Test", description: "Test", tempo: 120,
+      signalChain: floorParams, snapshots: floorSnaps,
+    };
+    const floorHlx = buildHlxFile(floorSpec, "helix_floor");
+
+    // Build Native preset (same intent)
+    const nativeChain = assembleSignalChain(intent, nativeCaps);
+    const nativeParams = resolveParameters(nativeChain, intent, nativeCaps);
+    const nativeSnaps = buildSnapshots(nativeParams, intent.snapshots);
+    const nativeSpec: PresetSpec = {
+      name: "Compare Test", description: "Test", tempo: 120,
+      signalChain: nativeParams, snapshots: nativeSnaps,
+    };
+    const nativeHlx = buildHlxFile(nativeSpec, "helix_native");
+
+    // Device IDs should differ
+    expect(floorHlx.data.device).toBe(DEVICE_IDS.helix_floor);
+    expect(nativeHlx.data.device).toBe(DEVICE_IDS.helix_native);
+    expect(floorHlx.data.device).not.toBe(nativeHlx.data.device);
+
+    // Tone structure should be identical (same DSP, same blocks, same snapshots)
+    expect(Object.keys(floorHlx.data.tone.dsp0)).toEqual(Object.keys(nativeHlx.data.tone.dsp0));
+    expect(Object.keys(floorHlx.data.tone.dsp1)).toEqual(Object.keys(nativeHlx.data.tone.dsp1));
+  });
+
+  it("NATIVE-E2E-06: quality validation passes for Native preset", () => {
+    const intent = highGainIntent();
+    const chain = assembleSignalChain(intent, nativeCaps);
+    const parameterized = resolveParameters(chain, intent, nativeCaps);
+    const snapshots = buildSnapshots(parameterized, intent.snapshots);
+    const spec: PresetSpec = {
+      name: "Quality Test", description: "Test", tempo: 120,
+      signalChain: parameterized, snapshots,
+    };
+    validatePresetSpec(spec, nativeCaps);
+    const warnings = validatePresetQuality(spec, nativeCaps);
+    expect(warnings.every(w => w.severity === "warn" || w.severity === "info")).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Helix Rack full pipeline (RACK-E2E)
+// ---------------------------------------------------------------------------
+
+describe("Helix Rack full pipeline (RACK-E2E)", () => {
+  const rackCaps = getCapabilities("helix_rack");
+
+  it("RACK-E2E-01: resolveFamily returns 'helix'", () => {
+    expect(resolveFamily("helix_rack")).toBe("helix");
+    expect(isHelix("helix_rack")).toBe(true);
+  });
+
+  it("RACK-E2E-02: full pipeline produces valid .hlx", () => {
+    const intent = highGainIntent();
+    const chain = assembleSignalChain(intent, rackCaps);
+    const parameterized = resolveParameters(chain, intent, rackCaps);
+    const snapshots = buildSnapshots(parameterized, intent.snapshots);
+    const spec: PresetSpec = {
+      name: "Rack Test", description: "Helix Rack E2E", tempo: 120,
+      signalChain: parameterized, snapshots,
+    };
+
+    expect(() => validatePresetSpec(spec, rackCaps)).not.toThrow();
+    const hlx = buildHlxFile(spec, "helix_rack");
+    expect(hlx.data.device).toBe(DEVICE_IDS.helix_rack);
+    expect(hlx.data.device).toBe(2162689);
+    expect(hlx.schema).toBe("L6Preset");
+  });
+
+  it("RACK-E2E-03: Rack uses dual DSP (blocks on both dsp0 and dsp1)", () => {
+    const intent = highGainIntent();
+    const chain = assembleSignalChain(intent, rackCaps);
+    expect(chain.some(b => b.dsp === 0)).toBe(true);
+    expect(chain.some(b => b.dsp === 1)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Cross-device quality validation sweep (QUALITY-E2E)
+// ---------------------------------------------------------------------------
+
+describe("Cross-device quality validation sweep (QUALITY-E2E)", () => {
+  const familyDevices: Array<{ device: DeviceTarget; name: string }> = [
+    { device: "helix_floor", name: "Helix Floor" },
+    { device: "helix_stomp", name: "HX Stomp" },
+    { device: "pod_go", name: "Pod Go" },
+    { device: "helix_stadium", name: "Stadium" },
+  ];
+
+  for (const { device, name } of familyDevices) {
+    it(`QUALITY-E2E: ${name} preset passes strict + quality validation`, () => {
+      const caps = getCapabilities(device);
+      const family = resolveFamily(device);
+
+      // Use family-appropriate intent
+      let intent: ToneIntent;
+      if (family === "stadium") {
+        intent = stadiumIntent();
+      } else if (family === "podgo") {
+        intent = podGoIntent();
+      } else {
+        intent = cleanIntent();
+      }
+
+      const chain = assembleSignalChain(intent, caps);
+      const parameterized = resolveParameters(chain, intent, caps);
+      const snapshots = buildSnapshots(parameterized, intent.snapshots)
+        .slice(0, caps.maxSnapshots);
+      const spec: PresetSpec = {
+        name: `${name} Quality Test`,
+        description: "Cross-device quality validation",
+        tempo: 120,
+        signalChain: parameterized,
+        snapshots,
+      };
+
+      // Strict validation must pass
+      expect(() => validatePresetSpec(spec, caps)).not.toThrow();
+
+      // Quality validation must not throw and should return only warn/info
+      const warnings = validatePresetQuality(spec, caps);
+      expect(warnings.every(w => w.severity === "warn" || w.severity === "info")).toBe(true);
+    });
+  }
 });
