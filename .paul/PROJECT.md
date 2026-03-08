@@ -15,6 +15,8 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 - ✓ Safe lead snapshot volume levels (2.0 dB gain boost) — Phase 3
 - ✓ Pod Go block key mapping verified correct — Phase 3
 - ✓ DSP ordering validation (advisory warnings) — Phase 3
+- ✓ AI platform benchmarked (6 providers x 6 scenarios) — Phase 4
+- ✓ Gemini 3 Flash selected as planner (100% schema, 86% quality, $0.006/gen) — Phase 4
 
 ### Must Have
 - [To be defined during planning]
@@ -34,6 +36,8 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 | Ambient mix boost is layered design, not double-apply | Phase 2 | param-engine base + snapshot-engine boost = correct |
 | CRIT-15 Pod Go block key mapping is correct | Phase 3 | dspIdx counts cabs, snapshotIdx skips — intentional offset |
 | Lead gain 2.5→2.0 dB | Phase 3 | Prevent clipping with ChVol 0.80 |
+| Switch planner to Gemini 3 Flash | Phase 4 | 100% schema compliance, 86% quality, 8x cheaper than Claude Sonnet. Newer gen for longevity. |
+| Consolidate to single Gemini SDK | Phase 4 | Chat already Gemini; planner switching too. Claude retained only for vision. |
 
 ## Constraints
 - [To be identified during planning]
@@ -50,4 +54,4 @@ Quick Reference:
 - /ui-ux-pro-max → Frontend / UI / UX (required)
 
 ---
-*Last updated: 2026-03-08 after Phase 3*
+*Last updated: 2026-03-08 after Phase 4*
