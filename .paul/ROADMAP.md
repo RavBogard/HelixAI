@@ -6,7 +6,7 @@ Build an AI-powered preset builder that interviews users about their rig and ton
 ## Current Milestone
 **v4.0 — Preset Quality & Reliability** (v4.0.0)
 Status: 🚧 In Progress
-Phases: 5 of 7 complete
+Phases: 6 of 7 complete
 
 ## Phases
 
@@ -17,7 +17,7 @@ Phases: 5 of 7 complete
 | 3 | HX Stomp Structure Rewrite | 1/1 | ✅ Complete | 2026-03-08 |
 | 4 | HX Stomp XL Structure Rewrite | 1/1 | ✅ Complete | 2026-03-08 |
 | 5 | Stadium Structure Rewrite | 1/1 | ✅ Complete | 2026-03-08 |
-| 6 | Validation Layer & Intent Fidelity | 0/1 | In Progress | - |
+| 6 | Validation Layer & Intent Fidelity | 1/1 | ✅ Complete | 2026-03-08 |
 | 7 | Bass Support | TBD | Not started | - |
 
 ## Phase Details
@@ -145,4 +145,4 @@ Features: #7 (bass amps, cabs, EQ, effects, chat flow)
 </details>
 
 ---
-*Roadmap updated: 2026-03-08 — Phase 5 (Stadium Structure Rewrite) complete*
+*Roadmap updated: 2026-03-08 — Phase 6 (Validation Layer & Intent Fidelity) complete*
