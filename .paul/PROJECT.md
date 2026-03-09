@@ -38,6 +38,10 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 - ✓ Pod Go snapshot controller = 11 (not 4), footswitch indices 1-6 (not 0-5) — v4.0 Phase 2
 - ✓ Pod Go DSP always 10 blocks (block0-block9), padded with disabled empty blocks — v4.0 Phase 2
 - ✓ Pod Go snapshots include all blocks including cabs, empty snapshots have full structure — v4.0 Phase 2
+- ✓ HX Stomp structure matches real .hlx exports: inputB/outputB, split/join, correct I/O models — v4.0 Phase 3
+- ✓ HX Stomp snapshot controller = 9 (distinct from Helix 19 and Pod Go 11) — v4.0 Phase 3
+- ✓ HX Stomp footswitch indices 1-based (1-3 for Stomp, 1-5 for XL) — v4.0 Phase 3
+- ✓ HX Stomp @pedalstate always 0 (not bitmask), empty snapshots have blocks structure — v4.0 Phase 3
 
 ### Must Have
 - [To be defined during planning]
@@ -76,6 +80,9 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 | Pod Go snapshot controller = 11 | v4.0 Phase 2 | Confirmed from all 5 reference .pgp presets |
 | Pod Go @pedalstate always 2 | v4.0 Phase 2 | All reference presets use 2 regardless of block states |
 | Pod Go FS indices 1-6 | v4.0 Phase 2 | Real .pgp exports use @fs_index 1-6 (not 0-5) |
+| HX Stomp snapshot controller = 9 | v4.0 Phase 3 | Confirmed from CATS NO OTO4.hlx reference — distinct from Helix (19) and Pod Go (11) |
+| HX Stomp @pedalstate always 0 | v4.0 Phase 3 | All 5 reference presets show 0 for every snapshot |
+| HX Stomp uses shared getBlockTypeForDevice | v4.0 Phase 3 | Consistent block type resolution, fixes modulation @type (0→4) |
 
 ## Constraints
 - [To be identified during planning]
@@ -92,4 +99,4 @@ Quick Reference:
 - /ui-ux-pro-max → Frontend / UI / UX (required)
 
 ---
-*Last updated: 2026-03-08 after v4.0 Phase 2 (Pod Go Structure Rewrite complete)*
+*Last updated: 2026-03-08 after v4.0 Phase 3 (HX Stomp Structure Rewrite complete)*
