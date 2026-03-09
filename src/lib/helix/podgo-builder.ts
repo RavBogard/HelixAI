@@ -17,7 +17,7 @@
 // Public API: buildPgpFile(spec) -> object (JSON-serializable .pgp file)
 
 import type { HlxFile, PresetSpec, BlockSpec, SnapshotSpec } from "./types";
-import { DEVICE_IDS, POD_GO_IO, POD_GO_SNAPSHOT_CONTROLLER, POD_GO_STOMP_FS_INDICES, POD_GO_TOTAL_BLOCKS } from "./types";
+import { DEVICE_IDS, POD_GO_IO, POD_GO_SNAPSHOT_CONTROLLER, POD_GO_STOMP_FS_INDICES, POD_GO_TOTAL_BLOCKS, POD_GO_TEMPLATE_BLOCKS, POD_GO_TEMPLATE_POSITIONS } from "./types";
 import { getModelIdForDevice, getBlockTypeForDevice, CONTROLLERS } from "./models";
 import { getAllModels } from "./models";
 import { getCapabilities } from "./device-family";
@@ -163,27 +163,73 @@ function buildPgpDsp(blocks: BlockSpec[]): Record<string, unknown> {
     },
   };
 
+  // --- Template blocks at fixed positions (always present in every Pod Go preset) ---
+  // block0: Volume Pedal (HD2_VolPanVolStereo) — always enabled
+  dsp["block0"] = {
+    "@model": POD_GO_TEMPLATE_BLOCKS.VOLUME_PEDAL.model,
+    "@position": POD_GO_TEMPLATE_BLOCKS.VOLUME_PEDAL.position,
+    "@enabled": true,
+    "@type": POD_GO_TEMPLATE_BLOCKS.VOLUME_PEDAL.type,
+    "@no_snapshot_bypass": false,
+    Position: 1.0,
+    VolumeTaper: true,
+    Pedal: 1.0,
+  };
+
+  // block1: Wah (HD2_WahFasselStereo) — always present, disabled by default
+  dsp["block1"] = {
+    "@model": POD_GO_TEMPLATE_BLOCKS.WAH.model,
+    "@position": POD_GO_TEMPLATE_BLOCKS.WAH.position,
+    "@enabled": false,
+    "@type": POD_GO_TEMPLATE_BLOCKS.WAH.type,
+    "@no_snapshot_bypass": false,
+    Position: 0.5,
+    Mix: 1.0,
+    Level: 0.0,
+  };
+
+  // block4: FX Loop (HD2_FXLoopMono1) — always present, disabled by default
+  dsp["block4"] = {
+    "@model": POD_GO_TEMPLATE_BLOCKS.FX_LOOP.model,
+    "@position": POD_GO_TEMPLATE_BLOCKS.FX_LOOP.position,
+    "@enabled": false,
+    "@type": POD_GO_TEMPLATE_BLOCKS.FX_LOOP.type,
+    "@no_snapshot_bypass": false,
+    Mix: 1.0,
+    Send: 0.0,
+    Return: 0.0,
+  };
+
+  // --- User blocks fill non-template positions: 2, 3, 5, 6, 7, 8, 9 ---
+  const userSlots = [];
+  for (let i = 0; i < POD_GO_TOTAL_BLOCKS; i++) {
+    if (!POD_GO_TEMPLATE_POSITIONS.has(i)) {
+      userSlots.push(i);
+    }
+  }
+
   // All models lookup for device-specific ID resolution
   const allModels = getAllModels();
+  const podGoCaps = getCapabilities("pod_go");
 
-  let blockIndex = 0;
+  let userIdx = 0;
 
   for (const block of blocks) {
-    const blockKey = `block${blockIndex}`;
+    if (userIdx >= userSlots.length) break; // safety: don't exceed available slots
+    const slotPosition = userSlots[userIdx];
+    const blockKey = `block${slotPosition}`;
     const model = allModels[block.modelName];
 
     // Get Pod Go-specific model ID and @type
-    const podGoCaps = getCapabilities("pod_go");
     const pgModelId = model
       ? getModelIdForDevice(model, block.type, podGoCaps)
       : block.modelId;
     const pgBlockType = getBlockTypeForDevice(block.type, pgModelId, podGoCaps);
 
     // Pod Go blocks: no @path, no @stereo (PGP-03)
-    // @position always matches block key number (block5 → @position: 5)
     const pgBlock: Record<string, unknown> = {
       "@model": pgModelId,
-      "@position": blockIndex,
+      "@position": slotPosition,
       "@enabled": block.enabled,
       "@type": pgBlockType,
       "@no_snapshot_bypass": false,
@@ -205,28 +251,27 @@ function buildPgpDsp(blocks: BlockSpec[]): Record<string, unknown> {
       pgBlock["@mic"] = mic;
       pgBlock["LowCut"] = block.parameters["LowCut"] ?? 80.0;
       pgBlock["HighCut"] = block.parameters["HighCut"] ?? 8000.0;
-      // Add remaining cab params (but skip Mic, LowCut, HighCut which are already handled)
       for (const [key, value] of Object.entries(block.parameters)) {
         if (key !== "Mic" && key !== "LowCut" && key !== "HighCut") {
           pgBlock[key] = value;
         }
       }
     } else {
-      // Add all parameters for non-cab blocks
       for (const [key, value] of Object.entries(block.parameters)) {
         pgBlock[key] = value;
       }
     }
 
     dsp[blockKey] = pgBlock;
-    blockIndex++;
+    userIdx++;
   }
 
-  // Pad to exactly 10 blocks (Pod Go always has block0-block9)
-  for (let i = blockIndex; i < POD_GO_TOTAL_BLOCKS; i++) {
-    dsp[`block${i}`] = {
+  // Pad remaining user slots with disabled empty blocks
+  for (let i = userIdx; i < userSlots.length; i++) {
+    const slotPosition = userSlots[i];
+    dsp[`block${slotPosition}`] = {
       "@model": "HD2_AppDSPFlowBlock",
-      "@position": i,
+      "@position": slotPosition,
       "@enabled": false,
       "@type": 0,
       "@no_snapshot_bypass": false,
@@ -261,12 +306,23 @@ function buildPgpSnapshot(
   }
 
   // Ensure ALL 10 blocks have a bypass state (including cabs — Pod Go snapshots include all blocks)
+  // Template blocks: block0=VolumePedal(on), block1=Wah(off), block4=FXLoop(off)
+  if (!("block0" in blocks)) blocks["block0"] = true;   // Volume Pedal always enabled
+  if (!("block1" in blocks)) blocks["block1"] = false;  // Wah disabled
+  if (!("block4" in blocks)) blocks["block4"] = false;  // FX Loop disabled
+
+  // User blocks at positions [2, 3, 5, 6, 7, 8, 9]
+  const userSlots: number[] = [];
   for (let i = 0; i < POD_GO_TOTAL_BLOCKS; i++) {
-    const key = `block${i}`;
+    if (!POD_GO_TEMPLATE_POSITIONS.has(i)) {
+      userSlots.push(i);
+    }
+  }
+  for (let userIdx = 0; userIdx < userSlots.length; userIdx++) {
+    const key = `block${userSlots[userIdx]}`;
     if (!(key in blocks)) {
-      // Use the block's default enabled state, or true for cabs, false for padding blocks
-      if (i < allBlocks.length) {
-        blocks[key] = allBlocks[i].type === "cab" ? true : allBlocks[i].enabled;
+      if (userIdx < allBlocks.length) {
+        blocks[key] = allBlocks[userIdx].type === "cab" ? true : allBlocks[userIdx].enabled;
       } else {
         blocks[key] = false; // padding blocks
       }
@@ -328,12 +384,22 @@ function buildEmptyPgpSnapshot(index: number): Record<string, unknown> {
 
 function buildPgpBlockKeyMap(allBlocks: BlockSpec[]): Map<string, string> {
   const map = new Map<string, string>();
+
+  // User blocks are placed at non-template positions: [2, 3, 5, 6, 7, 8, 9]
+  const userSlots: number[] = [];
+  for (let i = 0; i < POD_GO_TOTAL_BLOCKS; i++) {
+    if (!POD_GO_TEMPLATE_POSITIONS.has(i)) {
+      userSlots.push(i);
+    }
+  }
+
   let snapshotIdx = 0; // counts only non-cab blocks (matches snapshot engine's buildBlockKeys)
 
-  for (let dspIdx = 0; dspIdx < allBlocks.length; dspIdx++) {
-    if (allBlocks[dspIdx].type === "cab") continue; // snapshot engine skips cabs
-    // Map snapshot key (non-cab index) → DSP slot key (all-blocks index)
-    map.set(`block${snapshotIdx}`, `block${dspIdx}`);
+  for (let userBlockIdx = 0; userBlockIdx < allBlocks.length; userBlockIdx++) {
+    if (allBlocks[userBlockIdx].type === "cab") continue; // snapshot engine skips cabs
+    // Map snapshot key (non-cab index) → actual DSP slot key
+    const slotPosition = userSlots[userBlockIdx];
+    map.set(`block${snapshotIdx}`, `block${slotPosition}`);
     snapshotIdx++;
   }
 
@@ -462,6 +528,18 @@ function buildPgpControllerSection(spec: PresetSpec): Record<string, unknown> {
     }
   }
 
+  // --- Output Gain Controller ---
+  // Pod Go output gain uses @controller:11 for snapshot recall (confirmed from ROCK CRUNCH, AI CHICK_ROCK)
+  if (!controller.dsp0["output"]) {
+    controller.dsp0["output"] = {};
+  }
+  controller.dsp0["output"]["gain"] = {
+    "@min": -60.0,
+    "@max": 24.0,
+    "@controller": POD_GO_SNAPSHOT_CONTROLLER,
+    "@snapshot_disable": false,
+  };
+
   return controller;
 }
 
@@ -469,14 +547,25 @@ function buildPgpControllerSection(spec: PresetSpec): Record<string, unknown> {
 // Footswitch section (Pod Go: indices 1-6)
 // ---------------------------------------------------------------------------
 
+/** Compute user slot positions (non-template) for block key mapping */
+function getUserSlotPositions(): number[] {
+  const slots: number[] = [];
+  for (let i = 0; i < POD_GO_TOTAL_BLOCKS; i++) {
+    if (!POD_GO_TEMPLATE_POSITIONS.has(i)) {
+      slots.push(i);
+    }
+  }
+  return slots;
+}
+
 function getPgpStompAssignments(allBlocks: BlockSpec[]): StompAssignment[] {
   const assignments: StompAssignment[] = [];
   const candidates: { block: BlockSpec; blockKey: string }[] = [];
-  let idx = 0;
+  const userSlots = getUserSlotPositions();
 
-  for (const block of allBlocks) {
-    const blockKey = `block${idx}`;
-    idx++;
+  for (let idx = 0; idx < allBlocks.length; idx++) {
+    const block = allBlocks[idx];
+    const blockKey = `block${userSlots[idx]}`;
 
     if (STOMP_BLOCK_TYPES.has(block.type)) {
       candidates.push({ block, blockKey });
@@ -501,11 +590,11 @@ function buildPgpFootswitchSection(allBlocks: BlockSpec[]): Record<string, unkno
   };
 
   const candidates: { block: BlockSpec; blockKey: string }[] = [];
-  let idx = 0;
+  const userSlots = getUserSlotPositions();
 
-  for (const block of allBlocks) {
-    const blockKey = `block${idx}`;
-    idx++;
+  for (let idx = 0; idx < allBlocks.length; idx++) {
+    const block = allBlocks[idx];
+    const blockKey = `block${userSlots[idx]}`;
 
     if (STOMP_BLOCK_TYPES.has(block.type)) {
       candidates.push({ block, blockKey });

@@ -127,8 +127,8 @@ describe("EXP Controller Assignment — Pod Go", () => {
     const pgp = buildPgpFile(spec);
     const controller = pgp.data.tone.controller as ControllerSection;
 
-    // Pod Go blockKeyMap includes cabs: wah=block0, amp=block1, cab=block2
-    expect(controller.dsp0["block0"]["Position"]).toEqual({
+    // Pod Go template blocks at 0,1,4 — user blocks start at block2: wah=block2, amp=block3, cab=block5
+    expect(controller.dsp0["block2"]["Position"]).toEqual({
       "@min": 0.0,
       "@max": 1.0,
       "@controller": CONTROLLERS.EXP_PEDAL_1,
@@ -146,15 +146,15 @@ describe("EXP Controller Assignment — Pod Go", () => {
     const pgp = buildPgpFile(spec);
     const controller = pgp.data.tone.controller as ControllerSection;
 
-    // Wah should have EXP1
-    expect(controller.dsp0["block0"]["Position"]).toEqual({
+    // Template blocks at 0,1,4 — user: wah=block2, amp=block3, cab=block5, vol=block6
+    expect(controller.dsp0["block2"]["Position"]).toEqual({
       "@min": 0.0,
       "@max": 1.0,
       "@controller": CONTROLLERS.EXP_PEDAL_1,
     });
 
-    // Volume Pedal (block3) must NOT have EXP2 — Pod Go has only 1 expression pedal
-    const volBlock = controller.dsp0["block3"];
+    // Volume Pedal (block6) must NOT have EXP2 — Pod Go has only 1 expression pedal
+    const volBlock = controller.dsp0["block6"];
     if (volBlock && volBlock["Position"]) {
       const posEntry = volBlock["Position"] as Record<string, unknown>;
       expect(posEntry["@controller"]).not.toBe(CONTROLLERS.EXP_PEDAL_2);
@@ -224,8 +224,8 @@ describe("EXP Controller Assignment — Pod Go", () => {
     const pgp = buildPgpFile(spec);
     const controller = pgp.data.tone.controller as ControllerSection;
 
-    // Position should have @controller:4 (snapshot), NOT @controller:1 (EXP)
-    const posEntry = controller.dsp0["block0"]["Position"] as Record<string, unknown>;
+    // Template blocks at 0,1,4 — user: wah=block2 — Position should have snapshot controller, NOT EXP
+    const posEntry = controller.dsp0["block2"]["Position"] as Record<string, unknown>;
     expect(posEntry["@controller"]).toBe(POD_GO_SNAPSHOT_CONTROLLER); // 4
     expect(posEntry["@controller"]).not.toBe(CONTROLLERS.EXP_PEDAL_1); // NOT 1
   });
@@ -315,15 +315,15 @@ describe("Cross-device EXP pedal count compliance", () => {
     const pgp = buildPgpFile(spec);
     const controller = pgp.data.tone.controller as ControllerSection;
 
-    // Pod Go includes cabs: wah=block0, amp=block1, cab=block2, volume=block3
-    expect(controller.dsp0["block0"]["Position"]).toEqual({
+    // Template blocks at 0,1,4 — user: wah=block2, amp=block3, cab=block5, vol=block6
+    expect(controller.dsp0["block2"]["Position"]).toEqual({
       "@min": 0.0,
       "@max": 1.0,
       "@controller": CONTROLLERS.EXP_PEDAL_1,
     });
 
-    // Volume Pedal (block3) must NOT have EXP2
-    const volBlock = controller.dsp0["block3"];
+    // Volume Pedal (block6) must NOT have EXP2
+    const volBlock = controller.dsp0["block6"];
     if (volBlock && volBlock["Position"]) {
       expect((volBlock["Position"] as Record<string, unknown>)["@controller"]).not.toBe(CONTROLLERS.EXP_PEDAL_2);
     }

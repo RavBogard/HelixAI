@@ -62,6 +62,8 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 - ✓ Non-MV amp Drive threshold 0.80 eliminates false positives in musical validation — v5.0 Phase 13
 - ✓ Stadium diff compares inner {meta, preset} JSON, not HspFile wrapper — v5.0 Phase 13
 - ✓ Regression suite: full audit pipeline (25 scenarios × 4 families) runs on every npm test — v5.0 Phase 14
+- ✓ Pod Go default template blocks (Volume Pedal, Wah, FX Loop) always present matching Pod Go Edit — v5.0 Phase 15
+- ✓ Pod Go output gain snapshot controller (@controller:11) for snapshot recall — v5.0 Phase 15
 
 ### Must Have
 - [To be defined during planning]
@@ -116,6 +118,8 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 | Supplementary device ID map for corpus (2162944 Native, 2162696 Pod Go Wireless) | v5.0 Phase 11 | DEVICE_IDS has unverified entries; real presets use confirmed IDs |
 | Key frequency consensus: required=100%, common=>50%, rare=<=50% | v5.0 Phase 11 | Standard consensus — "required" means present in every correct preset |
 | Path generalization (dsp0→dsp*, block3→block*) for schema extraction | v5.0 Phase 11 | Different presets have different block counts — generalizing allows structural consensus |
+| Pod Go template blocks at builder level only (not chain-rules) | v5.0 Phase 15 | Template blocks are Pod Go Edit defaults, not part of tone intent |
+| Pod Go user blocks fill positions [2,3,5,6,7,8,9] | v5.0 Phase 15 | Positions [0,1,4] reserved for Volume Pedal, Wah, FX Loop |
 
 ## Constraints
 - [To be identified during planning]
@@ -132,4 +136,4 @@ Quick Reference:
 - /ui-ux-pro-max → Frontend / UI / UX (required)
 
 ---
-*Last updated: 2026-03-09 after v5.0 Phase 14 (Regression Suite Integration complete — v5.0 milestone done)*
+*Last updated: 2026-03-09 after v5.0 Phase 15 (Pod Go Default Template Blocks — v5.0 milestone complete)*

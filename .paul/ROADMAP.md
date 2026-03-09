@@ -5,8 +5,8 @@ Build an AI-powered preset builder that interviews users about their rig and ton
 
 ## Current Milestone
 **v5.0 — Automated Gold Standard Compliance** (v5.0.0)
-Status: Complete
-Phases: 7 of 7 complete
+Status: In Progress
+Phases: 8 of 8 complete
 
 ## Phases
 
@@ -19,6 +19,7 @@ Phases: 7 of 7 complete
 | 12 | Full Audit Run & Reports | 1 | Complete | 2026-03-09 |
 | 13 | Fix Deviations | 1 | Complete | 2026-03-09 |
 | 14 | Regression Suite Integration | 1 | Complete | 2026-03-09 |
+| 15 | Pod Go Default Template Blocks | 1 | Complete | 2026-03-09 |
 
 ## Phase Details
 
@@ -63,6 +64,12 @@ Features: Issue remediation across all device families
 Focus: Bake the automated comparison pipeline into `npm test` so structural deviations are caught permanently going forward. Mock generation + diff + validation runs as part of CI. Any future builder change that introduces a deviation from gold standard triggers a test failure.
 
 Features: Test suite integration, CI regression prevention
+
+### Phase 15: Pod Go Default Template Blocks
+
+Focus: Add Volume Pedal, Wah, and FX Loop as always-present default blocks in Pod Go presets (matching Pod Go Edit defaults). These blocks appear at fixed positions in every real Pod Go preset even when disabled. Also add output gain snapshot controller (@controller:11) matching reference presets.
+
+Features: Default template blocks (Volume/Wah/FXLoop), output gain controller, reference-matching block ordering
 
 ## Constraints
 
@@ -137,4 +144,4 @@ Features: Test suite integration, CI regression prevention
 </details>
 
 ---
-*Roadmap updated: 2026-03-09 — v5.0 milestone complete (all 7 phases)*
+*Roadmap updated: 2026-03-09 — v5.0 milestone complete (all 8 phases)*

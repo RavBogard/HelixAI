@@ -357,6 +357,16 @@ export const POD_GO_MAX_USER_EFFECTS = 4;
 /** Pod Go total block count (fixed: wah+vol+amp+cab+eq+fxloop = 6, flexible: 4) */
 export const POD_GO_TOTAL_BLOCKS = 10;
 
+/** Pod Go default template block models (always present in every preset) */
+export const POD_GO_TEMPLATE_BLOCKS = {
+  VOLUME_PEDAL: { model: "HD2_VolPanVolStereo", position: 0, type: 0 },
+  WAH: { model: "HD2_WahFasselStereo", position: 1, type: 0 },
+  FX_LOOP: { model: "HD2_FXLoopMono1", position: 4, type: 7 },
+} as const;
+
+/** Pod Go template block positions (reserved, user blocks fill around these) */
+export const POD_GO_TEMPLATE_POSITIONS = new Set([0, 1, 4]);
+
 // --- Preset specification types (what the AI generates) ---
 
 export interface PresetSpec {

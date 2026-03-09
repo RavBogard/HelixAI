@@ -10,10 +10,10 @@ See: .paul/PROJECT.md (updated 2026-03-09)
 ## Current Position
 
 Milestone: v5.0 — Automated Gold Standard Compliance
-Phase: 14 of 14 (Regression Suite Integration) — Complete
-Plan: 14-01 UNIFIED
-Status: v5.0 MILESTONE COMPLETE — all 7 phases done, 1439 tests passing
-Last activity: 2026-03-09 — v5.0 milestone complete
+Phase: 15 of 15 (Pod Go Default Template Blocks) — Complete
+Plan: 15-01 complete
+Status: v5.0 milestone complete — all 8 phases done
+Last activity: 2026-03-09 — Phase 15 complete, v5.0 milestone done
 
 Progress:
 - v1.0 Production Release: [██████████] 100% ✓
@@ -82,7 +82,8 @@ PLAN ──▶ APPLY ──▶ UNIFY
 - **CRITICAL:** Helix Native device ID is 2162944 (confirmed from JS-EVPanRed.hlx + JS-GermXRed.hlx) — NOT 2162690 as estimated in v1.0 Phase 5
 - Stadium device_version varies across presets (285213946, 301991188, 302056726) — we hardcoded 302056738
 - Pod Go Wireless device ID may be 2162696 (vs 2162695 for standard Pod Go) — confirmed from The Hell Song.pgp
-- Pod Go block ordering and controller enrichment deferred from Phase 13
+- Pod Go template blocks at builder level only (not chain-rules) — v5.0 Phase 15
+- Pod Go user blocks fill positions [2,3,5,6,7,8,9] around templates [0,1,4] — v5.0 Phase 15
 
 ### Reference Files
 
@@ -130,7 +131,7 @@ PLAN ──▶ APPLY ──▶ UNIFY
 - New reference presets needed for v5.0 audit (user gathering 5-8 per device family)
 
 ### Git State
-Last commit: 8ecb420
+Last commit: d605abd
 Branch: main
 Feature branches merged: none
 
@@ -138,12 +139,13 @@ Feature branches merged: none
 
 Last session: 2026-03-09
 Stopped at: v5.0 milestone complete
-Next action: /paul:complete-milestone (archive v5.0, plan v6.0)
-Resume file: .paul/phases/14-regression-suite-integration/14-01-SUMMARY.md
+Next action: /paul:complete-milestone or start next milestone
+Resume file: .paul/ROADMAP.md
 Resume context:
-- v5.0 all 7 phases complete (8-14), 1439 tests across 53 files
-- Audit pipeline permanently integrated into npm test
-- Pod Go block ordering deferred (not critical)
+- v5.0 Automated Gold Standard Compliance — all 8 phases complete
+- Phase 15 added Pod Go template blocks + output gain controller
+- 1446 tests passing
+- Next: decide on next milestone or wrap up
 
 ---
 *STATE.md — Updated after every significant action*
