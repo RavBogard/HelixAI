@@ -5,15 +5,15 @@
 See: .paul/PROJECT.md (updated 2026-03-09)
 
 **Core value:** Guitarists and bassists can get professional-quality, device-specific Line 6 presets tailored to their exact rig and tonal preferences — without deep technical knowledge of their hardware.
-**Current focus:** v5.0 — Automated Gold Standard Compliance
+**Current focus:** Awaiting next milestone
 
 ## Current Position
 
-Milestone: v5.0 — Automated Gold Standard Compliance
-Phase: 15 of 15 (Pod Go Default Template Blocks) — Complete
-Plan: 15-01 complete
-Status: v5.0 milestone complete — all 8 phases done
-Last activity: 2026-03-09 — Phase 15 complete, v5.0 milestone done
+Milestone: Awaiting next milestone
+Phase: None active
+Plan: None
+Status: Milestone v5.0 Automated Gold Standard Compliance complete — ready for next
+Last activity: 2026-03-09 — Milestone completed
 
 Progress:
 - v1.0 Production Release: [██████████] 100% ✓
@@ -28,7 +28,7 @@ Progress:
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ✓        ✓        ✓     [Loop complete — v5.0 milestone done]
+  ○        ○        ○     [Milestone complete - ready for next]
 ```
 
 ## Accumulated Context
@@ -75,6 +75,8 @@ PLAN ──▶ APPLY ──▶ UNIFY
 - Non-MV amp Drive threshold 0.80 (not skip) — still catches extreme values — v5.0 Phase 13
 - Stomp emits device-max snapshots only (3 or 4), no padding to 8 — v5.0 Phase 13
 - Stadium diff compares inner JSON, not HspFile wrapper — v5.0 Phase 13
+- Pod Go template blocks at builder level only (not chain-rules) — v5.0 Phase 15
+- Pod Go user blocks fill positions [2,3,5,6,7,8,9] around templates [0,1,4] — v5.0 Phase 15
 
 ### Known Issues
 - Bass amp HD2 model IDs UNVERIFIED — need confirmation from real .hlx bass preset exports
@@ -128,24 +130,19 @@ PLAN ──▶ APPLY ──▶ UNIFY
 - `C:\Users\dsbog\Downloads\new presets\JS - Dual ChampMan\JS Brit JuJube.hsp` — Brit JuJube amp
 
 ### Blockers/Concerns
-- New reference presets needed for v5.0 audit (user gathering 5-8 per device family)
+- None active
 
 ### Git State
-Last commit: d605abd
+Last commit: 8a80ed1
 Branch: main
 Feature branches merged: none
 
 ## Session Continuity
 
 Last session: 2026-03-09
-Stopped at: v5.0 milestone complete
-Next action: /paul:complete-milestone or start next milestone
-Resume file: .paul/ROADMAP.md
-Resume context:
-- v5.0 Automated Gold Standard Compliance — all 8 phases complete
-- Phase 15 added Pod Go template blocks + output gain controller
-- 1446 tests passing
-- Next: decide on next milestone or wrap up
+Stopped at: Milestone v5.0 complete
+Next action: /paul:discuss-milestone or /paul:milestone
+Resume file: .paul/MILESTONES.md
 
 ---
 *STATE.md — Updated after every significant action*
