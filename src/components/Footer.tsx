@@ -1,6 +1,6 @@
 "use client";
 
-export const FOOTER_HEIGHT = "2.25rem";
+export const FOOTER_HEIGHT = "2.5rem";
 
 export function Footer() {
   function handleSupport() {
@@ -15,12 +15,12 @@ export function Footer() {
       style={{
         height: FOOTER_HEIGHT,
         fontFamily: "var(--font-mono), monospace",
-        background: "linear-gradient(transparent, var(--hlx-void) 40%)",
+        background: "linear-gradient(transparent 0%, var(--hlx-void) 50%)",
         pointerEvents: "none",
       }}
     >
       <p
-        className="text-[11px] text-[var(--hlx-text-muted)] tracking-wide"
+        className="text-[10px] text-[var(--hlx-text-muted)] tracking-wide opacity-70"
         style={{ pointerEvents: "auto" }}
       >
         <button

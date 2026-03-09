@@ -5,15 +5,15 @@
 See: .paul/PROJECT.md (updated 2026-03-09)
 
 **Core value:** Guitarists and bassists can get professional-quality, device-specific Line 6 presets tailored to their exact rig and tonal preferences — without deep technical knowledge of their hardware.
-**Current focus:** Awaiting next milestone
+**Current focus:** v6.0 — Preset Intelligence & UX Polish
 
 ## Current Position
 
-Milestone: Awaiting next milestone
-Phase: None active
-Plan: None
-Status: Milestone v5.0 Automated Gold Standard Compliance complete — ready for next
-Last activity: 2026-03-09 — Milestone completed
+Milestone: v6.0 — Preset Intelligence & UX Polish
+Phase: 17 of 19 (Planner Prompt Intelligence)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-03-09 — Phase 16 complete, transitioned to Phase 17
 
 Progress:
 - v1.0 Production Release: [██████████] 100% ✓
@@ -22,13 +22,14 @@ Progress:
 - v3.0 Preset Format Correctness & Quality: [██████████] 100% ✓
 - v4.0 Preset Quality & Reliability: [██████████] 100% ✓
 - v5.0 Automated Gold Standard Compliance: [██████████] 100% ✓
+- v6.0 Preset Intelligence & UX Polish: [██░░░░░░░░] 25%
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ○        ○        ○     [Milestone complete - ready for next]
+  ○        ○        ○     [Ready for Phase 17 PLAN]
 ```
 
 ## Accumulated Context
@@ -77,6 +78,10 @@ PLAN ──▶ APPLY ──▶ UNIFY
 - Stadium diff compares inner JSON, not HspFile wrapper — v5.0 Phase 13
 - Pod Go template blocks at builder level only (not chain-rules) — v5.0 Phase 15
 - Pod Go user blocks fill positions [2,3,5,6,7,8,9] around templates [0,1,4] — v5.0 Phase 15
+
+- Container max-w-5xl→max-w-4xl for welcome+chat — v6.0 Phase 16
+- Logo 280→240px to fit viewport without crop — v6.0 Phase 16
+- Skip local-verify checkpoints (user doesn't run local dev) — v6.0 Phase 16
 
 ### Known Issues
 - Bass amp HD2 model IDs UNVERIFIED — need confirmation from real .hlx bass preset exports
@@ -133,16 +138,16 @@ PLAN ──▶ APPLY ──▶ UNIFY
 - None active
 
 ### Git State
-Last commit: 8a80ed1
+Last commit: 611a16b
 Branch: main
 Feature branches merged: none
 
 ## Session Continuity
 
 Last session: 2026-03-09
-Stopped at: Milestone v5.0 complete
-Next action: /paul:discuss-milestone or /paul:milestone
-Resume file: .paul/MILESTONES.md
+Stopped at: Phase 16 complete, ready to plan Phase 17
+Next action: /paul:plan for Phase 17
+Resume file: .paul/ROADMAP.md
 
 ---
 *STATE.md — Updated after every significant action*

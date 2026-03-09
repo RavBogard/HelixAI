@@ -64,6 +64,8 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 - ✓ Regression suite: full audit pipeline (25 scenarios × 4 families) runs on every npm test — v5.0 Phase 14
 - ✓ Pod Go default template blocks (Volume Pedal, Wah, FX Loop) always present matching Pod Go Edit — v5.0 Phase 15
 - ✓ Pod Go output gain snapshot controller (@controller:11) for snapshot recall — v5.0 Phase 15
+- ✓ Homescreen layout fix: logo visible, no right-column gap, footer cleared — v6.0 Phase 16
+- ✓ Device picker visual polish: amber selected state, hover shadows — v6.0 Phase 16
 
 ### Must Have
 - [To be defined during planning]
@@ -120,6 +122,9 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 | Path generalization (dsp0→dsp*, block3→block*) for schema extraction | v5.0 Phase 11 | Different presets have different block counts — generalizing allows structural consensus |
 | Pod Go template blocks at builder level only (not chain-rules) | v5.0 Phase 15 | Template blocks are Pod Go Edit defaults, not part of tone intent |
 | Pod Go user blocks fill positions [2,3,5,6,7,8,9] | v5.0 Phase 15 | Positions [0,1,4] reserved for Volume Pedal, Wah, FX Loop |
+| Container max-w-5xl→max-w-4xl for welcome+chat | v6.0 Phase 16 | Eliminates right-column gap on wide screens |
+| Logo 280→240px | v6.0 Phase 16 | Fits viewport without crop while remaining prominent |
+| Skip local-verify checkpoints (user doesn't run dev) | v6.0 Phase 16 | Trust build+tests; verify on deploy |
 
 ## Constraints
 - [To be identified during planning]
@@ -136,4 +141,4 @@ Quick Reference:
 - /ui-ux-pro-max → Frontend / UI / UX (required)
 
 ---
-*Last updated: 2026-03-09 after v5.0 Automated Gold Standard Compliance milestone complete*
+*Last updated: 2026-03-09 after v6.0 Phase 16*

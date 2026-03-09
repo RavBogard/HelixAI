@@ -756,7 +756,7 @@ function HomeContent() {
   }
 
   return (
-    <div className="relative z-10 flex flex-col h-screen max-w-5xl mx-auto">
+    <div className="relative z-10 flex flex-col h-screen max-w-4xl mx-auto">
       {/* Hidden file input — always in DOM so rigFileInputRef is never null */}
       <input
         ref={rigFileInputRef}
@@ -817,7 +817,7 @@ function HomeContent() {
       <div className="hlx-rack" />
 
       {/* --- Messages --- */}
-      <div className="flex-1 overflow-y-auto px-6 py-6 pb-12">
+      <div className="flex-1 overflow-y-auto px-6 py-6 pb-14">
         {isLoadingConversation ? (
           /* Phase 28: UXP-02 — conversation resume loading state */
           <div className="flex flex-col items-center justify-center flex-1 gap-3 py-16">
