@@ -6,14 +6,14 @@ Build an AI-powered preset builder that interviews users about their rig and ton
 ## Current Milestone
 **v6.0 — Preset Intelligence & UX Polish** (v6.0.0)
 Status: In Progress
-Phases: 1 of 4 complete
+Phases: 2 of 4 complete
 
 Focus: Close the gap between what the AI promises and what the preset delivers, while making the app look and feel professional. Reduce cost without reducing quality.
 
 | Phase | Name | Plans | Status | Completed |
 |-------|------|-------|--------|-----------|
 | 16 | UI Overhaul & Homescreen Fix | 1 | Complete | 2026-03-09 |
-| 17 | Planner Prompt Intelligence | TBD | Not started | - |
+| 17 | Planner Prompt Intelligence | 1 | Complete | 2026-03-09 |
 | 18 | Builder Logic Enhancement | TBD | Not started | - |
 | 19 | Token & Cost Optimization | TBD | Not started | - |
 

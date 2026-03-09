@@ -10,10 +10,10 @@ See: .paul/PROJECT.md (updated 2026-03-09)
 ## Current Position
 
 Milestone: v6.0 — Preset Intelligence & UX Polish
-Phase: 17 of 19 (Planner Prompt Intelligence)
+Phase: 18 of 19 (Builder Logic Enhancement)
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-03-09 — Phase 16 complete, transitioned to Phase 17
+Last activity: 2026-03-09 — Phase 17 complete, transitioned to Phase 18
 
 Progress:
 - v1.0 Production Release: [██████████] 100% ✓
@@ -22,14 +22,14 @@ Progress:
 - v3.0 Preset Format Correctness & Quality: [██████████] 100% ✓
 - v4.0 Preset Quality & Reliability: [██████████] 100% ✓
 - v5.0 Automated Gold Standard Compliance: [██████████] 100% ✓
-- v6.0 Preset Intelligence & UX Polish: [██░░░░░░░░] 25%
+- v6.0 Preset Intelligence & UX Polish: [█████░░░░░] 50%
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ○        ○        ○     [Ready for Phase 17 PLAN]
+  ○        ○        ○     [Ready for Phase 18 PLAN]
 ```
 
 ## Accumulated Context
@@ -82,6 +82,9 @@ PLAN ──▶ APPLY ──▶ UNIFY
 - Container max-w-5xl→max-w-4xl for welcome+chat — v6.0 Phase 16
 - Logo 280→240px to fit viewport without crop — v6.0 Phase 16
 - Skip local-verify checkpoints (user doesn't run local dev) — v6.0 Phase 16
+- Effect combination rules are advisory prompt text, not code-enforced — v6.0 Phase 17
+- Snapshot role table identical across families (Knowledge Layer behavior shared) — v6.0 Phase 17
+- Stadium amp gain categorization uses Agoura model names (not HD2) — v6.0 Phase 17
 
 ### Known Issues
 - Bass amp HD2 model IDs UNVERIFIED — need confirmation from real .hlx bass preset exports
@@ -138,15 +141,15 @@ PLAN ──▶ APPLY ──▶ UNIFY
 - None active
 
 ### Git State
-Last commit: 611a16b
+Last commit: 0e9731e
 Branch: main
 Feature branches merged: none
 
 ## Session Continuity
 
 Last session: 2026-03-09
-Stopped at: Phase 16 complete, ready to plan Phase 17
-Next action: /paul:plan for Phase 17
+Stopped at: Phase 17 complete, ready to plan Phase 18
+Next action: /paul:plan for Phase 18
 Resume file: .paul/ROADMAP.md
 
 ---

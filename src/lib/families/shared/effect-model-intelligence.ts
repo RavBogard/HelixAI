@@ -83,6 +83,36 @@ Helix can run effect combinations impossible on single-DSP devices:
 - **Dual modulation:** Chorus on DSP0 (subtle) + Tremolo on DSP1 (rhythmic)
 - **Wet/dry:** Keep DSP0 completely dry, route all time-based effects to DSP1
 
+### Effect Combination Rules
+
+**Good pairings:**
+- Compressor before drive — tightens attack, more consistent saturation
+- Drive + delay + reverb — the classic rock/blues core chain
+- Chorus + delay — shimmering clean tones (clean/ambient snapshots)
+- Compressor + EQ — studio-polished tone foundation
+
+**Anti-patterns — avoid these:**
+- Two compressors — competing dynamics control, kills feel
+- Spring reverb + high-gain metal amp — spring harshness clashes with saturation
+- Wah + heavy chorus — frequency sweep competition, muddy result
+- Heliosphere + Ganymede together — both are ambient wash, pick one
+- Two drive pedals (unless one is a clean boost before a high-gain drive)
+- Tremolo + heavy delay — rhythmic tremolo fights delay repeats
+
+### Effect Role Assignment Guide
+
+Assign each effect the correct role — this controls snapshot bypass behavior:
+
+- **always_on**: Compressor, subtle chorus, always-on plate/room reverb, EQ — effects that define the base tone across ALL snapshots. If removing it changes the fundamental character, it's always_on.
+- **toggleable**: Drive/boost pedals, wah, tremolo, phaser — effects that change between clean/lead snapshots. Drive is almost always toggleable (clean snapshots bypass it).
+- **ambient**: Shimmer reverb (Ganymede, Glitz), swell delays (Adriatic Swell, Heliosphere) — effects only active in ambient/worship snapshots.
+
+**Common mistakes to avoid:**
+- Do NOT mark drive as "always_on" — clean snapshots need to bypass it
+- Do NOT mark the only reverb as "toggleable" — every snapshot needs space, make it always_on
+- Do NOT mark compressor as "toggleable" — it's a tone foundation, keep always_on
+- Reserve "ambient" for effects that ONLY make sense in atmospheric snapshots
+
 ### Bass Effect Recommendations (when instrument is "bass")
 
 Bass effect priorities — compression is king, distortion is rare:
@@ -165,6 +195,27 @@ With 3-4 effect slots, choose Priority 1 effects first, then fill remaining slot
 - **Drop order when over budget:** Wah → Modulation → Compressor → Reverb → Delay → Drive
 - A Stomp preset using only 1-2 effects is underusing the device — aim for 3-4.
 
+### Effect Combination Rules
+
+**Good pairings (pick from these for 3-4 slots):**
+- Drive + delay + reverb — covers rock/blues/country with one slot to spare
+- Compressor + delay + reverb — clean/jazz foundation
+- Drive + delay + modulation — atmospheric rock without reverb (reverb from amp room)
+
+**Anti-patterns — avoid these:**
+- Two compressors — wastes a precious slot and kills dynamics
+- Spring reverb + high-gain amp — harsh clash
+- Wah + chorus in same preset — both sweep frequencies, one must go
+- Two drive pedals — on Stomp, use one drive and rely on amp gain for variation
+
+### Effect Role Assignment Guide
+
+- **always_on**: Compressor, EQ, the single reverb (if only one) — base tone across all snapshots
+- **toggleable**: Drive/boost, wah — bypassed for clean snapshots, engaged for crunch/lead
+- **ambient**: Shimmer reverb, swell delay — only if the preset has an ambient snapshot
+
+**Key rule:** With limited slots, most effects should be toggleable so snapshots create meaningful variation. But if you only have one reverb, make it always_on.
+
 ### Bass Effect Recommendations (when instrument is "bass")
 
 With limited slots, compression is non-negotiable for bass. Priority-based selection:
@@ -216,6 +267,29 @@ Pod Go has exactly 4 user-effect slots — fill all of them. An unused slot is w
 - Use snapshots to bypass effects for variation (e.g., bypass drive for clean snapshot).
 - When the user's tone needs 5+ effects, prioritize by impact and suggest snapshot-based toggling for the rest.
 - An unused slot is a wasted slot on Pod Go.
+
+### Effect Combination Rules
+
+**Optimized 4-slot combos:**
+- Drive + delay + reverb + compressor — versatile rock/blues (most common)
+- Drive + delay + reverb + gate — high-gain metal/hard rock
+- Compressor + delay + reverb + modulation — clean jazz/pop
+- Delay + reverb + modulation + swell — ambient/worship (no drive needed)
+
+**Anti-patterns — avoid on Pod Go:**
+- Two delays when you could use delay + reverb — reverb adds more value than a second delay
+- Gate + compressor together — both manage dynamics, pick one based on genre (gate for metal, comp for everything else)
+- Spring reverb with metal amps — character clash
+
+### Effect Role Assignment Guide
+
+With 4 slots and 4 snapshots, role assignment is critical for preset versatility:
+
+- **always_on**: Compressor, the main reverb — present in every snapshot for consistent tone
+- **toggleable**: Drive, wah, gate — bypassed in clean, engaged in crunch/lead
+- **ambient**: Second delay or shimmer reverb — only for the ambient snapshot
+
+**Rule:** At least 1 effect should be toggleable so snapshots have meaningful variation. If all 4 are always_on, your snapshots only differ by amp drive.
 
 ### Bass 4-Slot Templates (when instrument is "bass")
 
@@ -297,6 +371,27 @@ For arena clarity, favor Room and Plate reverbs over Spring — spring can sound
 - **Gain staging for PA:** Effects should sound good at bedroom AND arena levels — test at both
 - **Mono collapse:** Always check how stereo effects sound summed to mono (many PA systems are mono)
 - **Stage volume:** Room reverb from the actual venue interacts with your preset's reverb — less is more
+
+### Effect Combination Rules
+
+**Good pairings for arena clarity:**
+- Compressor + drive + delay + reverb — standard arena rig, FOH-friendly
+- EQ + delay + reverb — clean tones that cut through PA
+- Drive + ducked delay + plate reverb — keeps clarity at volume
+
+**Anti-patterns — avoid for live/arena:**
+- Spring reverb + high-gain amp — spring harshness amplified through PA
+- Heliosphere + Ganymede — too much ambient wash, kills clarity at volume
+- Wah + heavy chorus — frequency competition is worse through PA
+- Multiple long-tail effects — venue reflections add their own reverb
+
+### Effect Role Assignment Guide
+
+- **always_on**: Compressor, EQ, plate/room reverb — consistent FOH tone across all snapshots
+- **toggleable**: Drive/boost, wah — snapshot variation for verse/chorus/solo
+- **ambient**: Shimmer reverb, swell delay — ambient snapshots only, FOH can ride the level
+
+**Arena rule:** More effects should be always_on than toggleable — consistency matters more at stage volume than variety.
 
 ### Bass Effect Recommendations (when instrument is "bass")
 

@@ -128,7 +128,26 @@ Do NOT generate Drive, Master, Bass, Mid, Treble, Presence, Sag, ChVol, LowCut, 
 - Set each snapshot's toneRole to match its purpose
 - Generate a creative preset name that captures the tone character
 
+### Snapshot Role Behavior
+
+Each toneRole controls how effects are bypassed and how the amp responds. The Knowledge Layer automatically sets Drive, Channel Volume, and gain boost — your job is to pick the RIGHT toneRole for each snapshot name.
+
+| toneRole | Drive/Boost | Delay | Reverb | Modulation | Character |
+|----------|-------------|-------|--------|------------|-----------|
+| clean | bypassed | short/off | subtle | optional | Amp sparkle, dynamics |
+| crunch | engaged | optional | subtle | optional | Rhythm grit, tight |
+| lead | engaged+boost | engaged | engaged | optional | Sustain, cut-through |
+| ambient | bypassed | long tail | lush | engaged | Atmospheric wash |
+
 ${gainStagingSection()}
+
+### Amp Gain Level Guide
+
+Match the amp to the user's described tone:
+
+- **Clean / edge-of-breakup**: US Deluxe Nrm/Vib, Fullerton Nrm, Essex A15, A30 Fawn Nrm — for jazz, country, clean pop
+- **Medium-gain crunch**: Brit Plexi Nrm/Brt, Matchstick Ch1/Ch2, A30 Fawn Brt, Tweed Blues — for blues, classic rock, indie
+- **High-gain**: Cali Rectifire, Cali IV Lead, Placater Dirty, PV Panama, Das Benzin Mega — for metal, hard rock, modern rock
 
 ${ampCabPairingSection(STOMP_AMP_CAB_PAIRINGS)}
 

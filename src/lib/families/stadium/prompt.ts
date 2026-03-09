@@ -60,7 +60,26 @@ Do NOT generate Drive, Master, Bass, Mid, Treble, Presence, Sag, ChVol, LowCut, 
 - Set each snapshot's toneRole to match its purpose
 - Generate a creative preset name that captures the tone character
 
+### Snapshot Role Behavior
+
+Each toneRole controls how effects are bypassed and how the amp responds. The Knowledge Layer automatically sets Drive, Channel Volume, and gain boost — your job is to pick the RIGHT toneRole for each snapshot name.
+
+| toneRole | Drive/Boost | Delay | Reverb | Modulation | Character |
+|----------|-------------|-------|--------|------------|-----------|
+| clean | bypassed | short/off | subtle | optional | Amp sparkle, dynamics |
+| crunch | engaged | optional | subtle | optional | Rhythm grit, tight |
+| lead | engaged+boost | engaged | engaged | optional | Sustain, cut-through |
+| ambient | bypassed | long tail | lush | engaged | Atmospheric wash |
+
 ${gainStagingSection()}
+
+### Amp Gain Level Guide
+
+Match the Agoura amp to the user's described tone:
+
+- **Clean / edge-of-breakup**: Agoura US Luxe Black, Agoura US Princess 76, Agoura US Double Black, Agoura US Clean, Agoura US Trem, Agoura Solid 100 — for jazz, country, clean pop
+- **Medium-gain crunch**: Agoura Brit Plexi, Agoura Brit 800, Agoura Brit 2203 MV, Agoura WhoWatt 103, Agoura US Tweedman, Agoura German Crunch — for blues, classic rock, indie
+- **High-gain**: Agoura German Xtra Red, Agoura German Lead, Agoura Tread Plate Red, Agoura Tread Plate Orange, Agoura Revv Ch3 Purple — for metal, hard rock, modern rock
 
 ## Amp-to-Cab Pairing
 

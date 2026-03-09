@@ -66,6 +66,7 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 - ✓ Pod Go output gain snapshot controller (@controller:11) for snapshot recall — v5.0 Phase 15
 - ✓ Homescreen layout fix: logo visible, no right-column gap, footer cleared — v6.0 Phase 16
 - ✓ Device picker visual polish: amber selected state, hover shadows — v6.0 Phase 16
+- ✓ Planner prompt intelligence: effect combination rules, role assignment guide, snapshot role behavior, amp gain categorization — all 4 families — v6.0 Phase 17
 
 ### Must Have
 - [To be defined during planning]
@@ -125,6 +126,9 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 | Container max-w-5xl→max-w-4xl for welcome+chat | v6.0 Phase 16 | Eliminates right-column gap on wide screens |
 | Logo 280→240px | v6.0 Phase 16 | Fits viewport without crop while remaining prominent |
 | Skip local-verify checkpoints (user doesn't run dev) | v6.0 Phase 16 | Trust build+tests; verify on deploy |
+| Effect combination rules are advisory prompt text, not code-enforced | v6.0 Phase 17 | Prompt guidance steers planner; builder doesn't validate combinations |
+| Snapshot role table identical across families | v6.0 Phase 17 | Knowledge Layer behavior is shared; planner just picks the right toneRole |
+| Stadium amp gain categorization uses Agoura model names | v6.0 Phase 17 | Stadium has its own amp catalog, not HD2 |
 
 ## Constraints
 - [To be identified during planning]
@@ -141,4 +145,4 @@ Quick Reference:
 - /ui-ux-pro-max → Frontend / UI / UX (required)
 
 ---
-*Last updated: 2026-03-09 after v6.0 Phase 16*
+*Last updated: 2026-03-09 after v6.0 Phase 17*
