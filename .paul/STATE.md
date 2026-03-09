@@ -10,17 +10,17 @@ See: .paul/PROJECT.md (updated 2026-03-08)
 ## Current Position
 
 Milestone: v4.0 — Preset Quality & Reliability
-Phase: 6 of 7 (Validation Layer & Intent Fidelity) — Complete
-Plan: 06-01 complete
-Status: Phase 6 complete, ready for Phase 7
-Last activity: 2026-03-08 — Phase 6 complete (intent fidelity validation)
+Phase: 7 of 7 (Bass Support) — In Progress
+Plan: 07-01 complete
+Status: Plan 01 done, ready for Plan 02
+Last activity: 2026-03-08 — Completed 07-01 (bass data & schema layer)
 
 Progress:
 - v1.0 Production Release: [██████████] 100% ✓
 - v1.1 Post-Release Stabilization: [██████████] 100% ✓
 - v2.0 Device Intelligence & UX Overhaul: [██████████] 100% ✓
 - v3.0 Preset Format Correctness & Quality: [██████████] 100% ✓
-- v4.0 Preset Quality & Reliability: [████████░░] 86%
+- v4.0 Preset Quality & Reliability: [█████████░] 93%
 
 ## Loop Position
 
@@ -90,9 +90,13 @@ Feature branches merged: none
 ## Session Continuity
 
 Last session: 2026-03-08
-Stopped at: Phase 6 complete
-Next action: /paul:plan for Phase 7 (Bass Support)
-Resume file: .paul/phases/06-validation-intent-fidelity/06-01-SUMMARY.md
+Stopped at: Plan 07-01 complete (loop closed)
+Next action: /paul:plan for Phase 7 Plan 02 (bass prompt intelligence)
+Resume file: .paul/HANDOFF-2026-03-08.md
+Resume context:
+- Plan 01 added 19 bass amps + 8 bass cabs + ToneIntent instrument field
+- Plan 02 needs: chat prompts (guitar vs bass?), planner prompts (bass amp-cab pairings, effect guidance), gain staging (bass-specific)
+- All catalogs auto-include bass models, 1248 tests passing
 
 ---
 *STATE.md — Updated after every significant action*

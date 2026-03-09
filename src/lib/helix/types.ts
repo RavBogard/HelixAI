@@ -252,7 +252,9 @@ export type AmpFamily =
   | "ENGL"
   | "Revv"
   | "Grammatico"
-  | "Line6";
+  | "Line6"
+  | "Ampeg"
+  | "Other";
 
 export type CabSize = "small" | "medium" | "large";
 

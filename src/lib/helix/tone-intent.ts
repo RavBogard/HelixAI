@@ -33,6 +33,7 @@ function buildToneIntentSchema(
   });
 
   return z.object({
+    instrument: z.enum(["guitar", "bass"]).optional(),
     ampName: z.enum(ampNames),
     cabName: z.enum(cabNames),
     secondAmpName: z.enum(ampNames).optional(),

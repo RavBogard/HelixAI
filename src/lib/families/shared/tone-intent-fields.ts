@@ -35,9 +35,10 @@ export function toneIntentFieldsSection(opts: ToneIntentFieldsOptions): string {
 
 Generate a JSON object with these fields:
 
+- **instrument**: "guitar" or "bass" — based on what instrument the user plays. Defaults to "guitar" if not specified. For bass, choose ONLY from bass amp/cab models (e.g., SV Beast, Agua, Cali Bass, Tuck n' Go).
 - **ampName**: Exact name from the AMPS list above
 - **cabName**: Exact name from the CABS list above
-${secondAmpFields}- **guitarType**: "single_coil", "humbucker", or "p90" — based on what the user described
+${secondAmpFields}- **guitarType**: "single_coil", "humbucker", or "p90" — based on what the user described (for bass: "single_coil" = J-style pickups, "humbucker" = P-style/soapbar pickups)
 - **genreHint**: Optional genre or style description (e.g., "blues rock", "modern metal")
 - **effects**: Array of up to ${opts.maxEffects} effects, each with:
   - modelName: exact name from DISTORTION, DELAY, REVERB, MODULATION, or DYNAMICS lists
