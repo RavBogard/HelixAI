@@ -282,6 +282,7 @@ function buildEmptySnapshot(index: number, allBlocks: BlockSpec[]): HlxSnapshot 
     "@valid": false,
     "@pedalstate": 0,
     "@ledcolor": 0,
+    "@custom_name": false,
     blocks: { dsp0: blocksBypass },
     controllers: { dsp0: {} },
   };
