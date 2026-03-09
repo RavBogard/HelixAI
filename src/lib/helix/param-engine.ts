@@ -640,7 +640,7 @@ function resolveDefaultParams(
 }
 
 // ============================================================
-// COMBINATION ADJUSTMENTS (COMBO-01, COMBO-04)
+// COMBINATION ADJUSTMENTS (COMBO-01, COMBO-04, COMBO-05)
 // ============================================================
 // Post-processing step: adjusts parameters based on which effects
 // coexist in the same chain. Runs AFTER per-block resolution.
@@ -658,6 +658,10 @@ function isCompressorBlock(block: BlockSpec): boolean {
 function applyCombinationAdjustments(chain: BlockSpec[]): BlockSpec[] {
   const hasWah = chain.some(b => b.type === "wah");
   const hasDelay = chain.some(b => b.type === "delay");
+  // COMBO-05: User-selected drive (extra_drive slot) — mandatory boost excluded
+  const hasUserDrive = chain.some(
+    b => b.type === "distortion" && b.slot !== "boost"
+  );
 
   return chain.map(block => {
     const params = { ...block.parameters };
@@ -683,6 +687,17 @@ function applyCombinationAdjustments(chain: BlockSpec[]): BlockSpec[] {
     if (hasDelay && block.type === "reverb") {
       if ("Mix" in params && typeof params.Mix === "number") {
         params.Mix = Math.max(0.15, (params.Mix as number) - 0.05);
+        changed = true;
+      }
+    }
+
+    // COMBO-05: Drive + reverb → reduce reverb mix (floor 0.10)
+    // Prevents muddy wash when distortion drives the signal into reverb.
+    // Only fires for user-selected drives (extra_drive slot), not mandatory boost.
+    // Stacks with COMBO-04 (total possible reduction: 0.08 with delay+drive+reverb).
+    if (hasUserDrive && block.type === "reverb") {
+      if ("Mix" in params && typeof params.Mix === "number") {
+        params.Mix = Math.max(0.10, (params.Mix as number) - 0.03);
         changed = true;
       }
     }

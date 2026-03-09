@@ -85,14 +85,70 @@ const BOOST_MODEL_IDS = new Set([
 ]);
 
 // ---------------------------------------------------------------------------
-// Ambient Mix override amounts (INTL-02)
-// When ambient snapshot enables time-based effects, boost their Mix above
-// the base genre/model default by this delta (clamped to 0-1).
+// Per-role effect parameter deltas (SNAP-07)
+// Each role adjusts delay/reverb Mix and reverb DecayTime relative to the
+// base values set by param-engine's genre defaults.
+//
+// clean:   No effect overrides — genre baseline is sufficient
+// crunch:  Slightly reduced reverb to keep rhythm parts tight
+// lead:    Boosted reverb+delay for singing sustain and presence
+// ambient: Large boost for washy atmospheric sound (legacy INTL-02 values)
 // ---------------------------------------------------------------------------
 
-const AMBIENT_DELAY_MIX_BOOST = 0.25;  // +25% Mix for delays in ambient snapshot
-const AMBIENT_REVERB_MIX_BOOST = 0.20; // +20% Mix for reverbs in ambient snapshot
-const AMBIENT_DECAY_MULTIPLIER = 1.5;  // 1.5x reverb DecayTime for longer ambient tail
+const ROLE_REVERB_MIX_DELTA: Record<string, number> = {
+  clean: 0,
+  crunch: -0.05,
+  lead: 0.10,
+  ambient: 0.20,   // matches legacy AMBIENT_REVERB_MIX_BOOST
+};
+
+const ROLE_REVERB_DECAY_MULT: Record<string, number> = {
+  clean: 1.0,
+  crunch: 1.0,
+  lead: 1.2,
+  ambient: 1.5,    // matches legacy AMBIENT_DECAY_MULTIPLIER
+};
+
+const ROLE_DELAY_MIX_DELTA: Record<string, number> = {
+  clean: 0,
+  crunch: 0,
+  lead: 0.08,
+  ambient: 0.25,   // matches legacy AMBIENT_DELAY_MIX_BOOST
+};
+
+// ---------------------------------------------------------------------------
+// Genre-aware snapshot modifiers (SNAP-08)
+// Scales the per-role deltas above based on genre. Metal wants tighter
+// effects; ambient/worship wants lush washes; others use baseline.
+// ---------------------------------------------------------------------------
+
+interface GenreSnapshotModifier {
+  reverbMixScale: number;
+  delayMixScale: number;
+}
+
+const GENRE_SNAPSHOT_MODIFIERS: Record<string, GenreSnapshotModifier> = {
+  metal:   { reverbMixScale: 0.5, delayMixScale: 0.5 },
+  ambient: { reverbMixScale: 2.0, delayMixScale: 2.0 },
+  worship: { reverbMixScale: 2.0, delayMixScale: 2.0 },
+  blues:   { reverbMixScale: 1.2, delayMixScale: 1.0 },
+  jazz:    { reverbMixScale: 1.2, delayMixScale: 1.0 },
+};
+
+const DEFAULT_GENRE_MODIFIER: GenreSnapshotModifier = {
+  reverbMixScale: 1.0,
+  delayMixScale: 1.0,
+};
+
+function matchGenreModifier(genreHint?: string): GenreSnapshotModifier {
+  if (!genreHint) return DEFAULT_GENRE_MODIFIER;
+  const hint = genreHint.toLowerCase();
+  if (GENRE_SNAPSHOT_MODIFIERS[hint]) return GENRE_SNAPSHOT_MODIFIERS[hint];
+  for (const [genre, mod] of Object.entries(GENRE_SNAPSHOT_MODIFIERS)) {
+    if (hint.includes(genre)) return mod;
+  }
+  return DEFAULT_GENRE_MODIFIER;
+}
 
 // ---------------------------------------------------------------------------
 // Block state table by role and block type (SNAP-05, INTL-02)
@@ -230,17 +286,20 @@ function detectAmpCategory(chain: BlockSpec[]): AmpCategory {
  * Each snapshot has:
  * - LED color mapped from the tone role
  * - Block states for every non-cab block (enabled/bypassed per the state table)
- * - Parameter overrides for amp ChVol (volume balancing) and Gain Block (lead boost)
+ * - Parameter overrides for amp ChVol (volume balancing), Gain Block (lead boost),
+ *   and per-role effect Mix/DecayTime (SNAP-07/SNAP-08)
  *
  * Does NOT mutate the input chain.
  *
  * @param chain - Fully parameterized signal chain from resolveParameters()
- * @param intents - Exactly 4 SnapshotIntent objects defining the snapshot roles
- * @returns 4 SnapshotSpec objects ready for PresetSpec
+ * @param intents - SnapshotIntent objects defining the snapshot roles
+ * @param genreHint - Optional genre for genre-modulated snapshot tuning (SNAP-08)
+ * @returns SnapshotSpec objects ready for PresetSpec
  */
 export function buildSnapshots(
   chain: BlockSpec[],
   intents: SnapshotIntent[],
+  genreHint?: string,
 ): SnapshotSpec[] {
   const ampCategory = detectAmpCategory(chain);
   const blockEntries = buildBlockKeys(chain);
@@ -323,30 +382,44 @@ export function buildSnapshots(
       };
     }
 
-    // Ambient Mix + DecayTime boost (INTL-02): elevate delay/reverb Mix and lengthen reverb tail
-    if (role === "ambient") {
-      for (const entry of blockEntries) {
-        if (entry.block.type === "delay" && blockStates[entry.key] === true) {
-          const baseMix = entry.block.parameters?.Mix;
-          if (baseMix !== undefined && typeof baseMix === "number") {
-            parameterOverrides[entry.key] = {
-              ...(parameterOverrides[entry.key] ?? {}),
-              Mix: Math.min(baseMix + AMBIENT_DELAY_MIX_BOOST, 1.0),
-            };
-          }
-        }
-        if (entry.block.type === "reverb" && blockStates[entry.key] === true) {
-          const baseMix = entry.block.parameters?.Mix;
-          const baseDecay = entry.block.parameters?.DecayTime;
-          const overrides: Record<string, number> = {
+    // Per-role effect parameter overrides (SNAP-07/SNAP-08)
+    // Adjusts reverb Mix/DecayTime and delay Mix per snapshot role.
+    // Genre modifier scales the deltas (metal=tight, ambient/worship=lush).
+    // Clean role has zero deltas so no overrides are emitted (preserves base params).
+    const genreMod = matchGenreModifier(genreHint);
+    const reverbMixDelta = (ROLE_REVERB_MIX_DELTA[role] ?? 0) * genreMod.reverbMixScale;
+    const reverbDecayMult = ROLE_REVERB_DECAY_MULT[role] ?? 1.0;
+    const delayMixDelta = (ROLE_DELAY_MIX_DELTA[role] ?? 0) * genreMod.delayMixScale;
+
+    for (const entry of blockEntries) {
+      // Delay Mix override — only for enabled delay blocks with nonzero delta
+      if (entry.block.type === "delay" && blockStates[entry.key] === true && delayMixDelta !== 0) {
+        const baseMix = entry.block.parameters?.Mix;
+        if (baseMix !== undefined && typeof baseMix === "number") {
+          parameterOverrides[entry.key] = {
             ...(parameterOverrides[entry.key] ?? {}),
+            Mix: Math.min(Math.max(baseMix + delayMixDelta, 0), 1.0),
           };
-          if (baseMix !== undefined && typeof baseMix === "number") {
-            overrides.Mix = Math.min(baseMix + AMBIENT_REVERB_MIX_BOOST, 1.0);
-          }
-          if (baseDecay !== undefined && typeof baseDecay === "number") {
-            overrides.DecayTime = Math.min(baseDecay * AMBIENT_DECAY_MULTIPLIER, 1.0);
-          }
+        }
+      }
+
+      // Reverb Mix + DecayTime override — only for enabled reverb blocks with nonzero delta/mult
+      if (entry.block.type === "reverb" && blockStates[entry.key] === true) {
+        const baseMix = entry.block.parameters?.Mix;
+        const baseDecay = entry.block.parameters?.DecayTime;
+        const overrides: Record<string, number> = {
+          ...(parameterOverrides[entry.key] ?? {}),
+        };
+        let hasOverride = false;
+        if (baseMix !== undefined && typeof baseMix === "number" && reverbMixDelta !== 0) {
+          overrides.Mix = Math.min(Math.max(baseMix + reverbMixDelta, 0.10), 1.0);
+          hasOverride = true;
+        }
+        if (baseDecay !== undefined && typeof baseDecay === "number" && reverbDecayMult !== 1.0) {
+          overrides.DecayTime = Math.min(baseDecay * reverbDecayMult, 1.0);
+          hasOverride = true;
+        }
+        if (hasOverride) {
           parameterOverrides[entry.key] = overrides;
         }
       }

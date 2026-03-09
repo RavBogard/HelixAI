@@ -531,6 +531,133 @@ describe("COHERE-04: dynamics type split", () => {
   });
 });
 
+// ============================================================
+// SNAP-07: Per-role effect parameter overrides
+// ============================================================
+
+describe("SNAP-07: per-role effect parameter overrides", () => {
+  function intentWithEffects(): ToneIntent {
+    return cleanIntent({
+      genreHint: "rock",
+      effects: [
+        { modelName: "Simple Delay", role: "toggleable" },
+        { modelName: "Plate", role: "always_on" },
+      ],
+    });
+  }
+
+  it("lead snapshot applies reverb Mix boost above base", () => {
+    const intent = intentWithEffects();
+    const chain = buildChain(intent);
+    const result = buildSnapshots(chain, standardSnapshots(), intent.genreHint);
+    const lead = result[2]; // lead
+    const reverbBlock = chain.find(b => b.type === "reverb")!;
+    const reverbKey = findBlockKey(chain, reverbBlock);
+    const baseMix = reverbBlock.parameters.Mix as number;
+    expect(lead.parameterOverrides[reverbKey]?.Mix).toBeGreaterThan(baseMix);
+  });
+
+  it("crunch snapshot reduces reverb Mix below base", () => {
+    const intent = intentWithEffects();
+    const chain = buildChain(intent);
+    const result = buildSnapshots(chain, standardSnapshots(), intent.genreHint);
+    const crunch = result[1]; // crunch
+    const reverbBlock = chain.find(b => b.type === "reverb")!;
+    const reverbKey = findBlockKey(chain, reverbBlock);
+    const baseMix = reverbBlock.parameters.Mix as number;
+    expect(crunch.parameterOverrides[reverbKey]?.Mix).toBeLessThan(baseMix);
+  });
+
+  it("ambient snapshot reverb boost matches legacy values", () => {
+    const intent = intentWithEffects();
+    const chain = buildChain(intent);
+    // No genreHint → default modifier (scale 1.0)
+    const result = buildSnapshots(chain, standardSnapshots());
+    const ambient = result[3];
+    const reverbBlock = chain.find(b => b.type === "reverb")!;
+    const reverbKey = findBlockKey(chain, reverbBlock);
+    const baseMix = reverbBlock.parameters.Mix as number;
+    // Legacy: baseMix + 0.20
+    expect(ambient.parameterOverrides[reverbKey]?.Mix).toBeCloseTo(
+      Math.min(baseMix + 0.20, 1.0), 5
+    );
+  });
+
+  it("lead snapshot applies delay Mix boost", () => {
+    const intent = intentWithEffects();
+    const chain = buildChain(intent);
+    const result = buildSnapshots(chain, standardSnapshots(), intent.genreHint);
+    const lead = result[2];
+    const delayBlock = chain.find(b => b.type === "delay")!;
+    const delayKey = findBlockKey(chain, delayBlock);
+    const baseMix = delayBlock.parameters.Mix as number;
+    expect(lead.parameterOverrides[delayKey]?.Mix).toBeGreaterThan(baseMix);
+  });
+});
+
+// ============================================================
+// SNAP-08: Genre-modulated snapshot tuning
+// ============================================================
+
+describe("SNAP-08: genre-modulated snapshot tuning", () => {
+  function intentWithGenre(genre: string): ToneIntent {
+    return cleanIntent({
+      genreHint: genre,
+      effects: [
+        { modelName: "Simple Delay", role: "toggleable" },
+        { modelName: "Plate", role: "always_on" },
+      ],
+    });
+  }
+
+  it("metal genre halves lead reverb Mix boost", () => {
+    const metalIntent = intentWithGenre("metal");
+    const rockIntent = intentWithGenre("rock");
+    const metalChain = buildChain(metalIntent);
+    const rockChain = buildChain(rockIntent);
+    const metalSnaps = buildSnapshots(metalChain, standardSnapshots(), "metal");
+    const rockSnaps = buildSnapshots(rockChain, standardSnapshots(), "rock");
+
+    const metalReverb = metalChain.find(b => b.type === "reverb")!;
+    const rockReverb = rockChain.find(b => b.type === "reverb")!;
+    const metalKey = findBlockKey(metalChain, metalReverb);
+    const rockKey = findBlockKey(rockChain, rockReverb);
+
+    const metalLeadMix = metalSnaps[2].parameterOverrides[metalKey]?.Mix;
+    const rockLeadMix = rockSnaps[2].parameterOverrides[rockKey]?.Mix;
+
+    // Metal lead boost should be smaller than rock lead boost
+    const metalBase = metalReverb.parameters.Mix as number;
+    const rockBase = rockReverb.parameters.Mix as number;
+    const metalDelta = ((metalLeadMix ?? metalBase) as number) - metalBase;
+    const rockDelta = ((rockLeadMix ?? rockBase) as number) - rockBase;
+    expect(metalDelta).toBeLessThan(rockDelta);
+  });
+
+  it("worship genre doubles lead reverb Mix boost", () => {
+    const worshipIntent = intentWithGenre("worship");
+    const rockIntent = intentWithGenre("rock");
+    const worshipChain = buildChain(worshipIntent);
+    const rockChain = buildChain(rockIntent);
+    const worshipSnaps = buildSnapshots(worshipChain, standardSnapshots(), "worship");
+    const rockSnaps = buildSnapshots(rockChain, standardSnapshots(), "rock");
+
+    const worshipReverb = worshipChain.find(b => b.type === "reverb")!;
+    const rockReverb = rockChain.find(b => b.type === "reverb")!;
+    const worshipKey = findBlockKey(worshipChain, worshipReverb);
+    const rockKey = findBlockKey(rockChain, rockReverb);
+
+    const worshipLeadMix = worshipSnaps[2].parameterOverrides[worshipKey]?.Mix;
+    const rockLeadMix = rockSnaps[2].parameterOverrides[rockKey]?.Mix;
+
+    const worshipBase = worshipReverb.parameters.Mix as number;
+    const rockBase = rockReverb.parameters.Mix as number;
+    const worshipDelta = ((worshipLeadMix ?? worshipBase) as number) - worshipBase;
+    const rockDelta = ((rockLeadMix ?? rockBase) as number) - rockBase;
+    expect(worshipDelta).toBeGreaterThan(rockDelta);
+  });
+});
+
 // Helper: compute the block key for a given block in the chain,
 // using global sequential numbering (excluding cabs).
 // Matches the snapshot-engine's buildBlockKeys() which uses global indices.

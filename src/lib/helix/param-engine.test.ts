@@ -1063,3 +1063,73 @@ describe("COMBO-04: delay + reverb mix balancing", () => {
     expect(resolved).not.toBe(chain);
   });
 });
+
+// ============================================================
+// COMBO-05: Drive + reverb mix balancing
+// ============================================================
+// When user-selected drive and reverb coexist, reverb Mix is reduced by 0.03
+// to prevent muddy wash. Mandatory boost (slot="boost") is excluded.
+
+describe("COMBO-05: drive + reverb mix balancing", () => {
+  // COMBO-05-1: User drive + reverb reduces reverb Mix by 0.03
+  it("COMBO-05-1: user drive + reverb reduces reverb Mix by 0.03", () => {
+    // With user drive
+    const withDrive = makeIntent({
+      genreHint: "rock",
+      effects: [
+        { modelName: "Stupor OD", role: "toggleable" },
+        { modelName: "Plate", role: "ambient" },
+      ],
+    });
+    const driveChain = assembleSignalChain(withDrive, defaultCaps);
+    const driveResolved = resolveParameters(driveChain, withDrive, defaultCaps);
+    const driveReverb = driveResolved.find(b => b.type === "reverb")!;
+
+    // Without user drive
+    const noDrive = makeIntent({
+      genreHint: "rock",
+      effects: [
+        { modelName: "Plate", role: "ambient" },
+      ],
+    });
+    const noDriveChain = assembleSignalChain(noDrive, defaultCaps);
+    const noDriveResolved = resolveParameters(noDriveChain, noDrive, defaultCaps);
+    const noDriveReverb = noDriveResolved.find(b => b.type === "reverb")!;
+
+    const delta = (noDriveReverb.parameters.Mix as number) - (driveReverb.parameters.Mix as number);
+    expect(delta).toBeCloseTo(0.03, 10);
+  });
+
+  // COMBO-05-2: Mandatory boost does NOT trigger reverb reduction
+  it("COMBO-05-2: mandatory boost (slot=boost) does NOT reduce reverb Mix", () => {
+    // Clean amp with no user drive — only mandatory Minotaur boost (slot="boost")
+    const intent = makeIntent({
+      genreHint: "rock",
+      effects: [
+        { modelName: "Plate", role: "ambient" },
+      ],
+    });
+    const chain = assembleSignalChain(intent, defaultCaps);
+    const resolved = resolveParameters(chain, intent, defaultCaps);
+    const reverb = resolved.find(b => b.type === "reverb")!;
+    // Rock reverb Mix baseline = 0.20, no COMBO-05 reduction (only mandatory boost present)
+    expect(reverb.parameters.Mix).toBe(0.20);
+  });
+
+  // COMBO-05-3: Stacks with COMBO-04 (delay + drive + reverb)
+  it("COMBO-05-3: stacks with COMBO-04 for total 0.08 reduction", () => {
+    const intent = makeIntent({
+      genreHint: "ambient",
+      effects: [
+        { modelName: "Stupor OD", role: "toggleable" },
+        { modelName: "Simple Delay", role: "toggleable" },
+        { modelName: "Plate", role: "ambient" },
+      ],
+    });
+    const chain = assembleSignalChain(intent, defaultCaps);
+    const resolved = resolveParameters(chain, intent, defaultCaps);
+    const reverb = resolved.find(b => b.type === "reverb")!;
+    // Ambient reverb Mix baseline = 0.50, COMBO-04: -0.05 = 0.45, COMBO-05: -0.03 = 0.42
+    expect(reverb.parameters.Mix).toBeCloseTo(0.42, 3);
+  });
+});

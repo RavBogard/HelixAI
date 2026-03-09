@@ -10,10 +10,10 @@ See: .paul/PROJECT.md (updated 2026-03-09)
 ## Current Position
 
 Milestone: v6.0 — Preset Intelligence & UX Polish
-Phase: 18 of 19 (Builder Logic Enhancement)
+Phase: 19 of 19 (Token & Cost Optimization)
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-03-09 — Phase 17 complete, transitioned to Phase 18
+Last activity: 2026-03-09 — Phase 18 complete, transitioned to Phase 19
 
 Progress:
 - v1.0 Production Release: [██████████] 100% ✓
@@ -22,14 +22,14 @@ Progress:
 - v3.0 Preset Format Correctness & Quality: [██████████] 100% ✓
 - v4.0 Preset Quality & Reliability: [██████████] 100% ✓
 - v5.0 Automated Gold Standard Compliance: [██████████] 100% ✓
-- v6.0 Preset Intelligence & UX Polish: [█████░░░░░] 50%
+- v6.0 Preset Intelligence & UX Polish: [███████░░░] 75%
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ○        ○        ○     [Ready for Phase 18 PLAN]
+  ○        ○        ○     [Ready for PLAN]
 ```
 
 ## Accumulated Context
@@ -85,6 +85,9 @@ PLAN ──▶ APPLY ──▶ UNIFY
 - Effect combination rules are advisory prompt text, not code-enforced — v6.0 Phase 17
 - Snapshot role table identical across families (Knowledge Layer behavior shared) — v6.0 Phase 17
 - Stadium amp gain categorization uses Agoura model names (not HD2) — v6.0 Phase 17
+- Role delta tables replace hardcoded AMBIENT_* constants — unified per-role overrides — v6.0 Phase 18
+- Genre modifier uses substring matching for flexible genre input — v6.0 Phase 18
+- COMBO-05 excludes mandatory boost slot — only user-selected drives trigger reverb reduction — v6.0 Phase 18
 
 ### Known Issues
 - Bass amp HD2 model IDs UNVERIFIED — need confirmation from real .hlx bass preset exports
@@ -141,15 +144,15 @@ PLAN ──▶ APPLY ──▶ UNIFY
 - None active
 
 ### Git State
-Last commit: 0e9731e
+Last commit: 3a64812
 Branch: main
 Feature branches merged: none
 
 ## Session Continuity
 
 Last session: 2026-03-09
-Stopped at: Phase 17 complete, ready to plan Phase 18
-Next action: /paul:plan for Phase 18
+Stopped at: Phase 18 complete, ready to plan Phase 19
+Next action: /paul:plan for Phase 19
 Resume file: .paul/ROADMAP.md
 
 ---

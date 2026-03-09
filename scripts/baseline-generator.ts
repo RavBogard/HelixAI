@@ -324,7 +324,7 @@ function generateForCombo(
   const intent = buildGenreIntent(genre, caps);
   const chain = assembleSignalChain(intent, caps);
   const parameterized = resolveParameters(chain, intent, caps);
-  const snapshots = buildSnapshots(parameterized, intent.snapshots);
+  const snapshots = buildSnapshots(parameterized, intent.snapshots, intent.genreHint);
 
   const spec: PresetSpec = {
     name: intent.presetName || `baseline-${genre}`,

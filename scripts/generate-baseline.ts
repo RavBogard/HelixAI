@@ -342,7 +342,7 @@ function buildPreset(intent: ToneIntent, device: DeviceTarget): PresetSpec {
   const caps = getCapabilities(device);
   const chain = assembleSignalChain(intent, caps);
   const parameterized = resolveParameters(chain, intent, caps);
-  const snapshots = buildSnapshots(parameterized, intent.snapshots);
+  const snapshots = buildSnapshots(parameterized, intent.snapshots, intent.genreHint);
 
   const presetSpec: PresetSpec = {
     name: intent.presetName || `${intent.ampName} Baseline`,

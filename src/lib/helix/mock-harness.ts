@@ -46,7 +46,7 @@ export function runScenario(scenario: MockScenario): HarnessResult {
     // Knowledge Layer pipeline (deterministic)
     const chain = assembleSignalChain(intent, caps);
     const parameterized = resolveParameters(chain, intent, caps);
-    const snapshots = buildSnapshots(parameterized, intent.snapshots);
+    const snapshots = buildSnapshots(parameterized, intent.snapshots, intent.genreHint);
 
     const presetSpec: PresetSpec = {
       name: intent.presetName || `${intent.ampName} ${intent.genreHint || "Preset"}`.slice(0, 32),

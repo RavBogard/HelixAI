@@ -67,6 +67,9 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 - ✓ Homescreen layout fix: logo visible, no right-column gap, footer cleared — v6.0 Phase 16
 - ✓ Device picker visual polish: amber selected state, hover shadows — v6.0 Phase 16
 - ✓ Planner prompt intelligence: effect combination rules, role assignment guide, snapshot role behavior, amp gain categorization — all 4 families — v6.0 Phase 17
+- ✓ Per-role snapshot effect overrides: reverb Mix/DecayTime and delay Mix distinct per snapshot role (clean/crunch/lead/ambient) — v6.0 Phase 18
+- ✓ Genre-modulated snapshot tuning: metal=tight, ambient/worship=lush, blues/jazz=warm — v6.0 Phase 18
+- ✓ COMBO-05 drive+reverb combination adjustment: reduces reverb Mix by 0.03 when user drive present — v6.0 Phase 18
 
 ### Must Have
 - [To be defined during planning]
@@ -129,6 +132,9 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 | Effect combination rules are advisory prompt text, not code-enforced | v6.0 Phase 17 | Prompt guidance steers planner; builder doesn't validate combinations |
 | Snapshot role table identical across families | v6.0 Phase 17 | Knowledge Layer behavior is shared; planner just picks the right toneRole |
 | Stadium amp gain categorization uses Agoura model names | v6.0 Phase 17 | Stadium has its own amp catalog, not HD2 |
+| Role delta tables replace hardcoded AMBIENT_* constants | v6.0 Phase 18 | Unified per-role overrides; ambient values preserved exactly |
+| Genre modifier uses substring matching | v6.0 Phase 18 | Handles compound genres like "heavy metal", "ambient electronic" |
+| COMBO-05 excludes mandatory boost slot | v6.0 Phase 18 | Only user-selected drives trigger reverb reduction |
 
 ## Constraints
 - [To be identified during planning]
@@ -145,4 +151,4 @@ Quick Reference:
 - /ui-ux-pro-max → Frontend / UI / UX (required)
 
 ---
-*Last updated: 2026-03-09 after v6.0 Phase 17*
+*Last updated: 2026-03-09 after v6.0 Phase 18*
