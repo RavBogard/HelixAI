@@ -8,6 +8,7 @@ import {
   summarizePreset,
   validatePresetSpec,
   validatePresetQuality,
+  auditIntentFidelity,
   buildPgpFile,
   summarizePodGoPreset,
   buildHspFile,
@@ -128,6 +129,12 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Step 4.6: Intent fidelity audit — trace ToneIntent → PresetSpec
+    const intentAudit = auditIntentFidelity(toneIntent, presetSpec);
+    if (intentAudit.warnings.length > 0) {
+      console.warn("[intent-audit]", intentAudit.warnings.join("; "));
+    }
+
     // Step 5: Build preset file with device target
     if (isStomp(deviceTarget)) {
       // Step 5b: Stomp — build .hlx file with Stomp-specific I/O models (STOMP-06)
@@ -174,6 +181,7 @@ export async function POST(req: NextRequest) {
         toneIntent,
         device: deviceTarget,
         fileExtension: ".hlx", // Stomp uses .hlx — same as LT/Floor (STOMP-06)
+        intentAudit,
         ...(substitutionMap !== undefined ? { substitutionMap } : {}),
       });
     }
@@ -224,6 +232,7 @@ export async function POST(req: NextRequest) {
         toneIntent,
         device: deviceTarget,
         fileExtension: ".hsp",
+        intentAudit,
         ...(substitutionMap !== undefined ? { substitutionMap } : {}),
       });
     }
@@ -273,6 +282,7 @@ export async function POST(req: NextRequest) {
         toneIntent,
         device: deviceTarget,
         fileExtension: ".pgp", // PGUX-02: frontend uses this for download filename
+        intentAudit,
         ...(substitutionMap !== undefined ? { substitutionMap } : {}),
       });
     } else {
@@ -320,6 +330,7 @@ export async function POST(req: NextRequest) {
         toneIntent,
         device: deviceTarget,
         fileExtension: ".hlx",
+        intentAudit,
         ...(substitutionMap !== undefined ? { substitutionMap } : {}),
       });
     }

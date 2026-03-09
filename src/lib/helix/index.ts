@@ -40,3 +40,6 @@ export { validatePresetQuality } from "./quality-validate";
 export type { QualityWarning } from "./quality-validate";
 export { logQualityWarnings } from "./quality-logger";
 export type { QualityLogRecord } from "./quality-logger";
+// Intent fidelity validation (Phase 6)
+export { auditIntentFidelity } from "./intent-validate";
+export type { IntentAudit, IntentAuditEntry, EffectAuditEntry } from "./intent-validate";
