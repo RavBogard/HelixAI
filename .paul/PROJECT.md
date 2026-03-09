@@ -50,6 +50,7 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 - ✓ Bass-aware chat prompts: instrument screening across all 4 device families — v4.0 Phase 7
 - ✓ Bass-aware planner prompts: amp-cab pairings, gain staging, effect intelligence — v4.0 Phase 7
 - ✓ Mock chat harness: 25 scenarios (5 families × 5 styles) exercising full pipeline without AI calls — v5.0 Phase 8
+- ✓ Structural diff engine: deterministic deep JSON comparison across all 4 preset formats with categorized severity reports — v5.0 Phase 9
 
 ### Must Have
 - [To be defined during planning]
@@ -115,4 +116,4 @@ Quick Reference:
 - /ui-ux-pro-max → Frontend / UI / UX (required)
 
 ---
-*Last updated: 2026-03-09 after v5.0 Phase 8 (Mock Chat Harness complete)*
+*Last updated: 2026-03-09 after v5.0 Phase 9 (Structural Diff Engine complete)*

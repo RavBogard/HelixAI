@@ -10,10 +10,10 @@ See: .paul/PROJECT.md (updated 2026-03-09)
 ## Current Position
 
 Milestone: v5.0 — Automated Gold Standard Compliance
-Phase: 9 of 14 (Structural Diff Engine)
+Phase: 10 of 14 (Intent & Musical Intelligence Validation)
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-03-09 — Phase 8 complete, transitioned to Phase 9
+Last activity: 2026-03-09 — Phase 9 complete, transitioned to Phase 10
 
 Progress:
 - v1.0 Production Release: [██████████] 100% ✓
@@ -21,7 +21,7 @@ Progress:
 - v2.0 Device Intelligence & UX Overhaul: [██████████] 100% ✓
 - v3.0 Preset Format Correctness & Quality: [██████████] 100% ✓
 - v4.0 Preset Quality & Reliability: [██████████] 100% ✓
-- v5.0 Automated Gold Standard Compliance: [█░░░░░░░░░] 14%
+- v5.0 Automated Gold Standard Compliance: [██░░░░░░░░] 28%
 
 ## Loop Position
 
@@ -62,6 +62,8 @@ PLAN ──▶ APPLY ──▶ UNIFY
 - Compression non-negotiable for bass across all families — v4.0 Phase 7
 - Helix Native identical to Floor/Rack/LT — no separate treatment — v5.0
 - HarnessResult.intentAudit typed as IntentAudit (not simplified shape) — v5.0 Phase 8
+- DeviceFamily is lowercase only: "helix" | "stomp" | "podgo" | "stadium" — v5.0 Phase 9
+- Stomp XL resolves to "stomp" family, no separate treatment — v5.0 Phase 9
 
 ### Known Issues
 - Bass amp HD2 model IDs UNVERIFIED — need confirmation from real .hlx bass preset exports
@@ -116,20 +118,20 @@ PLAN ──▶ APPLY ──▶ UNIFY
 - New reference presets needed for v5.0 audit (user gathering 5-8 per device family)
 
 ### Git State
-Last commit: 62cc833
+Last commit: dcb65f6
 Branch: main
 Feature branches merged: none
 
 ## Session Continuity
 
 Last session: 2026-03-09
-Stopped at: Phase 8 complete, ready to plan Phase 9
-Next action: /paul:plan for Phase 9 (Structural Diff Engine)
+Stopped at: Phase 9 complete, ready to plan Phase 10
+Next action: /paul:plan for Phase 10 (Intent & Musical Intelligence Validation)
 Resume file: .paul/ROADMAP.md
 Resume context:
-- Phase 8 complete: 25 mock scenarios, 60 tests, all passing
-- Type fix during UNIFY: HarnessResult.intentAudit now uses IntentAudit type
-- Build passes, no regressions in orchestration tests
+- Phase 9 complete: structural diff engine, 25 tests, all passing
+- Phases 8-9 provide generation + comparison infrastructure
+- Phase 10 is rule-based intent/musical validation — no references needed
 
 ---
 *STATE.md — Updated after every significant action*
