@@ -4,19 +4,20 @@
 // Key differences from Helix builder:
 // - Single DSP (dsp0 only, dsp1 always empty)
 // - 4 snapshots (not 8)
-// - @controller: 4 for snapshot recall (Helix uses 19)
+// - @controller: 11 for snapshot recall (Helix uses 19)
 // - input/output keys (not inputA/outputA)
 // - P34_AppDSPFlowInput/Output models
 // - Cab is a numbered block (not separate cab0 key)
 // - No @path, @stereo on blocks
 // - No @topology in global
 // - device_version field in data section
-// - Footswitch indices 0-5 (not 7-10)
+// - Footswitch indices 1-6 (not 7-10)
+// - Always exactly 10 blocks (block0-block9), padded with disabled empty blocks
 //
 // Public API: buildPgpFile(spec) -> object (JSON-serializable .pgp file)
 
 import type { HlxFile, PresetSpec, BlockSpec, SnapshotSpec } from "./types";
-import { DEVICE_IDS, POD_GO_IO, POD_GO_SNAPSHOT_CONTROLLER, POD_GO_STOMP_FS_INDICES } from "./types";
+import { DEVICE_IDS, POD_GO_IO, POD_GO_SNAPSHOT_CONTROLLER, POD_GO_STOMP_FS_INDICES, POD_GO_TOTAL_BLOCKS } from "./types";
 import { getModelIdForDevice, getBlockTypeForDevice, CONTROLLERS } from "./models";
 import { getAllModels } from "./models";
 import { getCapabilities } from "./device-family";
@@ -118,7 +119,7 @@ function buildPgpTone(spec: PresetSpec): Record<string, unknown> {
     }
   }
 
-  // Build controller section with @controller: 4 for snapshot recall
+  // Build controller section with @controller: 11 for snapshot recall
   const controller = buildPgpControllerSection(spec);
 
   return {
@@ -179,9 +180,10 @@ function buildPgpDsp(blocks: BlockSpec[]): Record<string, unknown> {
     const pgBlockType = getBlockTypeForDevice(block.type, pgModelId, podGoCaps);
 
     // Pod Go blocks: no @path, no @stereo (PGP-03)
+    // @position always matches block key number (block5 → @position: 5)
     const pgBlock: Record<string, unknown> = {
       "@model": pgModelId,
-      "@position": block.position >= 0 ? block.position : blockIndex,
+      "@position": blockIndex,
       "@enabled": block.enabled,
       "@type": pgBlockType,
       "@no_snapshot_bypass": false,
@@ -220,11 +222,22 @@ function buildPgpDsp(blocks: BlockSpec[]): Record<string, unknown> {
     blockIndex++;
   }
 
+  // Pad to exactly 10 blocks (Pod Go always has block0-block9)
+  for (let i = blockIndex; i < POD_GO_TOTAL_BLOCKS; i++) {
+    dsp[`block${i}`] = {
+      "@model": "HD2_AppDSPFlowBlock",
+      "@position": i,
+      "@enabled": false,
+      "@type": 0,
+      "@no_snapshot_bypass": false,
+    };
+  }
+
   return dsp;
 }
 
 // ---------------------------------------------------------------------------
-// Snapshot builder (Pod Go: 4 snapshots, @controller: 4)
+// Snapshot builder (Pod Go: 4 snapshots, @controller: 11)
 // ---------------------------------------------------------------------------
 
 function buildPgpSnapshot(
@@ -239,7 +252,7 @@ function buildPgpSnapshot(
   // Build block key map (all blocks on dsp0, sequential numbering)
   const blockKeyMap = buildPgpBlockKeyMap(allBlocks);
 
-  // Set block bypass states
+  // Set block bypass states from snapshot spec
   for (const [blockKey, enabled] of Object.entries(spec.blockStates)) {
     const mapping = blockKeyMap.get(blockKey);
     if (mapping) {
@@ -247,12 +260,16 @@ function buildPgpSnapshot(
     }
   }
 
-  // Ensure ALL non-cab blocks have a bypass state (cab blocks don't appear in snapshot bypass table)
-  for (let i = 0; i < allBlocks.length; i++) {
-    if (allBlocks[i].type === "cab") continue;
+  // Ensure ALL 10 blocks have a bypass state (including cabs — Pod Go snapshots include all blocks)
+  for (let i = 0; i < POD_GO_TOTAL_BLOCKS; i++) {
     const key = `block${i}`;
     if (!(key in blocks)) {
-      blocks[key] = allBlocks[i].enabled;
+      // Use the block's default enabled state, or true for cabs, false for padding blocks
+      if (i < allBlocks.length) {
+        blocks[key] = allBlocks[i].type === "cab" ? true : allBlocks[i].enabled;
+      } else {
+        blocks[key] = false; // padding blocks
+      }
     }
   }
 
@@ -285,30 +302,38 @@ function buildPgpSnapshot(
 }
 
 function buildEmptyPgpSnapshot(index: number): Record<string, unknown> {
+  // Invalid snapshots still have full blocks/controllers structure (confirmed from A7X.pgp reference)
+  const blocks: Record<string, boolean> = {};
+  for (let i = 0; i < POD_GO_TOTAL_BLOCKS; i++) {
+    blocks[`block${i}`] = true; // invalid snapshots default all blocks to true
+  }
+
   return {
     "@name": `SNAPSHOT ${index + 1}`,
     "@tempo": 120,
     "@valid": false,
     "@pedalstate": 2,
     "@ledcolor": 0,
+    blocks: { dsp0: blocks },
+    controllers: { dsp0: {} },
   };
 }
 
 // ---------------------------------------------------------------------------
 // Block key mapping (Pod Go: all on dsp0, sequential)
+// Pod Go snapshots include ALL blocks (including cabs), so the map is
+// snapshot-engine key → DSP slot key. Snapshot engine skips cabs, so we
+// remap non-cab indices to the actual DSP block positions.
 // ---------------------------------------------------------------------------
 
 function buildPgpBlockKeyMap(allBlocks: BlockSpec[]): Map<string, string> {
   const map = new Map<string, string>();
   let snapshotIdx = 0; // counts only non-cab blocks (matches snapshot engine's buildBlockKeys)
-  let dspIdx = 0;      // counts all blocks including cabs (matches DSP slot numbering)
 
-  for (const block of allBlocks) {
-    const dspKey = `block${dspIdx}`;
-    dspIdx++;
-    if (block.type === "cab") continue; // skip cabs — snapshot engine skips them too
+  for (let dspIdx = 0; dspIdx < allBlocks.length; dspIdx++) {
+    if (allBlocks[dspIdx].type === "cab") continue; // snapshot engine skips cabs
     // Map snapshot key (non-cab index) → DSP slot key (all-blocks index)
-    map.set(`block${snapshotIdx}`, dspKey);
+    map.set(`block${snapshotIdx}`, `block${dspIdx}`);
     snapshotIdx++;
   }
 
@@ -317,30 +342,21 @@ function buildPgpBlockKeyMap(allBlocks: BlockSpec[]): Map<string, string> {
 
 // ---------------------------------------------------------------------------
 // Pedalstate computation
+// Pod Go @pedalstate is always 2 (snapshot mode indicator).
+// Confirmed from all 5 reference presets — every snapshot uses @pedalstate: 2
+// regardless of which blocks are enabled or which footswitches are assigned.
 // ---------------------------------------------------------------------------
 
 function computePgpPedalState(
-  blockStates: Record<string, boolean>,
-  stompAssignments: StompAssignment[],
-  blockKeyMap: Map<string, string>,
+  _blockStates: Record<string, boolean>,
+  _stompAssignments: StompAssignment[],
+  _blockKeyMap: Map<string, string>,
 ): number {
-  let pedalstate = 2; // Base value: snapshot mode indicator
-
-  for (const assignment of stompAssignments) {
-    const mapping = blockKeyMap.get(assignment.blockKey);
-    const stateKey = mapping || assignment.blockKey;
-    const blockEnabled = blockStates[stateKey] ?? false;
-
-    if (blockEnabled) {
-      pedalstate |= (1 << assignment.fsIndex);
-    }
-  }
-
-  return pedalstate;
+  return 2;
 }
 
 // ---------------------------------------------------------------------------
-// Controller section (Pod Go: @controller: 4 for snapshot recall)
+// Controller section (Pod Go: @controller: 11 for snapshot recall)
 // ---------------------------------------------------------------------------
 
 function buildPgpControllerSection(spec: PresetSpec): Record<string, unknown> {
@@ -369,7 +385,7 @@ function buildPgpControllerSection(spec: PresetSpec): Record<string, unknown> {
     }
   }
 
-  // Register parameters that vary across snapshots with @controller: 4
+  // Register parameters that vary across snapshots with @controller: 11
   for (const [blockKey, params] of paramVariations.entries()) {
     for (const [paramName, values] of params.entries()) {
       if (values.size > 1) {
@@ -380,7 +396,7 @@ function buildPgpControllerSection(spec: PresetSpec): Record<string, unknown> {
         controller.dsp0[blockKey][paramName] = {
           "@min": Math.min(...allValues),
           "@max": Math.max(...allValues),
-          "@controller": POD_GO_SNAPSHOT_CONTROLLER, // 4, not 19
+          "@controller": POD_GO_SNAPSHOT_CONTROLLER, // 11, not 19
           "@snapshot_disable": false,
         };
       }
@@ -450,7 +466,7 @@ function buildPgpControllerSection(spec: PresetSpec): Record<string, unknown> {
 }
 
 // ---------------------------------------------------------------------------
-// Footswitch section (Pod Go: indices 0-5)
+// Footswitch section (Pod Go: indices 1-6)
 // ---------------------------------------------------------------------------
 
 function getPgpStompAssignments(allBlocks: BlockSpec[]): StompAssignment[] {
@@ -467,7 +483,7 @@ function getPgpStompAssignments(allBlocks: BlockSpec[]): StompAssignment[] {
     }
   }
 
-  // Assign up to 6 blocks to FS A-F (indices 0-5)
+  // Assign up to 6 blocks to FS A-F (indices 1-6)
   const toAssign = candidates.slice(0, POD_GO_STOMP_FS_INDICES.length);
   for (let i = 0; i < toAssign.length; i++) {
     assignments.push({
@@ -496,7 +512,7 @@ function buildPgpFootswitchSection(allBlocks: BlockSpec[]): Record<string, unkno
     }
   }
 
-  // Assign up to 6 blocks to footswitches (indices 0-5)
+  // Assign up to 6 blocks to footswitches (indices 1-6)
   const toAssign = candidates.slice(0, POD_GO_STOMP_FS_INDICES.length);
 
   for (let i = 0; i < toAssign.length; i++) {

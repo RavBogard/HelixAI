@@ -340,11 +340,11 @@ export const POD_GO_IO = {
   OUTPUT_KEY: "output",
 } as const;
 
-/** Pod Go snapshot controller ID (Helix uses 19, Pod Go uses 4) */
-export const POD_GO_SNAPSHOT_CONTROLLER = 4;
+/** Pod Go snapshot controller ID (Helix uses 19, Pod Go uses 11) */
+export const POD_GO_SNAPSHOT_CONTROLLER = 11;
 
-/** Pod Go footswitch indices: FS A-F = indices 0-5 */
-export const POD_GO_STOMP_FS_INDICES = [0, 1, 2, 3, 4, 5];
+/** Pod Go footswitch indices: FS A-F = indices 1-6 */
+export const POD_GO_STOMP_FS_INDICES = [1, 2, 3, 4, 5, 6];
 
 /** Pod Go maximum user-assignable effect blocks */
 export const POD_GO_MAX_USER_EFFECTS = 4;
