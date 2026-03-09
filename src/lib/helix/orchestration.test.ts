@@ -401,7 +401,7 @@ describe("HX Stomp + HX Stomp XL (STOMP-01 through STOMP-05, STOMP-10)", () => {
     const tone = file.data.tone as unknown as Record<string, unknown>;
     expect(tone.dsp1).toEqual({});
   });
-  it("STOMP-03: Stomp has 3 valid snapshots (indices 0-2 @valid:true, 3-7 @valid:false)", () => {
+  it("STOMP-03: Stomp emits only 3 snapshot entries (no padding to 8)", () => {
     const intent = cleanIntent();
     const chain = assembleSignalChain(intent, getCapabilities("helix_stomp"));
     const parameterized = resolveParameters(chain, intent, defaultCaps);
@@ -413,12 +413,12 @@ describe("HX Stomp + HX Stomp XL (STOMP-01 through STOMP-05, STOMP-10)", () => {
       const snap = tone[`snapshot${i}`] as Record<string, unknown>;
       expect(snap["@valid"]).toBe(true);
     }
+    // Real Stomp .hlx files only have 3 snapshot entries — no padding
     for (let i = 3; i < 8; i++) {
-      const snap = tone[`snapshot${i}`] as Record<string, unknown>;
-      expect(snap["@valid"]).toBe(false);
+      expect(tone[`snapshot${i}`]).toBeUndefined();
     }
   });
-  it("STOMP-03: Stomp XL has 4 valid snapshots (indices 0-3 @valid:true, 4-7 @valid:false)", () => {
+  it("STOMP-03: Stomp XL emits only 4 snapshot entries (no padding to 8)", () => {
     const intent = cleanIntent();
     const chain = assembleSignalChain(intent, getCapabilities("helix_stomp_xl"));
     const parameterized = resolveParameters(chain, intent, defaultCaps);
@@ -430,9 +430,9 @@ describe("HX Stomp + HX Stomp XL (STOMP-01 through STOMP-05, STOMP-10)", () => {
       const snap = tone[`snapshot${i}`] as Record<string, unknown>;
       expect(snap["@valid"]).toBe(true);
     }
+    // Real Stomp XL .hlx files only have 4 snapshot entries — no padding
     for (let i = 4; i < 8; i++) {
-      const snap = tone[`snapshot${i}`] as Record<string, unknown>;
-      expect(snap["@valid"]).toBe(false);
+      expect(tone[`snapshot${i}`]).toBeUndefined();
     }
   });
 

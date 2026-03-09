@@ -200,16 +200,30 @@ describe("validateMusicalIntelligence", () => {
   // ---------------------------------------------------------------------------
 
   describe("gain staging", () => {
-    it("warns when clean tone has high drive", () => {
+    it("warns when clean tone has high drive (standard MV amp)", () => {
       const intent = makeIntent({ genreHint: "pop" });
       const preset = makePreset({
         signalChain: [
-          makeBlock({ type: "amp", modelName: "US Double Nrm", parameters: { Drive: 0.65 } }),
-          makeBlock({ type: "cab", modelName: "1x12 US Deluxe", position: 1 }),
+          // Placater Clean is a master-volume amp — Drive controls gain, threshold 0.50
+          makeBlock({ type: "amp", modelName: "Placater Clean", parameters: { Drive: 0.65 } }),
+          makeBlock({ type: "cab", modelName: "4x12 Cali V30", position: 1 }),
         ],
       });
       const audit = validateMusicalIntelligence(intent, preset);
       expect(audit.warnings.some((w) => w.code === "GAIN_STAGING_MISMATCH" && w.severity === "warn")).toBe(true);
+    });
+
+    it("no warning for non-MV amp with moderate drive (Drive=volume control)", () => {
+      const intent = makeIntent({ genreHint: "pop" });
+      const preset = makePreset({
+        signalChain: [
+          // US Deluxe Nrm is non-MV — Master always 1.0, Drive controls volume not gain
+          makeBlock({ type: "amp", modelName: "US Deluxe Nrm", parameters: { Drive: 0.60 } }),
+          makeBlock({ type: "cab", modelName: "1x12 US Deluxe", position: 1 }),
+        ],
+      });
+      const audit = validateMusicalIntelligence(intent, preset);
+      expect(audit.warnings.filter((w) => w.code === "GAIN_STAGING_MISMATCH")).toHaveLength(0);
     });
 
     it("no warning when clean tone has low drive", () => {

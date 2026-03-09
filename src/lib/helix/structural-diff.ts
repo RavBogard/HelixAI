@@ -123,7 +123,7 @@ function classifySeverity(
     (expected === undefined && actual !== undefined)
   ) {
     if (/^data\.tone\.dsp\d$/.test(path)) return "critical";
-    if (/^json\.preset\.flow\[\d\]$/.test(path)) return "critical";
+    if (/^(json\.)?preset\.flow\[\d\]$/.test(path)) return "critical";
     if (/\.snapshot\d$/.test(path) && category === "snapshot") return "critical";
   }
 
@@ -342,16 +342,9 @@ function diffHspPresets(
   generated: unknown,
 ): Deviation[] {
   const deviations: Deviation[] = [];
-  // For HSP, skip the serialized field (it's a derived string)
-  const refObj = reference as Record<string, unknown>;
-  const genObj = generated as Record<string, unknown>;
-
-  // Compare magic
-  deepDiff(refObj.magic, genObj.magic, "magic", deviations);
-  // Compare json subtree (the meaningful content)
-  deepDiff(refObj.json, genObj.json, "json", deviations);
-  // Skip serialized — it's reconstructed from json
-
+  // HSP presets are compared as inner JSON: {meta, preset}
+  // (the magic header and serialized form are stripped by both corpus loader and harness)
+  deepDiff(reference, generated, "", deviations);
   return deviations;
 }
 

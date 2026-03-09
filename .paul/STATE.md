@@ -10,10 +10,10 @@ See: .paul/PROJECT.md (updated 2026-03-09)
 ## Current Position
 
 Milestone: v5.0 — Automated Gold Standard Compliance
-Phase: 13 of 14 (Fix Deviations)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-03-09 — Phase 12 complete, transitioned to Phase 13
+Phase: 13 of 14 (Fix Deviations) — Complete
+Plan: 13-01 UNIFIED
+Status: Phase complete, 1422 tests passing
+Last activity: 2026-03-09 — Phase 13 complete, transition to Phase 14
 
 Progress:
 - v1.0 Production Release: [██████████] 100% ✓
@@ -21,14 +21,14 @@ Progress:
 - v2.0 Device Intelligence & UX Overhaul: [██████████] 100% ✓
 - v3.0 Preset Format Correctness & Quality: [██████████] 100% ✓
 - v4.0 Preset Quality & Reliability: [██████████] 100% ✓
-- v5.0 Automated Gold Standard Compliance: [███████░░░] 71%
+- v5.0 Automated Gold Standard Compliance: [████████░░] 86%
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ✓        ✓        ✓     [Loop complete — ready for next PLAN]
+  ✓        ✓        ✓     [Loop complete — Phase 13 done, ready for Phase 14]
 ```
 
 ## Accumulated Context
@@ -72,6 +72,9 @@ PLAN ──▶ APPLY ──▶ UNIFY
 - Diff against first reference per family (not all) — avoids combinatorial explosion — v5.0 Phase 12
 - Intent pass = amp + cab + snapshots matched (no error) — v5.0 Phase 12
 - overallPassed = zero critical + zero intent fail + zero musical fail — v5.0 Phase 12
+- Non-MV amp Drive threshold 0.80 (not skip) — still catches extreme values — v5.0 Phase 13
+- Stomp emits device-max snapshots only (3 or 4), no padding to 8 — v5.0 Phase 13
+- Stadium diff compares inner JSON, not HspFile wrapper — v5.0 Phase 13
 
 ### Known Issues
 - Bass amp HD2 model IDs UNVERIFIED — need confirmation from real .hlx bass preset exports
@@ -79,6 +82,7 @@ PLAN ──▶ APPLY ──▶ UNIFY
 - **CRITICAL:** Helix Native device ID is 2162944 (confirmed from JS-EVPanRed.hlx + JS-GermXRed.hlx) — NOT 2162690 as estimated in v1.0 Phase 5
 - Stadium device_version varies across presets (285213946, 301991188, 302056726) — we hardcoded 302056738
 - Pod Go Wireless device ID may be 2162696 (vs 2162695 for standard Pod Go) — confirmed from The Hell Song.pgp
+- Pod Go block ordering and controller enrichment deferred from Phase 13
 
 ### Reference Files
 
@@ -126,20 +130,20 @@ PLAN ──▶ APPLY ──▶ UNIFY
 - New reference presets needed for v5.0 audit (user gathering 5-8 per device family)
 
 ### Git State
-Last commit: 3fbb0cc
+Last commit: pending (Phase 13 changes uncommitted)
 Branch: main
 Feature branches merged: none
 
 ## Session Continuity
 
 Last session: 2026-03-09
-Stopped at: Phase 12 complete, ready to plan Phase 13
-Next action: /paul:plan for Phase 13 (Fix Deviations)
-Resume file: .paul/ROADMAP.md
+Stopped at: Phase 13 UNIFY complete, transition done
+Next action: /paul:plan (Phase 14 — Regression Suite Integration)
+Resume file: .paul/phases/13-fix-deviations/13-01-SUMMARY.md
 Resume context:
-- Phase 12 complete: audit orchestrator + report formatter, 15 new tests, 1421 total passing
-- Phases 8-12 provide complete audit pipeline: generate → compare → validate → report
-- Phase 13 uses audit reports to fix deviations across device families
+- Phase 13 complete, all deviations fixed, 1422 tests passing
+- Phase 14 (Regression Suite Integration) is next — last phase of v5.0
+- Pod Go block ordering deferred (not critical for regression suite)
 
 ---
 *STATE.md — Updated after every significant action*

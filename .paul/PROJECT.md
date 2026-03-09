@@ -57,6 +57,10 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 - ✓ Per-family gold standard schema extractor: analyzes structural consensus across reference presets (required/common/rare key classification) — v5.0 Phase 11
 - ✓ Full audit orchestrator: runAudit() connects harness → diff → validation → per-family compliance reports — v5.0 Phase 12
 - ✓ Structured audit reports: markdown + JSON formatters with deviation summaries, top issues, pass/fail per family — v5.0 Phase 12
+- ✓ Stomp emits only device-max snapshots (3 for Stomp, 4 for XL) — no padding to 8 — v5.0 Phase 13
+- ✓ Helix empty snapshots @valid:true matching real HX Edit exports — v5.0 Phase 13
+- ✓ Non-MV amp Drive threshold 0.80 eliminates false positives in musical validation — v5.0 Phase 13
+- ✓ Stadium diff compares inner {meta, preset} JSON, not HspFile wrapper — v5.0 Phase 13
 
 ### Must Have
 - [To be defined during planning]
@@ -127,4 +131,4 @@ Quick Reference:
 - /ui-ux-pro-max → Frontend / UI / UX (required)
 
 ---
-*Last updated: 2026-03-09 after v5.0 Phase 12 (Full Audit Run & Reports complete)*
+*Last updated: 2026-03-09 after v5.0 Phase 13 (Fix Deviations complete)*

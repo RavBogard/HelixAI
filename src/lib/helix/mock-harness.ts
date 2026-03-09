@@ -79,7 +79,11 @@ export function runScenario(scenario: MockScenario): HarnessResult {
       preset = buildStompFile(presetSpec, device as "helix_stomp" | "helix_stomp_xl");
       fileExtension = ".hlx";
     } else if (isStadium(device)) {
-      preset = buildHspFile(presetSpec);
+      // Unwrap to inner JSON ({meta, preset}) for diff comparison.
+      // Reference presets from reference-corpus.ts are also parsed to inner JSON.
+      // The HspFile wrapper ({magic, json, serialized}) is only for disk writing.
+      const hspFile = buildHspFile(presetSpec);
+      preset = hspFile.json;
       fileExtension = ".hsp";
     } else if (isPodGo(device)) {
       preset = buildPgpFile(presetSpec);

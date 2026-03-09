@@ -379,9 +379,8 @@ describe("structural-diff", () => {
     it("Stadium: detects changes in flow[0] block structure", () => {
       const ref = generatePreset("stadium-clean");
       const gen = deepClone(ref);
-      // Stadium structure: json.preset.flow[0].b05 (amp position)
-      const preset = (gen as Record<string, unknown>).json as Record<string, unknown>;
-      const presetData = (preset as Record<string, unknown>).preset as Record<string, unknown>;
+      // Stadium structure: preset.flow[0].b05 (amp position) — inner JSON, no .json wrapper
+      const presetData = (gen as Record<string, unknown>).preset as Record<string, unknown>;
       const flow = (presetData as Record<string, unknown>).flow as unknown[];
       const flow0 = flow[0] as Record<string, unknown>;
       // Find a block key (b00-b13)
@@ -401,8 +400,9 @@ describe("structural-diff", () => {
     it("Stadium: detects snapshot metadata changes", () => {
       const ref = generatePreset("stadium-highgain");
       const gen = deepClone(ref);
-      const preset = ((gen as Record<string, unknown>).json as Record<string, unknown>).preset as Record<string, unknown>;
-      const snapshots = preset.snapshots as unknown[];
+      // Inner JSON — .preset is at top level, no .json wrapper
+      const presetData = (gen as Record<string, unknown>).preset as Record<string, unknown>;
+      const snapshots = presetData.snapshots as unknown[];
       if (snapshots && snapshots.length > 0) {
         (snapshots[0] as Record<string, unknown>).name = "StadiumModified";
         const report = diffPresets(ref, gen, "stadium");

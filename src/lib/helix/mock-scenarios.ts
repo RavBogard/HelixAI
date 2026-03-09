@@ -210,7 +210,7 @@ const STOMP_SCENARIOS: MockScenario[] = [
       snapshots: [
         { name: "Clean", toneRole: "clean" },
         { name: "Crunch", toneRole: "crunch" },
-        { name: "Lead", toneRole: "lead" },
+        { name: "Ambient", toneRole: "ambient" },
       ],
       presetName: "Stomp Ambient",
       genreHint: "ambient",

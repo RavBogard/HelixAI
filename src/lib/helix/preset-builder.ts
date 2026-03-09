@@ -522,10 +522,11 @@ function buildBlockKeyMap(allBlocks: BlockSpec[]): Map<string, { dsp: number; pe
 }
 
 function buildEmptySnapshot(index: number): HlxSnapshot {
+  // Real HX Edit exports mark all 8 snapshots @valid:true, even when not user-configured
   return {
     "@name": `SNAPSHOT ${index + 1}`,
     "@tempo": 120,
-    "@valid": false,
+    "@valid": true,
     "@pedalstate": 2,
     "@ledcolor": 0,
   };

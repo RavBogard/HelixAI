@@ -431,9 +431,9 @@ export function buildStompFile(
   // Get stomp assignments early — needed for @pedalstate in snapshots
   const stompAssignmentsForSnapshots = getStompFsAssignments(spec.signalChain, device);
 
-  // Build snapshot slots (8 total: fill first maxSnapshots, rest are empty)
+  // Build snapshot slots — only emit maxSnapshots entries (real Stomp .hlx files don't pad to 8)
   const snapshotEntries: Record<string, HlxSnapshot> = {};
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < maxSnapshots; i++) {
     const snapshotSpec = snapshots[i];
     if (snapshotSpec) {
       snapshotEntries[`snapshot${i}`] = buildStompSnapshot(snapshotSpec, spec.signalChain, spec.tempo, stompAssignmentsForSnapshots);

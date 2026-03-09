@@ -7,6 +7,7 @@
 
 import type { ToneIntent } from "./tone-intent";
 import type { PresetSpec } from "./types";
+import { AMP_MODELS, STADIUM_AMPS } from "./models";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -147,12 +148,22 @@ function checkGainStaging(
   if (typeof drive !== "number") return;
 
   if (genre === "clean" && drive > 0.50) {
-    warnings.push({
-      code: "GAIN_STAGING_MISMATCH",
-      severity: "warn",
-      message: `Clean tone has amp Drive ${drive.toFixed(2)} — too much drive for a clean sound (threshold: 0.50)`,
-      rule: "gain-staging",
-    });
+    // Non-master-volume amps (Master: 1.0 in paramOverrides) use Drive as volume control,
+    // not gain/distortion. Also skip for Stadium amps which have different Drive semantics.
+    const model = AMP_MODELS[ampBlock.modelName];
+    const stadiumModel = STADIUM_AMPS[ampBlock.modelName];
+    const isNonMV = model?.paramOverrides?.Master === 1.0;
+    const isStadium = !!stadiumModel;
+    const threshold = (isNonMV || isStadium) ? 0.80 : 0.50;
+
+    if (drive > threshold) {
+      warnings.push({
+        code: "GAIN_STAGING_MISMATCH",
+        severity: "warn",
+        message: `Clean tone has amp Drive ${drive.toFixed(2)} — too much drive for a clean sound (threshold: ${threshold.toFixed(2)})`,
+        rule: "gain-staging",
+      });
+    }
   }
 
   if (genre === "high-gain" && drive < 0.30) {
