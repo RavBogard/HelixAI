@@ -43,6 +43,8 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 - ✓ HX Stomp footswitch indices 1-based (1-3 for Stomp, 1-5 for XL) — v4.0 Phase 3
 - ✓ HX Stomp @pedalstate always 0 (not bitmask), empty snapshots have blocks structure — v4.0 Phase 3
 - ✓ HX Stomp XL verified identical structure to Stomp — no XL-specific code paths needed — v4.0 Phase 4
+- ✓ Stadium dual cab slots, sources bypass field, effect block footswitch controllers — v4.0 Phase 5
+- ✓ Stadium device_version updated to 302056738 matching latest firmware references — v4.0 Phase 5
 
 ### Must Have
 - [To be defined during planning]
@@ -84,6 +86,10 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 | HX Stomp snapshot controller = 9 | v4.0 Phase 3 | Confirmed from CATS NO OTO4.hlx reference — distinct from Helix (19) and Pod Go (11) |
 | HX Stomp @pedalstate always 0 | v4.0 Phase 3 | All 5 reference presets show 0 for every snapshot |
 | HX Stomp uses shared getBlockTypeForDevice | v4.0 Phase 3 | Consistent block type resolution, fixes modulation @type (0→4) |
+| Stadium cab blocks always 2 slots (cab + NoCab) | v4.0 Phase 5 | All 4 reference .hsp presets show dual cab slots |
+| Stadium sources include bypass: false field | v4.0 Phase 5 | All reference presets have this on every source entry |
+| Stadium fx blocks get @enabled.controller (targetbypass) | v4.0 Phase 5 | Footswitch controller on effects, not on amp/cab |
+| Stadium device_version → 302056738 | v4.0 Phase 5 | NH reference presets show newer firmware version |
 
 ## Constraints
 - [To be identified during planning]
@@ -100,4 +106,4 @@ Quick Reference:
 - /ui-ux-pro-max → Frontend / UI / UX (required)
 
 ---
-*Last updated: 2026-03-08 after v4.0 Phase 4 (HX Stomp XL Structure Rewrite complete)*
+*Last updated: 2026-03-08 after v4.0 Phase 5 (Stadium Structure Rewrite complete)*

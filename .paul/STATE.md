@@ -10,24 +10,24 @@ See: .paul/PROJECT.md (updated 2026-03-08)
 ## Current Position
 
 Milestone: v4.0 — Preset Quality & Reliability
-Phase: 5 of 7 (Stadium Structure Rewrite) — Planning
-Plan: 05-01 created, awaiting approval
-Status: PLAN created, ready for APPLY
-Last activity: 2026-03-08 — Created 05-01-PLAN.md
+Phase: 6 of 7 (Validation Layer & Intent Fidelity)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-03-08 — Phase 5 complete, transitioned to Phase 6
 
 Progress:
 - v1.0 Production Release: [██████████] 100% ✓
 - v1.1 Post-Release Stabilization: [██████████] 100% ✓
 - v2.0 Device Intelligence & UX Overhaul: [██████████] 100% ✓
 - v3.0 Preset Format Correctness & Quality: [██████████] 100% ✓
-- v4.0 Preset Quality & Reliability: [██████░░░░] 57%
+- v4.0 Preset Quality & Reliability: [███████░░░] 71%
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ✓        ○        ○     [Plan created, awaiting approval]
+  ✓        ✓        ✓     [Loop complete - ready for next PLAN]
 ```
 
 ## Accumulated Context
@@ -52,9 +52,13 @@ PLAN ──▶ APPLY ──▶ UNIFY
 - HX Stomp empty snapshots have blocks/controllers structure — v4.0 Phase 3
 - HX Stomp uses shared getBlockTypeForDevice (fixes modulation @type 0→4) — v4.0 Phase 3
 - Stomp XL structurally identical to Stomp — no XL-specific code paths — v4.0 Phase 4
+- Stadium cab blocks always 2 slots (cab + NoCab) — v4.0 Phase 5
+- Stadium sources include bypass: false field — v4.0 Phase 5
+- Stadium fx blocks get @enabled.controller (targetbypass), amp/cab do not — v4.0 Phase 5
+- Stadium device_version → 302056738 (NH references) — v4.0 Phase 5
 
 ### Known Issues (v4.0 scope — resolved by structural rewrites)
-- Stadium presets losing cabs/effects (Phase 5 — Stadium Structure Rewrite)
+- ~~Stadium presets losing cabs/effects~~ — dual cab slots + footswitch controllers (Phase 5)
 
 ### Resolved Issues (Phase 1)
 - ~~CLEAN snapshot too crunchy~~ — per-snapshot Drive control (Plan 02)
@@ -72,21 +76,23 @@ PLAN ──▶ APPLY ──▶ UNIFY
 - `C:\Users\dsbog\Downloads\A7X.pgp` — Pod Go reference (preamp model, minimal controllers)
 - `C:\Users\dsbog\Downloads\CATS NO OTO4.hlx` — HX Stomp reference (@controller:9, custom snapshot names)
 - `C:\Users\dsbog\Downloads\Bass Rig.hlx` — HX Stomp reference (8 blocks, split/join, variax)
+- `C:\Users\dsbog\Downloads\NH_STADIUM_AURA_REFLECTIONS\NH_BoomAuRang.hsp` — Stadium reference (dual cab, stereo delays)
+- `C:\Users\dsbog\Downloads\NH_STADIUM_AURA_REFLECTIONS\Stadium Rock Rig.hsp` — Stadium reference (rock preset)
 
 ### Blockers/Concerns
 - HD2_AppDSPFlowBlock padding model name unverified against Pod Go Edit (minor)
 
 ### Git State
-Last commit: cf84712
+Last commit: dfa1bdd
 Branch: main
 Feature branches merged: none
 
 ## Session Continuity
 
 Last session: 2026-03-08
-Stopped at: Plan 05-01 created
-Next action: Review and approve plan, then run /paul:apply .paul/phases/05-stadium-structure-rewrite/05-01-PLAN.md
-Resume file: .paul/phases/05-stadium-structure-rewrite/05-01-PLAN.md
+Stopped at: Phase 5 complete, ready to plan Phase 6
+Next action: /paul:plan for Phase 6 (Validation Layer & Intent Fidelity)
+Resume file: .paul/ROADMAP.md
 
 ---
 *STATE.md — Updated after every significant action*
