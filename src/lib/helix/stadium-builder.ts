@@ -482,8 +482,9 @@ function buildFlowBlock(
   /** STAD-07: "mono" for pre-amp effects, "stereo" for post-amp effects, "none" for amp/cab/io */
   channelMode: "mono" | "stereo" | "none" = "none",
 ): Record<string, unknown> {
-  // Build @enabled with optional per-snapshot bypass states
-  const enabledObj = buildBlockEnabled(block, spec, originalIndex);
+  // Build @enabled with optional per-snapshot bypass states and footswitch controller
+  const blockType = getStadiumBlockType(block.type);
+  const enabledObj = buildBlockEnabled(block, spec, originalIndex, blockType, flowPosition);
 
   // STAD-03 fix: Build slot params using { value: X } format — NO access field
   // Real .hsp files use only { "value": X } — zero occurrences of "access" anywhere
@@ -534,14 +535,34 @@ function buildFlowBlock(
     harness: buildHarness(block),
     path: 0,
     position: flowPosition,  // Must match bNN key (invariant: key bNN implies position: NN)
-    slot: [
-      {
-        "@enabled": { value: true },
-        model: modelId,
-        params: slotParams,
-        version: 0,
-      },
-    ],
+    slot: CAB_TYPES.has(block.type)
+      ? [
+          {
+            "@enabled": { value: true },
+            model: modelId,
+            params: slotParams,
+            version: 0,
+          },
+          {
+            "@enabled": { value: true },
+            model: "HD2_CabMicIr_NoCab",
+            params: {
+              IrData: { value: 0 },
+              Level: { value: 0 },
+              LowCut: { value: 19.9 },
+              HighCut: { value: 20100.0 },
+            },
+            version: 0,
+          },
+        ]
+      : [
+          {
+            "@enabled": { value: true },
+            model: modelId,
+            params: slotParams,
+            version: 0,
+          },
+        ],
     // STAD-05 fix: Map all effect types to "fx" — only amp/cab/input/output/split/join/looper retain named types
     type: getStadiumBlockType(block.type),
   };
@@ -559,6 +580,10 @@ function buildBlockEnabled(
   block: BlockSpec,
   spec: PresetSpec,
   originalIndex: number,
+  /** Stadium block type: "fx", "amp", "cab", etc. */
+  stadiumBlockType: string = "fx",
+  /** Block's flow position (for computing footswitch source ID) */
+  flowPosition: number = 0,
 ): Record<string, unknown> {
   const enabledObj: Record<string, unknown> = {
     value: block.enabled,
@@ -592,6 +617,24 @@ function buildBlockEnabled(
     if (hasAnyState) {
       enabledObj.snapshots = snapshotStates;
     }
+  }
+
+  // Add footswitch controller for effect blocks only (not amp/cab)
+  // Source ID = 0x01010100 + flowPosition (Flow 0 footswitch source)
+  if (stadiumBlockType === "fx") {
+    enabledObj.controller = {
+      type: "targetbypass",
+      source: 0x01010100 + flowPosition,
+      behavior: "latching",
+      min: false,
+      max: true,
+      curve: "linear",
+      delay: 0,
+      threshold: 0.0,
+      bypassed: false,
+      midisource: 0,
+      goid: 0,
+    };
   }
 
   return enabledObj;
@@ -792,6 +835,7 @@ function buildStadiumSources(): Record<string, unknown> {
   const flow0Base = 0x01010100; // 16843008
   for (let i = 0; i < 12; i++) {
     sources[String(flow0Base + i)] = {
+      bypass: false,
       fs_color: "auto",
       fs_label: "",
       fs_topidx: 0,
@@ -802,6 +846,7 @@ function buildStadiumSources(): Record<string, unknown> {
   const flow1Base = 0x01010200; // 16843264
   for (let i = 0; i < 12; i++) {
     sources[String(flow1Base + i)] = {
+      bypass: false,
       fs_color: "auto",
       fs_label: "",
       fs_topidx: 0,

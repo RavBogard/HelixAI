@@ -48,8 +48,8 @@ export const STADIUM_CONFIG = {
   STADIUM_MAX_SNAPSHOTS: 8,
   /** Maximum signal paths (1A, 1B, 2A, 2B — 2 flows × 2 paths each) */
   STADIUM_MAX_PATHS: 4,
-  /** Device version integer — verified from Agoura_Bassman.hsp and Agoura_Hiwatt.hsp (2026-03-05) */
-  STADIUM_DEVICE_VERSION: 301990015,
+  /** Device version integer — updated to match NH reference .hsp files (2026-03-08) */
+  STADIUM_DEVICE_VERSION: 302056738,
   /** Input model for path 1A (instrument input) */
   STADIUM_INPUT_MODEL: "P35_InputInst1",
   /** Input model for unused paths (no input) */
