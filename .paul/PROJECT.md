@@ -55,6 +55,8 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 - ✓ Musical intelligence: 5-rule genre/instrument validation engine (genre-effect, bass compression, gain staging, snapshot roles, effect count) — v5.0 Phase 10
 - ✓ Reference corpus loader: reads .hlx/.pgp/.hsp preset files, detects device family, groups by family — v5.0 Phase 11
 - ✓ Per-family gold standard schema extractor: analyzes structural consensus across reference presets (required/common/rare key classification) — v5.0 Phase 11
+- ✓ Full audit orchestrator: runAudit() connects harness → diff → validation → per-family compliance reports — v5.0 Phase 12
+- ✓ Structured audit reports: markdown + JSON formatters with deviation summaries, top issues, pass/fail per family — v5.0 Phase 12
 
 ### Must Have
 - [To be defined during planning]
@@ -125,4 +127,4 @@ Quick Reference:
 - /ui-ux-pro-max → Frontend / UI / UX (required)
 
 ---
-*Last updated: 2026-03-09 after v5.0 Phase 11 (Reference Corpus & Schema Extraction complete)*
+*Last updated: 2026-03-09 after v5.0 Phase 12 (Full Audit Run & Reports complete)*

@@ -10,10 +10,10 @@ See: .paul/PROJECT.md (updated 2026-03-09)
 ## Current Position
 
 Milestone: v5.0 — Automated Gold Standard Compliance
-Phase: 12 of 14 (Full Audit Run & Reports)
+Phase: 13 of 14 (Fix Deviations)
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-03-09 — Phase 11 complete, transitioned to Phase 12
+Last activity: 2026-03-09 — Phase 12 complete, transitioned to Phase 13
 
 Progress:
 - v1.0 Production Release: [██████████] 100% ✓
@@ -21,7 +21,7 @@ Progress:
 - v2.0 Device Intelligence & UX Overhaul: [██████████] 100% ✓
 - v3.0 Preset Format Correctness & Quality: [██████████] 100% ✓
 - v4.0 Preset Quality & Reliability: [██████████] 100% ✓
-- v5.0 Automated Gold Standard Compliance: [██████░░░░] 57%
+- v5.0 Automated Gold Standard Compliance: [███████░░░] 71%
 
 ## Loop Position
 
@@ -69,6 +69,9 @@ PLAN ──▶ APPLY ──▶ UNIFY
 - Supplementary device ID map for corpus (2162944 Native, 2162696 Pod Go Wireless) — v5.0 Phase 11
 - Key frequency consensus: required=100%, common=>50%, rare=<=50% — v5.0 Phase 11
 - Path generalization (dsp→dsp*, block→block*) for schema cross-preset comparison — v5.0 Phase 11
+- Diff against first reference per family (not all) — avoids combinatorial explosion — v5.0 Phase 12
+- Intent pass = amp + cab + snapshots matched (no error) — v5.0 Phase 12
+- overallPassed = zero critical + zero intent fail + zero musical fail — v5.0 Phase 12
 
 ### Known Issues
 - Bass amp HD2 model IDs UNVERIFIED — need confirmation from real .hlx bass preset exports
@@ -123,20 +126,20 @@ PLAN ──▶ APPLY ──▶ UNIFY
 - New reference presets needed for v5.0 audit (user gathering 5-8 per device family)
 
 ### Git State
-Last commit: 32238d1
+Last commit: 3fbb0cc
 Branch: main
 Feature branches merged: none
 
 ## Session Continuity
 
 Last session: 2026-03-09
-Stopped at: Phase 11 complete, ready to plan Phase 12
-Next action: /paul:plan for Phase 12 (Full Audit Run & Reports)
+Stopped at: Phase 12 complete, ready to plan Phase 13
+Next action: /paul:plan for Phase 13 (Fix Deviations)
 Resume file: .paul/ROADMAP.md
 Resume context:
-- Phase 11 complete: reference corpus loader + schema extractor, 48 new tests, 1406 total passing
-- Phases 8-11 provide complete audit infrastructure: generation → comparison → validation → reference schemas
-- Phase 12 ties it all together: generate presets, compare against references, produce reports
+- Phase 12 complete: audit orchestrator + report formatter, 15 new tests, 1421 total passing
+- Phases 8-12 provide complete audit pipeline: generate → compare → validate → report
+- Phase 13 uses audit reports to fix deviations across device families
 
 ---
 *STATE.md — Updated after every significant action*
