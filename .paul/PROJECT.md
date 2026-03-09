@@ -42,6 +42,7 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 - ✓ HX Stomp snapshot controller = 9 (distinct from Helix 19 and Pod Go 11) — v4.0 Phase 3
 - ✓ HX Stomp footswitch indices 1-based (1-3 for Stomp, 1-5 for XL) — v4.0 Phase 3
 - ✓ HX Stomp @pedalstate always 0 (not bitmask), empty snapshots have blocks structure — v4.0 Phase 3
+- ✓ HX Stomp XL verified identical structure to Stomp — no XL-specific code paths needed — v4.0 Phase 4
 
 ### Must Have
 - [To be defined during planning]
@@ -99,4 +100,4 @@ Quick Reference:
 - /ui-ux-pro-max → Frontend / UI / UX (required)
 
 ---
-*Last updated: 2026-03-08 after v4.0 Phase 3 (HX Stomp Structure Rewrite complete)*
+*Last updated: 2026-03-08 after v4.0 Phase 4 (HX Stomp XL Structure Rewrite complete)*
