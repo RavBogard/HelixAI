@@ -16,45 +16,19 @@
  */
 
 import type { HlxFile, HlxDsp, HlxSnapshot, PresetSpec, BlockSpec, SnapshotSpec } from "./types";
-import { DEVICE_IDS, isVariaxSupported } from "./types";
+import { DEVICE_IDS, STOMP_SNAPSHOT_CONTROLLER, isVariaxSupported } from "./types";
 import { FIRMWARE_CONFIG, STOMP_CONFIG } from "./config";
-import { CONTROLLERS } from "./models";
+import { CONTROLLERS, getBlockTypeForDevice } from "./models";
 import { getCapabilities } from "./device-family";
 
 // ---------------------------------------------------------------------------
-// Block type integer encoding (same values as preset-builder.ts getBlockType)
-// Source: empirically confirmed from real Helix .hlx exports
+// Footswitch indices for HX Stomp family (1-based, confirmed from real exports)
+// HX Stomp: 3 footswitches (FS1-FS3), indices 1-3
+// HX Stomp XL: 5 footswitches (FS1-FS5), indices 1-5
+// Source: Bass Rig.hlx (1,2,4,5), SOLAR E1.6FBB.hlx (1,5), Moving Pictures.hlx (1)
 // ---------------------------------------------------------------------------
-// Block @type values (reverse-engineered from real .hlx presets):
-// 0 = generic effect (distortion, dynamics, modulation, eq, wah, pitch, volume, send_return)
-// 3 = amp
-// 4 = cab
-// 7 = delay, reverb (time-based effects)
-function getBlockType(type: string): number {
-  switch (type) {
-    case "amp": return 3;
-    case "cab": return 4;
-    case "delay": return 7;
-    case "reverb": return 7;
-    case "distortion": return 0;
-    case "modulation": return 0;
-    case "dynamics": return 0;
-    case "eq": return 0;
-    case "wah": return 0;
-    case "pitch": return 0;
-    case "volume": return 0;
-    case "send_return": return 0;
-    default: return 0;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Footswitch indices for HX Stomp family
-// HX Stomp: 3 footswitches (FS1-FS3), indices 0-2
-// HX Stomp XL: 5 footswitches (FS1-FS5), indices 0-4
-// ---------------------------------------------------------------------------
-const STOMP_FS_INDICES = [0, 1, 2];
-const STOMP_XL_FS_INDICES = [0, 1, 2, 3, 4];
+const STOMP_FS_INDICES = [1, 2, 3];
+const STOMP_XL_FS_INDICES = [1, 2, 3, 4, 5];
 
 // Block types that should be assigned to stomp switches (user-toggleable effects)
 const STOMP_BLOCK_TYPES = new Set([
@@ -84,7 +58,8 @@ interface StompAssignment {
 // ---------------------------------------------------------------------------
 // DSP builder (dsp0 only for Stomp — uses HelixStomp_* I/O models)
 // ---------------------------------------------------------------------------
-function buildStompDsp(blocks: BlockSpec[], useVariaxInput?: boolean): HlxDsp {
+function buildStompDsp(blocks: BlockSpec[], device: "helix_stomp" | "helix_stomp_xl", useVariaxInput?: boolean): HlxDsp {
+  const caps = getCapabilities(device);
   const dsp: HlxDsp = {
     inputA: {
       "@input": useVariaxInput ? 3 : 1, // 1 = Guitar In, 3 = Multi (Guitar + VDI for Variax)
@@ -93,9 +68,22 @@ function buildStompDsp(blocks: BlockSpec[], useVariaxInput?: boolean): HlxDsp {
       decay: 0.5,
       threshold: -48.0,
     },
+    inputB: {
+      "@input": 0,
+      "@model": STOMP_CONFIG.STOMP_INPUT_MODEL,
+      noiseGate: false,
+      decay: 0.5,
+      threshold: -48.0,
+    },
     outputA: {
       "@model": STOMP_CONFIG.STOMP_OUTPUT_MAIN_MODEL,
       "@output": 1,
+      pan: 0.5,
+      gain: 0.0,
+    },
+    outputB: {
+      "@model": STOMP_CONFIG.STOMP_OUTPUT_SEND_MODEL,
+      "@output": 0,
       pan: 0.5,
       gain: 0.0,
     },
@@ -135,7 +123,7 @@ function buildStompDsp(blocks: BlockSpec[], useVariaxInput?: boolean): HlxDsp {
         "@position": block.position,
         "@enabled": block.enabled,
         "@path": block.path,
-        "@type": getBlockType(block.type),
+        "@type": getBlockTypeForDevice(block.type, block.modelId, caps),
         "@stereo": block.stereo,
         "@no_snapshot_bypass": false,
       };
@@ -163,6 +151,28 @@ function buildStompDsp(blocks: BlockSpec[], useVariaxInput?: boolean): HlxDsp {
       blockIndex++;
     }
   }
+
+  // Split and join — always present on HX Stomp (confirmed from all 5 reference presets)
+  dsp.split = {
+    "@model": "HD2_AppDSPFlowSplitY",
+    "@enabled": true,
+    "@position": 0,
+    "@no_snapshot_bypass": false,
+    BalanceA: 0.5,
+    BalanceB: 0.5,
+  };
+  dsp.join = {
+    "@model": "HD2_AppDSPFlowJoin",
+    "@enabled": true,
+    "@position": 8,
+    "@no_snapshot_bypass": false,
+    Level: 0,
+    "A Level": 0,
+    "B Level": 0,
+    "A Pan": 0.5,
+    "B Pan": 0.5,
+    "B Polarity": false,
+  };
 
   return dsp;
 }
@@ -256,13 +266,24 @@ function buildStompSnapshot(
   };
 }
 
-function buildEmptySnapshot(index: number): HlxSnapshot {
+function buildEmptySnapshot(index: number, allBlocks: BlockSpec[]): HlxSnapshot {
+  // Invalid snapshots still have blocks structure (confirmed from Moving Pictures.hlx)
+  const blocksBypass: Record<string, boolean> = {};
+  let dsp0Idx = 0;
+  for (const block of allBlocks) {
+    if (block.type === "cab") continue;
+    blocksBypass[`block${dsp0Idx}`] = true;
+    dsp0Idx++;
+  }
+
   return {
     "@name": `SNAPSHOT ${index + 1}`,
     "@tempo": 120,
     "@valid": false,
-    "@pedalstate": 2,
+    "@pedalstate": 0,
     "@ledcolor": 0,
+    blocks: { dsp0: blocksBypass },
+    controllers: { dsp0: {} },
   };
 }
 
@@ -307,7 +328,7 @@ function buildControllerSection(spec: PresetSpec, maxSnapshots: number, device: 
         controller["dsp0"][blockKey][paramName] = {
           "@min": Math.min(...allValues),
           "@max": Math.max(...allValues),
-          "@controller": CONTROLLERS.SNAPSHOT,
+          "@controller": STOMP_SNAPSHOT_CONTROLLER,
           "@snapshot_disable": false,
         };
       }
@@ -404,7 +425,7 @@ export function buildStompFile(
   const useVariaxInput = !!(spec.variaxModel && isVariaxSupported(device));
 
   // Build dsp0 with all blocks (chain-rules ensures all on dsp0 for Stomp)
-  const dsp0 = buildStompDsp(spec.signalChain, useVariaxInput);
+  const dsp0 = buildStompDsp(spec.signalChain, device, useVariaxInput);
 
   // Get stomp assignments early — needed for @pedalstate in snapshots
   const stompAssignmentsForSnapshots = getStompFsAssignments(spec.signalChain, device);
@@ -416,7 +437,7 @@ export function buildStompFile(
     if (snapshotSpec) {
       snapshotEntries[`snapshot${i}`] = buildStompSnapshot(snapshotSpec, spec.signalChain, spec.tempo, stompAssignmentsForSnapshots);
     } else {
-      snapshotEntries[`snapshot${i}`] = buildEmptySnapshot(i);
+      snapshotEntries[`snapshot${i}`] = buildEmptySnapshot(i, spec.signalChain);
     }
   }
 
@@ -449,9 +470,13 @@ export function buildStompFile(
       "@cursor_group": "block0",
       "@tempo": spec.tempo,
       "@current_snapshot": 0,
-      "@pedalstate": 2,
+      "@pedalstate": 0,
       "@guitarpad": 0,
       "@guitarinputZ": 0,
+      "@DtSelect": 0,
+      "@PowercabMode": 0,
+      "@PowercabSelect": 0,
+      "@PowercabVoicing": 0,
     },
   };
 
@@ -559,31 +584,15 @@ function buildStompFootswitchSection(
 }
 
 /**
- * Compute @pedalstate bitmask from stomp assignments and block states.
+ * Compute @pedalstate for HX Stomp snapshots.
+ * All 5 reference presets show @pedalstate: 0 for every snapshot.
  */
 function computeStompPedalState(
-  blockStates: Record<string, boolean>,
-  stompAssignments: StompAssignment[],
-  blockKeyMap: Map<string, { dsp: number; perDspKey: string }>,
+  _blockStates: Record<string, boolean>,
+  _stompAssignments: StompAssignment[],
+  _blockKeyMap: Map<string, { dsp: number; perDspKey: string }>,
 ): number {
-  let pedalstate = 2; // Base value: snapshot mode indicator
-
-  for (const assignment of stompAssignments) {
-    // Find which global block key maps to this per-DSP key
-    let blockEnabled = false;
-    for (const [globalKey, mapping] of Array.from(blockKeyMap.entries())) {
-      if (mapping.perDspKey === assignment.blockKey) {
-        blockEnabled = blockStates[globalKey] ?? false;
-        break;
-      }
-    }
-
-    if (blockEnabled) {
-      pedalstate |= (1 << assignment.fsIndex);
-    }
-  }
-
-  return pedalstate;
+  return 0;
 }
 
 /**

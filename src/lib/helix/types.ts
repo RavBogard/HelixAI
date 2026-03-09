@@ -343,6 +343,9 @@ export const POD_GO_IO = {
 /** Pod Go snapshot controller ID (Helix uses 19, Pod Go uses 11) */
 export const POD_GO_SNAPSHOT_CONTROLLER = 11;
 
+/** HX Stomp snapshot controller ID (Helix uses 19, Pod Go uses 11, Stomp uses 9) */
+export const STOMP_SNAPSHOT_CONTROLLER = 9;
+
 /** Pod Go footswitch indices: FS A-F = indices 1-6 */
 export const POD_GO_STOMP_FS_INDICES = [1, 2, 3, 4, 5, 6];
 
