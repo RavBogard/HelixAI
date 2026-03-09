@@ -4,100 +4,92 @@
 Build an AI-powered preset builder that interviews users about their rig and tone preferences, then generates professional-quality Line 6 presets across all supported device families.
 
 ## Current Milestone
-**v4.0 — Preset Quality & Reliability** (v4.0.0)
-Status: ✅ Complete
-Phases: 7 of 7 complete
+**v5.0 — Automated Gold Standard Compliance** (v5.0.0)
+Status: In Progress
+Phases: 1 of 7 complete
 
 ## Phases
 
 | Phase | Name | Plans | Status | Completed |
 |-------|------|-------|--------|-----------|
-| 1 | Helix Structure Rewrite | 2/2 | ✅ Complete | 2026-03-08 |
-| 2 | Pod Go Structure Rewrite | 1/1 | ✅ Complete | 2026-03-08 |
-| 3 | HX Stomp Structure Rewrite | 1/1 | ✅ Complete | 2026-03-08 |
-| 4 | HX Stomp XL Structure Rewrite | 1/1 | ✅ Complete | 2026-03-08 |
-| 5 | Stadium Structure Rewrite | 1/1 | ✅ Complete | 2026-03-08 |
-| 6 | Validation Layer & Intent Fidelity | 1/1 | ✅ Complete | 2026-03-08 |
-| 7 | Bass Support | 2/2 | ✅ Complete | 2026-03-09 |
+| 8 | Mock Chat Harness | 1 | Complete | 2026-03-09 |
+| 9 | Structural Diff Engine | TBD | Not started | - |
+| 10 | Intent & Musical Intelligence Validation | TBD | Not started | - |
+| 11 | Reference Corpus & Schema Extraction | TBD | Not started | - |
+| 12 | Full Audit Run & Reports | TBD | Not started | - |
+| 13 | Fix Deviations | TBD | Not started | - |
+| 14 | Regression Suite Integration | TBD | Not started | - |
 
 ## Phase Details
 
-### Phase 1: Helix Structure Rewrite
+### Phase 8: Mock Chat Harness
 
-Focus: Rewrite Helix/LT/Rack/Native preset builder to match exact structural patterns from real HX Edit exports. Includes inputB/outputB/split/join on both DSPs, correct routing models, footswitch assignment overhaul (all toggleable effects), ambient volume compensation, and tempo sync (TempoSync1/SyncSelect1 instead of hardcoded ms). Reference presets are ground truth.
+Focus: Fully automated preset generation via mock conversations exercising the full chat → planner → builder pipeline. Multiple tone scenarios per device family (clean, high-gain, blues/crunch, ambient, bass). Produces real preset output for comparison without manual intervention. No reference presets needed — this builds the generation infrastructure.
 
-Features: #1 (structure), #2 (footswitches), #3 (volume compensation), #8 (tempo sync)
+Features: Mock chat flows, multi-scenario generation, full pipeline exercise
 
-### Phase 2: Pod Go Structure Rewrite
+### Phase 9: Structural Diff Engine
 
-Focus: Reverse-engineer Pod Go preset structure from real .pgp exports using the same "golden preset" methodology as Phase 1 (Helix). Rewrite podgo-builder.ts to match exact patterns from reference presets. Covers I/O structure, routing, block layout, snapshot format, footswitch assignments, and any Pod Go-specific metadata.
+Focus: Deep JSON comparison framework covering structure, parameter values, snapshot behavior, footswitch assignments, controller mappings, metadata fields, and block configuration. Deterministic (no AI cost). Produces structured deviation reports identifying every difference between generated and reference presets. Can be built and tested with synthetic examples before real references arrive.
 
-Reference presets (ground truth):
-- `C:\Users\dsbog\Downloads\Praise You Anywhere.pgp`
-- `C:\Users\dsbog\Downloads\Schism bass.pgp`
-- `C:\Users\dsbog\Downloads\ROCK CRUNCH.pgp`
-- `C:\Users\dsbog\Downloads\Poundcake.pgp`
-- `C:\Users\dsbog\Downloads\A7X.pgp`
+Features: Deep structural comparison, deviation detection, diff reporting
 
-Features: #10 (Pod Go golden preset structure)
+### Phase 10: Intent & Musical Intelligence Validation
 
-### Phase 3: HX Stomp Structure Rewrite
+Focus: Verify generated presets match what was requested (intent fidelity) and make musical sense (intelligence validation). Intent: snapshot count, requested effects present, BPM/tempo sync, instrument type. Musical: no chorus on metal by default, compression on bass, appropriate gain staging per style, effect choices match genre. Rule-based — no reference presets needed.
 
-Focus: Reverse-engineer HX Stomp preset structure from real .hlx exports using the golden preset methodology. Rewrite stomp-builder.ts to match exact patterns from reference presets. Covers I/O structure, routing, block layout (single DSP constraints), snapshot format, footswitch assignments, and Stomp-specific metadata. HX Stomp has fundamentally different constraints than Helix (1 DSP, 6 blocks, 3 footswitches).
+Features: Intent fidelity checks, musical sensibility validation
 
-Reference presets (ground truth):
-- `C:\Users\dsbog\Downloads\Bass Rig.hlx`
-- `C:\Users\dsbog\Downloads\Stringer Distort.hlx`
-- `C:\Users\dsbog\Downloads\CATS NO OTO4.hlx`
-- `C:\Users\dsbog\Downloads\SOLAR E1.6FBB.hlx`
-- `C:\Users\dsbog\Downloads\Moving Pictures .hlx`
+### Phase 11: Reference Corpus & Schema Extraction ⚠️ REQUIRES NEW REFERENCE PRESETS
 
-Features: #11 (HX Stomp golden preset structure)
+Focus: Parse all reference presets (5-8 per device family) into normalized "gold standard" schemas. Extract consistent structural patterns, parameter defaults, metadata fields, controller assignments, and block configurations. Build a per-family reference model that defines "what correct looks like."
 
-### Phase 4: HX Stomp XL Structure Rewrite
+Features: Reference corpus ingestion, schema normalization, per-family gold standard models
 
-Focus: Reverse-engineer HX Stomp XL preset structure from real .hlx exports using the golden preset methodology. The Stomp XL shares the single-DSP architecture with the Stomp but has 8 blocks (vs 6) and 6 footswitches (vs 3), which affects block layout, footswitch assignments, and signal chain capacity. Rewrite or extend stomp-builder.ts to match exact patterns from Stomp XL reference presets.
+### Phase 12: Full Audit Run & Reports
 
-Reference presets (ground truth):
-- `C:\Users\dsbog\Downloads\Swamp Ritual.hlx`
-- `C:\Users\dsbog\Downloads\Nolly Clean.hlx`
-- `C:\Users\dsbog\Downloads\Nolly Crunch.hlx`
+Focus: Execute the complete automated pipeline across all 5 device families. Generate presets via mock harness, compare against reference corpus, validate intent and musical intelligence. Produce structured markdown/JSON reports summarizing every deviation found per family.
 
-Features: #12 (HX Stomp XL golden preset structure)
+Features: Full audit execution, structured deviation reports, per-family summaries
 
-### Phase 5: Stadium Structure Rewrite
+### Phase 13: Fix Deviations
 
-Focus: Reverse-engineer Helix Stadium/Stadium XL preset structure from real .hsp exports using the golden preset methodology. Rewrite stadium-builder.ts to match exact patterns from reference presets. Stadium has unique characteristics: arena/FOH-oriented signal chains, potentially different I/O routing, mono/stereo suffix handling, and amp-cab wiring patterns distinct from Helix Floor.
+Focus: Remediate every structural/parameter issue identified by the audit. Scoped per device family or issue class — exact scope determined by Phase 12 audit results. May split into sub-phases if audit reveals distinct issue categories.
 
-Reference presets (ground truth):
-- `C:\Users\dsbog\Downloads\NH_STADIUM_AURA_REFLECTIONS\NH_BoomAuRang.hsp`
-- `C:\Users\dsbog\Downloads\NH_STADIUM_AURA_REFLECTIONS\NH_Reflections.hsp`
-- `C:\Users\dsbog\Downloads\NH_STADIUM_AURA_REFLECTIONS\Purple Nurple.hsp`
-- `C:\Users\dsbog\Downloads\NH_STADIUM_AURA_REFLECTIONS\Stadium Rock Rig.hsp`
+Features: Issue remediation across all device families
 
-Features: #13 (Stadium golden preset structure)
+### Phase 14: Regression Suite Integration
 
-### Phase 6: Validation Layer & Intent Fidelity
+Focus: Bake the automated comparison pipeline into `npm test` so structural deviations are caught permanently going forward. Mock generation + diff + validation runs as part of CI. Any future builder change that introduces a deviation from gold standard triggers a test failure.
 
-Focus: Deterministic post-build validation layer that checks every generated preset before serving. Structural checks (inputB/outputB/split/join, routing, cab-per-amp, @type), footswitch completeness, intent fidelity (delay subdivision, snapshot count, BPM), and volume compensation. Zero AI cost. Also includes intent audit and echo to surface applied parameters to user. Now covers ALL device families (Helix, Pod Go, Stomp, Stomp XL, Stadium) after structural rewrites are complete.
-
-Features: #4 (post-build validation), #9 (intent audit + echo)
-
-### Phase 7: Bass Support
-
-Focus: Add bass instrument support across the full stack. Bass amp and cab catalogs, bass-specific EQ curves, gain staging (less drive, more low-end clarity), bass-appropriate effect defaults, and chat interview flow ("guitar or bass?" early question).
-
-Features: #7 (bass amps, cabs, EQ, effects, chat flow)
+Features: Test suite integration, CI regression prevention
 
 ## Constraints
 
-- Must not break existing test suite (1201 tests)
-- Reference presets (user's real .hlx/.pgp/.hsp files) are ground truth — match structure exactly
-- No additional AI API costs for validation (deterministic only)
-- Helix/LT/Rack/Native share the same builder (fix once, works for all 4)
+- Must not break existing 1248 tests
+- Reference presets are ground truth — match structure exactly
+- Mock chat harness must exercise full pipeline (chat → planner → builder), not shortcuts
+- Diff engine must be deterministic (no AI cost for comparisons)
+- Helix Native uses identical presets to Floor/Rack/LT — no separate treatment needed
+- Fix phases scoped by audit findings — cannot pre-plan until audit completes
 - Preserve preset file format compatibility (.hlx/.pgp/.hsp container structure)
 
 ## Completed Milestones
+
+<details>
+<summary>v4.0 Preset Quality & Reliability - 2026-03-09 (7 phases)</summary>
+
+| Phase | Name | Plans | Completed |
+|-------|------|-------|-----------|
+| 1 | Helix Structure Rewrite | 2 | 2026-03-08 |
+| 2 | Pod Go Structure Rewrite | 1 | 2026-03-08 |
+| 3 | HX Stomp Structure Rewrite | 1 | 2026-03-08 |
+| 4 | HX Stomp XL Structure Rewrite | 1 | 2026-03-08 |
+| 5 | Stadium Structure Rewrite | 1 | 2026-03-08 |
+| 6 | Validation Layer & Intent Fidelity | 1 | 2026-03-08 |
+| 7 | Bass Support | 2 | 2026-03-09 |
+
+</details>
 
 <details>
 <summary>v3.0 Preset Format Correctness & Quality - 2026-03-08 (1 phase)</summary>
@@ -145,4 +137,4 @@ Features: #7 (bass amps, cabs, EQ, effects, chat flow)
 </details>
 
 ---
-*Roadmap updated: 2026-03-09 — v4.0 milestone complete (all 7 phases)*
+*Roadmap updated: 2026-03-09 — Phase 8 complete*

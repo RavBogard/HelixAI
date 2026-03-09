@@ -49,6 +49,7 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 - ✓ ToneIntent instrument field ("guitar" | "bass") backward-compatible — v4.0 Phase 7
 - ✓ Bass-aware chat prompts: instrument screening across all 4 device families — v4.0 Phase 7
 - ✓ Bass-aware planner prompts: amp-cab pairings, gain staging, effect intelligence — v4.0 Phase 7
+- ✓ Mock chat harness: 25 scenarios (5 families × 5 styles) exercising full pipeline without AI calls — v5.0 Phase 8
 
 ### Must Have
 - [To be defined during planning]
@@ -97,6 +98,7 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 | ToneIntent instrument .optional() not .default("guitar") | v4.0 Phase 7 | Zod .default() output type is required, breaking test fixtures |
 | Stadium bass: no bass-specific amps (Agoura catalog) | v4.0 Phase 7 | Bass players advised to use Helix/Stomp for dedicated bass amps |
 | Compression non-negotiable for bass | v4.0 Phase 7 | Priority 1 in all family bass effect tables |
+| HarnessResult.intentAudit uses IntentAudit type directly | v5.0 Phase 8 | Matches auditIntentFidelity return type — not simplified shape |
 
 ## Constraints
 - [To be identified during planning]
@@ -113,4 +115,4 @@ Quick Reference:
 - /ui-ux-pro-max → Frontend / UI / UX (required)
 
 ---
-*Last updated: 2026-03-09 after v4.0 Phase 7 (Bass Support complete)*
+*Last updated: 2026-03-09 after v5.0 Phase 8 (Mock Chat Harness complete)*

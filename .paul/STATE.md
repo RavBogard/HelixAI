@@ -5,15 +5,15 @@
 See: .paul/PROJECT.md (updated 2026-03-09)
 
 **Core value:** Guitarists and bassists can get professional-quality, device-specific Line 6 presets tailored to their exact rig and tonal preferences — without deep technical knowledge of their hardware.
-**Current focus:** v4.0 — Preset Quality & Reliability — COMPLETE
+**Current focus:** v5.0 — Automated Gold Standard Compliance
 
 ## Current Position
 
-Milestone: v4.0 — Preset Quality & Reliability — COMPLETE
-Phase: 7 of 7 (Bass Support) — Complete
-Plan: 07-02 complete (all plans in phase complete)
-Status: v4.0 milestone complete, all 7 phases finished
-Last activity: 2026-03-09 — Phase 7 complete, v4.0 milestone done
+Milestone: v5.0 — Automated Gold Standard Compliance
+Phase: 9 of 14 (Structural Diff Engine)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-03-09 — Phase 8 complete, transitioned to Phase 9
 
 Progress:
 - v1.0 Production Release: [██████████] 100% ✓
@@ -21,13 +21,14 @@ Progress:
 - v2.0 Device Intelligence & UX Overhaul: [██████████] 100% ✓
 - v3.0 Preset Format Correctness & Quality: [██████████] 100% ✓
 - v4.0 Preset Quality & Reliability: [██████████] 100% ✓
+- v5.0 Automated Gold Standard Compliance: [█░░░░░░░░░] 14%
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ✓        ✓        ✓     [Loop complete - v4.0 milestone done]
+  ✓        ✓        ✓     [Loop complete — ready for next PLAN]
 ```
 
 ## Accumulated Context
@@ -59,48 +60,76 @@ PLAN ──▶ APPLY ──▶ UNIFY
 - ToneIntent instrument .optional() not .default("guitar") — v4.0 Phase 7
 - Stadium bass: no bass-specific amps (Agoura catalog) — v4.0 Phase 7
 - Compression non-negotiable for bass across all families — v4.0 Phase 7
+- Helix Native identical to Floor/Rack/LT — no separate treatment — v5.0
+- HarnessResult.intentAudit typed as IntentAudit (not simplified shape) — v5.0 Phase 8
 
-### Known Issues (v4.0 scope — all resolved)
-- ~~Stadium presets losing cabs/effects~~ — dual cab slots + footswitch controllers (Phase 5)
-
-### Resolved Issues (Phase 1)
-- ~~CLEAN snapshot too crunchy~~ — per-snapshot Drive control (Plan 02)
-- ~~AMBIENT snapshot not pad-like~~ — boosted mix/decay values (Plan 02)
-- ~~Delays use hardcoded ms~~ — TempoSync1/SyncSelect1 (Plan 02)
-- ~~Footswitch assignments incomplete~~ — all toggleable effects assigned (Plan 01)
-- ~~Ambient snapshots lack gain compensation~~ — mix boost values tuned (Plan 02)
+### Known Issues
+- Bass amp HD2 model IDs UNVERIFIED — need confirmation from real .hlx bass preset exports
+- HD2_AppDSPFlowBlock padding model name unverified against Pod Go Edit (minor)
+- **CRITICAL:** Helix Native device ID is 2162944 (confirmed from JS-EVPanRed.hlx + JS-GermXRed.hlx) — NOT 2162690 as estimated in v1.0 Phase 5
+- Stadium device_version varies across presets (285213946, 301991188, 302056726) — we hardcoded 302056738
+- Pod Go Wireless device ID may be 2162696 (vs 2162695 for standard Pod Go) — confirmed from The Hell Song.pgp
 
 ### Reference Files
+
+**Helix Floor/LT/Rack:**
 - `C:\Users\dsbog\OneDrive\Desktop\Strab ORNG RV SC.hlx` — dual-path DSP0 with IRs
 - `C:\Users\dsbog\OneDrive\Desktop\TONEAGE 185.hlx` — standard dual-DSP
 - `C:\Users\dsbog\OneDrive\Desktop\Vox Liverpool.hlx` — effects DSP0, amp+cab DSP1
 - `C:\Users\dsbog\Downloads\Alchemy Sultan 2.hlx` — user-fixed reference
+- `C:\Users\dsbog\Downloads\new presets\JS - Dual ChampMan\JSDualChmpMan.hlx` — dual-path split AB, SABJ topology
+
+**Helix Native:**
+- `C:\Users\dsbog\Downloads\new presets\JS - Dual ChampMan\JS-EVPanRed.hlx` — device 2162944, single DSP
+- `C:\Users\dsbog\Downloads\new presets\JS - Dual ChampMan\JS-GermXRed.hlx` — device 2162944, single DSP
+
+**Pod Go:**
 - `C:\Users\dsbog\Downloads\ROCK CRUNCH.pgp` — Pod Go reference (10 blocks, @controller:11)
 - `C:\Users\dsbog\Downloads\A7X.pgp` — Pod Go reference (preamp model, minimal controllers)
+- `C:\Users\dsbog\Downloads\AI CHICK_ROCK.pgp` — US Double Nrm amp, 4 snapshots, @controller:8 gain
+- `C:\Users\dsbog\Downloads\AI SANTANA DRG.pgp` — Cali Texas Ch1 amp, Transistor Tape delay
+- `C:\Users\dsbog\Downloads\MUNTAZIR SOLO.pgp` — Brit Trem Brt amp, @controller:6 footswitch toggle, Parametric EQ
+- `C:\Users\dsbog\Downloads\GrindZilla .pgp` — PV Panama amp, IR block with irUuidTable
+- `C:\Users\dsbog\Downloads\The Hell Song.pgp` — device 2162696 (Pod Go Wireless?), Brit Plexi Brt, empty block8/9
+
+**HX Stomp:**
 - `C:\Users\dsbog\Downloads\CATS NO OTO4.hlx` — HX Stomp reference (@controller:9, custom snapshot names)
 - `C:\Users\dsbog\Downloads\Bass Rig.hlx` — HX Stomp reference (8 blocks, split/join, variax)
+
+**HX Stomp XL:**
+- `C:\Users\dsbog\Downloads\Fillmore Beast.hlx` — device 2162699, Mandarin Rocker amp, SABJ topology, dual cab path
+- `C:\Users\dsbog\Downloads\Parallel X.hlx` — device 2162699, SVT4Pro bass amp, @type:3 amp+cab combo, crossover split, commandFS
+- `C:\Users\dsbog\Downloads\Throne of Grass.hlx` — device 2162699, Who Watt 100 amp, dual cab blocks (@type:4), topology "A"
+- `C:\Users\dsbog\Downloads\MATCH CH.2.hlx` — device 2162699, Matchstick Ch2 amp, @fs_customlabel/@fs_customcolor, @controller:5
+- `C:\Users\dsbog\Downloads\Synyster Gates.hlx` — device 2162699, EV Panama Blue amp, VIC_DynPlate legacy reverb, custom snapshot names
+
+**Stadium:**
 - `C:\Users\dsbog\Downloads\NH_STADIUM_AURA_REFLECTIONS\NH_BoomAuRang.hsp` — Stadium reference (dual cab, stereo delays)
 - `C:\Users\dsbog\Downloads\NH_STADIUM_AURA_REFLECTIONS\Stadium Rock Rig.hsp` — Stadium reference (rock preset)
+- `C:\Users\dsbog\Downloads\new presets\JS - Dual ChampMan\JS USSperBlck Vib.hsp` — US Super amp
+- `C:\Users\dsbog\Downloads\new presets\JS - Dual ChampMan\JS EV Panama Blue.hsp` — EV Panama amp
+- `C:\Users\dsbog\Downloads\new presets\JS - Dual ChampMan\JS Solid 100.hsp` — Solid 100 amp
+- `C:\Users\dsbog\Downloads\new presets\JS - Dual ChampMan\JS German Xtra Blue.hsp` — German Xtra, older FW (285213946)
+- `C:\Users\dsbog\Downloads\new presets\JS - Dual ChampMan\JS Brit JuJube.hsp` — Brit JuJube amp
 
 ### Blockers/Concerns
-- HD2_AppDSPFlowBlock padding model name unverified against Pod Go Edit (minor)
-- Bass amp HD2 model IDs UNVERIFIED — need confirmation from real .hlx bass preset exports
+- New reference presets needed for v5.0 audit (user gathering 5-8 per device family)
 
 ### Git State
-Last commit: pending (phase 7 commit)
+Last commit: 62cc833
 Branch: main
 Feature branches merged: none
 
 ## Session Continuity
 
 Last session: 2026-03-09
-Stopped at: v4.0 milestone complete
-Next action: /paul:complete-milestone or start next milestone
+Stopped at: Phase 8 complete, ready to plan Phase 9
+Next action: /paul:plan for Phase 9 (Structural Diff Engine)
 Resume file: .paul/ROADMAP.md
 Resume context:
-- v4.0 complete: all 7 phases (structural rewrites + validation + bass support)
-- 1248/1248 tests passing, tsc clean
-- Ready for next milestone planning
+- Phase 8 complete: 25 mock scenarios, 60 tests, all passing
+- Type fix during UNIFY: HarnessResult.intentAudit now uses IntentAudit type
+- Build passes, no regressions in orchestration tests
 
 ---
 *STATE.md — Updated after every significant action*
