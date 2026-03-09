@@ -6,16 +6,17 @@ Build an AI-powered preset builder that interviews users about their rig and ton
 ## Current Milestone
 **v4.0 — Preset Quality & Reliability** (v4.0.0)
 Status: 🚧 In Progress
-Phases: 0 of 4 complete
+Phases: 0 of 5 complete
 
 ## Phases
 
 | Phase | Name | Plans | Status | Completed |
 |-------|------|-------|--------|-----------|
-| 1 | Helix Structure Rewrite | 1/2 | Planning | - |
+| 1 | Helix Structure Rewrite | 1/2 | In Progress | - |
 | 2 | Validation Layer & Intent Fidelity | TBD | Not started | - |
 | 3 | Stadium & Pod Go Fixes | TBD | Not started | - |
-| 4 | Bass Support | TBD | Not started | - |
+| 4 | Pod Go Structure Rewrite | TBD | Not started | - |
+| 5 | Bass Support | TBD | Not started | - |
 
 ## Phase Details
 
@@ -37,7 +38,20 @@ Focus: Deep audit of stadium-builder.ts and podgo-builder.ts against real export
 
 Features: #5 (stadium reliability), #6 (Pod Go cab enforcement)
 
-### Phase 4: Bass Support
+### Phase 4: Pod Go Structure Rewrite
+
+Focus: Reverse-engineer Pod Go preset structure from real .pgp exports using the same "golden preset" methodology as Phase 1 (Helix). Rewrite podgo-builder.ts to match exact patterns from reference presets. Covers I/O structure, routing, block layout, snapshot format, footswitch assignments, and any Pod Go-specific metadata.
+
+Reference presets (ground truth):
+- `C:\Users\dsbog\Downloads\Praise You Anywhere.pgp`
+- `C:\Users\dsbog\Downloads\Schism bass.pgp`
+- `C:\Users\dsbog\Downloads\ROCK CRUNCH.pgp`
+- `C:\Users\dsbog\Downloads\Poundcake.pgp`
+- `C:\Users\dsbog\Downloads\A7X.pgp`
+
+Features: #10 (Pod Go golden preset structure)
+
+### Phase 5: Bass Support
 
 Focus: Add bass instrument support across the full stack. Bass amp and cab catalogs, bass-specific EQ curves, gain staging (less drive, more low-end clarity), bass-appropriate effect defaults, and chat interview flow ("guitar or bass?" early question).
 
@@ -99,4 +113,4 @@ Features: #7 (bass amps, cabs, EQ, effects, chat flow)
 </details>
 
 ---
-*Roadmap updated: 2026-03-08 — v4.0 milestone created (preset quality & reliability)*
+*Roadmap updated: 2026-03-08 — Added Phase 4: Pod Go Structure Rewrite (golden preset methodology)*

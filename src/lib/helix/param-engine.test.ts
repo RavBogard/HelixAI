@@ -498,33 +498,33 @@ describe("FX-03: tempo-synced delay Time", () => {
     ];
   }
 
-  it("FX-03-1: tempoHint=120 produces delay Time=0.25 (quarter note at 120 BPM)", () => {
+  it("FX-03-1: tempoHint=120 produces delay Time=0.5 (quarter note at 120 BPM)", () => {
     const chain = makeDelayChain();
     const intent = makeIntent({ tempoHint: 120 });
     const result = resolveParameters(chain, intent, defaultCaps);
     const delay = result[1];
-    // 30 / 120 = 0.25
-    expect(delay.parameters.Time).toBeCloseTo(0.25, 3);
+    // 60 / 120 = 0.5 seconds (quarter note)
+    expect(delay.parameters.Time).toBeCloseTo(0.5, 3);
   });
 
-  it("FX-03-2: tempoHint=80 produces delay Time=0.375 (quarter note at 80 BPM)", () => {
+  it("FX-03-2: tempoHint=80 produces delay Time=0.75 (quarter note at 80 BPM)", () => {
     const chain = makeDelayChain();
     const intent = makeIntent({ tempoHint: 80 });
     const result = resolveParameters(chain, intent, defaultCaps);
     const delay = result[1];
-    // 30 / 80 = 0.375
-    expect(delay.parameters.Time).toBeCloseTo(0.375, 3);
+    // 60 / 80 = 0.75 seconds (quarter note)
+    expect(delay.parameters.Time).toBeCloseTo(0.75, 3);
   });
 
-  it("FX-03-3: tempoHint=120 with Dual Delay produces Left Time=0.25, Right Time=0.1875", () => {
+  it("FX-03-3: tempoHint=120 with Dual Delay produces Left Time=0.5, Right Time=0.375", () => {
     const chain = makeDelayChain("Dual Delay", "HD2_DelayDualDelay");
     const intent = makeIntent({ tempoHint: 120 });
     const result = resolveParameters(chain, intent, defaultCaps);
     const delay = result[1];
-    // Left Time = 30/120 = 0.25
-    // Right Time = 0.25 * 0.75 = 0.1875 (dotted-eighth offset)
-    expect(delay.parameters["Left Time"]).toBeCloseTo(0.25, 3);
-    expect(delay.parameters["Right Time"]).toBeCloseTo(0.1875, 3);
+    // Left Time = 60/120 = 0.5 (quarter note)
+    // Right Time = 0.5 * 0.75 = 0.375 (dotted-eighth offset)
+    expect(delay.parameters["Left Time"]).toBeCloseTo(0.5, 3);
+    expect(delay.parameters["Right Time"]).toBeCloseTo(0.375, 3);
   });
 
   it("FX-03-4: no tempoHint leaves delay Time at genre default (unchanged)", () => {
@@ -548,37 +548,37 @@ describe("FX-03: tempo-synced delay Time", () => {
     const result = resolveParameters(chain, intent, defaultCaps);
     const delay = result[1];
     const reverb = result[2];
-    // Delay Time must be tempo-synced to 0.25
-    expect(delay.parameters.Time).toBeCloseTo(0.25, 3);
+    // Delay Time must be tempo-synced to 0.5 (quarter note at 120 BPM)
+    expect(delay.parameters.Time).toBeCloseTo(0.5, 3);
     // Reverb DecayTime must remain at blues genre default (0.4) — NOT affected by tempoHint
     expect(reverb.parameters.DecayTime).toBeCloseTo(0.4, 3);
   });
 
-  it("FX-03-6: delaySubdivision=dotted_eighth at 120 BPM produces Time=0.1875", () => {
+  it("FX-03-6: delaySubdivision=dotted_eighth at 120 BPM produces Time=0.375", () => {
     const chain = makeDelayChain();
     const intent = makeIntent({ tempoHint: 120, delaySubdivision: "dotted_eighth" as const });
     const result = resolveParameters(chain, intent, defaultCaps);
     const delay = result[1];
-    // quarter = 30/120 = 0.25, dotted eighth = 0.25 * 0.75 = 0.1875
-    expect(delay.parameters.Time).toBeCloseTo(0.1875, 3);
+    // quarter = 60/120 = 0.5, dotted eighth = 0.5 * 0.75 = 0.375
+    expect(delay.parameters.Time).toBeCloseTo(0.375, 3);
   });
 
-  it("FX-03-7: delaySubdivision=eighth at 120 BPM produces Time=0.125", () => {
+  it("FX-03-7: delaySubdivision=eighth at 120 BPM produces Time=0.25", () => {
     const chain = makeDelayChain();
     const intent = makeIntent({ tempoHint: 120, delaySubdivision: "eighth" as const });
     const result = resolveParameters(chain, intent, defaultCaps);
     const delay = result[1];
-    // quarter = 30/120 = 0.25, eighth = 0.25 * 0.5 = 0.125
-    expect(delay.parameters.Time).toBeCloseTo(0.125, 3);
+    // quarter = 60/120 = 0.5, eighth = 0.5 * 0.5 = 0.25
+    expect(delay.parameters.Time).toBeCloseTo(0.25, 3);
   });
 
-  it("FX-03-8: delaySubdivision=triplet at 120 BPM produces Time≈0.0833", () => {
+  it("FX-03-8: delaySubdivision=triplet at 120 BPM produces Time≈0.1667", () => {
     const chain = makeDelayChain();
     const intent = makeIntent({ tempoHint: 120, delaySubdivision: "triplet" as const });
     const result = resolveParameters(chain, intent, defaultCaps);
     const delay = result[1];
-    // quarter = 30/120 = 0.25, triplet = 0.25 * (1/3) ≈ 0.0833
-    expect(delay.parameters.Time).toBeCloseTo(0.0833, 3);
+    // quarter = 60/120 = 0.5, triplet = 0.5 * (1/3) ≈ 0.1667
+    expect(delay.parameters.Time).toBeCloseTo(0.1667, 3);
   });
 
   it("FX-03-9: delaySubdivision=quarter (explicit) at 120 BPM produces same as no subdivision", () => {
@@ -586,8 +586,8 @@ describe("FX-03: tempo-synced delay Time", () => {
     const intent = makeIntent({ tempoHint: 120, delaySubdivision: "quarter" as const });
     const result = resolveParameters(chain, intent, defaultCaps);
     const delay = result[1];
-    // quarter = 30/120 = 0.25
-    expect(delay.parameters.Time).toBeCloseTo(0.25, 3);
+    // quarter = 60/120 = 0.5
+    expect(delay.parameters.Time).toBeCloseTo(0.5, 3);
   });
 
   it("FX-03-10: delaySubdivision without tempoHint has no effect", () => {
@@ -599,15 +599,15 @@ describe("FX-03: tempo-synced delay Time", () => {
     expect(delay.parameters.Time).toBeCloseTo(0.15, 3);
   });
 
-  it("FX-03-11: dotted_eighth with Dual Delay applies subdivision then dotted-eighth offset", () => {
+  it("FX-03-11: eighth with Dual Delay applies subdivision then dotted-eighth offset", () => {
     const chain = makeDelayChain("Dual Delay", "HD2_DelayDualDelay");
     const intent = makeIntent({ tempoHint: 120, delaySubdivision: "eighth" as const });
     const result = resolveParameters(chain, intent, defaultCaps);
     const delay = result[1];
-    // Left Time: quarter=0.25 * 0.5(eighth) = 0.125
-    // Right Time: quarterNoteTime * 0.75 = 0.25 * 0.75 = 0.1875 (dotted-eighth offset from base quarter note)
-    expect(delay.parameters["Left Time"]).toBeCloseTo(0.125, 3);
-    expect(delay.parameters["Right Time"]).toBeCloseTo(0.1875, 4);
+    // Left Time: quarter=0.5 * 0.5(eighth) = 0.25
+    // Right Time: quarterNoteTime * 0.75 = 0.5 * 0.75 = 0.375 (dotted-eighth offset from base quarter note)
+    expect(delay.parameters["Left Time"]).toBeCloseTo(0.25, 3);
+    expect(delay.parameters["Right Time"]).toBeCloseTo(0.375, 4);
   });
 });
 

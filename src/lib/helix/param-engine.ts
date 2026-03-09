@@ -557,6 +557,15 @@ const SUBDIVISION_MULTIPLIERS: Record<string, number> = {
   triplet: 1 / 3,
 };
 
+// SyncSelect1 integer values for Helix hardware tempo sync (from real HX Edit exports)
+// Maps subdivision name to the integer the hardware expects
+const SYNC_SELECT_MAP: Record<string, number> = {
+  quarter: 4,
+  dotted_eighth: 8,
+  eighth: 6,
+  triplet: 5,
+};
+
 /**
  * Default parameter resolution — look up model's defaultParams from the database,
  * apply per-model paramOverrides, then genre-specific overrides, then tempo-synced delay override (FX-03).
@@ -601,10 +610,12 @@ function resolveDefaultParams(
   // Apply tempo-synced delay override (FX-03) — outermost layer, overrides genre Time
   // Only fires for delay blocks when tempoHint is present; reverb/modulation unaffected.
   if (tempoHint && block.type === "delay") {
-    const quarterNoteTime = 30 / tempoHint; // 60000/BPM/2000 simplified
+    // Quarter note duration in seconds: 60s / BPM
+    // Previous formula (30/BPM) was wrong — that gives an 8th note, not a quarter.
+    const quarterNoteTime = 60 / tempoHint;
     const subdivMultiplier = SUBDIVISION_MULTIPLIERS[delaySubdivision ?? "quarter"] ?? 1.0;
     const subdivTime = quarterNoteTime * subdivMultiplier;
-    const clamped = Math.max(0.01, Math.min(1.0, subdivTime));
+    const clamped = Math.max(0.01, Math.min(4.0, subdivTime));
     // Standard delay: "Time" key
     if ("Time" in params) {
       params.Time = clamped;
@@ -612,8 +623,17 @@ function resolveDefaultParams(
     // Dual Delay uses "Left Time" / "Right Time" keys (space in key name)
     if ("Left Time" in params) {
       params["Left Time"] = clamped;
-      params["Right Time"] = Math.min(1.0, Math.max(0.01, quarterNoteTime * 0.75)); // dotted-eighth offset from base quarter note for ping-pong
+      params["Right Time"] = Math.min(4.0, Math.max(0.01, quarterNoteTime * 0.75)); // dotted-eighth offset for ping-pong
     }
+
+    // Hardware tempo sync params (TempoSync1/SyncSelect1) — lets HX Edit lock delay to tempo
+    // When TempoSync1=true, the hardware handles sync; Time is the fallback value.
+    params.TempoSync1 = true;
+    params.SyncSelect1 = SYNC_SELECT_MAP[delaySubdivision ?? "quarter"] ?? 6;
+  } else if (block.type === "delay") {
+    // No tempo hint: disable hardware sync, use absolute time (genre defaults)
+    params.TempoSync1 = false;
+    params.SyncSelect1 = 6; // default 8th note (matches reference presets)
   }
 
   return params;

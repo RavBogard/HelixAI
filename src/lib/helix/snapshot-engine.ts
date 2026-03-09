@@ -32,6 +32,22 @@ const ROLE_CHVOL: Record<string, number> = {
 };
 
 // ---------------------------------------------------------------------------
+// Amp Drive per role (SNAP-06)
+// Per-snapshot amp Drive control so clean snapshots actually sound clean.
+// Without this, a single amp Drive value applies to all snapshots, making
+// "clean" sound crunchy when the planner chose a crunch/high-gain amp.
+// Values are target Drive levels per role — applied as snapshot overrides.
+// Reference: Strab ORNG RV SC.hlx uses Drive min=0.350, max=0.550 as controller.
+// ---------------------------------------------------------------------------
+
+const ROLE_DRIVE: Record<string, number> = {
+  clean: 0.30,   // Glassy clean, minimal breakup
+  crunch: 0.50,  // Moderate grit, matches AMP_DEFAULTS.crunch
+  lead: 0.60,    // Singing sustain
+  ambient: 0.35, // Warm clean with slight shimmer
+};
+
+// ---------------------------------------------------------------------------
 // Gain Block dB per role (SNAP-03)
 // Values are RAW dB applied to the Gain Block (Volume/FX Return block).
 // NOT normalized 0-1 — these are actual dB values written to the preset.
@@ -74,7 +90,9 @@ const BOOST_MODEL_IDS = new Set([
 // the base genre/model default by this delta (clamped to 0-1).
 // ---------------------------------------------------------------------------
 
-const AMBIENT_MIX_BOOST = 0.15; // +15% Mix for delay/reverb in ambient snapshot
+const AMBIENT_DELAY_MIX_BOOST = 0.25;  // +25% Mix for delays in ambient snapshot
+const AMBIENT_REVERB_MIX_BOOST = 0.20; // +20% Mix for reverbs in ambient snapshot
+const AMBIENT_DECAY_MULTIPLIER = 1.5;  // 1.5x reverb DecayTime for longer ambient tail
 
 // ---------------------------------------------------------------------------
 // Block state table by role and block type (SNAP-05, INTL-02)
@@ -277,22 +295,25 @@ export function buildSnapshots(
     // Build parameter overrides
     const parameterOverrides: Record<string, Record<string, number>> = {};
 
-    // ChVol overrides: dual-amp gets independent overrides on both amps (DUAL-05)
+    // ChVol + Drive overrides: dual-amp gets independent overrides on both amps (DUAL-05, SNAP-06)
     if (isDualAmp) {
       if (primaryAmpEntry) {
         parameterOverrides[primaryAmpEntry.key] = {
           ChVol: ROLE_CHVOL[role] ?? 0.70,
+          Drive: ROLE_DRIVE[role] ?? 0.50,
         };
       }
       if (secondaryAmpEntry) {
         parameterOverrides[secondaryAmpEntry.key] = {
           ChVol: ROLE_CHVOL[role] ?? 0.70,
+          Drive: ROLE_DRIVE[role] ?? 0.50,
         };
       }
     } else if (primaryAmpEntry) {
-      // Single-amp (existing behavior)
+      // Single-amp
       parameterOverrides[primaryAmpEntry.key] = {
         ChVol: ROLE_CHVOL[role] ?? 0.70,
+        Drive: ROLE_DRIVE[role] ?? 0.50,
       };
     }
 
@@ -302,21 +323,31 @@ export function buildSnapshots(
       };
     }
 
-    // Ambient Mix boost (INTL-02): elevate delay/reverb Mix in ambient snapshot
+    // Ambient Mix + DecayTime boost (INTL-02): elevate delay/reverb Mix and lengthen reverb tail
     if (role === "ambient") {
       for (const entry of blockEntries) {
-        if (
-          (entry.block.type === "delay" || entry.block.type === "reverb") &&
-          blockStates[entry.key] === true
-        ) {
+        if (entry.block.type === "delay" && blockStates[entry.key] === true) {
           const baseMix = entry.block.parameters?.Mix;
           if (baseMix !== undefined && typeof baseMix === "number") {
-            const boostedMix = Math.min(baseMix + AMBIENT_MIX_BOOST, 1.0);
             parameterOverrides[entry.key] = {
               ...(parameterOverrides[entry.key] ?? {}),
-              Mix: boostedMix,
+              Mix: Math.min(baseMix + AMBIENT_DELAY_MIX_BOOST, 1.0),
             };
           }
+        }
+        if (entry.block.type === "reverb" && blockStates[entry.key] === true) {
+          const baseMix = entry.block.parameters?.Mix;
+          const baseDecay = entry.block.parameters?.DecayTime;
+          const overrides: Record<string, number> = {
+            ...(parameterOverrides[entry.key] ?? {}),
+          };
+          if (baseMix !== undefined && typeof baseMix === "number") {
+            overrides.Mix = Math.min(baseMix + AMBIENT_REVERB_MIX_BOOST, 1.0);
+          }
+          if (baseDecay !== undefined && typeof baseDecay === "number") {
+            overrides.DecayTime = Math.min(baseDecay * AMBIENT_DECAY_MULTIPLIER, 1.0);
+          }
+          parameterOverrides[entry.key] = overrides;
         }
       }
     }
