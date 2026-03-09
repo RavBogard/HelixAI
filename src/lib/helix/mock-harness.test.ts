@@ -44,6 +44,11 @@ describe("mock-harness", () => {
         // Preset was produced
         expect(result.preset).not.toBeNull();
         expect(result.spec).not.toBeNull();
+
+        // Musical audit present
+        expect(result.musicalAudit).toBeDefined();
+        expect(result.musicalAudit).toHaveProperty("warnings");
+        expect(result.musicalAudit).toHaveProperty("passed");
       }
     );
   });

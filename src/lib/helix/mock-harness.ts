@@ -12,11 +12,13 @@ import { buildHspFile } from "./stadium-builder";
 import { validatePresetSpec } from "./validate";
 import { validatePresetQuality } from "./quality-validate";
 import { auditIntentFidelity } from "./intent-validate";
+import { validateMusicalIntelligence } from "./musical-validate";
 import { getCapabilities } from "./device-family";
 import { isStomp, isStadium, isPodGo } from "./types";
 import type { PresetSpec, DeviceTarget } from "./types";
 import type { MockScenario } from "./mock-scenarios";
 import type { IntentAudit } from "./intent-validate";
+import type { MusicalAudit } from "./musical-validate";
 
 export interface HarnessResult {
   scenarioId: string;
@@ -27,6 +29,7 @@ export interface HarnessResult {
   fileExtension: ".hlx" | ".pgp" | ".hsp";
   qualityWarnings: string[];
   intentAudit: IntentAudit;
+  musicalAudit: MusicalAudit;
   error?: string;
 }
 
@@ -65,6 +68,9 @@ export function runScenario(scenario: MockScenario): HarnessResult {
     // Intent fidelity audit
     const intentAudit = auditIntentFidelity(intent, presetSpec);
 
+    // Musical intelligence validation
+    const musicalAudit = validateMusicalIntelligence(intent, presetSpec);
+
     // Build device-specific preset file
     let preset: unknown;
     let fileExtension: ".hlx" | ".pgp" | ".hsp";
@@ -92,6 +98,7 @@ export function runScenario(scenario: MockScenario): HarnessResult {
       fileExtension,
       qualityWarnings,
       intentAudit,
+      musicalAudit,
     };
   } catch (err) {
     return {
@@ -109,8 +116,10 @@ export function runScenario(scenario: MockScenario): HarnessResult {
         tempo: { requested: 0, actual: 0, matched: false },
         delaySubdivision: { requested: null, applied: false },
         snapshots: { requested: 0, actual: 0, matched: false },
+        instrument: { requested: undefined, matched: false },
         warnings: [],
       },
+      musicalAudit: { warnings: [], passed: false },
       error: err instanceof Error ? err.message : String(err),
     };
   }

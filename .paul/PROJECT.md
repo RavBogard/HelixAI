@@ -51,6 +51,8 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 - ✓ Bass-aware planner prompts: amp-cab pairings, gain staging, effect intelligence — v4.0 Phase 7
 - ✓ Mock chat harness: 25 scenarios (5 families × 5 styles) exercising full pipeline without AI calls — v5.0 Phase 8
 - ✓ Structural diff engine: deterministic deep JSON comparison across all 4 preset formats with categorized severity reports — v5.0 Phase 9
+- ✓ Intent fidelity: instrument type check (bass amp + compression verification) — v5.0 Phase 10
+- ✓ Musical intelligence: 5-rule genre/instrument validation engine (genre-effect, bass compression, gain staging, snapshot roles, effect count) — v5.0 Phase 10
 
 ### Must Have
 - [To be defined during planning]
@@ -100,6 +102,8 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 | Stadium bass: no bass-specific amps (Agoura catalog) | v4.0 Phase 7 | Bass players advised to use Helix/Stomp for dedicated bass amps |
 | Compression non-negotiable for bass | v4.0 Phase 7 | Priority 1 in all family bass effect tables |
 | HarnessResult.intentAudit uses IntentAudit type directly | v5.0 Phase 8 | Matches auditIntentFidelity return type — not simplified shape |
+| Bass amp detection via AMP_MODELS.instrument field | v5.0 Phase 10 | Authoritative source, not name heuristics |
+| Genre categorization via explicit keyword lookup | v5.0 Phase 10 | Deterministic, unknown genres skip genre rules safely |
 
 ## Constraints
 - [To be identified during planning]
@@ -116,4 +120,4 @@ Quick Reference:
 - /ui-ux-pro-max → Frontend / UI / UX (required)
 
 ---
-*Last updated: 2026-03-09 after v5.0 Phase 9 (Structural Diff Engine complete)*
+*Last updated: 2026-03-09 after v5.0 Phase 10 (Intent & Musical Intelligence Validation complete)*

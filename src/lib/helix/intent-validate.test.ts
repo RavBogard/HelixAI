@@ -364,6 +364,7 @@ describe("auditIntentFidelity", () => {
       expect(audit).toHaveProperty("tempo");
       expect(audit).toHaveProperty("delaySubdivision");
       expect(audit).toHaveProperty("snapshots");
+      expect(audit).toHaveProperty("instrument");
       expect(audit).toHaveProperty("warnings");
       expect(Array.isArray(audit.effects)).toBe(true);
       expect(Array.isArray(audit.warnings)).toBe(true);
@@ -375,6 +376,70 @@ describe("auditIntentFidelity", () => {
       expect(audit.delaySubdivision.applied).toBe(true);
       expect(audit.snapshots.matched).toBe(true);
       expect(audit.warnings).toHaveLength(0);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Instrument type fidelity (AC-1 Phase 10)
+  // ---------------------------------------------------------------------------
+
+  describe("instrument type check", () => {
+    it("matches when bass intent has bass amp", () => {
+      const intent = makeIntent({
+        instrument: "bass",
+        ampName: "SV Beast Nrm",
+      } as Partial<ToneIntent>);
+      const preset = makePreset({
+        signalChain: [
+          makeBlock({ type: "amp", modelName: "SV Beast Nrm" }),
+          makeBlock({ type: "cab", modelName: "8x10 SVT AV", position: 1 }),
+          makeBlock({ type: "dynamics", modelName: "Deluxe Comp", position: 2 }),
+        ],
+      });
+      const audit = auditIntentFidelity(intent, preset);
+      expect(audit.instrument.requested).toBe("bass");
+      expect(audit.instrument.matched).toBe(true);
+      expect(audit.warnings.filter((w) => w.includes("Instrument"))).toHaveLength(0);
+    });
+
+    it("warns when bass intent but guitar amp", () => {
+      const intent = makeIntent({
+        instrument: "bass",
+        ampName: "US Double Nrm",
+      } as Partial<ToneIntent>);
+      const preset = makePreset({
+        signalChain: [
+          makeBlock({ type: "amp", modelName: "US Double Nrm" }),
+          makeBlock({ type: "cab", modelName: "4x12 Greenback25", position: 1 }),
+          makeBlock({ type: "dynamics", modelName: "Deluxe Comp", position: 2 }),
+        ],
+      });
+      const audit = auditIntentFidelity(intent, preset);
+      expect(audit.instrument.matched).toBe(false);
+      expect(audit.warnings.some((w) => w.includes("Instrument mismatch"))).toBe(true);
+    });
+
+    it("warns when bass intent but no compression", () => {
+      const intent = makeIntent({
+        instrument: "bass",
+        ampName: "SV Beast Nrm",
+      } as Partial<ToneIntent>);
+      const preset = makePreset({
+        signalChain: [
+          makeBlock({ type: "amp", modelName: "SV Beast Nrm" }),
+          makeBlock({ type: "cab", modelName: "8x10 SVT AV", position: 1 }),
+        ],
+      });
+      const audit = auditIntentFidelity(intent, preset);
+      expect(audit.warnings.some((w) => w.includes("compression"))).toBe(true);
+    });
+
+    it("always matched for guitar/undefined instrument", () => {
+      const intent = makeIntent();
+      const preset = makePreset();
+      const audit = auditIntentFidelity(intent, preset);
+      expect(audit.instrument.requested).toBeUndefined();
+      expect(audit.instrument.matched).toBe(true);
     });
   });
 

@@ -6,6 +6,7 @@
 
 import type { ToneIntent } from "./tone-intent";
 import type { PresetSpec } from "./types";
+import { AMP_MODELS } from "./models";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -30,6 +31,7 @@ export interface IntentAudit {
   tempo: { requested: number; actual: number; matched: boolean };
   delaySubdivision: { requested: string | null; applied: boolean };
   snapshots: { requested: number; actual: number; matched: boolean };
+  instrument: { requested: string | undefined; matched: boolean };
   warnings: string[];
 }
 
@@ -65,6 +67,7 @@ export function auditIntentFidelity(
     tempo: { requested: 120, actual: 120, matched: true },
     delaySubdivision: { requested: null, applied: false },
     snapshots: { requested: 0, actual: 0, matched: true },
+    instrument: { requested: undefined, matched: true },
     warnings: [],
   };
 
@@ -147,6 +150,30 @@ export function auditIntentFidelity(
       );
     }
 
+    // --- Instrument type check ---
+    const instrumentRequested = toneIntent.instrument;
+    let instrumentMatched = true;
+    if (instrumentRequested === "bass") {
+      // Check if amp is a known bass amp via AMP_MODELS instrument field
+      const ampName = ampBlock?.modelName;
+      if (ampName) {
+        const ampModel = AMP_MODELS[ampName];
+        if (ampModel && ampModel.instrument !== "bass") {
+          instrumentMatched = false;
+          warnings.push(
+            `Instrument mismatch: bass requested but amp "${ampName}" is not a bass amp`,
+          );
+        }
+      }
+      // Check for compression (non-negotiable for bass)
+      const hasCompression = chain.some((b) => b.type === "dynamics");
+      if (!hasCompression) {
+        warnings.push(
+          "Bass preset missing compression — compression is non-negotiable for bass",
+        );
+      }
+    }
+
     return {
       amp: { requested: ampRequested, matched: ampMatched, ...(ampBlock ? { actual: ampBlock.modelName } : {}) },
       cab: { requested: cabRequested, matched: cabMatched, ...(cabBlock ? { actual: cabBlock.modelName } : {}) },
@@ -154,6 +181,7 @@ export function auditIntentFidelity(
       tempo: { requested: tempoRequested, actual: tempoActual, matched: tempoMatched },
       delaySubdivision: { requested: delaySubRequested, applied: delaySubApplied },
       snapshots: { requested: snapshotsRequested, actual: snapshotsActual, matched: snapshotsMatched },
+      instrument: { requested: instrumentRequested, matched: instrumentMatched },
       warnings,
     };
   } catch {
