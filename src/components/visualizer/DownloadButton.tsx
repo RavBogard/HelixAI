@@ -7,20 +7,23 @@
 import { useState, useRef, useEffect } from "react";
 import { useVisualizerStore } from "@/lib/visualizer/store";
 import { calculateStateDiff } from "@/lib/visualizer/state-diff";
+import { isPodGo, isStadium } from "@/lib/helix/types";
+import type { DeviceTarget } from "@/lib/helix/types";
 
 /**
  * Parse filename from Content-Disposition header.
- * Falls back to `${presetName}.hlx` if header is missing or unparseable.
+ * Falls back to `${presetName}.${ext}` if header is missing or unparseable.
  */
 function parseFilename(
   contentDisposition: string | null,
   fallbackName: string,
+  fallbackExtension: string = "hlx",
 ): string {
   if (contentDisposition) {
     const match = contentDisposition.match(/filename="?([^";\n]+)"?/);
     if (match?.[1]) return match[1];
   }
-  return `${fallbackName}.hlx`;
+  return `${fallbackName}.${fallbackExtension}`;
 }
 
 export function DownloadButton() {
@@ -93,9 +96,13 @@ export function DownloadButton() {
       // Trigger browser file download
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
+      const fallbackExt = isPodGo(device as DeviceTarget) ? "pgp"
+        : isStadium(device as DeviceTarget) ? "hsp"
+        : "hlx";
       const filename = parseFilename(
         response.headers.get("content-disposition"),
         presetName || "preset",
+        fallbackExt,
       );
 
       const anchor = document.createElement("a");
