@@ -10,24 +10,24 @@ See: .paul/PROJECT.md (updated 2026-03-08)
 ## Current Position
 
 Milestone: v4.0 — Preset Quality & Reliability
-Phase: 2 of 5 (Validation Layer & Intent Fidelity) — Not Started
+Phase: 3 of 7 (HX Stomp Structure Rewrite) — Not started
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-03-08 — Phase 1 complete, transitioned to Phase 2
+Last activity: 2026-03-08 — Phase 2 complete, transitioned to Phase 3
 
 Progress:
 - v1.0 Production Release: [██████████] 100% ✓
 - v1.1 Post-Release Stabilization: [██████████] 100% ✓
 - v2.0 Device Intelligence & UX Overhaul: [██████████] 100% ✓
 - v3.0 Preset Format Correctness & Quality: [██████████] 100% ✓
-- v4.0 Preset Quality & Reliability: [██░░░░░░░░] 20%
+- v4.0 Preset Quality & Reliability: [██░░░░░░░░] 29%
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ✓        ✓        ✓     [Phase 1 loop complete — ready for Phase 2 PLAN]
+  ✓        ✓        ✓     [Loop complete - ready for next PLAN]
 ```
 
 ## Accumulated Context
@@ -43,10 +43,14 @@ PLAN ──▶ APPLY ──▶ UNIFY
 - Split/join always present on both DSPs regardless of dual-amp — v4.0 Phase 1
 - TempoSync1=true when BPM present, false otherwise — v4.0 Phase 1
 - Amp Drive as snapshot controller (@controller=19) with ROLE_DRIVE table — v4.0 Phase 1
+- Reordered v4.0: golden-preset rewrites (2-5) before validation (6), dropped "Stadium & Pod Go Fixes" (superseded by full rewrites) — v4.0
+- Pod Go snapshot controller = 11 (not 4), FS indices 1-6 (not 0-5) — v4.0 Phase 2
+- Pod Go @pedalstate always 2 (snapshot mode indicator) — v4.0 Phase 2
+- Pod Go invalid snapshots have full blocks/controllers structure — v4.0 Phase 2
 
-### Known Issues (v4.0 scope — remaining phases)
-- Stadium presets losing cabs/effects (Phase 3)
-- Pod Go presets missing cab for amp (Phase 3)
+### Known Issues (v4.0 scope — resolved by structural rewrites)
+- Stadium presets losing cabs/effects (Phase 5 — Stadium Structure Rewrite)
+- ~~Pod Go presets missing cab for amp~~ (Phase 2 — resolved: snapshots now include all blocks)
 
 ### Resolved Issues (Phase 1)
 - ~~CLEAN snapshot too crunchy~~ — per-snapshot Drive control (Plan 02)
@@ -60,22 +64,22 @@ PLAN ──▶ APPLY ──▶ UNIFY
 - `C:\Users\dsbog\OneDrive\Desktop\TONEAGE 185.hlx` — standard dual-DSP
 - `C:\Users\dsbog\OneDrive\Desktop\Vox Liverpool.hlx` — effects DSP0, amp+cab DSP1
 - `C:\Users\dsbog\Downloads\Alchemy Sultan 2.hlx` — user-fixed reference
-- `C:\Users\dsbog\Downloads\Alchemy_Sultans_Pad_LT (2).hlx` — broken output for comparison
-- `C:\Users\dsbog\Downloads\Sultans_of_Strat_LT.hlx` — Plan 01-01 verification output
+- `C:\Users\dsbog\Downloads\ROCK CRUNCH.pgp` — Pod Go reference (10 blocks, @controller:11)
+- `C:\Users\dsbog\Downloads\A7X.pgp` — Pod Go reference (preamp model, minimal controllers)
 
 ### Blockers/Concerns
-- None
+- HD2_AppDSPFlowBlock padding model name unverified against Pod Go Edit (minor)
 
 ### Git State
-Last commit: 4232c92
+Last commit: af367f6
 Branch: main
 Feature branches merged: none
 
 ## Session Continuity
 
 Last session: 2026-03-08
-Stopped at: Phase 1 complete, ready to plan Phase 2
-Next action: /paul:plan for Phase 2 (Validation Layer & Intent Fidelity)
+Stopped at: Phase 2 complete, ready to plan Phase 3
+Next action: /paul:plan for Phase 3 (HX Stomp Structure Rewrite)
 Resume file: .paul/ROADMAP.md
 
 ---

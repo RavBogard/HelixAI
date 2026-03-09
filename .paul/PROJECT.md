@@ -35,6 +35,9 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 - ✓ Delay tempo sync: TempoSync1/SyncSelect1 parameters on all delay blocks, correct Time formula (60/BPM) — v4.0 Phase 1
 - ✓ Per-snapshot amp Drive control: clean=0.30, crunch=0.50, lead=0.60, ambient=0.35 — v4.0 Phase 1
 - ✓ Ambient snapshot sound design: boosted delay/reverb mix, longer decay for atmospheric sound — v4.0 Phase 1
+- ✓ Pod Go snapshot controller = 11 (not 4), footswitch indices 1-6 (not 0-5) — v4.0 Phase 2
+- ✓ Pod Go DSP always 10 blocks (block0-block9), padded with disabled empty blocks — v4.0 Phase 2
+- ✓ Pod Go snapshots include all blocks including cabs, empty snapshots have full structure — v4.0 Phase 2
 
 ### Must Have
 - [To be defined during planning]
@@ -70,6 +73,9 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 | Split/join always present on both DSPs regardless of dual-amp | v4.0 Phase 1 | Real exports always include split/join — consistency |
 | TempoSync1=true when BPM present, false otherwise | v4.0 Phase 1 | Matches real preset behavior — hardware handles sync when tempo known |
 | Amp Drive as snapshot controller (@controller=19) | v4.0 Phase 1 | HX Edit convention for snapshot-controlled amp parameters |
+| Pod Go snapshot controller = 11 | v4.0 Phase 2 | Confirmed from all 5 reference .pgp presets |
+| Pod Go @pedalstate always 2 | v4.0 Phase 2 | All reference presets use 2 regardless of block states |
+| Pod Go FS indices 1-6 | v4.0 Phase 2 | Real .pgp exports use @fs_index 1-6 (not 0-5) |
 
 ## Constraints
 - [To be identified during planning]
@@ -86,4 +92,4 @@ Quick Reference:
 - /ui-ux-pro-max → Frontend / UI / UX (required)
 
 ---
-*Last updated: 2026-03-08 after v4.0 Phase 1 (Helix Structure Rewrite complete)*
+*Last updated: 2026-03-08 after v4.0 Phase 2 (Pod Go Structure Rewrite complete)*
