@@ -38,6 +38,13 @@ export interface HlxTone {
   controller: HlxControllerSection;
   footswitch: Record<string, unknown>;
   global: HlxGlobal;
+  dt0?: HlxDt;
+  dt1?: HlxDt;
+  dtdual?: HlxDt;
+  powercab0?: HlxPowercab;
+  powercab1?: HlxPowercab;
+  powercabdual?: HlxPowercab;
+  variax?: HlxVariax;
 }
 
 export interface HlxDsp {
@@ -69,17 +76,26 @@ export interface HlxSplit {
   "@model": string;
   "@enabled": boolean;
   "@position": number;
-  RouteTo?: number;
+  "@no_snapshot_bypass"?: boolean;
+  "@bypassvolume"?: number;
+  BalanceA?: number;
+  BalanceB?: number;
   bypass?: boolean;
+  RouteTo?: number;
 }
 
 export interface HlxJoin {
   "@model": string;
+  "@enabled"?: boolean;
   "@position": number;
+  "@no_snapshot_bypass"?: boolean;
+  "@bypassvolume"?: number;
   "A Level"?: number;
   "B Level"?: number;
   "A Pan"?: number;
   "B Pan"?: number;
+  "B Polarity"?: boolean;
+  Level?: number;
 }
 
 export interface HlxBlock {
@@ -152,6 +168,62 @@ export interface HlxGlobal {
   "@pedalstate": number;
   "@guitarpad"?: number;
   "@guitarinputZ"?: number;
+  "@DtSelect"?: number;
+  "@PowercabMode"?: number;
+  "@PowercabSelect"?: number;
+  "@PowercabVoicing"?: number;
+}
+
+// DT amplifier section (dt0, dt1, dtdual)
+export interface HlxDt {
+  "@model": "@dt";
+  "@dt_12ax7boost": number;
+  "@dt_bplusvoltage": number;
+  "@dt_channel": number;
+  "@dt_feedbackcap": number;
+  "@dt_poweramp": number;
+  "@dt_reverb": boolean;
+  "@dt_revmix": number;
+  "@dt_topology": number;
+  "@dt_tubeconfig": number;
+}
+
+// Powercab section (powercab0, powercab1, powercabdual)
+export interface HlxPowercab {
+  "@model": "@powercab";
+  "@powercab_color": number;
+  "@powercab_distance": number;
+  "@powercab_flatlevel": number;
+  "@powercab_hicut": number;
+  "@powercab_irlevel": number;
+  "@powercab_lowcut": number;
+  "@powercab_mic": number;
+  "@powercab_speaker": number;
+  "@powercab_speakerlevel": number;
+  "@powercab_userir": number;
+}
+
+// Variax section
+export interface HlxVariax {
+  "@model": "@variax";
+  "@variax_customtuning": boolean;
+  "@variax_lockctrls": number;
+  "@variax_magmode": boolean;
+  "@variax_model": number;
+  "@variax_str1level": number;
+  "@variax_str1tuning": number;
+  "@variax_str2level": number;
+  "@variax_str2tuning": number;
+  "@variax_str3level": number;
+  "@variax_str3tuning": number;
+  "@variax_str4level": number;
+  "@variax_str4tuning": number;
+  "@variax_str5level": number;
+  "@variax_str5tuning": number;
+  "@variax_str6level": number;
+  "@variax_str6tuning": number;
+  "@variax_toneknob": number;
+  "@variax_volumeknob": number;
 }
 
 // Amp classification types — used by HelixModel extension in models.ts and param-engine.ts (Phase 2)

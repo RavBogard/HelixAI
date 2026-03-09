@@ -1,4 +1,4 @@
-import type { HlxFile, HlxDsp, HlxSnapshot, HlxTone, PresetSpec, BlockSpec, SnapshotSpec } from "./types";
+import type { HlxFile, HlxDsp, HlxSnapshot, HlxTone, HlxDt, HlxPowercab, HlxVariax, PresetSpec, BlockSpec, SnapshotSpec } from "./types";
 import { DEVICE_IDS, isVariaxSupported, type DeviceTarget } from "./types";
 import { CONTROLLERS } from "./models";
 import { FIRMWARE_CONFIG } from "./config";
@@ -91,7 +91,7 @@ function buildTone(spec: PresetSpec, device: DeviceTarget = "helix_lt"): HlxTone
   for (let i = 0; i < 8; i++) {
     const snapshotSpec = spec.snapshots[i];
     if (snapshotSpec) {
-      snapshots[`snapshot${i}`] = buildSnapshot(snapshotSpec, spec.signalChain, spec.tempo, i, stompAssignments);
+      snapshots[`snapshot${i}`] = buildSnapshot(snapshotSpec, spec.signalChain, spec.tempo, i, stompAssignments, isDualAmp);
     } else {
       snapshots[`snapshot${i}`] = buildEmptySnapshot(i);
     }
@@ -99,6 +99,58 @@ function buildTone(spec: PresetSpec, device: DeviceTarget = "helix_lt"): HlxTone
 
   // Build controller section for snapshot-controlled parameters + EXP pedal assignments
   const controller = buildControllerSection(spec, device);
+
+  // DT amplifier defaults (identical for dt0, dt1, dtdual — confirmed from reference presets)
+  const dtDefaults: HlxDt = {
+    "@model": "@dt",
+    "@dt_12ax7boost": 0,
+    "@dt_bplusvoltage": 0,
+    "@dt_channel": 0,
+    "@dt_feedbackcap": 0,
+    "@dt_poweramp": 1,
+    "@dt_reverb": true,
+    "@dt_revmix": 0.25,
+    "@dt_topology": 0,
+    "@dt_tubeconfig": 0,
+  };
+
+  // Powercab defaults (confirmed from reference presets)
+  const powercabDefaults: HlxPowercab = {
+    "@model": "@powercab",
+    "@powercab_color": 0,
+    "@powercab_distance": 3.5,
+    "@powercab_flatlevel": 0.0,
+    "@powercab_hicut": 20100.0,
+    "@powercab_irlevel": -18.0,
+    "@powercab_lowcut": 19.9,
+    "@powercab_mic": 0,
+    "@powercab_speaker": 0,
+    "@powercab_speakerlevel": -15.0,
+    "@powercab_userir": 0,
+  };
+
+  // Variax defaults (confirmed from reference presets)
+  const variaxDefaults: HlxVariax = {
+    "@model": "@variax",
+    "@variax_customtuning": true,
+    "@variax_lockctrls": 0,
+    "@variax_magmode": true,
+    "@variax_model": 0,
+    "@variax_str1level": 1.0,
+    "@variax_str1tuning": 0,
+    "@variax_str2level": 1.0,
+    "@variax_str2tuning": 0,
+    "@variax_str3level": 1.0,
+    "@variax_str3tuning": 0,
+    "@variax_str4level": 1.0,
+    "@variax_str4tuning": 0,
+    "@variax_str5level": 1.0,
+    "@variax_str5tuning": 0,
+    "@variax_str6level": 1.0,
+    "@variax_str6tuning": 0,
+    "@variax_toneknob": -0.1,
+    "@variax_volumeknob": -0.1,
+  };
 
   const tone: HlxTone = {
     dsp0,
@@ -126,7 +178,18 @@ function buildTone(spec: PresetSpec, device: DeviceTarget = "helix_lt"): HlxTone
       "@pedalstate": 2,
       "@guitarpad": 0,
       "@guitarinputZ": 0,
+      "@DtSelect": 2,
+      "@PowercabMode": 0,
+      "@PowercabSelect": 2,
+      "@PowercabVoicing": 0,
     },
+    dt0: { ...dtDefaults },
+    dt1: { ...dtDefaults },
+    dtdual: { ...dtDefaults },
+    powercab0: { ...powercabDefaults },
+    powercab1: { ...powercabDefaults },
+    powercabdual: { ...powercabDefaults },
+    variax: { ...variaxDefaults },
   };
   return tone;
 }
@@ -141,14 +204,27 @@ function buildDsp(blocks: BlockSpec[], dspIndex: number, isDualAmp?: boolean, us
   const dsp: HlxDsp = {
     inputA: {
       "@input": dsp1Input !== undefined ? dsp1Input : ((dspIndex === 0 && useVariaxInput) ? 3 : 1),
-      "@model": dspIndex === 0 ? "HD2_AppDSPFlow1Input" : "HD2_AppDSPFlow2Input",
+      "@model": "HD2_AppDSPFlow1Input",  // Always Flow1Input on BOTH DSPs (confirmed from reference presets)
       noiseGate: dspIndex === 0,
       decay: dspIndex === 0 ? 0.5 : 0.1,
-      threshold: dspIndex === 0 ? -48.0 : -48.0,
+      threshold: -48.0,
+    },
+    inputB: {
+      "@input": 0,
+      "@model": "HD2_AppDSPFlow2Input",  // Always Flow2Input on BOTH DSPs (confirmed from reference presets)
+      noiseGate: false,
+      decay: 0.5,
+      threshold: -48.0,
     },
     outputA: {
       "@model": "HD2_AppDSPFlowOutput",
       "@output": dspIndex === 0 ? dsp0Output : 1,
+      pan: 0.5,
+      gain: 0.0,
+    },
+    outputB: {
+      "@model": "HD2_AppDSPFlowOutput",
+      "@output": 0,  // Always 0 (confirmed from reference presets)
       pan: 0.5,
       gain: 0.0,
     },
@@ -229,9 +305,38 @@ function buildDsp(blocks: BlockSpec[], dspIndex: number, isDualAmp?: boolean, us
     }
   }
 
-  // Dual-amp: write split and join blocks to dsp0 (DUAL-06)
+  // Default split/join: ALWAYS present on both DSPs (confirmed from reference presets).
+  // For single-path topology "A": uses FlowSplitY/FlowJoin with default params.
+  // For dual-amp: overridden below with SplitAB/MergerMixer.
+  const maxBlockPos = blocks
+    .filter(b => b.type !== "cab")
+    .reduce((max, b) => Math.max(max, b.position), 0);
+
+  dsp.split = {
+    "@model": "HD2_AppDSPFlowSplitY",
+    "@enabled": true,
+    "@no_snapshot_bypass": false,
+    "@position": 0,
+    BalanceA: 0.5,
+    BalanceB: 0.5,
+    bypass: false,
+  };
+
+  dsp.join = {
+    "@model": "HD2_AppDSPFlowJoin",
+    "@enabled": true,
+    "@no_snapshot_bypass": false,
+    "@position": maxBlockPos + 1,
+    "A Level": 0.0,
+    "A Pan": 0.0,
+    "B Level": 0.0,
+    "B Pan": 1.0,
+    "B Polarity": false,
+    Level: 0.0,
+  };
+
+  // Dual-amp: override split/join on dsp0 with SplitAB/MergerMixer (DUAL-06)
   if (isDualAmp && dspIndex === 0) {
-    // Split block: placed before the first amp
     const firstAmpPos = blocks
       .filter(b => b.type === "amp")
       .reduce((min, b) => Math.min(min, b.position), Infinity);
@@ -243,10 +348,6 @@ function buildDsp(blocks: BlockSpec[], dspIndex: number, isDualAmp?: boolean, us
       "@position": splitPosition,
     };
 
-    // Join block: placed after the last non-cab block position
-    const maxBlockPos = blocks
-      .filter(b => b.type !== "cab")
-      .reduce((max, b) => Math.max(max, b.position), 0);
     const joinPosition = maxBlockPos + 1;
 
     dsp.join = {
@@ -313,6 +414,7 @@ function buildSnapshot(
   tempo: number,
   _index: number,
   stompAssignments: StompAssignment[] = [],
+  isDualAmp: boolean = false,
 ): HlxSnapshot {
   const blocks: { dsp0?: Record<string, boolean>; dsp1?: Record<string, boolean> } = {
     dsp0: {},
@@ -351,6 +453,12 @@ function buildSnapshot(
     if (!(key in blocks[dspKey]!)) {
       blocks[dspKey]![key] = block.enabled;
     }
+  }
+
+  // Add split state to dsp0 snapshot blocks for dual-amp presets (confirmed from reference presets:
+  // Strab ORNG RV SC.hlx shows "split": true in dsp0 blocks for topology SABJ/AB)
+  if (isDualAmp) {
+    blocks.dsp0!["split"] = true;
   }
 
   // Set parameter overrides

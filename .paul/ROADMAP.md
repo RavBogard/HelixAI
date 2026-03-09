@@ -4,36 +4,63 @@
 Build an AI-powered preset builder that interviews users about their rig and tone preferences, then generates professional-quality Line 6 presets across all supported device families.
 
 ## Current Milestone
-**v3.0 — Preset Format Correctness & Quality** (v3.0.0)
-Status: Complete
-Phases: 1 of 1 complete
+**v4.0 — Preset Quality & Reliability** (v4.0.0)
+Status: 🚧 In Progress
+Phases: 0 of 4 complete
 
 ## Phases
 
 | Phase | Name | Plans | Status | Completed |
 |-------|------|-------|--------|-----------|
-| 1 | Preset Format Correctness Audit & Fix | 1/1 | ✅ Complete | 2026-03-08 |
+| 1 | Helix Structure Rewrite | 1/2 | Planning | - |
+| 2 | Validation Layer & Intent Fidelity | TBD | Not started | - |
+| 3 | Stadium & Pod Go Fixes | TBD | Not started | - |
+| 4 | Bass Support | TBD | Not started | - |
 
 ## Phase Details
 
-### Phase 1: Preset Format Correctness Audit & Fix
+### Phase 1: Helix Structure Rewrite
 
-Focus: Deep audit and fix of all preset file format issues across every device builder. Reverse-engineer correct .hlx format values, fix DSP0→DSP1 routing, overhaul footswitch/stomp assignment system to be device-aware and comprehensive, and verify block @type IDs against real firmware. Not a bandaid — systematic validation of every serialization value.
+Focus: Rewrite Helix/LT/Rack/Native preset builder to match exact structural patterns from real HX Edit exports. Includes inputB/outputB/split/join on both DSPs, correct routing models, footswitch assignment overhaul (all toggleable effects), ambient volume compensation, and tempo sync (TempoSync1/SyncSelect1 instead of hardcoded ms). Reference presets are ground truth.
 
-Key issues driving this phase:
-- DSP0 output routes to physical out instead of DSP1 (broken signal chain)
-- Stomp assignments limited to 4 footswitches (should assign all toggleable effects)
-- HX Stomp builder has zero footswitch assignments
-- Block @type values need firmware verification
+Features: #1 (structure), #2 (footswitches), #3 (volume compensation), #8 (tempo sync)
+
+### Phase 2: Validation Layer & Intent Fidelity
+
+Focus: Deterministic post-build validation layer that checks every generated preset before serving. Structural checks (inputB/outputB/split/join, routing, cab-per-amp, @type), footswitch completeness, intent fidelity (delay subdivision, snapshot count, BPM), and volume compensation. Zero AI cost. Also includes intent audit and echo to surface applied parameters to user.
+
+Features: #4 (post-build validation), #9 (intent audit + echo)
+
+### Phase 3: Stadium & Pod Go Fixes
+
+Focus: Deep audit of stadium-builder.ts and podgo-builder.ts against real exports. Fix stadium preset reliability (missing cabs, dropped effects, mono/stereo suffixes, amp-cab wiring). Add Pod Go cab enforcement (every amp must have a cab). Validate before serving.
+
+Features: #5 (stadium reliability), #6 (Pod Go cab enforcement)
+
+### Phase 4: Bass Support
+
+Focus: Add bass instrument support across the full stack. Bass amp and cab catalogs, bass-specific EQ curves, gain staging (less drive, more low-end clarity), bass-appropriate effect defaults, and chat interview flow ("guitar or bass?" early question).
+
+Features: #7 (bass amps, cabs, EQ, effects, chat flow)
 
 ## Constraints
 
+- Must not break existing test suite (1201 tests)
+- Reference presets (user's real .hlx files) are ground truth — match structure exactly
+- No additional AI API costs for validation (deterministic only)
+- Helix/LT/Rack/Native share the same builder (fix once, works for all 4)
 - Preserve preset file format compatibility (.hlx/.pgp/.hsp container structure)
-- Do not change signal chain ordering logic (chain-rules.ts)
-- Do not change parameter values (param-engine.ts)
-- Do not change snapshot roles or gain staging
 
 ## Completed Milestones
+
+<details>
+<summary>v3.0 Preset Format Correctness & Quality - 2026-03-08 (1 phase)</summary>
+
+| Phase | Name | Plans | Completed |
+|-------|------|-------|-----------|
+| 1 | Preset Format Correctness Audit & Fix | 1 | 2026-03-08 |
+
+</details>
 
 <details>
 <summary>v2.0 Device Intelligence & UX Overhaul - 2026-03-08 (5 phases)</summary>
@@ -72,4 +99,4 @@ Key issues driving this phase:
 </details>
 
 ---
-*Roadmap updated: 2026-03-08 — v3.0 milestone started (preset format correctness)*
+*Roadmap updated: 2026-03-08 — v4.0 milestone created (preset quality & reliability)*
