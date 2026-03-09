@@ -51,6 +51,35 @@ export const STOMP_AMP_CAB_PAIRINGS = [
   },
 ];
 
+// Bass amp-to-cab pairings — HD2 bass models from models.ts
+export const STOMP_BASS_AMP_CAB_PAIRINGS = [
+  {
+    ampFamily: "Ampeg SVT (classic rock/metal bass)",
+    amps: ["SV Beast Nrm", "SV Beast Brt"],
+    recommendedCabs: ["8x10 SV Beast"],
+  },
+  {
+    ampFamily: "Ampeg B-15 (vintage Motown/soul)",
+    amps: ["Agua 51"],
+    recommendedCabs: ["1x15 Tuck n' Go"],
+  },
+  {
+    ampFamily: "Mesa Bass (modern aggressive)",
+    amps: ["Cali Bass"],
+    recommendedCabs: ["6x10 Cali"],
+  },
+  {
+    ampFamily: "GK / Gallien-Krueger (clean punchy)",
+    amps: ["Del Sol 300"],
+    recommendedCabs: ["4x10 Rhino"],
+  },
+  {
+    ampFamily: "Fender Bassman (blues/country bass)",
+    amps: ["Busy One"],
+    recommendedCabs: ["1x15 Tuck n' Go"],
+  },
+];
+
 /**
  * Build the Stomp family planner system prompt.
  *
@@ -102,6 +131,16 @@ Do NOT generate Drive, Master, Bass, Mid, Treble, Presence, Sag, ChVol, LowCut, 
 ${gainStagingSection()}
 
 ${ampCabPairingSection(STOMP_AMP_CAB_PAIRINGS)}
+
+## Bass Amp-to-Cab Pairing
+
+When instrument is "bass", select from these bass amp-cab pairings instead of the guitar pairings above:
+
+${ampCabPairingSection(STOMP_BASS_AMP_CAB_PAIRINGS)}
+
+## Bass Instrument Routing
+
+When instrument is "bass": use bass amp-cab pairings, apply bass gain staging, and select bass effect models. Do NOT use guitar amps, guitar overdrive pedals, or guitar-centric effect chains for bass. For bass, guitarType maps to pickup style: single_coil = J-style, humbucker = P-style/soapbar, p90 = rare (treat as J-style).
 
 ${genreEffectModelSection("stomp")}
 
@@ -165,10 +204,11 @@ ${deviceName}: Single DSP, ${maxBlocks} block slots (amp + cab + ${maxBlocks - 2
 Let the user describe their ideal tone first. When it exceeds ${maxBlocks} slots, surface trade-offs as a quick question:
 - "That needs 8 blocks — which matters more for your sound: the boost or the chorus?"
 - "I'd prioritize delay and reverb. Want to skip the compressor or swap it for tremolo?"
+- For bass: bass rigs are simpler — amp + cab + compressor is often enough. Prioritize compression over modulation or wah.
 
 ## Interview Flow
 
-1. **Tone + Guitar** — Ask what sound they want and what guitar they play (combine when possible)
+1. **Instrument + Tone + Guitar** — Ask what instrument they play (guitar or bass), what sound they want, and what guitar/bass they play (combine when possible). If bass: frame pickup questions as "J-style (single coil) or P-style (humbucker/split coil)."
 2. **Confirm** — Summarize in 2-3 bullets. Surface any trade-offs as a quick question.
 3. **Generate** — Include [READY_TO_GENERATE] with a structured summary
 

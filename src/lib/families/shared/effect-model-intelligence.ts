@@ -81,7 +81,32 @@ Helix can run effect combinations impossible on single-DSP devices:
 - **Parallel reverbs:** Plate (DSP0, always-on) + Ganymede/Glitz (DSP1, snapshot-toggled)
 - **Stacked delays:** Slapback on DSP0 + long ambient delay on DSP1
 - **Dual modulation:** Chorus on DSP0 (subtle) + Tremolo on DSP1 (rhythmic)
-- **Wet/dry:** Keep DSP0 completely dry, route all time-based effects to DSP1`;
+- **Wet/dry:** Keep DSP0 completely dry, route all time-based effects to DSP1
+
+### Bass Effect Recommendations (when instrument is "bass")
+
+Bass effect priorities — compression is king, distortion is rare:
+
+| Priority | Effect Type | Recommended Models | Notes |
+|----------|------------|-------------------|-------|
+| 1 (essential) | Compressor | LA Studio Comp (studio), Rochester Comp (limiting), Deluxe Comp (transparent) | Non-negotiable for bass — controls dynamics and adds punch |
+| 2 (common) | EQ | Parametric EQ | Low-mid sculpting, cut sub-100Hz rumble for clarity |
+| 3 (subtle) | Drive | Obsidian 7000 (Darkglass-style), Heir Apparent (mild OD) | Subtle grit only — NOT high-gain distortion |
+| 4 (genre) | Octave | Pitch Wham, 3 OSC Synth | Synth bass and octave-down effects |
+| 5 (occasional) | Chorus | 70s Chorus | Fretless warmth, subtle thickening |
+| 6 (minimal) | Delay | Simple Delay (short slapback) | Keep short — long delays muddy low end |
+| 7 (minimal) | Reverb | Plate (tight, low mix) | Avoid long reverb tails — bass + reverb = mud |
+| 8 (rare) | Wah | Teardrop 310 | Most bass tones skip wah entirely |
+
+#### Bass Genre Guide (Helix dual-DSP)
+
+| Genre | DSP0 Effects | DSP1 Effects |
+|-------|-------------|-------------|
+| Rock | Compressor + Drive (subtle) | Short delay (optional) |
+| Metal | Compressor + Obsidian 7000 | Noise Gate + Short delay |
+| Funk / Slap | Compressor + EQ (mid-scoop) | Octave (optional) + Chorus |
+| Jazz / R&B | Compressor + EQ | Chorus (fretless) + Plate reverb (low mix) |
+| Worship / Ambient | Compressor + Drive (warm) | Delay (slapback) + Plate reverb |`;
 }
 
 // ---------------------------------------------------------------------------
@@ -138,7 +163,27 @@ With 3-4 effect slots available, every choice matters. The Priority column helps
 With 3-4 effect slots, choose Priority 1 effects first, then fill remaining slots:
 - If your tone needs both delay AND reverb, choose models with shorter tails to leave DSP headroom.
 - **Drop order when over budget:** Wah → Modulation → Compressor → Reverb → Delay → Drive
-- A Stomp preset using only 1-2 effects is underusing the device — aim for 3-4.`;
+- A Stomp preset using only 1-2 effects is underusing the device — aim for 3-4.
+
+### Bass Effect Recommendations (when instrument is "bass")
+
+With limited slots, compression is non-negotiable for bass. Priority-based selection:
+
+| Priority | Effect Type | Recommended Model | Notes |
+|----------|------------|------------------|-------|
+| 1 (always) | Compressor | LA Studio Comp, Rochester Comp | Non-negotiable — controls dynamics and adds punch |
+| 2 (common) | Drive or EQ | Obsidian 7000 (grit) or Parametric EQ (sculpt) | Pick one based on genre |
+| 3 (luxury) | One effect | Octave, Chorus, or Short delay | Genre-dependent — see below |
+
+#### Bass Genre Guide (Stomp — 3-4 slots)
+
+| Genre | Slot 1 | Slot 2 | Slot 3 |
+|-------|--------|--------|--------|
+| Rock | Compressor | Drive (subtle) | Short delay (optional) |
+| Metal | Compressor | Obsidian 7000 | Noise Gate |
+| Funk / Slap | Compressor | EQ (mid-scoop) | Octave or Chorus |
+| Jazz / R&B | Compressor | EQ | Chorus (fretless) |
+| Worship | Compressor | Drive (warm) | Short delay |`;
 }
 
 // ---------------------------------------------------------------------------
@@ -171,6 +216,18 @@ Pod Go has exactly 4 user-effect slots — fill all of them. An unused slot is w
 - Use snapshots to bypass effects for variation (e.g., bypass drive for clean snapshot).
 - When the user's tone needs 5+ effects, prioritize by impact and suggest snapshot-based toggling for the rest.
 - An unused slot is a wasted slot on Pod Go.
+
+### Bass 4-Slot Templates (when instrument is "bass")
+
+Bass on Pod Go — compression first, always fill all 4 slots:
+
+| Genre | Slot 1 | Slot 2 | Slot 3 | Slot 4 |
+|-------|--------|--------|--------|--------|
+| Rock | LA Studio Comp | Obsidian 7000 (drive) | Parametric EQ | Simple Delay (short) |
+| Metal | LA Studio Comp | Obsidian 7000 (drive) | Noise Gate | Simple Delay (short) |
+| Funk / Slap | LA Studio Comp | Parametric EQ (mid-scoop) | Octave (Pitch Wham) | 70s Chorus |
+| Jazz / R&B | LA Studio Comp | Parametric EQ | 70s Chorus | Plate (reverb, low mix) |
+| Worship | LA Studio Comp | Heir Apparent (warm OD) | Simple Delay (short) | Plate (reverb, low mix) |
 
 ### Wah Models by Genre
 
@@ -239,5 +296,28 @@ For arena clarity, favor Room and Plate reverbs over Spring — spring can sound
 - **Monitor compatibility:** Avoid extreme high-frequency effects in in-ear monitor mixes
 - **Gain staging for PA:** Effects should sound good at bedroom AND arena levels — test at both
 - **Mono collapse:** Always check how stereo effects sound summed to mono (many PA systems are mono)
-- **Stage volume:** Room reverb from the actual venue interacts with your preset's reverb — less is more`;
+- **Stage volume:** Room reverb from the actual venue interacts with your preset's reverb — less is more
+
+### Bass Effect Recommendations (when instrument is "bass")
+
+Arena bass requires heavy compression for consistency and minimal effects. Sub frequencies + reverb = mud through PA.
+
+| Priority | Effect Type | Recommended Model | Arena Caution |
+|----------|------------|------------------|---------------|
+| 1 (essential) | Compressor | LA Studio Comp, Rochester Comp | Heavy compression keeps bass consistent through PA — non-negotiable |
+| 2 (common) | EQ | Parametric EQ | Cut sub-100Hz rumble, boost low-mids for FOH punch |
+| 3 (subtle) | Drive | Obsidian 7000, Heir Apparent | Subtle grit only — bass distortion muddies the low end through PA |
+| 4 (rare) | Octave | Pitch Wham | Synth bass effects — monitor phase issues through PA |
+| 5 (avoid) | Reverb | — | Avoid reverb on bass in arena contexts — sub frequencies + reverb = mud through subs |
+| 6 (avoid) | Delay | Simple Delay (short only) | Slapback max — long delays on bass cause low-end buildup through PA |
+
+#### Bass Genre Guide (Stadium — arena context)
+
+| Genre | Effects | FOH Notes |
+|-------|---------|-----------|
+| Rock | Compressor + Drive (subtle) | Keep it simple — bass needs punch, not wash |
+| Metal | Compressor + Obsidian 7000 + Gate | Heavy compression smooths attack for consistent PA delivery |
+| Funk / Slap | Compressor + EQ (mid-scoop) + Octave | EQ critical for slap tone through PA — scoop mids, boost presence |
+| Jazz / R&B | Compressor + EQ | Minimal effects — let the amp speak through the PA |
+| Worship | Compressor + Drive (warm) | No reverb on bass — let the room and keys provide atmosphere |`;
 }

@@ -45,6 +45,10 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 - ✓ HX Stomp XL verified identical structure to Stomp — no XL-specific code paths needed — v4.0 Phase 4
 - ✓ Stadium dual cab slots, sources bypass field, effect block footswitch controllers — v4.0 Phase 5
 - ✓ Stadium device_version updated to 302056738 matching latest firmware references — v4.0 Phase 5
+- ✓ Bass amp/cab models (19 amps, 8 cabs) with instrument tagging — v4.0 Phase 7
+- ✓ ToneIntent instrument field ("guitar" | "bass") backward-compatible — v4.0 Phase 7
+- ✓ Bass-aware chat prompts: instrument screening across all 4 device families — v4.0 Phase 7
+- ✓ Bass-aware planner prompts: amp-cab pairings, gain staging, effect intelligence — v4.0 Phase 7
 
 ### Must Have
 - [To be defined during planning]
@@ -90,6 +94,9 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 | Stadium sources include bypass: false field | v4.0 Phase 5 | All reference presets have this on every source entry |
 | Stadium fx blocks get @enabled.controller (targetbypass) | v4.0 Phase 5 | Footswitch controller on effects, not on amp/cab |
 | Stadium device_version → 302056738 | v4.0 Phase 5 | NH reference presets show newer firmware version |
+| ToneIntent instrument .optional() not .default("guitar") | v4.0 Phase 7 | Zod .default() output type is required, breaking test fixtures |
+| Stadium bass: no bass-specific amps (Agoura catalog) | v4.0 Phase 7 | Bass players advised to use Helix/Stomp for dedicated bass amps |
+| Compression non-negotiable for bass | v4.0 Phase 7 | Priority 1 in all family bass effect tables |
 
 ## Constraints
 - [To be identified during planning]
@@ -106,4 +113,4 @@ Quick Reference:
 - /ui-ux-pro-max → Frontend / UI / UX (required)
 
 ---
-*Last updated: 2026-03-08 after v4.0 Phase 5 (Stadium Structure Rewrite complete)*
+*Last updated: 2026-03-09 after v4.0 Phase 7 (Bass Support complete)*

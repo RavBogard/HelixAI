@@ -2,32 +2,32 @@
 
 ## Project Reference
 
-See: .paul/PROJECT.md (updated 2026-03-08)
+See: .paul/PROJECT.md (updated 2026-03-09)
 
 **Core value:** Guitarists and bassists can get professional-quality, device-specific Line 6 presets tailored to their exact rig and tonal preferences — without deep technical knowledge of their hardware.
-**Current focus:** v4.0 — Preset Quality & Reliability
+**Current focus:** v4.0 — Preset Quality & Reliability — COMPLETE
 
 ## Current Position
 
-Milestone: v4.0 — Preset Quality & Reliability
-Phase: 7 of 7 (Bass Support) — In Progress
-Plan: 07-01 complete
-Status: Plan 01 done, ready for Plan 02
-Last activity: 2026-03-08 — Completed 07-01 (bass data & schema layer)
+Milestone: v4.0 — Preset Quality & Reliability — COMPLETE
+Phase: 7 of 7 (Bass Support) — Complete
+Plan: 07-02 complete (all plans in phase complete)
+Status: v4.0 milestone complete, all 7 phases finished
+Last activity: 2026-03-09 — Phase 7 complete, v4.0 milestone done
 
 Progress:
 - v1.0 Production Release: [██████████] 100% ✓
 - v1.1 Post-Release Stabilization: [██████████] 100% ✓
 - v2.0 Device Intelligence & UX Overhaul: [██████████] 100% ✓
 - v3.0 Preset Format Correctness & Quality: [██████████] 100% ✓
-- v4.0 Preset Quality & Reliability: [█████████░] 93%
+- v4.0 Preset Quality & Reliability: [██████████] 100% ✓
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ✓        ✓        ✓     [Loop complete - ready for next PLAN]
+  ✓        ✓        ✓     [Loop complete - v4.0 milestone done]
 ```
 
 ## Accumulated Context
@@ -56,8 +56,11 @@ PLAN ──▶ APPLY ──▶ UNIFY
 - Stadium sources include bypass: false field — v4.0 Phase 5
 - Stadium fx blocks get @enabled.controller (targetbypass), amp/cab do not — v4.0 Phase 5
 - Stadium device_version → 302056738 (NH references) — v4.0 Phase 5
+- ToneIntent instrument .optional() not .default("guitar") — v4.0 Phase 7
+- Stadium bass: no bass-specific amps (Agoura catalog) — v4.0 Phase 7
+- Compression non-negotiable for bass across all families — v4.0 Phase 7
 
-### Known Issues (v4.0 scope — resolved by structural rewrites)
+### Known Issues (v4.0 scope — all resolved)
 - ~~Stadium presets losing cabs/effects~~ — dual cab slots + footswitch controllers (Phase 5)
 
 ### Resolved Issues (Phase 1)
@@ -81,22 +84,23 @@ PLAN ──▶ APPLY ──▶ UNIFY
 
 ### Blockers/Concerns
 - HD2_AppDSPFlowBlock padding model name unverified against Pod Go Edit (minor)
+- Bass amp HD2 model IDs UNVERIFIED — need confirmation from real .hlx bass preset exports
 
 ### Git State
-Last commit: 2506e34
+Last commit: pending (phase 7 commit)
 Branch: main
 Feature branches merged: none
 
 ## Session Continuity
 
-Last session: 2026-03-08
-Stopped at: Plan 07-01 complete (loop closed)
-Next action: /paul:plan for Phase 7 Plan 02 (bass prompt intelligence)
-Resume file: .paul/HANDOFF-2026-03-08.md
+Last session: 2026-03-09
+Stopped at: v4.0 milestone complete
+Next action: /paul:complete-milestone or start next milestone
+Resume file: .paul/ROADMAP.md
 Resume context:
-- Plan 01 added 19 bass amps + 8 bass cabs + ToneIntent instrument field
-- Plan 02 needs: chat prompts (guitar vs bass?), planner prompts (bass amp-cab pairings, effect guidance), gain staging (bass-specific)
-- All catalogs auto-include bass models, 1248 tests passing
+- v4.0 complete: all 7 phases (structural rewrites + validation + bass support)
+- 1248/1248 tests passing, tsc clean
+- Ready for next milestone planning
 
 ---
 *STATE.md — Updated after every significant action*

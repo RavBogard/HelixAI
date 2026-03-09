@@ -55,6 +55,45 @@ export const HELIX_AMP_CAB_PAIRINGS = [
   },
 ];
 
+// Bass amp-to-cab pairings — HD2 bass models from models.ts
+export const HELIX_BASS_AMP_CAB_PAIRINGS = [
+  {
+    ampFamily: "Ampeg SVT (classic rock/metal bass)",
+    amps: ["SV Beast Nrm", "SV Beast Brt"],
+    recommendedCabs: ["8x10 SV Beast"],
+  },
+  {
+    ampFamily: "Ampeg B-15 (vintage Motown/soul)",
+    amps: ["Agua 51"],
+    recommendedCabs: ["1x15 Tuck n' Go"],
+  },
+  {
+    ampFamily: "Mesa Bass (modern aggressive)",
+    amps: ["Cali Bass"],
+    recommendedCabs: ["6x10 Cali"],
+  },
+  {
+    ampFamily: "Aguilar (hi-fi modern)",
+    amps: ["Agua 51"],
+    recommendedCabs: ["4x10 Rhino"],
+  },
+  {
+    ampFamily: "GK / Gallien-Krueger (clean punchy)",
+    amps: ["Del Sol 300"],
+    recommendedCabs: ["4x10 Rhino"],
+  },
+  {
+    ampFamily: "Acoustic 360 (70s funk/fusion)",
+    amps: ["Woody Blue"],
+    recommendedCabs: ["2x15 Brute"],
+  },
+  {
+    ampFamily: "Fender Bassman (blues/country bass)",
+    amps: ["Busy One"],
+    recommendedCabs: ["1x15 Tuck n' Go"],
+  },
+];
+
 /**
  * Build the Helix family planner system prompt.
  *
@@ -97,6 +136,16 @@ Do NOT generate Drive, Master, Bass, Mid, Treble, Presence, Sag, ChVol, LowCut, 
 ${gainStagingSection()}
 
 ${ampCabPairingSection(HELIX_AMP_CAB_PAIRINGS)}
+
+## Bass Amp-to-Cab Pairing
+
+When instrument is "bass", select from these bass amp-cab pairings instead of the guitar pairings above:
+
+${ampCabPairingSection(HELIX_BASS_AMP_CAB_PAIRINGS)}
+
+## Bass Instrument Routing
+
+When instrument is "bass": use bass amp-cab pairings, apply bass gain staging, and select bass effect models. Do NOT use guitar amps, guitar overdrive pedals, or guitar-centric effect chains for bass. For bass, guitarType maps to pickup style: single_coil = J-style, humbucker = P-style/soapbar, p90 = rare (treat as J-style). Do NOT suggest dual-amp for bass — bass rigs use a single amp.
 
 ${genreEffectModelSection("helix")}
 
@@ -190,7 +239,7 @@ Helix (Floor or LT): Dual DSP, up to 16 blocks, 8 snapshots, dual-amp support.
 
 ## Interview Flow
 
-1. **Tone + Guitar** — Ask what sound they want and what guitar they play (combine into one question when possible)
+1. **Instrument + Tone + Guitar** — Ask what instrument they play (guitar or bass), what sound they want, and what guitar/bass they play (combine into one question when possible). If bass: frame pickup questions as "J-style (single coil) or P-style (humbucker/split coil)" instead of guitar pickup types.
 2. **Confirm** — Summarize your plan in 2-3 bullets. Ask if anything needs adjusting.
 3. **Generate** — Include [READY_TO_GENERATE] with a structured summary
 
@@ -216,11 +265,11 @@ Use this format for the summary:
 
 ## Dual-Amp Guidance
 
-**Do NOT proactively suggest dual-amp.** Only offer when the user explicitly asks for two different amp characters. Snapshots cannot change amp models — dual-amp uses two amps loaded simultaneously with snapshot bypass toggling.
+**Do NOT proactively suggest dual-amp.** Only offer when the user explicitly asks for two different amp characters. Snapshots cannot change amp models — dual-amp uses two amps loaded simultaneously with snapshot bypass toggling. **Do NOT suggest dual-amp for bass — bass rigs use a single amp.**
 
 ## Variax Guitar Awareness
 
-**NEVER ask about Variax unprompted.** If a user mentions a Variax guitar, acknowledge it and ask about preferred model/position (Spank = Strat, Lester = LP, T-Model = Tele).
+**NEVER ask about Variax unprompted.** If a user mentions a Variax guitar, acknowledge it and ask about preferred model/position (Spank = Strat, Lester = LP, T-Model = Tele). **Variax does not apply to bass — skip this section for bass players.**
 
 ## Key Constraints
 

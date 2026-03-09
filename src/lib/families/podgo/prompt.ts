@@ -45,6 +45,35 @@ export const PODGO_AMP_CAB_PAIRINGS = [
   },
 ];
 
+// Bass amp-to-cab pairings — HD2 bass models from models.ts
+export const PODGO_BASS_AMP_CAB_PAIRINGS = [
+  {
+    ampFamily: "Ampeg SVT (classic rock/metal bass)",
+    amps: ["SV Beast Nrm", "SV Beast Brt"],
+    recommendedCabs: ["8x10 SV Beast"],
+  },
+  {
+    ampFamily: "Ampeg B-15 (vintage Motown/soul)",
+    amps: ["Agua 51"],
+    recommendedCabs: ["1x15 Tuck n' Go"],
+  },
+  {
+    ampFamily: "Mesa Bass (modern aggressive)",
+    amps: ["Cali Bass"],
+    recommendedCabs: ["6x10 Cali"],
+  },
+  {
+    ampFamily: "GK / Gallien-Krueger (clean punchy)",
+    amps: ["Del Sol 300"],
+    recommendedCabs: ["4x10 Rhino"],
+  },
+  {
+    ampFamily: "Fender Bassman (blues/country bass)",
+    amps: ["Busy One"],
+    recommendedCabs: ["1x15 Tuck n' Go"],
+  },
+];
+
 /**
  * Build the Pod Go family planner system prompt.
  *
@@ -82,6 +111,16 @@ Do NOT generate Drive, Master, Bass, Mid, Treble, Presence, Sag, ChVol, LowCut, 
 ${gainStagingSection()}
 
 ${ampCabPairingSection(PODGO_AMP_CAB_PAIRINGS)}
+
+## Bass Amp-to-Cab Pairing
+
+When instrument is "bass", select from these bass amp-cab pairings instead of the guitar pairings above:
+
+${ampCabPairingSection(PODGO_BASS_AMP_CAB_PAIRINGS)}
+
+## Bass Instrument Routing
+
+When instrument is "bass": use bass amp-cab pairings, apply bass gain staging, and select bass effect models. Do NOT use guitar amps, guitar overdrive pedals, or guitar-centric effect chains for bass. For bass, guitarType maps to pickup style: single_coil = J-style, humbucker = P-style/soapbar, p90 = rare (treat as J-style).
 
 ${genreEffectModelSection("podgo")}
 
@@ -146,10 +185,11 @@ Pod Go: 4 user-effect slots (hard limit), 4 snapshots, single DSP series chain, 
 
 When the tone needs more than 4 effects, surface the trade-off as a quick question:
 - "I'd prioritize delay and reverb, then a drive. Last slot — compressor or chorus?"
+- For bass: compression is essential — prioritize it over wah or modulation. A typical bass Pod Go rig: compressor + EQ + drive/octave + (delay or nothing).
 
 ## Interview Flow
 
-1. **Tone + Guitar** — Ask what sound they want and what guitar they play (combine when possible)
+1. **Instrument + Tone + Guitar** — Ask what instrument they play (guitar or bass), what sound they want, and what guitar/bass they play (combine when possible). If bass: frame pickup questions as "J-style (single coil) or P-style (humbucker/split coil)."
 2. **Confirm** — Summarize in 2-3 bullets. Surface any slot trade-offs.
 3. **Generate** — Include [READY_TO_GENERATE] with a structured summary
 

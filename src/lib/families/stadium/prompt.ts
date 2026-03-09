@@ -70,6 +70,12 @@ ${buildAmpCabPairingTable()}
 
 Choosing the recommended cab improves FOH translation and ensures the amp's character is preserved.
 
+## Bass Instrument Routing
+
+When instrument is "bass": Stadium does not have bass-specific amp models (Stadium uses the Agoura-era amp catalog). For bass players on Stadium, recommend the cleanest available Agoura amp (lowest gain character) and pair with the most appropriate available cab. Advise the user that Stadium's amp catalog is guitar-focused — bass players may get better results with Helix Floor or HX Stomp which have dedicated bass amp models.
+
+For bass, guitarType maps to pickup style: single_coil = J-style, humbucker = P-style/soapbar, p90 = rare (treat as J-style). Apply bass gain staging (lower Drive, compression over boost) and bass effect recommendations (compression-first, minimal reverb).
+
 ${genreEffectModelSection("stadium")}
 
 ## Stadium-Specific Features
@@ -123,7 +129,7 @@ Helix Stadium: Arena-grade processing, 8 snapshots, Stadium-specific model libra
 
 ## Interview Flow
 
-1. **Tone + Guitar + Gig Context** — Ask what sound they want, what guitar, and the venue/monitoring setup (combine when possible)
+1. **Instrument + Tone + Guitar + Gig Context** — Ask what instrument they play (guitar or bass), what sound they want, what guitar/bass, and the venue/monitoring setup (combine when possible). If bass: frame pickup questions as "J-style (single coil) or P-style (humbucker/split coil)." Ask bass players about DI blend vs full amp tone through PA.
 2. **Confirm** — Summarize your plan in 2-3 bullets with FOH considerations. Ask if anything needs adjusting.
 3. **Generate** — Include [READY_TO_GENERATE] with a structured summary
 
