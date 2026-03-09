@@ -6,13 +6,13 @@ Build an AI-powered preset builder that interviews users about their rig and ton
 ## Current Milestone
 **v4.0 — Preset Quality & Reliability** (v4.0.0)
 Status: 🚧 In Progress
-Phases: 0 of 5 complete
+Phases: 1 of 5 complete
 
 ## Phases
 
 | Phase | Name | Plans | Status | Completed |
 |-------|------|-------|--------|-----------|
-| 1 | Helix Structure Rewrite | 1/2 | In Progress | - |
+| 1 | Helix Structure Rewrite | 2/2 | ✅ Complete | 2026-03-08 |
 | 2 | Validation Layer & Intent Fidelity | TBD | Not started | - |
 | 3 | Stadium & Pod Go Fixes | TBD | Not started | - |
 | 4 | Pod Go Structure Rewrite | TBD | Not started | - |
@@ -113,4 +113,4 @@ Features: #7 (bass amps, cabs, EQ, effects, chat flow)
 </details>
 
 ---
-*Roadmap updated: 2026-03-08 — Added Phase 4: Pod Go Structure Rewrite (golden preset methodology)*
+*Roadmap updated: 2026-03-08 — Phase 1 (Helix Structure Rewrite) complete*

@@ -30,6 +30,11 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 - ✓ UI/UX redesign: component extraction, chat typography/responsive, PresetCard visual polish — v2.0 Phase 4
 - ✓ WCAG 2.1 AA accessibility: aria-live chat, labeled controls, color contrast compliance — v2.0 Phase 5
 - ✓ Test infrastructure: vitest jsdom default, npm test scripts, 1201 tests passing — v2.0 Phase 5
+- ✓ Helix DSP structure matches real HX Edit exports: inputB/outputB/split/join on both DSPs, correct routing models — v4.0 Phase 1
+- ✓ Footswitch assignments: all toggleable effects assigned to FS1-FS10 — v4.0 Phase 1
+- ✓ Delay tempo sync: TempoSync1/SyncSelect1 parameters on all delay blocks, correct Time formula (60/BPM) — v4.0 Phase 1
+- ✓ Per-snapshot amp Drive control: clean=0.30, crunch=0.50, lead=0.60, ambient=0.35 — v4.0 Phase 1
+- ✓ Ambient snapshot sound design: boosted delay/reverb mix, longer decay for atmospheric sound — v4.0 Phase 1
 
 ### Must Have
 - [To be defined during planning]
@@ -61,6 +66,10 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 | v1.0 quality gate: all 10 targets pipeline-tested | Phase 6 | Pod Go, Stadium, Native, Rack — all pass full pipeline + quality validation |
 | --hlx-text-muted lightened #524840 → #8a7b6e | v2.0 Phase 5 | WCAG AA contrast compliance (~4.5:1 on --hlx-surface) |
 | DevicePicker uses radiogroup/radio semantics | v2.0 Phase 5 | Single-choice selection, not tabs — aria-checked for state |
+| "Golden preset" methodology: reverse-engineer from real exports | v4.0 Phase 1 | Match exact structural patterns from HX Edit, not approximate |
+| Split/join always present on both DSPs regardless of dual-amp | v4.0 Phase 1 | Real exports always include split/join — consistency |
+| TempoSync1=true when BPM present, false otherwise | v4.0 Phase 1 | Matches real preset behavior — hardware handles sync when tempo known |
+| Amp Drive as snapshot controller (@controller=19) | v4.0 Phase 1 | HX Edit convention for snapshot-controlled amp parameters |
 
 ## Constraints
 - [To be identified during planning]
@@ -77,4 +86,4 @@ Quick Reference:
 - /ui-ux-pro-max → Frontend / UI / UX (required)
 
 ---
-*Last updated: 2026-03-08 after v2.0 Phase 5 (milestone complete)*
+*Last updated: 2026-03-08 after v4.0 Phase 1 (Helix Structure Rewrite complete)*

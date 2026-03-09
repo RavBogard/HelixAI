@@ -10,24 +10,24 @@ See: .paul/PROJECT.md (updated 2026-03-08)
 ## Current Position
 
 Milestone: v4.0 — Preset Quality & Reliability
-Phase: 1 of 4 (Helix Structure Rewrite) — In Progress
-Plan: 01-02 APPLY in progress (Tasks 1-2 complete, Task 3 checkpoint pending)
-Status: Awaiting HX Edit verification checkpoint, then UNIFY
-Last activity: 2026-03-08 — Tasks 1-2 applied, Pod Go phase added to roadmap
+Phase: 2 of 5 (Validation Layer & Intent Fidelity) — Not Started
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-03-08 — Phase 1 complete, transitioned to Phase 2
 
 Progress:
 - v1.0 Production Release: [██████████] 100% ✓
 - v1.1 Post-Release Stabilization: [██████████] 100% ✓
 - v2.0 Device Intelligence & UX Overhaul: [██████████] 100% ✓
 - v3.0 Preset Format Correctness & Quality: [██████████] 100% ✓
-- v4.0 Preset Quality & Reliability: [█░░░░░░░░░] 10%
+- v4.0 Preset Quality & Reliability: [██░░░░░░░░] 20%
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ✓        ◐        ○     [APPLY tasks 1-2 done, checkpoint 3 pending]
+  ✓        ✓        ✓     [Phase 1 loop complete — ready for Phase 2 PLAN]
 ```
 
 ## Accumulated Context
@@ -39,17 +39,21 @@ PLAN ──▶ APPLY ──▶ UNIFY
 - MODEL_STANDARD upgraded to gemini-3-flash-preview globally — v2.0 Phase 1
 - Per-family effect intelligence via DeviceFamily switch — v2.0 Phase 2
 - Keep two-context chat→planner architecture (decided, not a debt) — v2.0 Phase 3
-- "Golden preset" methodology: reverse-engineer from real exports, match exactly — v4.0
-- Split/join always present on both DSPs regardless of dual-amp — v4.0 Plan 01
+- "Golden preset" methodology: reverse-engineer from real exports, match exactly — v4.0 Phase 1
+- Split/join always present on both DSPs regardless of dual-amp — v4.0 Phase 1
+- TempoSync1=true when BPM present, false otherwise — v4.0 Phase 1
+- Amp Drive as snapshot controller (@controller=19) with ROLE_DRIVE table — v4.0 Phase 1
 
-### Known Issues (v4.0 scope — Plan 02)
-- CLEAN snapshot too crunchy: amp Drive=0.55 too high for clean Fender Twin tone
-- AMBIENT snapshot not pad-like: just enables delays/reverbs, no shimmer/swell design
-- Delays use hardcoded ms instead of TempoSync1/SyncSelect1 (dotted 8th not working)
-- Footswitch assignments incomplete (3-4 blocks instead of all toggleable effects)
-- Ambient snapshots lack gain compensation for wet signal loss
+### Known Issues (v4.0 scope — remaining phases)
 - Stadium presets losing cabs/effects (Phase 3)
 - Pod Go presets missing cab for amp (Phase 3)
+
+### Resolved Issues (Phase 1)
+- ~~CLEAN snapshot too crunchy~~ — per-snapshot Drive control (Plan 02)
+- ~~AMBIENT snapshot not pad-like~~ — boosted mix/decay values (Plan 02)
+- ~~Delays use hardcoded ms~~ — TempoSync1/SyncSelect1 (Plan 02)
+- ~~Footswitch assignments incomplete~~ — all toggleable effects assigned (Plan 01)
+- ~~Ambient snapshots lack gain compensation~~ — mix boost values tuned (Plan 02)
 
 ### Reference Files
 - `C:\Users\dsbog\OneDrive\Desktop\Strab ORNG RV SC.hlx` — dual-path DSP0 with IRs
@@ -63,27 +67,16 @@ PLAN ──▶ APPLY ──▶ UNIFY
 - None
 
 ### Git State
-Last commit: 1fc2ba7
+Last commit: 4232c92
 Branch: main
 Feature branches merged: none
 
 ## Session Continuity
 
 Last session: 2026-03-08
-Stopped at: APPLY tasks 1-2 complete, Task 3 HX Edit checkpoint pending
-Next action: Test preset in HX Edit, then /paul:unify. After unify, Phase 1 complete — transition to Phase 2.
-Resume file: .paul/phases/01-helix-structure-rewrite/01-02-PLAN.md
-Git: 1fc2ba7 on main (changes not yet committed)
-
-### What was built (Plan 02):
-- Fixed delay Time formula: 60/BPM (was broken 30/BPM giving half the correct value)
-- Added TempoSync1 + SyncSelect1 to all delay blocks (hardware tempo sync)
-- Per-snapshot amp Drive control: clean=0.30, crunch=0.50, lead=0.60, ambient=0.35
-- Ambient delay mix boost increased +0.15 → +0.25
-- Ambient reverb mix boost increased +0.15 → +0.20
-- Ambient reverb DecayTime multiplied by 1.5x
-- Added Phase 4 (Pod Go Structure Rewrite) to ROADMAP with 5 reference .pgp presets
-- All 1201 tests pass
+Stopped at: Phase 1 complete, ready to plan Phase 2
+Next action: /paul:plan for Phase 2 (Validation Layer & Intent Fidelity)
+Resume file: .paul/ROADMAP.md
 
 ---
 *STATE.md — Updated after every significant action*
