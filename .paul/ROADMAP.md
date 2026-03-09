@@ -5,8 +5,8 @@ Build an AI-powered preset builder that interviews users about their rig and ton
 
 ## Current Milestone
 **v5.0 — Automated Gold Standard Compliance** (v5.0.0)
-Status: In Progress
-Phases: 6 of 7 complete
+Status: Complete
+Phases: 7 of 7 complete
 
 ## Phases
 
@@ -18,7 +18,7 @@ Phases: 6 of 7 complete
 | 11 | Reference Corpus & Schema Extraction | 1 | Complete | 2026-03-09 |
 | 12 | Full Audit Run & Reports | 1 | Complete | 2026-03-09 |
 | 13 | Fix Deviations | 1 | Complete | 2026-03-09 |
-| 14 | Regression Suite Integration | TBD | Not started | - |
+| 14 | Regression Suite Integration | 1 | Complete | 2026-03-09 |
 
 ## Phase Details
 
@@ -137,4 +137,4 @@ Features: Test suite integration, CI regression prevention
 </details>
 
 ---
-*Roadmap updated: 2026-03-09 — Phase 13 complete*
+*Roadmap updated: 2026-03-09 — v5.0 milestone complete (all 7 phases)*
