@@ -73,13 +73,20 @@ export async function POST(req: NextRequest) {
   const ai = createGeminiClient();
   const modelId = getModelId(premium);
 
+  // Window chat history to bound input tokens on long sessions.
+  const MAX_CHAT_HISTORY = 20;
+  const trimmedMessages =
+    messages.length > MAX_CHAT_HISTORY + 1
+      ? messages.slice(-(MAX_CHAT_HISTORY + 1))
+      : messages;
+
   // Convert our message format to Gemini's format
-  const history = messages.slice(0, -1).map((msg: { role: string; content: string }) => ({
+  const history = trimmedMessages.slice(0, -1).map((msg: { role: string; content: string }) => ({
     role: msg.role === "assistant" ? "model" : "user",
     parts: [{ text: msg.content }],
   }));
 
-  const lastMessage = messages[messages.length - 1];
+  const lastMessage = trimmedMessages[trimmedMessages.length - 1];
 
   const chat = ai.chats.create({
     model: modelId,

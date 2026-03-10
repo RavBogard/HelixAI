@@ -10,10 +10,10 @@ See: .paul/PROJECT.md (updated 2026-03-09)
 ## Current Position
 
 Milestone: v6.0 — Preset Intelligence & UX Polish
-Phase: 19 of 19 (Token & Cost Optimization)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-03-09 — Phase 18 complete, transitioned to Phase 19
+Phase: 19 of 19 (Token & Cost Optimization) — Complete
+Plan: 19-01 complete
+Status: v6.0 milestone complete — all 4 phases finished
+Last activity: 2026-03-09 — Phase 19 complete, v6.0 milestone finished
 
 Progress:
 - v1.0 Production Release: [██████████] 100% ✓
@@ -22,14 +22,14 @@ Progress:
 - v3.0 Preset Format Correctness & Quality: [██████████] 100% ✓
 - v4.0 Preset Quality & Reliability: [██████████] 100% ✓
 - v5.0 Automated Gold Standard Compliance: [██████████] 100% ✓
-- v6.0 Preset Intelligence & UX Polish: [███████░░░] 75%
+- v6.0 Preset Intelligence & UX Polish: [██████████] 100% ✓
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ○        ○        ○     [Ready for PLAN]
+  ✓        ✓        ✓     [Loop complete — milestone complete]
 ```
 
 ## Accumulated Context
@@ -88,6 +88,9 @@ PLAN ──▶ APPLY ──▶ UNIFY
 - Role delta tables replace hardcoded AMBIENT_* constants — unified per-role overrides — v6.0 Phase 18
 - Genre modifier uses substring matching for flexible genre input — v6.0 Phase 18
 - COMBO-05 excludes mandatory boost slot — only user-selected drives trigger reverb reduction — v6.0 Phase 18
+- MAX_PLANNER_MESSAGES=10, first message preserved for tone context — v6.0 Phase 19
+- maxOutputTokens 4096→2048 (ToneIntent ~300-500 tokens, 4x safety margin) — v6.0 Phase 19
+- MAX_CHAT_HISTORY=20, system prompt unaffected — v6.0 Phase 19
 
 ### Known Issues
 - Bass amp HD2 model IDs UNVERIFIED — need confirmation from real .hlx bass preset exports
@@ -144,15 +147,15 @@ PLAN ──▶ APPLY ──▶ UNIFY
 - None active
 
 ### Git State
-Last commit: 3a64812
+Last commit: cf70ec7
 Branch: main
 Feature branches merged: none
 
 ## Session Continuity
 
 Last session: 2026-03-09
-Stopped at: Phase 18 complete, ready to plan Phase 19
-Next action: /paul:plan for Phase 19
+Stopped at: v6.0 milestone complete — all 4 phases (16-19) finished
+Next action: /paul:complete-milestone or start next milestone
 Resume file: .paul/ROADMAP.md
 
 ---

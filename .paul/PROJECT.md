@@ -70,6 +70,9 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 - ✓ Per-role snapshot effect overrides: reverb Mix/DecayTime and delay Mix distinct per snapshot role (clean/crunch/lead/ambient) — v6.0 Phase 18
 - ✓ Genre-modulated snapshot tuning: metal=tight, ambient/worship=lush, blues/jazz=warm — v6.0 Phase 18
 - ✓ COMBO-05 drive+reverb combination adjustment: reduces reverb Mix by 0.03 when user drive present — v6.0 Phase 18
+- ✓ Chat history windowing: planner bounded to 10 messages (first preserved), chat route to 20 — v6.0 Phase 19
+- ✓ maxOutputTokens reduced 4096→2048 (ToneIntent JSON ~300-500 tokens, 4x safety margin) — v6.0 Phase 19
+- ✓ Cost analysis tooling: scripts/analyze-usage.ts reads usage.jsonl with per-endpoint/device/cache breakdowns — v6.0 Phase 19
 
 ### Must Have
 - [To be defined during planning]
@@ -135,6 +138,9 @@ Guitarists and bassists can get professional-quality, device-specific Line 6 pre
 | Role delta tables replace hardcoded AMBIENT_* constants | v6.0 Phase 18 | Unified per-role overrides; ambient values preserved exactly |
 | Genre modifier uses substring matching | v6.0 Phase 18 | Handles compound genres like "heavy metal", "ambient electronic" |
 | COMBO-05 excludes mandatory boost slot | v6.0 Phase 18 | Only user-selected drives trigger reverb reduction |
+| MAX_PLANNER_MESSAGES=10, first message preserved | v6.0 Phase 19 | Initial user request captures tone intent — dropping it loses context |
+| maxOutputTokens 4096→2048 | v6.0 Phase 19 | ToneIntent JSON ~300-500 tokens; 2048 gives 4x safety margin |
+| MAX_CHAT_HISTORY=20, system prompt unaffected | v6.0 Phase 19 | Bounds input tokens on long chat sessions |
 
 ## Constraints
 - [To be identified during planning]
@@ -151,4 +157,4 @@ Quick Reference:
 - /ui-ux-pro-max → Frontend / UI / UX (required)
 
 ---
-*Last updated: 2026-03-09 after v6.0 Phase 18*
+*Last updated: 2026-03-09 after v6.0 Phase 19*

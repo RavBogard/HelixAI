@@ -103,8 +103,16 @@ export async function callGeminiPlanner(
   const modelList = getModelListForPrompt(caps);
   const systemPrompt = getFamilyPlannerPrompt(effectiveDevice, modelList);
 
+  // Window conversation to bound input tokens on long sessions.
+  // Always preserve messages[0] (initial user request) for tone context.
+  const MAX_PLANNER_MESSAGES = 10;
+  const windowed =
+    messages.length > MAX_PLANNER_MESSAGES
+      ? [messages[0], ...messages.slice(-(MAX_PLANNER_MESSAGES - 1))]
+      : messages;
+
   // Concatenate conversation history into a single user message
-  const conversationText = messages
+  const conversationText = windowed
     .map((msg) => `${msg.role}: ${msg.content}`)
     .join("\n\n");
 
@@ -137,7 +145,7 @@ export async function callGeminiPlanner(
       systemInstruction: systemPrompt,
       responseMimeType: "application/json",
       responseJsonSchema: jsonSchema as Record<string, unknown>,
-      maxOutputTokens: 4096,
+      maxOutputTokens: 2048, // ToneIntent JSON ~300-500 tokens; 2048 gives 4x safety margin
     },
   });
 
