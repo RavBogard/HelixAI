@@ -1360,4 +1360,90 @@ describe("assembleSignalChain", () => {
       expect(minotaur!.slot).not.toBe("boost");
     });
   });
+
+  // =========================================================================
+  // DSP Block Budget Enforcement (Phase 20)
+  // =========================================================================
+  describe("DSP block budget enforcement", () => {
+    it("high-gain Helix with 6 post-cab effects does not throw — drops lowest priority", () => {
+      // High-gain = 3 mandatory DSP1 blocks (Horizon Gate, EQ, Gain Block)
+      // 6 user post-cab effects + 3 mandatory = 9, exceeds 8-block limit
+      // Lowest-priority effect should be dropped to fit
+      const chain = assembleSignalChain(
+        highGainIntent({
+          effects: [
+            { modelName: "70s Chorus", role: "toggleable" },
+            { modelName: "Script Mod Phase", role: "toggleable" },
+            { modelName: "Courtesan Flange", role: "ambient" },
+            { modelName: "Simple Delay", role: "toggleable" },
+            { modelName: "Hall", role: "toggleable" },
+            { modelName: "Optical Trem", role: "ambient" },
+          ],
+        }),
+        HELIX_CAPS
+      );
+
+      // Should not throw — gracefully drops effect(s)
+      const dsp1NonCab = chain.filter((b) => b.dsp === 1 && b.type !== "cab");
+      expect(dsp1NonCab.length).toBeLessThanOrEqual(8);
+
+      // Mandatory blocks must survive
+      const names = chain.map((b) => b.modelName);
+      expect(names).toContain("Horizon Gate");
+      expect(names).toContain("Parametric EQ");
+      expect(names).toContain("Gain Block");
+    });
+
+    it("clean Helix with 7 post-cab effects drops to fit 8-block DSP1 limit", () => {
+      // Clean = 2 mandatory DSP1 blocks (EQ, Gain Block) — no Horizon Gate
+      // 7 user post-cab effects + 2 mandatory = 9, exceeds 8-block limit
+      const chain = assembleSignalChain(
+        cleanIntent({
+          effects: [
+            { modelName: "70s Chorus", role: "toggleable" },
+            { modelName: "Script Mod Phase", role: "toggleable" },
+            { modelName: "Courtesan Flange", role: "ambient" },
+            { modelName: "Simple Delay", role: "toggleable" },
+            { modelName: "Transistor Tape", role: "ambient" },
+            { modelName: "Hall", role: "toggleable" },
+            { modelName: "Optical Trem", role: "ambient" },
+          ],
+        }),
+        HELIX_CAPS
+      );
+
+      const dsp1NonCab = chain.filter((b) => b.dsp === 1 && b.type !== "cab");
+      expect(dsp1NonCab.length).toBeLessThanOrEqual(8);
+
+      // Mandatory blocks must survive
+      const names = chain.map((b) => b.modelName);
+      expect(names).toContain("Parametric EQ");
+      expect(names).toContain("Gain Block");
+    });
+
+    it("preset within budget is unchanged — no effects dropped", () => {
+      // 3 user post-cab effects + 3 mandatory (high_gain) = 6, under 8
+      const chain = assembleSignalChain(
+        highGainIntent({
+          effects: [
+            { modelName: "70s Chorus", role: "toggleable" },
+            { modelName: "Simple Delay", role: "toggleable" },
+            { modelName: "Hall", role: "toggleable" },
+          ],
+        }),
+        HELIX_CAPS
+      );
+
+      const names = chain.map((b) => b.modelName);
+      // All 3 user effects survive
+      expect(names).toContain("70s Chorus");
+      expect(names).toContain("Simple Delay");
+      expect(names).toContain("Hall");
+      // Plus mandatory
+      expect(names).toContain("Horizon Gate");
+      expect(names).toContain("Parametric EQ");
+      expect(names).toContain("Gain Block");
+      expect(names).toContain("Scream 808");
+    });
+  });
 });

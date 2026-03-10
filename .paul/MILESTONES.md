@@ -4,12 +4,53 @@ Completed milestone log for this project.
 
 | Milestone | Completed | Duration | Stats |
 |-----------|-----------|----------|-------|
+| v6.0 Preset Intelligence & UX Polish | 2026-03-10 | 1 day | 4 phases, 4 plans |
 | v5.0 Automated Gold Standard Compliance | 2026-03-09 | 1 day | 8 phases, 8 plans |
 | v4.0 Preset Quality & Reliability | 2026-03-09 | 2 days | 7 phases, 9 plans |
 | v3.0 Preset Format Correctness & Quality | 2026-03-08 | 1 day | 1 phase, 1 plan |
 | v2.0 Device Intelligence & UX Overhaul | 2026-03-08 | 1 day | 5 phases, 7 plans |
 | v1.1 Post-Release Stabilization | 2026-03-08 | 1 day | 1 phase, 3 plans |
 | v1.0 Production Release | 2026-03-08 | 1 day | 6 phases, 6 plans |
+
+---
+
+## v6.0 Preset Intelligence & UX Polish
+
+**Completed:** 2026-03-10
+**Duration:** 1 day
+
+### Stats
+
+| Metric | Value |
+|--------|-------|
+| Phases | 4 |
+| Plans | 4 |
+| Files created | 1 |
+| Files modified | 17 |
+| Tests at completion | 1455 |
+
+### Key Accomplishments
+
+- Homescreen layout fix: logo sizing, centering, footer clearance — no more crop or wasted space
+- Device picker visual polish: amber selected state, hover shadows, transition animations
+- Planner prompt intelligence: effect combination rules, role assignment guide, snapshot role behavior, amp gain categorization — all 4 device families
+- Per-role snapshot effect overrides: reverb Mix/DecayTime and delay Mix distinct per clean/crunch/lead/ambient
+- Genre-modulated snapshot tuning: metal=tight, ambient/worship=lush, blues/jazz=warm
+- COMBO-05 drive+reverb combination adjustment: reduces reverb Mix when user drive present
+- Chat history windowing: planner bounded to 10 messages (first preserved), chat route to 20
+- maxOutputTokens halved (4096 to 2048) — ToneIntent JSON never exceeds ~600 tokens
+- Cost analysis tooling: scripts/analyze-usage.ts reads usage.jsonl with per-endpoint/device/cache breakdowns
+
+### Key Decisions
+
+| Decision | Phase | Rationale |
+|----------|-------|-----------|
+| Container max-w-5xl to max-w-4xl | 16 | Eliminates right-column gap on wide screens |
+| Effect combination rules are advisory prompt text | 17 | Prompt guidance steers planner; builder doesn't validate |
+| Role delta tables replace hardcoded AMBIENT_* constants | 18 | Unified per-role overrides; ambient values preserved |
+| COMBO-05 excludes mandatory boost slot | 18 | Only user-selected drives trigger reverb reduction |
+| MAX_PLANNER_MESSAGES=10, first message preserved | 19 | Initial request captures tone intent |
+| maxOutputTokens 4096 to 2048 | 19 | 4x safety margin on actual output size |
 
 ---
 

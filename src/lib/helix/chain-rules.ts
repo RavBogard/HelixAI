@@ -654,38 +654,49 @@ export function assembleSignalChain(intent: ToneIntent, caps: DeviceCapabilities
   // 7. Sort all blocks by signal chain order
   allBlocks.sort((a, b) => SLOT_ORDER[a.slot] - SLOT_ORDER[b.slot]);
 
-  // 8. Validate DSP block limits
+  // 8. Enforce DSP block limits — gracefully drop lowest-priority user effects
+  //    instead of throwing. Mandatory blocks (boost, horizon_gate, eq, gain_block)
+  //    and amp blocks are never dropped.
+  const USER_EFFECT_SLOTS: ReadonlySet<ChainSlot> = new Set([
+    "wah", "compressor", "extra_drive", "modulation", "delay", "reverb",
+  ]);
+
   if (caps.dspCount === 1) {
-    // Single-DSP devices: check total block count against caps.maxBlocksTotal
-    const totalBlocks = allBlocks.length;
-    if (totalBlocks > caps.maxBlocksTotal) {
-      throw new Error(
-        `Block limit exceeded: ${totalBlocks} blocks (max ${caps.maxBlocksTotal} for ${caps.family}). ` +
-          `Reduce the number of effects.`
+    // Single-DSP devices: enforce total block count
+    while (allBlocks.length > caps.maxBlocksTotal) {
+      // Find droppable user effects, sorted by priority ascending (lowest first)
+      const droppable = allBlocks
+        .filter((b) => USER_EFFECT_SLOTS.has(b.slot))
+        .sort((a, b) => getEffectPriority(a, intent.genreHint) - getEffectPriority(b, intent.genreHint));
+      if (droppable.length === 0) break; // safety: nothing left to drop
+      const victim = droppable[0];
+      console.warn(
+        `[chain-rules] Block budget exceeded: dropping "${victim.model.name}" (${victim.intentRole ?? "none"}) to fit ${caps.maxBlocksTotal}-block limit`
       );
+      allBlocks.splice(allBlocks.indexOf(victim), 1);
     }
   } else {
-    // Dual-DSP devices: max non-cab blocks per DSP
-    const dsp0NonCab = allBlocks.filter(
-      (b) => b.dsp === 0 && b.blockType !== "cab"
-    );
-    const dsp1NonCab = allBlocks.filter(
-      (b) => b.dsp === 1 && b.blockType !== "cab"
-    );
-
-    if (dsp0NonCab.length > caps.maxBlocksPerDsp) {
-      throw new Error(
-        `DSP0 block limit exceeded: ${dsp0NonCab.length} non-cab blocks (max ${caps.maxBlocksPerDsp}). ` +
-          `Reduce the number of pre-amp effects.`
-      );
-    }
-    if (dsp1NonCab.length > caps.maxBlocksPerDsp) {
-      throw new Error(
-        `DSP1 block limit exceeded: ${dsp1NonCab.length} non-cab blocks (max ${caps.maxBlocksPerDsp}). ` +
-          `Reduce the number of post-cab effects.`
-      );
+    // Dual-DSP devices: enforce per-DSP non-cab block limits
+    for (const dspIdx of [0, 1] as const) {
+      const label = `DSP${dspIdx}`;
+      let nonCab = allBlocks.filter((b) => b.dsp === dspIdx && b.blockType !== "cab");
+      while (nonCab.length > caps.maxBlocksPerDsp) {
+        const droppable = nonCab
+          .filter((b) => USER_EFFECT_SLOTS.has(b.slot))
+          .sort((a, b) => getEffectPriority(a, intent.genreHint) - getEffectPriority(b, intent.genreHint));
+        if (droppable.length === 0) break; // safety: nothing left to drop
+        const victim = droppable[0];
+        console.warn(
+          `[chain-rules] ${label} budget exceeded: dropping "${victim.model.name}" (${victim.intentRole ?? "none"}) to fit ${caps.maxBlocksPerDsp}-block limit`
+        );
+        allBlocks.splice(allBlocks.indexOf(victim), 1);
+        nonCab = allBlocks.filter((b) => b.dsp === dspIdx && b.blockType !== "cab");
+      }
     }
   }
+
+  // Re-sort after any drops
+  allBlocks.sort((a, b) => SLOT_ORDER[a.slot] - SLOT_ORDER[b.slot]);
 
   // 9. Assign sequential positions per-DSP, excluding cab from position count
   let dsp0Pos = 0;

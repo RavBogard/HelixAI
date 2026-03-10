@@ -4,47 +4,35 @@
 Build an AI-powered preset builder that interviews users about their rig and tone preferences, then generates professional-quality Line 6 presets across all supported device families.
 
 ## Current Milestone
-**v6.0 — Preset Intelligence & UX Polish** (v6.0.0)
+**v6.1 — Block Budget Fix** (v6.1.0)
 Status: In Progress
-Phases: 4 of 4 complete
+Phases: 0 of 1 complete
 
-Focus: Close the gap between what the AI promises and what the preset delivers, while making the app look and feel professional. Reduce cost without reducing quality.
+Focus: Fix DSP1 block limit overflow on Helix by making the builder budget-aware — drop lowest-priority user effects after mandatory block insertion instead of crashing.
 
 | Phase | Name | Plans | Status | Completed |
 |-------|------|-------|--------|-----------|
-| 16 | UI Overhaul & Homescreen Fix | 1 | Complete | 2026-03-09 |
-| 17 | Planner Prompt Intelligence | 1 | Complete | 2026-03-09 |
-| 18 | Builder Logic Enhancement | 1 | Complete | 2026-03-09 |
-| 19 | Token & Cost Optimization | 1 | Complete | 2026-03-09 |
+| 20 | DSP Block Budget Enforcement | 1 | Not started | - |
 
-### Phase 16: UI Overhaul & Homescreen Fix
+### Phase 20: DSP Block Budget Enforcement
 
-Focus: Logo, layout, device picker, prompt bar, responsive, visual polish. Use /ui-ux-pro-max.
-Plans: TBD (defined during /paul:plan)
-
-### Phase 17: Planner Prompt Intelligence
-
-Focus: Effect selection, gain staging, snapshot values, device best practices — all families.
-Plans: TBD (defined during /paul:plan)
-
-### Phase 18: Builder Logic Enhancement
-
-Focus: Parameter mapping, routing, defaults, intent fidelity — all families.
-Plans: TBD (defined during /paul:plan)
-
-### Phase 19: Token & Cost Optimization
-
-Focus: Usage audit, caching, prompt efficiency, cost reduction. No quality regression.
-Plans: TBD (defined during /paul:plan)
-
-## Constraints
-
-- Stick with Gemini 3 Flash — no model changes
-- No quality regression — regression suite (25 scenarios) must pass throughout
-- Use /ui-ux-pro-max for all UI/frontend work
-- Per-family differences handled within unified phases, not split by family
+**Goal:** After mandatory blocks are inserted, enforce per-DSP block limits by dropping lowest-priority user effects — never throw a block limit error.
+**Depends on:** v6.0 (chain-rules, COMBO-03, CHAIN-06 all stable)
+**Research:** Unlikely (internal logic, well-understood)
 
 ## Completed Milestones
+
+<details>
+<summary>v6.0 Preset Intelligence & UX Polish - 2026-03-10 (4 phases)</summary>
+
+| Phase | Name | Plans | Completed |
+|-------|------|-------|-----------|
+| 16 | UI Overhaul & Homescreen Fix | 1 | 2026-03-09 |
+| 17 | Planner Prompt Intelligence | 1 | 2026-03-09 |
+| 18 | Builder Logic Enhancement | 1 | 2026-03-09 |
+| 19 | Token & Cost Optimization | 1 | 2026-03-09 |
+
+</details>
 
 <details>
 <summary>v5.0 Automated Gold Standard Compliance - 2026-03-09 (8 phases)</summary>
@@ -123,4 +111,4 @@ Plans: TBD (defined during /paul:plan)
 </details>
 
 ---
-*Roadmap updated: 2026-03-09 — v6.0 milestone created*
+*Roadmap updated: 2026-03-10 — v6.1 milestone created*
