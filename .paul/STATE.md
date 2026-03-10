@@ -5,15 +5,15 @@
 See: .paul/PROJECT.md (updated 2026-03-10)
 
 **Core value:** Guitarists and bassists can get professional-quality, device-specific Line 6 presets tailored to their exact rig and tonal preferences — without deep technical knowledge of their hardware.
-**Current focus:** v6.1 — Block Budget Fix
+**Current focus:** v7.0 — Intelligent Dual-DSP Architecture
 
 ## Current Position
 
-Milestone: v6.1 — Block Budget Fix
-Phase: 20 of 20 (DSP Block Budget Enforcement) — Complete
-Plan: 20-01 complete
-Status: Phase 20 complete — ready to commit
-Last activity: 2026-03-10 — Phase 20 applied, 1458 tests passing
+Milestone: v7.0 — Intelligent Dual-DSP Architecture
+Phase: 21 of 23 (Research & Pattern Extraction)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-03-10 — Milestone created
 
 Progress:
 - v1.0 Production Release: [██████████] 100% ✓
@@ -23,13 +23,15 @@ Progress:
 - v4.0 Preset Quality & Reliability: [██████████] 100% ✓
 - v5.0 Automated Gold Standard Compliance: [██████████] 100% ✓
 - v6.0 Preset Intelligence & UX Polish: [██████████] 100% ✓
+- v6.1 Block Budget Fix: [██████████] 100% ✓
+- v7.0 Intelligent Dual-DSP Architecture: [░░░░░░░░░░] 0%
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ✓        ✓        ○     [Applied — ready to unify]
+  ○        ○        ○     [Ready for first PLAN]
 ```
 
 ## Accumulated Context
@@ -76,9 +78,14 @@ Branch: main
 ## Session Continuity
 
 Last session: 2026-03-10
-Stopped at: v6.1 plan written
-Next action: /paul:apply Phase 20 Plan 01
-Resume file: .paul/phases/20-dsp-block-budget-enforcement/20-01-PLAN.md
+Stopped at: v7.0 milestone created, clean pause point
+Next action: /paul:plan for Phase 21 (Research & Pattern Extraction)
+Resume file: .paul/HANDOFF-2026-03-10.md
+Resume context:
+- v6.1 shipped (graceful DSP block budget enforcement)
+- v7.0 milestone created with 3 phases (Research, Engine, Validation)
+- Phase 21 needs /paul:plan before any work begins
+- Core problem: getDspForSlot is a static switch, needs intelligent replacement
 
 ---
 *STATE.md — Updated after every significant action*

@@ -4,6 +4,7 @@ Completed milestone log for this project.
 
 | Milestone | Completed | Duration | Stats |
 |-----------|-----------|----------|-------|
+| v6.1 Block Budget Fix | 2026-03-10 | 1 day | 1 phase, 1 plan |
 | v6.0 Preset Intelligence & UX Polish | 2026-03-10 | 1 day | 4 phases, 4 plans |
 | v5.0 Automated Gold Standard Compliance | 2026-03-09 | 1 day | 8 phases, 8 plans |
 | v4.0 Preset Quality & Reliability | 2026-03-09 | 2 days | 7 phases, 9 plans |
@@ -11,6 +12,35 @@ Completed milestone log for this project.
 | v2.0 Device Intelligence & UX Overhaul | 2026-03-08 | 1 day | 5 phases, 7 plans |
 | v1.1 Post-Release Stabilization | 2026-03-08 | 1 day | 1 phase, 3 plans |
 | v1.0 Production Release | 2026-03-08 | 1 day | 6 phases, 6 plans |
+
+---
+
+## v6.1 Block Budget Fix
+
+**Completed:** 2026-03-10
+**Duration:** 1 day
+
+### Stats
+
+| Metric | Value |
+|--------|-------|
+| Phases | 1 |
+| Plans | 1 |
+| Files modified | 2 |
+| Tests at completion | 1458 |
+
+### Key Accomplishments
+
+- Replaced throwing DSP block limit validation with graceful budget enforcement that drops lowest-priority user effects
+- Builder now never crashes on DSP overflow — gracefully degrades by removing least important effects
+- Added USER_EFFECT_SLOTS set to distinguish droppable effects from mandatory/amp/cab blocks
+
+### Key Decisions
+
+| Decision | Phase | Rationale |
+|----------|-------|-----------|
+| Graceful drop instead of throw | 20 | Presets should always build; dropping an effect is better than crashing |
+| USER_EFFECT_SLOTS set for droppable identification | 20 | Mandatory blocks (EQ, Gain Block, Gate) must never be dropped |
 
 ---
 

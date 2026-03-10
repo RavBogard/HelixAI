@@ -4,23 +4,73 @@
 Build an AI-powered preset builder that interviews users about their rig and tone preferences, then generates professional-quality Line 6 presets across all supported device families.
 
 ## Current Milestone
-**v6.1 — Block Budget Fix** (v6.1.0)
+**v7.0 — Intelligent Dual-DSP Architecture** (v7.0.0)
 Status: In Progress
-Phases: 0 of 1 complete
+Phases: 0 of 3 complete
 
-Focus: Fix DSP1 block limit overflow on Helix by making the builder budget-aware — drop lowest-priority user effects after mandatory block insertion instead of crashing.
+Focus: Replace the hardcoded pre-cab/post-cab DSP split with an intelligent allocation engine that thinks like an experienced preset designer — considering load balancing, signal routing, stereo width, DSP resource weight, and real-world design patterns.
 
 | Phase | Name | Plans | Status | Completed |
 |-------|------|-------|--------|-----------|
-| 20 | DSP Block Budget Enforcement | 1 | Not started | - |
+| 21 | Research & Pattern Extraction | TBD | Not started | - |
+| 22 | DSP Allocation Engine | TBD | Not started | - |
+| 23 | Validation & Regression | TBD | Not started | - |
 
-### Phase 20: DSP Block Budget Enforcement
+### Phase 21: Research & Pattern Extraction
 
-**Goal:** After mandatory blocks are inserted, enforce per-DSP block limits by dropping lowest-priority user effects — never throw a block limit error.
-**Depends on:** v6.0 (chain-rules, COMBO-03, CHAIN-06 all stable)
-**Research:** Unlikely (internal logic, well-understood)
+**Goal:** Analyze all reference presets for DSP allocation patterns, study Line 6 DSP architecture and community best practices, produce a documented allocation ruleset.
+**Depends on:** v6.1 (block budget safety net in place)
+**Research:** Likely (core purpose of this phase)
+
+**Scope:**
+- Analyze reference preset DSP assignments across all Helix variants
+- Research Line 6 DSP architecture constraints (routing, stereo, resource weight)
+- Document how professional preset designers distribute blocks across DSPs
+- Produce a formal allocation ruleset for Phase 22 implementation
+
+### Phase 22: DSP Allocation Engine
+
+**Goal:** Build the intelligent DSP allocator — replace `getDspForSlot` with a budget-aware, routing-aware, stereo-aware engine.
+**Depends on:** Phase 21 (documented ruleset)
+**Research:** Unlikely (implementing researched rules)
+
+**Scope:**
+- Replace static `getDspForSlot` switch with intelligent allocation
+- Load balancing: spill to less-loaded DSP when one is full
+- Routing-aware placement: same-DSP vs cross-DSP signal implications
+- Stereo/mono-aware: stereo effects on DSP that maintains stereo width
+- DSP resource estimation: heavier blocks (reverbs) weighted in placement decisions
+
+### Phase 23: Validation & Regression
+
+**Goal:** Verify the new allocator produces better presets across all Helix variants, update audit baselines, ensure no regressions.
+**Depends on:** Phase 22 (engine built)
+**Research:** Unlikely (testing and validation)
+
+**Scope:**
+- Compare old vs new DSP assignments across all mock harness scenarios
+- Verify signal chain correctness preserved
+- Update structural diff baselines for new DSP layout
+- Full regression suite pass
+
+## Constraints
+
+- Helix-only (dual-DSP) — Stomp, Pod Go, Stadium are single-DSP and unaffected
+- Must preserve signal chain correctness (amp before cab, gate position, etc.)
+- Regression suite must pass throughout
+- Research phase produces documented ruleset BEFORE any code changes
+- No changes to preset file format — only internal DSP assignment logic
 
 ## Completed Milestones
+
+<details>
+<summary>v6.1 Block Budget Fix - 2026-03-10 (1 phase)</summary>
+
+| Phase | Name | Plans | Completed |
+|-------|------|-------|-----------|
+| 20 | DSP Block Budget Enforcement | 1 | 2026-03-10 |
+
+</details>
 
 <details>
 <summary>v6.0 Preset Intelligence & UX Polish - 2026-03-10 (4 phases)</summary>
@@ -111,4 +161,4 @@ Focus: Fix DSP1 block limit overflow on Helix by making the builder budget-aware
 </details>
 
 ---
-*Roadmap updated: 2026-03-10 — v6.1 milestone created*
+*Roadmap updated: 2026-03-10 — v7.0 milestone created*
