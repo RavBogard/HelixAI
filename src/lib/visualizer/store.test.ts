@@ -18,6 +18,7 @@ import {
 function makeTestBlocks(): BlockSpec[] {
   return [
     {
+      _id: "amp0",
       type: "amp",
       modelId: "US Double Nrm",
       modelName: "US Double Nrm",
@@ -29,6 +30,7 @@ function makeTestBlocks(): BlockSpec[] {
       parameters: { Drive: 0.5, Bass: 0.6, Mid: 0.5, Treble: 0.7, ChVol: 0.8 },
     },
     {
+      _id: "delay2",
       type: "delay",
       modelId: "Simple Delay",
       modelName: "Simple Delay",
@@ -40,6 +42,7 @@ function makeTestBlocks(): BlockSpec[] {
       parameters: { Time: 0.5, Feedback: 0.4, Mix: 0.3 },
     },
     {
+      _id: "reverb0",
       type: "reverb",
       modelId: "Glitz",
       modelName: "Glitz",
@@ -710,7 +713,7 @@ describe("reorderBlock()", () => {
   it("reorders a block within the same DSP", () => {
     // Add more blocks to DSP 0 so we can reorder
     useVisualizerStore.getState().addBlock(
-      { type: "distortion", modelId: "Scream 808", modelName: "Scream 808" },
+      { type: "distortion", _id: "distortion1", modelId: "Scream 808", modelName: "Scream 808" },
       0,
       1,
     );
@@ -732,6 +735,7 @@ describe("reorderBlock()", () => {
     // Hydrate with Pod Go and a fixed amp block
     const podGoBlocks: BlockSpec[] = [
       {
+        _id: "amp3",
         type: "amp",
         modelId: "US Double Nrm",
         modelName: "US Double Nrm",
@@ -743,6 +747,7 @@ describe("reorderBlock()", () => {
         parameters: {},
       },
       {
+        _id: "delay2",
         type: "delay",
         modelId: "Simple Delay",
         modelName: "Simple Delay",
@@ -770,7 +775,7 @@ describe("reorderBlock()", () => {
   it("renumbers all positions sequentially after reorder", () => {
     // Add blocks to have 3 on DSP 0
     useVisualizerStore.getState().addBlock(
-      { type: "distortion", modelId: "Scream 808", modelName: "Scream 808" },
+      { type: "distortion", _id: "distortion1", modelId: "Scream 808", modelName: "Scream 808" },
       0,
       1,
     );

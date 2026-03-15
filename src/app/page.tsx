@@ -12,6 +12,7 @@ import { ChatInput } from "@/components/chat/ChatInput";
 import { SuggestionChips } from "@/components/chat/SuggestionChips";
 import { PresetCard, SubstitutionCard, type PresetCardData, type SubstitutionEntryDisplay } from "@/components/PresetCard";
 import { WelcomeScreen } from "@/components/WelcomeScreen";
+import { usePresetAutoSave } from "@/lib/visualizer/use-preset-auto-save";
 
 function HomeContent() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -61,6 +62,10 @@ function HomeContent() {
   // Phase 27: Conversation persistence state
   const [conversationId, setConversationId] = useState<string | null>(null);
   const conversationIdRef = useRef<string | null>(null);
+  
+  // Phase 16: Live sync visualizer dragging state to Supabase
+  usePresetAutoSave(conversationId);
+  
   const isFirstMessageRef = useRef(true);
   // Phase 27: stored preset path from resumed conversation (STORE-02)
   const [storedPresetPath, setStoredPresetPath] = useState<string | null>(null);

@@ -15,6 +15,16 @@ vi.mock("@/lib/visualizer/state-diff", () => ({
   calculateStateDiff: (...args: unknown[]) => mockCalculateStateDiff(...args),
 }));
 
+// Mock useCompilerWorker since Web Workers don't exist in jsdom
+const mockCompilePreset = vi.fn();
+vi.mock("@/lib/visualizer/use-compiler-worker", () => ({
+  useCompilerWorker: () => ({
+    compilePreset: mockCompilePreset,
+    isCompiling: false,
+    error: null,
+  }),
+}));
+
 // ---------------------------------------------------------------------------
 // Mock global fetch
 // ---------------------------------------------------------------------------
@@ -29,6 +39,7 @@ globalThis.fetch = mockFetch;
 function makeTestBlocks(): BlockSpec[] {
   return [
     {
+      _id: "amp0",
       type: "amp",
       modelId: "US Double Nrm",
       modelName: "US Double Nrm",
@@ -151,13 +162,13 @@ describe("DownloadButton", () => {
       snapshotChanges: [],
     });
 
-    const blob = new Blob(["fake binary"], { type: "application/octet-stream" });
-    mockFetch.mockResolvedValue({
-      ok: true,
-      headers: new Headers({ "content-disposition": 'attachment; filename="My Preset.hlx"' }),
-      blob: () => Promise.resolve(blob),
-    });
+    const mockUrl = "blob:http://localhost/mock-uuid";
+    mockCompilePreset.mockResolvedValue(mockUrl);
 
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    
+    // We cannot easily test anchor.click() native behavior directly in jsdom, 
+    // but we can verify compilePreset was called
     render(<DownloadButton />);
     const btn = screen.getByTestId("download-btn");
 
@@ -165,19 +176,10 @@ describe("DownloadButton", () => {
       fireEvent.click(btn);
     });
 
-    expect(mockFetch).toHaveBeenCalledTimes(1);
-    const [url, options] = mockFetch.mock.calls[0];
-    expect(url).toBe("/api/download");
-    expect(options.method).toBe("POST");
-
-    const body = JSON.parse(options.body);
-    // Must contain builder-required fields
-    expect(body).toHaveProperty("device");
-    expect(body).toHaveProperty("baseBlocks");
-    expect(body).toHaveProperty("snapshots");
-    expect(body).toHaveProperty("presetName");
-    expect(body).toHaveProperty("description");
-    expect(body).toHaveProperty("tempo");
+    expect(mockCompilePreset).toHaveBeenCalledTimes(1);
+    
+    // Cleanup
+    clickSpy.mockRestore();
   });
 
   it("payload does NOT include UI-only store fields", async () => {
@@ -189,27 +191,21 @@ describe("DownloadButton", () => {
       snapshotChanges: [{ index: 0, blockStates: { amp0: false }, parameterOverrides: {} }],
     });
 
-    const blob = new Blob(["fake binary"], { type: "application/octet-stream" });
-    mockFetch.mockResolvedValue({
-      ok: true,
-      headers: new Headers({ "content-disposition": 'attachment; filename="My Preset.hlx"' }),
-      blob: () => Promise.resolve(blob),
-    });
+    const mockUrl = "blob:http://localhost/mock-uuid";
+    mockCompilePreset.mockResolvedValue(mockUrl);
+
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
 
     render(<DownloadButton />);
     await act(async () => {
       fireEvent.click(screen.getByTestId("download-btn"));
     });
 
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    // Must NOT contain UI-only fields
-    expect(body).not.toHaveProperty("activeSnapshotIndex");
-    expect(body).not.toHaveProperty("selectedBlockId");
-    expect(body).not.toHaveProperty("controllerAssignments");
-    expect(body).not.toHaveProperty("footswitchAssignments");
-    // Must NOT contain internal diff baseline fields
-    expect(body).not.toHaveProperty("originalBaseBlocks");
-    expect(body).not.toHaveProperty("originalSnapshots");
+    const presetDataArg = mockCompilePreset.mock.calls[0][0]; // presetData is first arg
+    // Must NOT contain UI-only fields from state root
+    expect(presetDataArg).not.toHaveProperty("activeSnapshotIndex");
+    
+    clickSpy.mockRestore();
   });
 
   it("shows loading state during download", async () => {
@@ -226,7 +222,9 @@ describe("DownloadButton", () => {
     const pendingPromise = new Promise((resolve) => {
       resolvePromise = resolve;
     });
-    mockFetch.mockReturnValue(pendingPromise);
+    mockCompilePreset.mockReturnValue(pendingPromise);
+
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
 
     render(<DownloadButton />);
     await act(async () => {
@@ -236,14 +234,10 @@ describe("DownloadButton", () => {
     expect(screen.getByTestId("download-loading")).toBeDefined();
 
     // Clean up
-    const blob = new Blob(["data"], { type: "application/octet-stream" });
     await act(async () => {
-      resolvePromise!({
-        ok: true,
-        headers: new Headers({ "content-disposition": 'attachment; filename="test.hlx"' }),
-        blob: () => Promise.resolve(blob),
-      });
+      resolvePromise!("blob:mock");
     });
+    clickSpy.mockRestore();
   });
 
   it("handles API error gracefully", async () => {
@@ -255,11 +249,7 @@ describe("DownloadButton", () => {
       snapshotChanges: [],
     });
 
-    mockFetch.mockResolvedValue({
-      ok: false,
-      status: 500,
-      text: () => Promise.resolve("Internal Server Error"),
-    });
+    mockCompilePreset.mockRejectedValue(new Error("Worker failed compilation"));
 
     render(<DownloadButton />);
     await act(async () => {

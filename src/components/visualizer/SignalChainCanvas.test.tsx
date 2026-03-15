@@ -27,8 +27,9 @@ afterEach(() => {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeBlock(overrides: Partial<BlockSpec> = {}): BlockSpec {
+function makeBlock(overrides: Partial<BlockSpec> & { _id?: string } = {}): BlockSpec {
   return {
+    _id: overrides._id || `${overrides.type || "delay"}${overrides.position ?? 0}`,
     type: "delay",
     modelId: "HD2_DelaySimpleDelay",
     modelName: "Simple Delay",
@@ -229,20 +230,7 @@ describe("SignalChainCanvas", () => {
     expect(state.baseBlocks.find((b) => b.type === "delay" && b.position === 0)).toBeUndefined();
   });
 
-  it("error message area exists in the DOM", () => {
-    useVisualizerStore.setState({
-      device: "helix_stomp" as DeviceTarget,
-      baseBlocks: [
-        makeBlock({ type: "delay", modelName: "Simple Delay", position: 0 }),
-      ],
-      snapshots: makeSnapshots(),
-    });
 
-    render(<SignalChainCanvas />);
-
-    // Error message container should exist (may be hidden when no error)
-    expect(screen.getByTestId("dnd-error-area")).toBeTruthy();
-  });
 
   // --------------------------------------------------
   // Phase 81-02: Snapshot reactivity tests

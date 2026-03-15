@@ -381,6 +381,7 @@ export interface PresetSpec {
 }
 
 export interface BlockSpec {
+  _id?: string;
   type: "amp" | "cab" | "distortion" | "delay" | "reverb" | "modulation" | "dynamics" | "eq" | "wah" | "pitch" | "volume" | "send_return";
   modelId: string;
   modelName: string;

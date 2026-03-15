@@ -56,7 +56,7 @@ describe("BlockTile", () => {
       />,
     );
     const tile = screen.getByTestId("block-tile-delay2");
-    expect(tile.style.backgroundColor).toBe("rgb(16, 185, 129)"); // #10B981
+    expect(tile.style.backgroundColor).toBe("rgb(113, 166, 87)"); // #71A657
   });
 
   it("bypassed block (enabled=false) has opacity-40 class", () => {

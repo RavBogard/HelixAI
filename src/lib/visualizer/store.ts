@@ -12,9 +12,10 @@ import { lookupModelByModelId } from "./parameter-schema";
 // Block ID generation
 // ---------------------------------------------------------------------------
 
-/** Generate a stable block identifier from a BlockSpec. */
-export function generateBlockId(block: BlockSpec): string {
-  return `${block.type}${block.position}`;
+/** Generate a stable block identifier utilizing a stable ID if present, or fallback. */
+export function generateBlockId(block: BlockSpec & { _id?: string }): string {
+  // We attach a hidden _id during hydration for dnd-kit stability
+  return block._id ?? `${block.type}_${block.modelId}_${block.path}_${block.position}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -116,9 +117,18 @@ export const useVisualizerStore = create<VisualizerStoreState>((set, get) => ({
   // --- Actions ---
 
   hydrate(device, baseBlocks, snapshots, controllerAssignments, footswitchAssignments, presetName, description, tempo) {
+    // Deep-clone baseline state so mutations to baseBlocks/snapshots don't
+    // affect the diff comparison. Attach stable _id for dnd-kit.
+    const safeBlocks = JSON.parse(JSON.stringify(baseBlocks)).map(
+      (b: BlockSpec & { _id?: string }) => ({
+        ...b,
+        _id: b._id || Math.random().toString(36).substring(2, 9),
+      })
+    );
+
     set({
       device,
-      baseBlocks,
+      baseBlocks: safeBlocks,
       snapshots,
       activeSnapshotIndex: 0,
       selectedBlockId: null,
@@ -127,9 +137,7 @@ export const useVisualizerStore = create<VisualizerStoreState>((set, get) => ({
       presetName: presetName ?? "",
       description: description ?? "",
       tempo: tempo ?? 120,
-      // Deep-clone baseline state so mutations to baseBlocks/snapshots don't
-      // affect the diff comparison.
-      originalBaseBlocks: JSON.parse(JSON.stringify(baseBlocks)),
+      originalBaseBlocks: safeBlocks,
       originalSnapshots: JSON.parse(JSON.stringify(snapshots)),
     });
   },
@@ -246,14 +254,18 @@ export const useVisualizerStore = create<VisualizerStoreState>((set, get) => ({
     };
 
     // Shift blocks at or after targetPosition on the same DSP
-    const updatedBlocks = state.baseBlocks.map((b) => {
+    const updatedBlocks = Object.assign([], state.baseBlocks).map((b: BlockSpec) => {
       if (b.dsp === targetDsp && b.position >= targetPosition) {
         return { ...b, position: b.position + 1 };
       }
       return b;
     });
 
-    updatedBlocks.push(newBlock);
+    const newBlockWithId = {
+      ...newBlock,
+      _id: Math.random().toString(36).substring(2, 9),
+    };
+    updatedBlocks.push(newBlockWithId);
     set({ baseBlocks: updatedBlocks });
     return { success: true };
   },
@@ -329,10 +341,12 @@ export const useVisualizerStore = create<VisualizerStoreState>((set, get) => ({
     // Renumber all positions sequentially
     const renumberedDsp = withoutBlock.map((b, i) => ({ ...b, position: i }));
 
-    // Replace DSP blocks in the full array
+    // Reconstruct the full baseBlocks array preserving non-DSP blocks
     const otherDspBlocks = state.baseBlocks.filter(
       (b) => b.dsp !== block.dsp,
     );
+    
+    // Final state must maintain the original order except for the reordered DSP subset
     set({ baseBlocks: [...otherDspBlocks, ...renumberedDsp] });
     return { success: true };
   },

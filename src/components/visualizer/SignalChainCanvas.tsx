@@ -35,6 +35,7 @@ import type { VisualizerStoreState } from "@/lib/visualizer/store";
 import type { DeviceLayout, PodGoSlotConfig } from "@/lib/visualizer/device-layout";
 import { BlockTile } from "./BlockTile";
 import { ModelBrowserDropdown } from "./ModelBrowserDropdown";
+import { toast } from "sonner";
 
 // ---------------------------------------------------------------------------
 // SortableBlockTile — wraps BlockTile with @dnd-kit useSortable
@@ -354,48 +355,18 @@ export function SignalChainCanvas() {
   void activeSnapshotIndex;
   void snapshots;
 
-  // Error message state — shown for 3 seconds on constraint violations
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
   // Adding block state — tracks which DSP/position the model browser targets
   const [addingAtSlot, setAddingAtSlot] = useState<{ dsp: 0 | 1; position: number } | null>(null);
-
-  // Clear error message after 3 seconds
-  useEffect(() => {
-    if (!errorMessage) return;
-    const timer = setTimeout(() => setErrorMessage(null), 3000);
-    return () => clearTimeout(timer);
-  }, [errorMessage]);
 
   // DnD sensors — use pointer sensor with a small activation distance to avoid accidental drags
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
 
-  // Build reactive state object from subscribed values for computed selectors.
-  // Using getState() here would produce a stale snapshot — subscribing ensures
-  // layout children re-render when store updates.
-  const presetName = useVisualizerStore((s) => s.presetName);
-  const description = useVisualizerStore((s) => s.description);
-  const tempo = useVisualizerStore((s) => s.tempo);
-  const state: VisualizerStoreState = {
-    device, baseBlocks, snapshots, activeSnapshotIndex, selectedBlockId,
-    controllerAssignments: useVisualizerStore.getState().controllerAssignments,
-    footswitchAssignments: useVisualizerStore.getState().footswitchAssignments,
-    presetName, description, tempo,
-    originalBaseBlocks: useVisualizerStore.getState().originalBaseBlocks,
-    originalSnapshots: useVisualizerStore.getState().originalSnapshots,
-    hydrate: useVisualizerStore.getState().hydrate,
-    setActiveSnapshot: useVisualizerStore.getState().setActiveSnapshot,
-    selectBlock: useVisualizerStore.getState().selectBlock,
-    setParameterValue: useVisualizerStore.getState().setParameterValue,
-    moveBlock: useVisualizerStore.getState().moveBlock,
-    toggleBlockBypass: useVisualizerStore.getState().toggleBlockBypass,
-    swapBlockModel: useVisualizerStore.getState().swapBlockModel,
-    addBlock: useVisualizerStore.getState().addBlock,
-    removeBlock: useVisualizerStore.getState().removeBlock,
-    reorderBlock: useVisualizerStore.getState().reorderBlock,
-  };
+  // Pull the entire reactive state for child components.
+  // Warning: Do not manually construct `{ ...getState() }` here as it breaks 
+  // referential equality and triggers infinite loops in React's render phase.
+  const state = useVisualizerStore((s) => s);
 
   // --- DnD event handlers ---
 
@@ -407,7 +378,7 @@ export function SignalChainCanvas() {
 
       const moveCheck = validateMove(block, state.device);
       if (!moveCheck.valid) {
-        setErrorMessage(moveCheck.error ?? "Cannot move this block");
+        toast.error("Validating move", { description: moveCheck.error ?? "Cannot move this block", id: "dnd-error" });
         // Cancel drag by not doing anything — @dnd-kit will handle it
       }
     },
@@ -434,7 +405,7 @@ export function SignalChainCanvas() {
       // Validate move
       const moveCheck = validateMove(activeBlock, state.device);
       if (!moveCheck.valid) {
-        setErrorMessage(moveCheck.error ?? "Cannot move this block");
+        toast.error("Invalid Move", { description: moveCheck.error ?? "Cannot move this block", id: "dnd-error" });
         return;
       }
 
@@ -442,7 +413,7 @@ export function SignalChainCanvas() {
         // Same-DSP reorder
         const result = reorderBlock(activeBlockId, overBlock.position);
         if (!result.success) {
-          setErrorMessage(result.error ?? "Failed to reorder block");
+          toast.error("Reorder Failed", { description: result.error ?? "Failed to reorder block", id: "dnd-error" });
         }
       } else {
         // Cross-DSP transfer
@@ -453,7 +424,7 @@ export function SignalChainCanvas() {
           state.device,
         );
         if (!transferCheck.valid) {
-          setErrorMessage(transferCheck.error ?? "Cannot move to target DSP");
+          toast.error("Routing Failed", { description: transferCheck.error ?? "Cannot move to target DSP", id: "dnd-error" });
           return;
         }
 
@@ -463,7 +434,7 @@ export function SignalChainCanvas() {
           path: 0,
         });
         if (!result.success) {
-          setErrorMessage(result.error ?? "Failed to move block");
+          toast.error("Move Failed", { description: result.error ?? "Failed to move block", id: "dnd-error" });
         }
       }
     },
@@ -475,7 +446,7 @@ export function SignalChainCanvas() {
     (blockId: string) => {
       const result = removeBlock(blockId);
       if (!result.success) {
-        setErrorMessage(result.error ?? "Failed to remove block");
+        toast.error("Removal Failed", { description: result.error ?? "Failed to remove block", id: "dnd-error" });
       }
     },
     [removeBlock],
@@ -512,7 +483,7 @@ export function SignalChainCanvas() {
         addingAtSlot.position,
       );
       if (!result.success) {
-        setErrorMessage(result.error ?? "Failed to add block");
+        toast.error("Add Failed", { description: result.error ?? "Failed to add block", id: "dnd-error" });
       }
       setAddingAtSlot(null);
     },
@@ -579,20 +550,8 @@ export function SignalChainCanvas() {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      {renderLayout()}
-      {/* Error message area — always present in DOM for testability */}
-      <div
-        data-testid="dnd-error-area"
-        className={[
-          "px-3 py-1.5 rounded text-sm transition-opacity",
-          errorMessage
-            ? "bg-red-900/80 text-red-200 opacity-100"
-            : "opacity-0 h-0 overflow-hidden",
-        ].join(" ")}
-        role="alert"
-      >
-        {errorMessage ?? ""}
-      </div>
+        {renderLayout()}
+      {/* Error messages are now handled by global toast notifications */}
 
       {/* Model browser dropdown — shown when addingAtSlot is set */}
       {addingAtSlot && (

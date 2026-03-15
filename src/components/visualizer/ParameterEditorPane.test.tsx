@@ -30,8 +30,9 @@ afterEach(() => {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeBlock(overrides: Partial<BlockSpec> = {}): BlockSpec {
+function makeBlock(overrides: Partial<BlockSpec> & { _id?: string } = {}): BlockSpec {
   return {
+    _id: overrides._id || `${overrides.type || "delay"}${overrides.position ?? 0}`,
     type: "delay",
     modelId: "HD2_DelaySimpleDelay",
     modelName: "Simple Delay",

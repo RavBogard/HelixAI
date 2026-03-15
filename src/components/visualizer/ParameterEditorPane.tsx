@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
+import { toast } from "sonner";
 import {
   useVisualizerStore,
   getEffectiveBlockState,
@@ -249,6 +250,8 @@ function DualHandleSlider({
  * with human-readable display values. Supports model swapping.
  */
 export function ParameterEditorPane() {
+  const [adjustPrompt, setAdjustPrompt] = useState("");
+  const [isAdjusting, setIsAdjusting] = useState(false);
   const selectedBlockId = useVisualizerStore((s) => s.selectedBlockId);
   const selectBlock = useVisualizerStore((s) => s.selectBlock);
   const setParameterValue = useVisualizerStore((s) => s.setParameterValue);
@@ -318,6 +321,81 @@ export function ParameterEditorPane() {
         </button>
       </div>
       <span className="text-xs text-gray-400 uppercase">{block.type}</span>
+
+      {/* AI Adjust Input */}
+      <div className="flex flex-col gap-2 p-3 bg-blue-900/20 border border-blue-800/50 rounded-lg">
+        <label className="text-xs text-blue-400 font-semibold uppercase tracking-wider">
+          Ask AI to Adjust
+        </label>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={adjustPrompt}
+            onChange={(e) => setAdjustPrompt(e.target.value)}
+            onKeyDown={async (e) => {
+              if (e.key === "Enter" && !isAdjusting && adjustPrompt.trim()) {
+                setIsAdjusting(true);
+                try {
+                  const res = await fetch("/api/chat/adjust", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      prompt: adjustPrompt,
+                      blockData: block,
+                    }),
+                  });
+                  if (!res.ok) throw new Error("Failed to adjust");
+                  const json = await res.json();
+                  // Apply new parameters to Zustand
+                  Object.entries(json.parameters).forEach(([key, val]) => {
+                    setParameterValue(selectedBlockId!, key, val as number | boolean);
+                  });
+                  toast.success("AI Adjustment Applied", { description: json.explanation });
+                  setAdjustPrompt("");
+                } catch (err) {
+                  toast.error("Adjustment Failed", { description: "The AI could not process your request at this time." });
+                } finally {
+                  setIsAdjusting(false);
+                }
+              }
+            }}
+            placeholder="e.g. 'Make it wetter'"
+            disabled={isAdjusting}
+            className="flex-1 bg-gray-950/50 border border-gray-700 text-sm text-white rounded px-2 py-1.5 focus:outline-none focus:border-blue-500 disabled:opacity-50"
+          />
+          <button
+            onClick={async () => {
+              if (isAdjusting || !adjustPrompt.trim()) return;
+              setIsAdjusting(true);
+              try {
+                const res = await fetch("/api/chat/adjust", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    prompt: adjustPrompt,
+                    blockData: block,
+                  }),
+                });
+                if (!res.ok) throw new Error("Failed to adjust");
+                const json = await res.json();
+                Object.entries(json.parameters).forEach(([key, val]) => {
+                  setParameterValue(selectedBlockId!, key, val as number | boolean);
+                });
+                toast.success("AI Adjustment Applied", { description: json.explanation });
+                setAdjustPrompt("");
+              } catch (err) {
+                toast.error("Adjustment Failed", { description: "The AI could not process your request at this time." });
+              } finally {
+                setIsAdjusting(false);
+              }
+            }}
+            disabled={isAdjusting || !adjustPrompt.trim()}
+            className="px-3 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {isAdjusting ? "..." : "Go"}
+          </button>
+        </div>
+      </div>
 
       {/* Model Swap Dropdown */}
       {modelEntries.length > 0 && (

@@ -64,27 +64,27 @@ describe("BLOCK_TYPES", () => {
 describe("getBlockUIConfig", () => {
   it("returns correct config for amp (wide, amber)", () => {
     const config = getBlockUIConfig("amp");
-    expect(config.colorHex).toBe("#F59E0B");
+    expect(config.colorHex).toBe("#C36952");
     expect(config.iconName).toBe("amp");
     expect(config.widthMode).toBe("wide");
   });
 
   it("returns correct config for cab (wide, darker amber)", () => {
     const config = getBlockUIConfig("cab");
-    expect(config.colorHex).toBe("#D97706");
+    expect(config.colorHex).toBe("#b5b5b5");
     expect(config.widthMode).toBe("wide");
   });
 
   it("returns correct config for delay (emerald)", () => {
     const config = getBlockUIConfig("delay");
-    expect(config.colorHex).toBe("#10B981");
+    expect(config.colorHex).toBe("#71A657");
     expect(config.iconName).toBe("delay");
     expect(config.widthMode).toBe("standard");
   });
 
   it("returns correct config for reverb (orange)", () => {
     const config = getBlockUIConfig("reverb");
-    expect(config.colorHex).toBe("#F97316");
+    expect(config.colorHex).toBe("#D56637");
     expect(config.iconName).toBe("reverb");
     expect(config.widthMode).toBe("standard");
   });
@@ -101,14 +101,14 @@ describe("getBlockUIConfig", () => {
 
   it("empty returns dark gray placeholder config", () => {
     const config = getBlockUIConfig("empty");
-    expect(config.colorHex).toBe("#374151");
+    expect(config.colorHex).toBe("#222222");
     expect(config.iconName).toBe("empty");
     expect(config.widthMode).toBe("standard");
   });
 
   it("looper returns light purple config", () => {
     const config = getBlockUIConfig("looper");
-    expect(config.colorHex).toBe("#A78BFA");
+    expect(config.colorHex).toBe("#2e2e2e");
     expect(config.iconName).toBe("looper");
     expect(config.widthMode).toBe("standard");
   });

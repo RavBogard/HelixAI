@@ -25,20 +25,20 @@ export interface BlockUIConfig {
  * Colors are chosen for high contrast on dark backgrounds.
  */
 export const BLOCK_UI_REGISTRY: Record<string, BlockUIConfig> = {
-  amp: { colorHex: "#F59E0B", iconName: "amp", widthMode: "wide" },
-  cab: { colorHex: "#D97706", iconName: "cab", widthMode: "wide" },
-  distortion: { colorHex: "#EF4444", iconName: "distortion", widthMode: "standard" },
-  delay: { colorHex: "#10B981", iconName: "delay", widthMode: "standard" },
-  reverb: { colorHex: "#F97316", iconName: "reverb", widthMode: "standard" },
-  modulation: { colorHex: "#8B5CF6", iconName: "modulation", widthMode: "standard" },
-  dynamics: { colorHex: "#06B6D4", iconName: "dynamics", widthMode: "standard" },
-  eq: { colorHex: "#3B82F6", iconName: "eq", widthMode: "standard" },
-  wah: { colorHex: "#EC4899", iconName: "wah", widthMode: "standard" },
-  pitch: { colorHex: "#14B8A6", iconName: "pitch", widthMode: "standard" },
-  volume: { colorHex: "#6B7280", iconName: "volume", widthMode: "narrow" },
+  amp: { colorHex: "#C36952", iconName: "amp", widthMode: "wide" }, // Earthy Orange-Red
+  cab: { colorHex: "#b5b5b5", iconName: "cab", widthMode: "wide" }, // Grey/Silver for Cabs
+  distortion: { colorHex: "#E2CD0D", iconName: "distortion", widthMode: "standard" }, // Yellow
+  delay: { colorHex: "#71A657", iconName: "delay", widthMode: "standard" }, // Green
+  reverb: { colorHex: "#D56637", iconName: "reverb", widthMode: "standard" }, // burnt orange
+  modulation: { colorHex: "#2A6EE5", iconName: "modulation", widthMode: "standard" }, // Blue
+  dynamics: { colorHex: "#D14436", iconName: "dynamics", widthMode: "standard" }, // Red
+  eq: { colorHex: "#5D6FD2", iconName: "eq", widthMode: "standard" }, // Purple/Blue
+  wah: { colorHex: "#CE458C", iconName: "wah", widthMode: "standard" }, // Pink/Magenta
+  pitch: { colorHex: "#4FBBC2", iconName: "pitch", widthMode: "standard" }, // Cyan/Teal
+  volume: { colorHex: "#6B7280", iconName: "volume", widthMode: "narrow" }, // Grey
   send_return: { colorHex: "#9CA3AF", iconName: "send_return", widthMode: "narrow" },
-  empty: { colorHex: "#374151", iconName: "empty", widthMode: "standard" },
-  looper: { colorHex: "#A78BFA", iconName: "looper", widthMode: "standard" },
+  empty: { colorHex: "#222222", iconName: "empty", widthMode: "standard" },
+  looper: { colorHex: "#2e2e2e", iconName: "looper", widthMode: "standard" },
 };
 
 /** Fallback config for unknown block types. */

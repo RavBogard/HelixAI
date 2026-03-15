@@ -32,7 +32,7 @@ export function DonationCard({ visible, onDismiss, fixed }: DonationCardProps) {
               <div className="h-full bg-[var(--hlx-amber)] rounded-full transition-all duration-1000 ease-out" style={{ width: '75%' }} />
             </div>
             <p className="text-[0.6875rem] text-[var(--hlx-text-muted)] mt-1 leading-relaxed">
-              HelixTones AI is an independent passion project built by a solo developer, and generating these tones costs real money in AI server fees. To ensure everyone gets the absolute best tones possible, I don&apos;t hide any features behind paywalls. If you find this tool valuable, please consider buying me a coffee to help keep the servers running!
+              HelixTones AI runs on expensive AI infrastructure. If this tool saves you time dialing in tones, please pitch in to cover the API costs so it can stay free and un-gated for everyone.
             </p>
           </div>
         </div>

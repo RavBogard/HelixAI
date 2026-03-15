@@ -1,0 +1,41 @@
+[
+  {
+    "provider": "gemini-3-flash",
+    "providerName": "Gemini 3 Flash",
+    "scenario": 0,
+    "scenarioName": "Clean Country",
+    "device": "helix_lt",
+    "genre": "country",
+    "schemaCompliance": 1,
+    "modelValidity": 1,
+    "appropriateness": 0.75,
+    "effectDiversity": 1,
+    "overallScore": 0.9249999999999999,
+    "latencyMs": 12270.625900000001,
+    "inputTokens": 8915,
+    "outputTokens": 535,
+    "costUsd": 0.0060625,
+    "ampName": "US Deluxe Vib",
+    "cabName": "1x12 US Deluxe",
+    "effects": [
+      "Red Squeeze",
+      "Chorus",
+      "Bucket Brigade",
+      "'63 Spring",
+      "Kinky Boost",
+      "Optical Trem",
+      "Deluxe Comp",
+      "Echo"
+    ],
+    "snapshots": [
+      "CLEAN (clean)",
+      "COMP (clean)",
+      "SLAPBACK (clean)",
+      "SHIMMER (clean)",
+      "SPANKY (lead)",
+      "TREMOLO (clean)",
+      "AMBIENT (ambient)",
+      "LEAD (lead)"
+    ]
+  }
+]
