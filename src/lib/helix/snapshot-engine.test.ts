@@ -244,8 +244,8 @@ describe("buildSnapshots", () => {
     expect(hgCleanSnap.blockStates[hgBoostKey]).toBe(true); // ON for high-gain amp's clean snapshot
   });
 
-  // Test 10: parameterOverrides include amp ChVol: clean=0.68, lead=0.80 (SNAP-02)
-  it("parameterOverrides: amp ChVol clean=0.68, lead=0.80", () => {
+  // Test 10: parameterOverrides include amp ChVol: clean=0.70, lead=0.595 (SNAP-09)
+  it("parameterOverrides: amp ChVol clean=0.70, lead=0.595", () => {
     const intent = cleanIntent();
     const chain = buildChain(intent);
     const result = buildSnapshots(chain, standardSnapshots());
@@ -254,8 +254,8 @@ describe("buildSnapshots", () => {
     const ampKey = findBlockKey(chain, ampBlock!);
 
     expect(result[0].parameterOverrides[ampKey]).toBeDefined();
-    expect(result[0].parameterOverrides[ampKey].ChVol).toBe(0.68); // clean
-    expect(result[2].parameterOverrides[ampKey].ChVol).toBe(0.80); // lead
+    expect(result[0].parameterOverrides[ampKey].ChVol).toBe(0.70); // clean (Drive=0.30)
+    expect(result[2].parameterOverrides[ampKey].ChVol).toBeCloseTo(0.595, 3); // lead (Drive=0.60)
   });
 
   // Test 11: parameterOverrides include Gain Block: lead=+2.0 dB, others=0.0 dB (SNAP-03, MED-08)
@@ -317,15 +317,14 @@ describe("buildSnapshots", () => {
 });
 
 // ============================================================
-// FX-04: Snapshot ChVol balance regression lock
+// FX-04 / SNAP-09: Snapshot ChVol balance inverse correlation
 // ============================================================
-// This test explicitly names the FX-04 requirement to provide an audit trail
-// and regression protection for the already-implemented ROLE_CHVOL behavior
-// in snapshot-engine.ts. Lead snapshots must always be louder than clean
-// snapshots by default (FX-04 success criterion).
+// Proves that as Drive goes up in heavier snapshots, ChVol drops to prevent
+// volume spiking from virtual power amp saturation. The actual preset volume
+// push is maintained exclusively by the Gain Block.
 
-describe("FX-04: snapshot ChVol balance", () => {
-  it("FX-04: lead snapshot ChVol is higher than clean snapshot ChVol by default", () => {
+describe("FX-04 / SNAP-09: snapshot ChVol inverse correlation", () => {
+  it("FX-04: lead snapshot ChVol is lower than clean snapshot ChVol to compensate for Drive", () => {
     const intent = cleanIntent();
     const chain = buildChain(intent);
     const result = buildSnapshots(chain, standardSnapshots());
@@ -337,11 +336,11 @@ describe("FX-04: snapshot ChVol balance", () => {
     const leadChVol = result[2].parameterOverrides[ampKey].ChVol as number;  // lead
     const cleanChVol = result[0].parameterOverrides[ampKey].ChVol as number; // clean
 
-    // FX-04 core assertion: lead must be louder than clean
-    expect(leadChVol).toBeGreaterThan(cleanChVol);
-    // FX-04 exact values from ROLE_CHVOL table: lead=0.80, clean=0.68
-    expect(leadChVol).toBeCloseTo(0.80, 5);
-    expect(cleanChVol).toBeCloseTo(0.68, 5);
+    // Core assertion: lead ChVol must be lower than clean to compensate for higher Drive
+    expect(leadChVol).toBeLessThan(cleanChVol);
+    // Explicit values: lead=0.595, clean=0.70
+    expect(leadChVol).toBeCloseTo(0.595, 3);
+    expect(cleanChVol).toBeCloseTo(0.70, 3);
   });
 });
 

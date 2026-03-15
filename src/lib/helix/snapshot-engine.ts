@@ -21,15 +21,22 @@ const ROLE_LED: Record<string, number> = {
 };
 
 // ---------------------------------------------------------------------------
-// Volume balancing: ChVol per role (SNAP-02)
+// ---------------------------------------------------------------------------
+// Volume balancing: Inverse Drive/ChVol Correlation (Phase 12 / SNAP-09)
+// As snapshot Drive increases, physical output level (ChVol) must artificially
+// decrease to maintain unity RMS gain, preventing the +3dB stacking effect from
+// the virtual power amp. All explicit physical pushes are handled by Gain Block.
 // ---------------------------------------------------------------------------
 
-const ROLE_CHVOL: Record<string, number> = {
-  clean: 0.68,
-  crunch: 0.72,
-  lead: 0.80,
-  ambient: 0.70,
-};
+const BASE_DRIVE = 0.30;
+const BASE_CHVOL = 0.70;
+const CHVOL_COMPENSATION_COEFFICIENT = -0.35; 
+
+function calculateCompensatedChVol(newDrive: number): number {
+  const deltaDrive = newDrive - BASE_DRIVE;
+  const compensated = BASE_CHVOL + (deltaDrive * CHVOL_COMPENSATION_COEFFICIENT);
+  return Math.max(0.40, Math.min(1.0, compensated)); // Clamp
+}
 
 // ---------------------------------------------------------------------------
 // Amp Drive per role (SNAP-06)
@@ -358,22 +365,25 @@ export function buildSnapshots(
     // ChVol + Drive overrides: dual-amp gets independent overrides on both amps (DUAL-05, SNAP-06)
     if (isDualAmp) {
       if (primaryAmpEntry) {
+        const drive = ROLE_DRIVE[role] ?? 0.50;
         parameterOverrides[primaryAmpEntry.key] = {
-          ChVol: ROLE_CHVOL[role] ?? 0.70,
-          Drive: ROLE_DRIVE[role] ?? 0.50,
+          ChVol: calculateCompensatedChVol(drive),
+          Drive: drive,
         };
       }
       if (secondaryAmpEntry) {
+        const drive = ROLE_DRIVE[role] ?? 0.50;
         parameterOverrides[secondaryAmpEntry.key] = {
-          ChVol: ROLE_CHVOL[role] ?? 0.70,
-          Drive: ROLE_DRIVE[role] ?? 0.50,
+          ChVol: calculateCompensatedChVol(drive),
+          Drive: drive,
         };
       }
     } else if (primaryAmpEntry) {
       // Single-amp
+      const drive = ROLE_DRIVE[role] ?? 0.50;
       parameterOverrides[primaryAmpEntry.key] = {
-        ChVol: ROLE_CHVOL[role] ?? 0.70,
-        Drive: ROLE_DRIVE[role] ?? 0.50,
+        ChVol: calculateCompensatedChVol(drive),
+        Drive: drive,
       };
     }
 
