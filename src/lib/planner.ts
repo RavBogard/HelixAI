@@ -188,7 +188,15 @@ export async function callGeminiPlanner(
   // Sanitize before Zod validation.
   // Structured output may not enforce string length limits. We truncate
   // snapshot names here to avoid Zod rejecting valid-intent-but-too-long names.
-  const raw = JSON.parse(text);
+  let raw;
+  try {
+    raw = JSON.parse(text);
+  } catch (parseError) {
+    const errObj = parseError instanceof Error ? parseError : new Error(String(parseError));
+    console.error("Gemini JSON Parse Error! Raw output was:", text);
+    throw new Error(`JSON synthesis failed: ${errObj.message}. Raw text length: ${text.length}`);
+  }
+
   if (Array.isArray(raw.snapshots)) {
     raw.snapshots = raw.snapshots.map((s: { name?: string; toneRole?: string }) => ({
       ...s,
