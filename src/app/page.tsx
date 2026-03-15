@@ -19,6 +19,7 @@ function HomeContent() {
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationPhase, setGenerationPhase] = useState<string | null>(null);
   const [readyToGenerate, setReadyToGenerate] = useState(false);
   // CHANGE 4-B: add substitutionMap? to generatedPreset state type
   const [generatedPreset, setGeneratedPreset] = useState<PresetCardData | null>(null);
@@ -425,11 +426,57 @@ function HomeContent() {
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || `Generation failed: ${res.status}`);
+        const text = await res.text();
+        try {
+           const parsedData = JSON.parse(text);
+           throw new Error(parsedData.error || `Generation failed: ${res.status}`);
+        } catch(e) {
+           throw new Error(`Generation failed: ${res.status}`);
+        }
       }
 
-      const data = await res.json();
+      // Track 18C: Consume NDJSON stream with multi-stage updates
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("No response body");
+      const decoder = new TextDecoder();
+      
+      let finalData: any = null;
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\\n");
+        buffer = lines.pop() || ""; // retain incomplete line in buffer
+        
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          const parsed = JSON.parse(line);
+          
+          if (parsed.error) {
+              throw new Error(parsed.error);
+          } else if (parsed.type === "status") {
+              setGenerationPhase(parsed.message);
+          } else if (parsed.type === "result") {
+              finalData = parsed.payload;
+          }
+        }
+      }
+
+      // Handle any trailing structured data
+      if (buffer.trim()) {
+         try {
+             const parsed = JSON.parse(buffer);
+             if (parsed.type === "result") finalData = parsed.payload;
+         } catch(e) {}
+      }
+
+      if (!finalData) throw new Error("Server closed connection without sending result payload.");
+
+      setGenerationPhase(null);
+      const data = finalData;
       setGeneratedPreset(data);
       // Phase 20: store substitution map from generate response
       if (data.substitutionMap) {
@@ -486,6 +533,7 @@ function HomeContent() {
       setError(message);
     } finally {
       setIsGenerating(false);
+      setGenerationPhase(null);
     }
   }
 
@@ -1026,7 +1074,7 @@ function HomeContent() {
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                         </svg>
                       ) : null}
-                      {isGenerating ? "Generating..." : "Generate Preset"}
+                      {isGenerating ? (generationPhase || "Generating...") : "Generate Preset"}
                     </button>
                   </>
                 )}

@@ -5,6 +5,7 @@
 import type { DeviceTarget } from "@/lib/helix/types";
 import { resolveFamily } from "@/lib/helix";
 import type { DeviceFamily } from "@/lib/helix";
+import { getMasteringCriticPrompt } from "./families/shared/critic-prompt";
 import {
   buildPlannerPrompt as helixPlannerPrompt,
   getSystemPrompt as helixChatPrompt,
@@ -59,3 +60,5 @@ export function getFamilyChatPrompt(device: DeviceTarget): string {
       return stadiumChatPrompt(device);
   }
 }
+
+export { getMasteringCriticPrompt };

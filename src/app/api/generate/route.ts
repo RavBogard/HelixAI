@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { callGeminiPlanner } from "@/lib/planner";
+import { createGeminiClient, getModelId, isPremiumKey } from "@/lib/gemini";
+import { getMasteringCriticPrompt } from "@/lib/prompt-router";
 import {
   assembleSignalChain,
   buildSnapshots,
@@ -30,14 +32,58 @@ export const maxDuration = 60; // Prevent Vercel hobby 15s truncating the Gemini
 
 export async function POST(req: NextRequest) {
   try {
-    // Auth gate: require a valid session to prevent unauthenticated AI cost exposure
     const authSupabase = await createSupabaseServerClient();
     const { data: { user: authUser } } = await authSupabase.auth.getUser();
     if (!authUser) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
 
-    const { messages, device, rigIntent, rigText, conversationId, acousticEmpathyEnabled } = await req.json();
+    const jsonBody = await req.json();
+
+    const encoder = new TextEncoder();
+    const readable = new ReadableStream({
+      async start(controller) {
+        function emitStatus(msg: string) {
+          controller.enqueue(encoder.encode(JSON.stringify({ type: "status", message: msg }) + "\\n"));
+        }
+        function emitResult(payload: any) {
+          controller.enqueue(encoder.encode(JSON.stringify({ type: "result", payload }) + "\\n"));
+        }
+        function emitError(msg: string) {
+          controller.enqueue(encoder.encode(JSON.stringify({ error: msg }) + "\\n"));
+        }
+
+        try {
+          await runGenerationProcess(jsonBody, authUser, emitStatus, emitResult);
+          controller.close();
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Unknown error";
+          console.error("Preset generation error:", message);
+          emitError(message);
+          controller.close();
+        }
+      }
+    });
+
+    return new Response(readable, {
+      headers: { "Content-Type": "application/x-ndjson" }
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+async function runGenerationProcess(
+  body: any, 
+  authUser: any, 
+  emitStatus: (msg: string) => void, 
+  emitResult: (payload: any) => void
+) {
+
+    const { messages, device, rigIntent, rigText, conversationId, premiumKey, acousticEmpathyEnabled } = body;
+
+    emitStatus("Translating tone intent...");
 
     // Resolve device target — supports helix_lt, helix_floor, pod_go, helix_stadium, helix_stomp, helix_stomp_xl
     let deviceTarget: DeviceTarget;
@@ -62,10 +108,7 @@ export async function POST(req: NextRequest) {
     const deviceFamily: DeviceFamily = resolveFamily(deviceTarget);
 
     if (!messages || messages.length === 0) {
-      return NextResponse.json(
-        { error: "No conversation provided" },
-        { status: 400 }
-      );
+      throw new Error("No conversation provided");
     }
 
     // Rig emulation path: build substitution map and toneContext if rig data present.
@@ -100,6 +143,8 @@ export async function POST(req: NextRequest) {
     // Pass toneContext so planner prioritizes rig-matched models (Phase 20)
     const toneIntent = await callGeminiPlanner(messages, deviceTarget, deviceFamily, toneContext);
 
+    emitStatus("Structuring signal chain...");
+    
     // Step 2: Knowledge Layer pipeline (deterministic)
     // Resolve capabilities once, pass to all Knowledge Layer functions (KLAYER-04)
     const caps = getCapabilities(deviceTarget);
@@ -141,6 +186,41 @@ export async function POST(req: NextRequest) {
       console.warn("[intent-audit]", intentAudit.warnings.join("; "));
     }
 
+    emitStatus("Mastering engineer auditing audio...");
+
+    // Step 4.7: Tone Critic (Secondary Agent) -> Mutates presetSpec to fix acoustic flaws.
+    const ai = createGeminiClient();
+    const modelId = getModelId(isPremiumKey(premiumKey));
+    const CRITIC_PROMPT = getMasteringCriticPrompt();
+    
+    const criticChat = ai.chats.create({
+      model: modelId,
+      config: {
+        systemInstruction: CRITIC_PROMPT,
+      }
+    });
+
+    const criticResponse = await criticChat.sendMessage({
+      message: `User Request: ${messages[messages.length - 1]?.content}\\n\\nInitial Generated PresetSpec JSON:\\n${JSON.stringify(presetSpec, null, 2)}`
+    });
+
+    if (criticResponse.text) {
+      // Extract the JSON block using a regex in case The LLM wraps it in markdown
+      const match = criticResponse.text.match(/```json\\n([\\s\\S]*?)\\n```/);
+      const rawJson = match ? match[1] : criticResponse.text.replace(/```.*?\\n/g, "").replace(/```/g, "");
+      
+      try {
+        const masteredSpec = JSON.parse(rawJson);
+        // Safely overwrite the signalChain and snapshots
+        if (masteredSpec.signalChain) presetSpec.signalChain = masteredSpec.signalChain;
+        if (masteredSpec.snapshots) presetSpec.snapshots = masteredSpec.snapshots;
+      } catch (err) {
+        console.warn("[tone-critic] Failed to parse Mastering Critic JSON, falling back to primary output.", err);
+      }
+    }
+
+    emitStatus("Finalizing preset encoding...");
+
     // Step 5: Build preset file with device target
     if (isStomp(deviceTarget)) {
       // Step 5b: Stomp — build .hlx file with Stomp-specific I/O models (STOMP-06)
@@ -180,7 +260,7 @@ export async function POST(req: NextRequest) {
       }
       // --- End persistence ---
 
-      return NextResponse.json({
+      emitResult({
         preset: hlxFile,
         summary,
         spec: presetSpec,
@@ -190,6 +270,7 @@ export async function POST(req: NextRequest) {
         intentAudit,
         ...(substitutionMap !== undefined ? { substitutionMap } : {}),
       });
+      return;
     }
 
     if (isStadium(deviceTarget)) {
@@ -231,7 +312,7 @@ export async function POST(req: NextRequest) {
       }
       // --- End persistence ---
 
-      return NextResponse.json({
+      emitResult({
         preset: hspFile.json,
         summary,
         spec: presetSpec,
@@ -241,6 +322,7 @@ export async function POST(req: NextRequest) {
         intentAudit,
         ...(substitutionMap !== undefined ? { substitutionMap } : {}),
       });
+      return;
     }
 
     if (isPodGo(deviceTarget)) {
@@ -281,7 +363,7 @@ export async function POST(req: NextRequest) {
       }
       // --- End persistence ---
 
-      return NextResponse.json({
+      emitResult({
         preset: pgpFile,
         summary,
         spec: presetSpec,
@@ -291,6 +373,7 @@ export async function POST(req: NextRequest) {
         intentAudit,
         ...(substitutionMap !== undefined ? { substitutionMap } : {}),
       });
+      return;
     } else {
       // Helix: build .hlx file
       const hlxFile = buildHlxFile(presetSpec, deviceTarget);
@@ -329,7 +412,7 @@ export async function POST(req: NextRequest) {
       }
       // --- End persistence ---
 
-      return NextResponse.json({
+      emitResult({
         preset: hlxFile,
         summary,
         spec: presetSpec,
@@ -339,12 +422,8 @@ export async function POST(req: NextRequest) {
         intentAudit,
         ...(substitutionMap !== undefined ? { substitutionMap } : {}),
       });
+      return;
     }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("Preset generation error:", message);
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
 }
 
 // ---------------------------------------------------------------------------
