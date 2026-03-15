@@ -294,7 +294,16 @@ function HomeContent() {
       });
 
       if (!res.ok) {
-        throw new Error(`API error: ${res.status}`);
+        let errMsg = `API error: ${res.status}`;
+        try {
+          const text = await res.text();
+          const data = JSON.parse(text);
+          if (data.error) errMsg = data.error;
+          if (data.details) errMsg += "\n" + JSON.stringify(data.details, null, 2);
+        } catch (_) {
+          // Fallback to strict status string if body isn't JSON or readable
+        }
+        throw new Error(errMsg);
       }
 
       const reader = res.body?.getReader();

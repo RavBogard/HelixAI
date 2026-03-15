@@ -14,9 +14,9 @@ const chatRequestSchema = z.object({
     role: z.string(),
     content: z.string().max(3000, "Message content exceeds maximum allowed length of 3000 characters")
   })).min(1, "At least one message is required").max(30, "Maximum of 30 messages allowed in context window"),
-  device: z.string().optional(),
-  premiumKey: z.string().optional(),
-  conversationId: z.string().optional()
+  device: z.string().nullish(),
+  premiumKey: z.string().nullish(),
+  conversationId: z.string().nullish()
 });
 
 // Configure Rate Limiter (Gracefully falls back if no Upstash credentials exist)
