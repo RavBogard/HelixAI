@@ -162,10 +162,11 @@ export async function callGeminiPlanner(
       const totalTokens = usage?.totalTokenCount ?? (inputTokens + outputTokens);
       const costUsd = estimateGeminiCost(usage ?? {}, modelId);
       const cacheHit = cachedTokens > 0;
+      const finishReason = response.candidates?.[0]?.finishReason || "UNKNOWN";
 
       // Always log to console — Vercel captures this in function logs
       console.log(
-        `[planner] attempt=${attempt} model=${modelId} tokens=${inputTokens}in/${outputTokens}out` +
+        `[planner] attempt=${attempt} model=${modelId} finish=${finishReason} tokens=${inputTokens}in/${outputTokens}out` +
         ` cache=${cacheHit ? "HIT" : "MISS"}(cached=${cachedTokens})` +
         ` cost=$${costUsd.toFixed(4)} device=${effectiveDevice}`
       );
