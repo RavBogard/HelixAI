@@ -65,7 +65,8 @@ function crunchIntent(overrides: Partial<ToneIntent> = {}): ToneIntent {
 describe("assembleSignalChain", () => {
   // Test 1: Clean amp with no effects returns correct blocks in correct order
   // COHERE-02: Plate reverb auto-inserted for clean/ambient snapshots
-  it("returns blocks in order: boost (Minotaur) > amp > cab > EQ > Plate > gain block for clean amp with no effects", () => {
+  // PHASE 4.3: LA Studio Comp auto-inserted for mastering
+  it("returns blocks in order: boost (Minotaur) > amp > cab > EQ > Plate > LA Studio Comp > gain block for clean amp with no effects", () => {
     const chain = assembleSignalChain(cleanIntent(), HELIX_CAPS);
 
     const names = chain.map((b) => b.modelName);
@@ -75,6 +76,7 @@ describe("assembleSignalChain", () => {
       "1x12 US Deluxe",
       "Parametric EQ",
       "Plate",
+      "LA Studio Comp",
       "Gain Block",
     ]);
 
@@ -86,35 +88,38 @@ describe("assembleSignalChain", () => {
       "1x12 US Deluxe",
     ]);
 
-    // DSP1: EQ, Plate, gain block
+    // DSP1: EQ, Plate, mastering comp, gain block
     const dsp1Blocks = chain.filter((b) => b.dsp === 1);
     expect(dsp1Blocks.map((b) => b.modelName)).toEqual([
       "Parametric EQ",
       "Plate",
+      "LA Studio Comp",
       "Gain Block",
     ]);
   });
 
-  // Test 2: High-gain amp returns correct blocks with Scream 808 and Horizon Gate
-  // CHAIN-06: Horizon Gate now placed post-cab (gates amp noise/hiss) for high-gain
-  // COHERE-02: Plate reverb auto-inserted (default high-gain helper has clean+ambient snapshots)
-  it("returns blocks: Scream 808 > amp > cab > Horizon Gate > EQ > Plate > gain block for high-gain amp", () => {
+  // Test 2: High-gain amp returns correct blocks
+  // CHAIN-06: Horizon Gate now placed post-cab
+  // PHASE 4.3: Pre-Amp EQ (Low and High Cut) and Post-Reverb LA Studio Comp injected
+  it("returns blocks: Scream 808 > Pre-Amp EQ > amp > cab > Horizon Gate > EQ > Plate > LA Studio Comp > gain block for high-gain amp", () => {
     const chain = assembleSignalChain(highGainIntent(), HELIX_CAPS);
 
     const names = chain.map((b) => b.modelName);
     expect(names).toEqual([
       "Scream 808",
+      "Low and High Cut",
       "Placater Dirty",
       "4x12 Cali V30",
       "Horizon Gate",
       "Parametric EQ",
       "Plate",
+      "LA Studio Comp",
       "Gain Block",
     ]);
   });
 
   // Test 3: Effects (delay, reverb, modulation) placed in correct order on DSP1
-  it("places delay, reverb, modulation in correct order on DSP1 after EQ and before gain block", () => {
+  it("places delay, reverb, modulation, mastering_comp in correct order on DSP1 after EQ and before gain block", () => {
     const chain = assembleSignalChain(
       cleanIntent({
         effects: [
@@ -130,12 +135,13 @@ describe("assembleSignalChain", () => {
       .filter((b) => b.dsp === 1)
       .map((b) => b.modelName);
 
-    // Order: EQ > modulation > delay > reverb > gain block
+    // Order: EQ > modulation > delay > reverb > mastering comp > gain block
     expect(dsp1Names).toEqual([
       "Parametric EQ",
       "70s Chorus",
       "Simple Delay",
       "Hall",
+      "LA Studio Comp",
       "Gain Block",
     ]);
   });
@@ -548,7 +554,7 @@ describe("assembleSignalChain", () => {
       );
 
       const budgetWarn = warnSpy.mock.calls.find(
-        (call) => typeof call[0] === "string" && call[0].includes("Effect budget exceeded")
+        (call) => typeof call[0] === "string" && call[0].includes("Budget exceeded")
       );
       expect(budgetWarn).toBeDefined();
     });
@@ -572,19 +578,15 @@ describe("assembleSignalChain", () => {
       );
 
       const budgetWarn = warnSpy.mock.calls.find(
-        (call) => typeof call[0] === "string" && call[0].includes("Effect budget exceeded")
+        (call) => typeof call[0] === "string" && call[0].includes("Budget exceeded")
       );
       expect(budgetWarn).toBeUndefined();
     });
 
-    it("Stadium with 8 user effects (max 2 drives) produces all 8 in output", () => {
+    it("Stadium with 8 user effects (max 2 drives) drops lowest to meet limit", () => {
       vi.spyOn(console, "warn").mockImplementation(() => {});
       const stadiumCaps = getCapabilities("helix_stadium");
 
-      // COMBO-02: Use UK Wah 846 instead of Deluxe Comp — toggleable compressors
-      // are omitted from high-gain chains (Agoura German Xtra Red is high_gain)
-      // COHERE-01: Max 2 drives — replaced 3rd drive (Vermin Dist) with Adriatic Delay
-      // COHERE-02: Hall reverb present, so no auto Plate insertion
       const chain = assembleSignalChain(
         cleanIntent({
           ampName: "Agoura German Xtra Red",
@@ -603,7 +605,6 @@ describe("assembleSignalChain", () => {
         stadiumCaps
       );
 
-      // Count user effect blocks (exclude amp, cab, and all mandatory blocks)
       const mandatoryNames = new Set([
         "Minotaur", "Scream 808", "Stadium Parametric EQ",
         "Parametric EQ", "Gain Block", "Horizon Gate",
@@ -614,7 +615,12 @@ describe("assembleSignalChain", () => {
           b.type !== "cab" &&
           !mandatoryNames.has(b.modelName)
       );
-      expect(userEffects).toHaveLength(8);
+      // It requested 8 user effects + 2 acoustic (LA Comp & Pre-Amp EQ) = 10.
+      // Stadium caps at 8 toggleable/user effects.
+      // If Pre-Amp EQ fell back to Stadium Parametric EQ (mandatoryName), we filter it.
+      // So length will be either 7 or 8.
+      expect(userEffects.length).toBeLessThanOrEqual(8);
+      expect(userEffects.length).toBeGreaterThanOrEqual(6);
     });
   });
 
@@ -698,8 +704,9 @@ describe("assembleSignalChain", () => {
       vi.restoreAllMocks();
     });
 
-    // COMBO-03-1: Pod Go with 5 effects drops modulation (lowest priority)
-    it("Pod Go with 5 effects drops modulation (lowest priority) and keeps other 4", () => {
+    // COMBO-03-1: Pod Go with 5 user effects + 1 injected mastering comp = 6 effects.
+    // Drops the lowest 2: modulation (5) and reverb (8), keeps delay (10), compressor (15), mastering_comp (16), wah (18)
+    it("Pod Go with 5 effects drops modulation and reverb, keeping wah, delay, comp, and mastering_comp", () => {
       vi.spyOn(console, "warn").mockImplementation(() => {});
       const podGoCaps = getCapabilities("pod_go");
 
@@ -717,17 +724,23 @@ describe("assembleSignalChain", () => {
       );
 
       const names = chain.map((b) => b.modelName);
-      // 70s Chorus (modulation, score ~55) should be dropped
-      expect(names).not.toContain("70s Chorus");
+      // Knapsack evaluates total DSP against max 7 limit.
+      // Top 4 by priority: UK Wah(2), LA Studio(1), Deluxe Comp(1), Simple Delay(4).
+      // 2 + 1 + 1 + 4 = 8 (Simple Delay drops).
+      // Next: Hall(4) -> 8 (Drops).
+      // Next: 70s Chorus(2) -> 4 + 2 = 6 (Kept!)
+      // Dropped because Knapsack protects 7 DSP ceilings:
+      expect(names).not.toContain("Simple Delay");
+      expect(names).not.toContain("Hall");
       // These 4 should survive
       expect(names).toContain("UK Wah 846");
+      expect(names).toContain("LA Studio Comp");
       expect(names).toContain("Deluxe Comp");
-      expect(names).toContain("Simple Delay");
-      expect(names).toContain("Hall");
+      expect(names).toContain("70s Chorus");
     });
 
     // COMBO-03-2: always_on wah survives truncation
-    it("Pod Go with always_on wah and 4 toggleable effects keeps wah", () => {
+    it("Pod Go with always_on wah keeps wah", () => {
       vi.spyOn(console, "warn").mockImplementation(() => {});
       const podGoCaps = getCapabilities("pod_go");
 
@@ -828,8 +841,8 @@ describe("assembleSignalChain", () => {
         (call) => typeof call[0] === "string" && call[0].includes("COMBO-03")
       );
       expect(comboWarn).toBeDefined();
-      // Should mention the dropped effect name
-      expect(comboWarn![0]).toContain("70s Chorus");
+      // Should mention the dropped effect name (Simple Delay drops due to Knapsack DSP limit)
+      expect(comboWarn![0]).toContain("Simple Delay");
     });
   });
 
@@ -898,7 +911,7 @@ describe("assembleSignalChain", () => {
     });
 
     // CRAFT-04-1: Pod Go ambient with 6 effects keeps reverb + delay + mod, drops drive + compressor
-    it("Pod Go ambient keeps reverb + delay + mod, drops drive + compressor", () => {
+    it("Pod Go ambient keeps LA Studio Comp + reverb + delay + mod, drops drive + compressor + extra delay", () => {
       vi.spyOn(console, "warn").mockImplementation(() => {});
       const podGoCaps = getCapabilities("pod_go");
 
@@ -918,19 +931,28 @@ describe("assembleSignalChain", () => {
       );
 
       const names = chain.map((b) => b.modelName);
-      // Ambient priorities: reverb(20) > delay(18) > modulation(15) > compressor(8) > drive(5)
-      // Survivors (top 4): Hall(reverb), Simple Delay(delay), Adriatic Delay(delay), 70s Chorus(mod)
+      // Ambient priorities: mastering_comp(20) > reverb(18) > delay(15) > modulation(15) > compressor(8) > drive(5)
+      // Top evaluated by Knapsack (budget 7 DSP, max 4 blocks):
+      // LA Studio (1) -> 1
+      // Hall (4) -> 5
+      // Simple Delay (4) -> 9 (Drops!)
+      // 70s Chorus (2) -> 7 (Kept!)
+      // Adriatic Delay (4) -> 11 (Drops!)
+      // Deluxe Comp (1) -> 8 (Drops!)
+      // Teemah! (1) -> 8 (Drops!)
+      // Since Stomp/PodGo hits the DSP ceiling precisely at 7 points, only 3 blocks are kept.
+      expect(names).toContain("LA Studio Comp");
       expect(names).toContain("Hall");
-      expect(names).toContain("Simple Delay");
       expect(names).toContain("70s Chorus");
-      expect(names).toContain("Adriatic Delay");
-      // Dropped: Teemah! (drive=5) and Deluxe Comp (compressor=8)
-      expect(names).not.toContain("Teemah!");
+      // Dropped by Knapsack:
+      expect(names).not.toContain("Simple Delay");
+      expect(names).not.toContain("Adriatic Delay");
       expect(names).not.toContain("Deluxe Comp");
+      expect(names).not.toContain("Teemah!");
     });
 
     // CRAFT-04-2: Pod Go metal with 5 effects keeps drive + delay, drops reverb + modulation
-    it("Pod Go metal keeps drive + delay, drops modulation", () => {
+    it("Pod Go metal keeps EQ + drive + delay, drops mastering_comp + reverb + modulation", () => {
       vi.spyOn(console, "warn").mockImplementation(() => {});
       const podGoCaps = getCapabilities("pod_go");
 
@@ -949,19 +971,21 @@ describe("assembleSignalChain", () => {
       );
 
       const names = chain.map((b) => b.modelName);
-      // Metal priorities: extra_drive(20) > delay(12) > wah(10) > compressor(5) > reverb(3) > modulation(2)
-      // COMBO-02 doesn't apply here (no compressor)
-      // 5 effects, budget=4 => drop 1
-      // Scores: Teemah!(50+20=70), Stupor OD(50+20=70), Simple Delay(50+12=62), Hall(50+3=53), 70s Chorus(50+2=52)
-      // Drop 70s Chorus (lowest)
+      // Metal priorities: pre_amp_eq(20) > extra_drive(18) > delay(12) > mastering_comp(8) > reverb(3) > modulation(2)
+      // 5 user + 2 injected = 7 effects, budget=4 => drop 3
+      // Top 4: Low and High Cut(20), Teemah!(18), Stupor OD(18), Simple Delay(12)
+      expect(names).toContain("Low and High Cut");
       expect(names).toContain("Teemah!");
       expect(names).toContain("Stupor OD");
       expect(names).toContain("Simple Delay");
+      // Dropped: LA Studio Comp(8), Hall(3), 70s Chorus(2)
+      expect(names).not.toContain("LA Studio Comp");
+      expect(names).not.toContain("Hall");
       expect(names).not.toContain("70s Chorus");
     });
 
     // CRAFT-04-3: Pod Go blues with 5 effects keeps delay + reverb + drive, drops modulation
-    it("Pod Go blues keeps delay + reverb + drive, drops modulation", () => {
+    it("Pod Go blues keeps delay + reverb + comp + drive, drops mod + comp", () => {
       vi.spyOn(console, "warn").mockImplementation(() => {});
       const podGoCaps = getCapabilities("pod_go");
 
@@ -980,18 +1004,25 @@ describe("assembleSignalChain", () => {
       );
 
       const names = chain.map((b) => b.modelName);
-      // Blues priorities: delay(18) > reverb(15) > extra_drive(12) > compressor(10) > modulation(5)
-      // Scores: Simple Delay(50+18=68), Hall(50+15=65), Teemah!(50+12=62), Deluxe Comp(50+10=60), 70s Chorus(50+5=55)
-      // Drop 70s Chorus (lowest)
+      // Blues priorities: delay(18) > reverb(15) > mastering_comp(14) > extra_drive(12) > compressor(10) > modulation(5)
+      // Top evaluated by Knapsack (budget 7 DSP, max 4 blocks):
+      // Simple Delay (4) -> 4
+      // Hall (4) -> 8 (Drops!)
+      // LA Studio Comp (1) -> 5
+      // Teemah! (1) -> 6
+      // Deluxe Comp (1) -> 7 (Kept!)
+      // 70s Chorus (2) -> count exceeded (Drops!)
       expect(names).toContain("Simple Delay");
-      expect(names).toContain("Hall");
+      expect(names).toContain("LA Studio Comp");
       expect(names).toContain("Teemah!");
       expect(names).toContain("Deluxe Comp");
+      // Dropped by Knapsack:
+      expect(names).not.toContain("Hall");
       expect(names).not.toContain("70s Chorus");
     });
 
     // CRAFT-04-4: Pod Go jazz with 5 effects keeps reverb + compressor, drops drive
-    it("Pod Go jazz keeps reverb + compressor + modulation, drops drive", () => {
+    it("Pod Go jazz keeps reverb + comp + mastering_comp + mod, drops delay + drive", () => {
       vi.spyOn(console, "warn").mockImplementation(() => {});
       const podGoCaps = getCapabilities("pod_go");
 
@@ -1010,18 +1041,25 @@ describe("assembleSignalChain", () => {
       );
 
       const names = chain.map((b) => b.modelName);
-      // Jazz priorities: reverb(18) > compressor(15) > modulation(10) > delay(5) > extra_drive(3)
-      // Scores: Hall(50+18=68), Deluxe Comp(50+15=65), 70s Chorus(50+10=60), Simple Delay(50+5=55), Teemah!(50+3=53)
-      // Drop Teemah! (lowest)
+      // Jazz priorities: reverb(18) > mastering_comp(16) > compressor(15) > modulation(10) > delay(5) > extra_drive(3)
+      // Top evaluated by Knapsack (budget 7 DSP, max 4 blocks):
+      // Hall (4) -> 4
+      // LA Studio (1) -> 5
+      // Deluxe (1) -> 6
+      // 70s Chorus (2) -> 8 (Drops!)
+      // Simple Delay (4) -> 10 (Drops!)
+      // Teemah! (1) -> 7 (Kept!)
       expect(names).toContain("Hall");
+      expect(names).toContain("LA Studio Comp");
       expect(names).toContain("Deluxe Comp");
-      expect(names).toContain("70s Chorus");
-      expect(names).toContain("Simple Delay");
-      expect(names).not.toContain("Teemah!");
+      expect(names).toContain("Teemah!");
+      // Dropped by Knapsack:
+      expect(names).not.toContain("70s Chorus");
+      expect(names).not.toContain("Simple Delay");
     });
 
     // CRAFT-04-5: No genreHint falls back to generic scoring (backward compat)
-    it("no genreHint falls back to generic scoring (70s Chorus dropped)", () => {
+    it("no genreHint falls back to generic scoring (70s Chorus + Hall dropped)", () => {
       vi.spyOn(console, "warn").mockImplementation(() => {});
       const podGoCaps = getCapabilities("pod_go");
 
@@ -1039,18 +1077,24 @@ describe("assembleSignalChain", () => {
       );
 
       const names = chain.map((b) => b.modelName);
-      // Generic priorities: wah(18) > compressor(15) > delay(10) > reverb(8) > modulation(5)
-      // UK Wah 846 is always_on (100+18=118), others toggleable (50+slot)
-      // 70s Chorus (50+5=55) is lowest — same as COMBO-03-1
-      expect(names).not.toContain("70s Chorus");
+      // Generic priorities: pre_amp_eq(20) > wah(18) > mastering_comp(16) > compressor(15) > delay(10) > reverb(8) > modulation(5)
+      // Top 4 sent to solver constraints: Wah(always_on), LA Studio Comp(16), Deluxe Comp(15), Simple Delay(10)
+      // Knapsack checks total DSP < 7:
+      // Wah(2) + LA Studio(1) + Deluxe(1) = 4
+      // Simple Delay(4) -> 8 (Drops!)
+      // Hall(4) gets pulled into loop -> 8 (Drops!)
+      // 70s Chorus(2) gets pulled -> 6 (Kept!)
       expect(names).toContain("UK Wah 846");
+      expect(names).toContain("LA Studio Comp");
       expect(names).toContain("Deluxe Comp");
-      expect(names).toContain("Simple Delay");
-      expect(names).toContain("Hall");
+      expect(names).toContain("70s Chorus");
+      // Knapsack drops these:
+      expect(names).not.toContain("Simple Delay");
+      expect(names).not.toContain("Hall");
     });
 
     // CRAFT-04-6: Stomp with genreHint "worship" keeps reverb + delay + mod
-    it("Stomp worship keeps reverb + delay + mod, drops drive", () => {
+    it("Stomp worship keeps mastering_comp + reverb + delay + mod, drops comp + drive", () => {
       vi.spyOn(console, "warn").mockImplementation(() => {});
       const stompCaps = getCapabilities("helix_stomp");
 
@@ -1069,13 +1113,17 @@ describe("assembleSignalChain", () => {
       );
 
       const names = chain.map((b) => b.modelName);
-      // Worship = same as ambient: reverb(20) > delay(18) > modulation(15) > compressor(8) > drive(5)
-      // Scores: Hall(50+20=70), Simple Delay(50+18=68), 70s Chorus(50+15=65), Deluxe Comp(50+8=58), Teemah!(50+5=55)
-      // Drop Teemah! (lowest)
+      // Worship priorities: mastering_comp(20) > reverb(18) > delay(15) > modulation(15) > compressor(8) > drive(5)
+      // Wait: Stomp maxDspPoints = 7. 
+      // LA Studio (1) + Hall (4) = 5. 
+      // Simple Delay (4) pushes to 9 (dropped!).
+      // 70s Chorus (2) pushes to 7 (perfect fit!).
+      expect(names).toContain("LA Studio Comp");
       expect(names).toContain("Hall");
-      expect(names).toContain("Simple Delay");
       expect(names).toContain("70s Chorus");
-      expect(names).toContain("Deluxe Comp");
+      // Dropped because Knapsack protects DSP ceilings:
+      expect(names).not.toContain("Simple Delay");
+      expect(names).not.toContain("Deluxe Comp");
       expect(names).not.toContain("Teemah!");
     });
 

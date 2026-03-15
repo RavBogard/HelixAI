@@ -151,7 +151,7 @@ describe("Pod Go Template Blocks", () => {
 
   it("snapshots include template block bypass states", () => {
     const pgp = buildPgpFile(makeMinimalPreset());
-    const snap0 = pgp.data.tone.snapshot0 as Record<string, unknown>;
+    const snap0 = pgp.data.tone.snapshot0 as unknown as Record<string, unknown>;
     const snapBlocks = (snap0["blocks"] as Record<string, Record<string, boolean>>).dsp0;
 
     // Template blocks

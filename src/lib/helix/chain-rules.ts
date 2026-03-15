@@ -37,6 +37,8 @@ const PARAMETRIC_EQ = "Parametric EQ";
 const STADIUM_PARAMETRIC_EQ = "Stadium Parametric EQ";
 const HORIZON_GATE = "Horizon Gate";
 const GAIN_BLOCK = "Gain Block";
+const LA_STUDIO_COMP = "LA Studio Comp";
+const LOW_HIGH_CUT = "Low and High Cut";
 
 // ---------------------------------------------------------------------------
 // Block type mapping: determines BlockSpec.type from the source model catalog
@@ -112,6 +114,7 @@ type ChainSlot =
   | "compressor"
   | "extra_drive"
   | "boost"
+  | "pre_amp_eq"
   | "amp"
   | "cab"
   | "horizon_gate"
@@ -119,6 +122,7 @@ type ChainSlot =
   | "modulation"
   | "delay"
   | "reverb"
+  | "mastering_comp"
   | "gain_block";
 
 function classifyEffectSlot(resolved: ResolvedEffect, modelName: string): ChainSlot {
@@ -171,6 +175,7 @@ function getDspForSlot(slot: ChainSlot, caps: DeviceCapabilities): 0 | 1 {
     case "compressor":
     case "extra_drive":
     case "boost":
+    case "pre_amp_eq":
     case "amp":
     case "cab":
       return 0;
@@ -179,6 +184,7 @@ function getDspForSlot(slot: ChainSlot, caps: DeviceCapabilities): 0 | 1 {
     case "modulation":
     case "delay":
     case "reverb":
+    case "mastering_comp":
     case "gain_block":
       return 1;
   }
@@ -191,12 +197,14 @@ const SLOT_ORDER: Record<ChainSlot, number> = {
   extra_drive: 2,
   horizon_gate: 5.5, // CHAIN-06: post-cab gate to properly suppress amp noise/hiss
   boost: 3,
+  pre_amp_eq: 3.5, // Phase 4.3: Berklee Pre-Amp EQ for tightness
   amp: 4,
   cab: 5,
   eq: 7,
   modulation: 8,
   delay: 9,
   reverb: 10,
+  mastering_comp: 10.5, // Phase 4.3: Berklee Post-Reverb glue
   gain_block: 11,
 };
 
@@ -245,15 +253,15 @@ function buildBlockSpec(
  * Higher score = effect slot is more important for that genre.
  * When genreHint matches a key, these scores replace the generic slot scores. */
 const GENRE_SLOT_PRIORITY: Record<string, Partial<Record<ChainSlot, number>>> = {
-  metal:   { extra_drive: 20, delay: 12, wah: 10, compressor: 5, reverb: 3, modulation: 2 },
-  ambient: { reverb: 20, delay: 18, modulation: 15, compressor: 8, extra_drive: 5, wah: 3 },
-  worship: { reverb: 20, delay: 18, modulation: 15, compressor: 8, extra_drive: 5, wah: 3 },
-  blues:   { delay: 18, reverb: 15, extra_drive: 12, compressor: 10, modulation: 5, wah: 8 },
-  rock:    { extra_drive: 18, delay: 15, reverb: 12, compressor: 8, modulation: 5, wah: 10 },
-  jazz:    { reverb: 18, compressor: 15, modulation: 10, delay: 5, extra_drive: 3, wah: 3 },
-  country: { delay: 18, reverb: 15, compressor: 12, modulation: 8, extra_drive: 5, wah: 5 },
-  funk:    { compressor: 18, modulation: 15, delay: 12, reverb: 10, extra_drive: 8, wah: 10 },
-  pop:     { delay: 15, reverb: 12, modulation: 15, compressor: 10, extra_drive: 5, wah: 5 },
+  metal:   { pre_amp_eq: 20, extra_drive: 18, delay: 12, wah: 10, mastering_comp: 8, compressor: 5, reverb: 3, modulation: 2 },
+  ambient: { mastering_comp: 20, reverb: 18, delay: 15, modulation: 15, compressor: 8, extra_drive: 5, wah: 3 },
+  worship: { mastering_comp: 20, reverb: 18, delay: 15, modulation: 15, compressor: 8, extra_drive: 5, wah: 3 },
+  blues:   { delay: 18, reverb: 15, mastering_comp: 14, extra_drive: 12, compressor: 10, modulation: 5, wah: 8 },
+  rock:    { extra_drive: 18, delay: 15, mastering_comp: 14, reverb: 12, compressor: 8, modulation: 5, wah: 10 },
+  jazz:    { reverb: 18, mastering_comp: 16, compressor: 15, modulation: 10, delay: 5, extra_drive: 3, wah: 3 },
+  country: { delay: 18, compressor: 16, reverb: 15, mastering_comp: 12, modulation: 8, extra_drive: 5, wah: 5 },
+  funk:    { compressor: 18, modulation: 15, mastering_comp: 14, delay: 12, reverb: 10, extra_drive: 8, wah: 10 },
+  pop:     { mastering_comp: 16, delay: 15, reverb: 12, modulation: 15, compressor: 10, extra_drive: 5, wah: 5 },
 };
 
 /** Match a genreHint string to a GENRE_SLOT_PRIORITY key.
@@ -290,7 +298,9 @@ function getEffectPriority(pending: PendingBlock, genreHint?: string): number {
   } else {
     // Generic slot-based scoring — fallback when no genre or slot not in genre table
     switch (pending.slot) {
+      case "pre_amp_eq": score += 20; break;
       case "wah": score += 18; break;
+      case "mastering_comp": score += 16; break;
       case "compressor": score += 15; break;
       case "extra_drive": score += 12; break;
       case "delay": score += 10; break;
@@ -319,6 +329,9 @@ function getEffectPriority(pending: PendingBlock, genreHint?: string): number {
  * @throws Error if either DSP would exceed the block limit.
  */
 export function assembleSignalChain(intent: ToneIntent, caps: DeviceCapabilities): BlockSpec[] {
+  if (!intent.ampName) throw new Error("ToneIntent missing required ampName.");
+  if (!intent.cabName) throw new Error("ToneIntent missing required cabName.");
+
   const isAgouraEra = caps.ampCatalogEra === "agoura";
 
   // 1. Resolve amp model
@@ -506,20 +519,92 @@ export function assembleSignalChain(intent: ToneIntent, caps: DeviceCapabilities
     }
   }
 
-  // COMBO-03: Priority-based effect truncation
-  // Infinity for Helix (no explicit cap), 4 for Pod Go/Stomp, 8 for Stadium
-  if (caps.maxEffectsPerDsp < Infinity && userEffects.length > caps.maxEffectsPerDsp) {
+  // PHASE 4.3: Berklee Pre-Amp EQ. Surgically inserted BEFORE amp to cut mud in high gain
+  if (ampCategory === "high_gain" && !userEffectNames.has(LOW_HIGH_CUT) && !userEffectNames.has(PARAMETRIC_EQ)) {
+    // Prefer Low/High Cut if available, fallback to Parametric
+    const preEqModel = isAgouraEra 
+      ? (STADIUM_EQ_MODELS[LOW_HIGH_CUT] ?? STADIUM_EQ_MODELS[STADIUM_PARAMETRIC_EQ])
+      : (EQ_MODELS[LOW_HIGH_CUT] ?? EQ_MODELS[PARAMETRIC_EQ]);
+      
+    if (preEqModel) {
+      userEffects.push({
+        model: preEqModel,
+        blockType: "eq",
+        slot: "pre_amp_eq",
+        dsp: 0,
+        intentRole: "toggleable",
+      });
+      console.warn("[chain-rules] Phase 4.3 (Berklee): Injecting Pre-Amp EQ for high_gain tone tightening");
+    }
+  }
+
+  // PHASE 4.3: Berklee Post-Reverb Mastering Compressor for 3D depth
+  if (!userEffectNames.has(LA_STUDIO_COMP)) {
+    const masteringCompModel = DYNAMICS_MODELS[LA_STUDIO_COMP];
+    if (masteringCompModel) {
+      userEffects.push({
+        model: masteringCompModel,
+        blockType: "dynamics",
+        slot: "mastering_comp",
+        dsp: getDspForSlot("mastering_comp", caps),
+        intentRole: "toggleable",
+      });
+      console.warn("[chain-rules] Phase 4.3 (Berklee): Injecting LA Studio Comp for mastering glue");
+    }
+  }
+
+  // COMBO-03 & Knapsack DSP Solver: Priority-based effect truncation
+  // Helix: Infinity (no explicit cap)
+  // Pod Go: Max 4 blocks, Max 7 DSP points
+  // Stomp: Max 8 blocks, Max 12 DSP points
+  if (caps.maxEffectsPerDsp < Infinity && userEffects.length > 0) {
     // Sort by priority descending (highest priority survives)
     // CRAFT-04: pass genreHint for genre-aware slot scoring
     userEffects.sort((a, b) => getEffectPriority(b, intent.genreHint) - getEffectPriority(a, intent.genreHint));
 
-    const dropped = userEffects.length - caps.maxEffectsPerDsp;
-    const droppedEffects = userEffects.slice(caps.maxEffectsPerDsp);
-    console.warn(
-      `[chain-rules] COMBO-03: Effect budget exceeded: dropping ${dropped} lowest-priority effect(s): ` +
-      droppedEffects.map(e => `${e.model.name}(${e.intentRole ?? 'none'})`).join(', ')
-    );
-    userEffects.length = caps.maxEffectsPerDsp;
+    // Calculate hard limits
+    const maxBlocks = caps.maxEffectsPerDsp;
+    // Stadium runs in software -> no DSP limit, just block limit
+    const isStadium = caps.ampCatalogEra === "agoura";
+    const maxDspPoints = isStadium ? Infinity : (maxBlocks === 4 ? 7 : 12);
+    const useKnapsack = maxDspPoints < Infinity;
+
+    const keptEffects: PendingBlock[] = [];
+    const droppedEffects: PendingBlock[] = [];
+    let currentDspPts = 0;
+
+    for (const effect of userEffects) {
+      if (keptEffects.length >= maxBlocks) {
+        droppedEffects.push(effect);
+        continue;
+      }
+      
+      if (useKnapsack) {
+        let cost = 1; // drive, eq, comp, etc.
+        if (effect.blockType === "pitch") cost = 5;
+        else if (effect.blockType === "reverb" || effect.blockType === "delay") cost = 4;
+        else if (effect.blockType === "modulation" || effect.blockType === "wah") cost = 2;
+        
+        if (currentDspPts + cost > maxDspPoints) {
+          droppedEffects.push(effect);
+          continue; // skip this heavy effect, try the next cheaper one down the priority list
+        }
+        currentDspPts += cost;
+      }
+      keptEffects.push(effect);
+    }
+
+    if (droppedEffects.length > 0) {
+      console.warn(
+        `[chain-rules] COMBO-03/Knapsack: Budget exceeded (Blocks: ${keptEffects.length}/${maxBlocks}, DSP: ${currentDspPts}/${maxDspPoints}). ` +
+        `Dropped ${droppedEffects.length} item(s): ` +
+        droppedEffects.map(e => `${e.model.name}`).join(', ')
+      );
+    }
+    
+    // Replace array contents without losing reference
+    userEffects.length = 0;
+    userEffects.push(...keptEffects);
 
     // Re-sort remaining by SLOT_ORDER for correct signal chain position
     userEffects.sort((a, b) => SLOT_ORDER[a.slot] - SLOT_ORDER[b.slot]);

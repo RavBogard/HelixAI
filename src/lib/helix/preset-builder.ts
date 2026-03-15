@@ -1,4 +1,4 @@
-import type { HlxFile, HlxDsp, HlxSnapshot, HlxTone, HlxDt, HlxPowercab, HlxVariax, PresetSpec, BlockSpec, SnapshotSpec } from "./types";
+import type { HlxFile, HlxDsp, HlxSnapshot, HlxTone, HlxDt, HlxPowercab, HlxVariax, PresetSpec, BlockSpec, SnapshotSpec, AmpCategory } from "./types";
 import { DEVICE_IDS, isVariaxSupported, type DeviceTarget } from "./types";
 import { CONTROLLERS } from "./models";
 import { FIRMWARE_CONFIG } from "./config";
@@ -79,8 +79,9 @@ function buildTone(spec: PresetSpec, device: DeviceTarget = "helix_lt"): HlxTone
   const useVariaxInput = !!(spec.variaxModel && isVariaxSupported(device));
 
   const dsp1HasBlocks = dsp1Blocks.length > 0;
-  const dsp0 = buildDsp(dsp0Blocks, 0, isDualAmp, useVariaxInput, dsp1HasBlocks);
-  const dsp1 = buildDsp(dsp1Blocks, 1);
+  const ampCategory = spec.ampCategory ?? "clean";
+  const dsp0 = buildDsp(dsp0Blocks, 0, isDualAmp, useVariaxInput, dsp1HasBlocks, ampCategory);
+  const dsp1 = buildDsp(dsp1Blocks, 1, false, false, false, ampCategory);
 
   // Build footswitch section FIRST — we need stomp assignments for @pedalstate
   const footswitch = buildFootswitchSection(spec.signalChain);
@@ -194,7 +195,7 @@ function buildTone(spec: PresetSpec, device: DeviceTarget = "helix_lt"): HlxTone
   return tone;
 }
 
-function buildDsp(blocks: BlockSpec[], dspIndex: number, isDualAmp?: boolean, useVariaxInput?: boolean, dsp1HasBlocks?: boolean): HlxDsp {
+function buildDsp(blocks: BlockSpec[], dspIndex: number, isDualAmp?: boolean, useVariaxInput?: boolean, dsp1HasBlocks?: boolean, ampCategory: AmpCategory = "clean"): HlxDsp {
   // DSP routing (reverse-engineered from real .hlx presets):
   // dsp0.outputA.@output: 2 = route to DSP1 (Flow 2), 1 = physical 1/4" out
   // dsp1.inputA.@input: 0 = receive from DSP0, 1 = Guitar In (separate input)
@@ -207,7 +208,7 @@ function buildDsp(blocks: BlockSpec[], dspIndex: number, isDualAmp?: boolean, us
       "@model": "HD2_AppDSPFlow1Input",  // Always Flow1Input on BOTH DSPs (confirmed from reference presets)
       noiseGate: dspIndex === 0,
       decay: dspIndex === 0 ? 0.5 : 0.1,
-      threshold: -48.0,
+      threshold: ampCategory === "high_gain" ? -36.0 : -48.0,
     },
     inputB: {
       "@input": 0,

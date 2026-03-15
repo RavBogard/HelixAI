@@ -300,6 +300,7 @@ export function buildSnapshots(
   chain: BlockSpec[],
   intents: SnapshotIntent[],
   genreHint?: string,
+  snapshotTweaks?: Record<string, Record<string, number>>
 ): SnapshotSpec[] {
   const ampCategory = detectAmpCategory(chain);
   const blockEntries = buildBlockKeys(chain);
@@ -421,6 +422,60 @@ export function buildSnapshots(
         }
         if (hasOverride) {
           parameterOverrides[entry.key] = overrides;
+        }
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // PHASE 4.1: V3.0 SNAPSHOT TWEAKS (THE PARAMETER FENCE)
+    // Map semantic keys like "amp_drive" or "delay_mix" to relative adjustments
+    // bounding securely between 0.0 and 1.0 to prevent DSP corruption.
+    // ═══════════════════════════════════════════════════════════════════
+    const tweaks = snapshotTweaks?.[intent.name.toUpperCase()] ?? snapshotTweaks?.[intent.name];
+    if (tweaks) {
+      for (const [tweakKey, deltaPercent] of Object.entries(tweaks)) {
+        // e.g. "amp_drive" -> type="amp", paramVar="drive"
+        const parts = tweakKey.toLowerCase().split("_");
+        if (parts.length < 2) continue;
+        const targetType = parts[0];
+        const targetParamVar = parts[1];
+
+        // Only normalized params mapping
+        let paramName = "";
+        switch (targetParamVar) {
+          case "drive": paramName = "Drive"; break;
+          case "chvol": paramName = "ChVol"; break;
+          case "mix": paramName = "Mix"; break;
+          case "decay": paramName = "DecayTime"; break;
+          case "level": paramName = "Level"; break;
+          case "feedback": paramName = "Feedback"; break;
+          case "depth": paramName = "Depth"; break;
+          case "rate": paramName = "Rate"; break;
+          case "treble": paramName = "Treble"; break;
+          case "mid": paramName = "Mid"; break;
+          case "bass": paramName = "Bass"; break;
+          case "presence": paramName = "Presence"; break;
+          case "master": paramName = "Master"; break;
+          default: continue;
+        }
+
+        const delta = deltaPercent / 100.0;
+        
+        for (const entry of blockEntries) {
+          if (entry.block.type === targetType && blockStates[entry.key] === true) {
+            const baseValue = entry.block.parameters?.[paramName];
+            if (baseValue !== undefined && typeof baseValue === "number") {
+                // If it already has an override from legacy code, base it off that, else base params
+                const currentVal = parameterOverrides[entry.key]?.[paramName] ?? baseValue;
+                const newVal = currentVal + delta;
+                const clamped = Math.max(0.0, Math.min(1.0, newVal));
+                
+                parameterOverrides[entry.key] = {
+                   ...(parameterOverrides[entry.key] ?? {}),
+                   [paramName]: clamped
+                };
+            }
+          }
         }
       }
     }

@@ -66,6 +66,7 @@ function makeScenarioResult(
       device: "helix_floor",
       toneStyle: "clean",
       preset: {},
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       spec: {} as any,
       fileExtension: ".hlx",
       qualityWarnings: [],
@@ -266,6 +267,7 @@ describe("formatAuditJson", () => {
     const serialized = JSON.stringify(json);
     expect(serialized).toBeTruthy();
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const parsed = JSON.parse(serialized) as any;
     expect(parsed.timestamp).toBe("2026-03-09T14:00:00Z");
     expect(parsed.totalScenarios).toBe(1);
@@ -283,6 +285,7 @@ describe("formatAuditJson", () => {
     const family = makeFamilyResult("helix", [s]);
     const result = makeAuditResult([family]);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const json = formatAuditJson(result) as any;
     expect(json.families[0].topIssues.length).toBeGreaterThan(0);
     expect(json.families[0].topIssues[0].severity).toBe("critical");

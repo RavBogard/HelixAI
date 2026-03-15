@@ -16,7 +16,7 @@
 //
 // Public API: buildPgpFile(spec) -> object (JSON-serializable .pgp file)
 
-import type { HlxFile, PresetSpec, BlockSpec, SnapshotSpec } from "./types";
+import type { HlxFile, PresetSpec, BlockSpec, SnapshotSpec, AmpCategory } from "./types";
 import { DEVICE_IDS, POD_GO_IO, POD_GO_SNAPSHOT_CONTROLLER, POD_GO_STOMP_FS_INDICES, POD_GO_TOTAL_BLOCKS, POD_GO_TEMPLATE_BLOCKS, POD_GO_TEMPLATE_POSITIONS } from "./types";
 import { getModelIdForDevice, getBlockTypeForDevice, CONTROLLERS } from "./models";
 import { getAllModels } from "./models";
@@ -101,8 +101,9 @@ export function buildPgpFile(spec: PresetSpec): PgpFile {
 // ---------------------------------------------------------------------------
 
 function buildPgpTone(spec: PresetSpec): Record<string, unknown> {
-  // All blocks on dsp0 for Pod Go
-  const dsp0 = buildPgpDsp(spec.signalChain);
+  // All blocks on dsp0
+  const ampCategory = spec.ampCategory ?? "clean"; // Assuming ampCategory is part of PresetSpec or derived
+  const dsp0 = buildPgpDsp(spec.signalChain, ampCategory);
 
   // Build footswitch section FIRST — need stomp assignments for @pedalstate
   const footswitch = buildPgpFootswitchSection(spec.signalChain);
@@ -145,7 +146,7 @@ function buildPgpTone(spec: PresetSpec): Record<string, unknown> {
 // DSP builder (single DSP, Pod Go format)
 // ---------------------------------------------------------------------------
 
-function buildPgpDsp(blocks: BlockSpec[]): Record<string, unknown> {
+function buildPgpDsp(blocks: BlockSpec[], ampCategory: AmpCategory): Record<string, unknown> {
   const dsp: Record<string, unknown> = {
     // Pod Go uses "input"/"output" keys (not "inputA"/"outputA") (PGP-03)
     [POD_GO_IO.INPUT_KEY]: {
@@ -153,7 +154,7 @@ function buildPgpDsp(blocks: BlockSpec[]): Record<string, unknown> {
       "@model": POD_GO_IO.INPUT_MODEL,
       noiseGate: true,
       decay: 0.5,
-      threshold: -48.0,
+      threshold: ampCategory === "high_gain" ? -36.0 : -48.0,
     },
     [POD_GO_IO.OUTPUT_KEY]: {
       "@model": POD_GO_IO.OUTPUT_MODEL,

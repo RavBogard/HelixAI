@@ -15,7 +15,7 @@
  * Source: stomp-device-ids.md (confirmed from real .hlx hardware exports, 2026-03-04)
  */
 
-import type { HlxFile, HlxDsp, HlxSnapshot, PresetSpec, BlockSpec, SnapshotSpec } from "./types";
+import type { HlxFile, HlxDsp, HlxSnapshot, PresetSpec, BlockSpec, SnapshotSpec, AmpCategory } from "./types";
 import { DEVICE_IDS, STOMP_SNAPSHOT_CONTROLLER, isVariaxSupported } from "./types";
 import { FIRMWARE_CONFIG, STOMP_CONFIG } from "./config";
 import { CONTROLLERS, getBlockTypeForDevice } from "./models";
@@ -58,7 +58,7 @@ interface StompAssignment {
 // ---------------------------------------------------------------------------
 // DSP builder (dsp0 only for Stomp — uses HelixStomp_* I/O models)
 // ---------------------------------------------------------------------------
-function buildStompDsp(blocks: BlockSpec[], device: "helix_stomp" | "helix_stomp_xl", useVariaxInput?: boolean): HlxDsp {
+function buildStompDsp(blocks: BlockSpec[], ampCategory: AmpCategory, device: "helix_stomp" | "helix_stomp_xl", useVariaxInput?: boolean): HlxDsp {
   const caps = getCapabilities(device);
   const dsp: HlxDsp = {
     inputA: {
@@ -66,7 +66,7 @@ function buildStompDsp(blocks: BlockSpec[], device: "helix_stomp" | "helix_stomp
       "@model": STOMP_CONFIG.STOMP_INPUT_MODEL,
       noiseGate: true,
       decay: 0.5,
-      threshold: -48.0,
+      threshold: ampCategory === "high_gain" ? -36.0 : -48.0,
     },
     inputB: {
       "@input": 0,
@@ -425,8 +425,9 @@ export function buildStompFile(
   // Variax: use Multi input (@input=3) when variaxModel is set (VARIAX-06)
   const useVariaxInput = !!(spec.variaxModel && isVariaxSupported(device));
 
-  // Build dsp0 with all blocks (chain-rules ensures all on dsp0 for Stomp)
-  const dsp0 = buildStompDsp(spec.signalChain, device, useVariaxInput);
+  // Build dsp0 with all blocks (chain-rules ensures all on dsp0
+  const ampCategory = spec.ampCategory ?? "clean";
+  const dsp0 = buildStompDsp(spec.signalChain, ampCategory, device, useVariaxInput);
 
   // Get stomp assignments early — needed for @pedalstate in snapshots
   const stompAssignmentsForSnapshots = getStompFsAssignments(spec.signalChain, device);

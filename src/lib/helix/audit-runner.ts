@@ -142,8 +142,8 @@ export function runAudit(config: AuditConfig): AuditResult {
   const harnessResults = runAllScenarios(scenarios);
 
   // Step 2: Load reference corpus (if available)
-  let referencesByFamily = new Map<DeviceFamily, ReferencePreset[]>();
-  let schemasByFamily = new Map<DeviceFamily, FamilySchema>();
+  const referencesByFamily = new Map<DeviceFamily, ReferencePreset[]>();
+  const schemasByFamily = new Map<DeviceFamily, FamilySchema>();
 
   if (corpusConfig) {
     const corpus = loadCorpus(corpusConfig);

@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { callGeminiPlanner } from "@/lib/planner";
 import {
   assembleSignalChain,
-  resolveParameters,
   buildSnapshots,
+  resolveParameters,
   buildHlxFile,
   summarizePreset,
   validatePresetSpec,
@@ -15,12 +15,11 @@ import {
   summarizeStadiumPreset,
   buildStompFile,
   summarizeStompPreset,
-  isPodGo,
-  isStadium,
-  isStomp,
   resolveFamily,
-  getCapabilities,
 } from "@/lib/helix";
+import { getCapabilities } from "@/lib/helix/device-family";
+import { isPodGo, isStadium, isStomp } from "@/lib/helix/types";
+import { AMP_MODELS, STADIUM_AMPS } from "@/lib/helix/models";
 import { logQualityWarnings } from "@/lib/helix/quality-logger";
 import type { PresetSpec, DeviceTarget, SubstitutionMap, DeviceFamily } from "@/lib/helix";
 import type { RigIntent } from "@/lib/helix";
@@ -36,7 +35,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
 
-    const { messages, device, rigIntent, rigText, conversationId } = await req.json();
+    const { messages, device, rigIntent, rigText, conversationId, acousticEmpathyEnabled } = await req.json();
 
     // Resolve device target — supports helix_lt, helix_floor, pod_go, helix_stadium, helix_stomp, helix_stomp_xl
     let deviceTarget: DeviceTarget;
@@ -99,20 +98,30 @@ export async function POST(req: NextRequest) {
     // Pass toneContext so planner prioritizes rig-matched models (Phase 20)
     const toneIntent = await callGeminiPlanner(messages, deviceTarget, deviceFamily, toneContext);
 
+    // Phase 9.1: Gate Acoustic Empathy behind Supporter boolean
+    if (!acousticEmpathyEnabled) {
+      delete toneIntent.feelHint;
+    }
+
     // Step 2: Knowledge Layer pipeline (deterministic)
     // Resolve capabilities once, pass to all Knowledge Layer functions (KLAYER-04)
     const caps = getCapabilities(deviceTarget);
     const chain = assembleSignalChain(toneIntent, caps);
     const parameterized = resolveParameters(chain, toneIntent, caps);
-    const snapshots = buildSnapshots(parameterized, toneIntent.snapshots, toneIntent.genreHint);
+    const snapshots = buildSnapshots(parameterized, toneIntent.snapshots, toneIntent.genreHint, toneIntent.snapshotTweaks);
 
     // Step 3: Build PresetSpec
+    const safeAmpName = toneIntent.ampName || "US Double Nrm";
+    const ampModel = caps.ampCatalogEra === "agoura" ? STADIUM_AMPS[safeAmpName] : AMP_MODELS[safeAmpName];
+    const ampCategory = ampModel?.ampCategory ?? "clean";
+
     const presetSpec: PresetSpec = {
       name: toneIntent.presetName || `${toneIntent.ampName} ${toneIntent.genreHint || "Preset"}`.slice(0, 32),
       description: toneIntent.description || `${toneIntent.genreHint || ""} preset using ${toneIntent.ampName}`.trim(),
       tempo: toneIntent.tempoHint ?? 120,
       guitarNotes: toneIntent.guitarNotes,
-      ...(toneIntent.variaxModel ? { variaxModel: toneIntent.variaxModel } : {}),
+      variaxModel: toneIntent.variaxModel,
+      ampCategory,
       signalChain: parameterized,
       snapshots,
     };

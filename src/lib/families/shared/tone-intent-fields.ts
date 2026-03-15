@@ -40,12 +40,17 @@ Generate a JSON object with these fields:
 - **cabName**: Exact name from the CABS list above
 ${secondAmpFields}- **guitarType**: "single_coil", "humbucker", or "p90" — based on what the user described (for bass: "single_coil" = J-style pickups, "humbucker" = P-style/soapbar pickups)
 - **genreHint**: Optional genre or style description (e.g., "blues rock", "modern metal")
+- **feelHint**: (OPTIONAL) The psychoacoustic "feel" or string tracking of the tubes. Choose "modern_metal" (tight/fast/cold), "texas_blues" (spongy/warm/vintage), "classic_rock" (slight crunch/complex), "ambient" (smooth/warm/lush), or "studio" (clear/articulate).
 - **effects**: Array of up to ${opts.maxEffects} effects, each with:
   - modelName: exact name from DISTORTION, DELAY, REVERB, MODULATION, or DYNAMICS lists
   - role: "always_on" (core tone), "toggleable" (switched per snapshot), or "ambient" (pads/textures)
 - **snapshots**: Exactly ${opts.snapshots} snapshots, each with:
   - name: display name (max ${maxSnapLen} characters, e.g., "CLEAN", "RHYTHM", "LEAD", "AMBIENT")
   - toneRole: "clean", "crunch", "lead", or "ambient"
+- **snapshotTweaks**: (OPTIONAL) A map of snapshot names to relative parameter adjustments. Use this to turn static presets into dynamic, living rigs.
+  - Outer keys MUST exactly match the names defined in the \`snapshots\` array.
+  - Inner keys MUST be semantic parameters in the format \`[type]_[param]\`. Supported keys: \`amp_drive\`, \`amp_chvol\`, \`amp_master\`, \`amp_bass\`, \`amp_mid\`, \`amp_treble\`, \`amp_presence\`, \`delay_mix\`, \`delay_feedback\`, \`reverb_mix\`, \`reverb_decay\`.
+  - Values MUST be integers between -100 and 100 representing percentage deltas relative to the base tone (e.g., 20 = +20%, -15 = -15%). Example: \`{ "LEAD": { "amp_drive": 25, "delay_mix": 15 }, "CLEAN": { "amp_drive": -20 } }\`.
 - **tempoHint**: Optional BPM for delay sync (integer 60-200, useful if the user mentioned tempo or song)
 - **delaySubdivision**: Optional note value for delay timing — "quarter", "dotted_eighth", "eighth", or "triplet". Use when the user requests a specific rhythmic delay (e.g., "dotted eighth delay" → "dotted_eighth"). Defaults to "quarter" if omitted. Requires tempoHint to take effect.
 - **presetName**: A creative, descriptive preset name (max 32 characters)

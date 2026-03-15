@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
     const caps = getCapabilities(deviceTarget);
     const chain = assembleSignalChain(toneIntent, caps);
     const parameterized = resolveParameters(chain, toneIntent, caps);
-    const snapshots = buildSnapshots(parameterized, toneIntent.snapshots, toneIntent.genreHint);
+    const snapshots = buildSnapshots(parameterized, toneIntent.snapshots, toneIntent.genreHint, toneIntent.snapshotTweaks);
 
     // Step 3: Build PresetSpec
     const presetSpec: PresetSpec = {

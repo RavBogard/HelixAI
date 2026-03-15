@@ -71,6 +71,8 @@ function HomeContent() {
   const [showSignInBanner, setShowSignInBanner] = useState(false)
   const [showDonation, setShowDonation] = useState(false)
   const [donationDismissed, setDonationDismissed] = useState(false)
+  // Phase 9.1: Acoustic Empathy Toggle
+  const [acousticEmpathyEnabled, setAcousticEmpathyEnabled] = useState(false)
   // Phase 28: UXP-02 — loading state during conversation resume
   const [isLoadingConversation, setIsLoadingConversation] = useState(false);
 
@@ -204,7 +206,7 @@ function HomeContent() {
     }
     window.addEventListener('helixtones:new-chat', handler)
     return () => window.removeEventListener('helixtones:new-chat', handler)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []) // startOver is defined once, no deps
 
   // Phase 50: Listen for support button clicks from AuthButton / Footer
@@ -405,6 +407,7 @@ function HomeContent() {
           // Phase 20: pass rigIntent if vision extraction was performed
           ...(rigIntent ? { rigIntent } : {}),
           ...(convId ? { conversationId: convId } : {}),
+          acousticEmpathyEnabled,
         }),
       });
 
@@ -847,6 +850,25 @@ function HomeContent() {
               inputRef={inputRef}
               formClassName="flex gap-2 items-end w-full max-w-2xl"
             />
+            <div className="w-full max-w-2xl mt-3 flex justify-end">
+              <label className="flex items-center gap-2 text-[0.75rem] text-[var(--hlx-text-sub)] cursor-pointer hover:text-[var(--hlx-text)] transition-colors group select-none">
+                <input
+                  type="checkbox"
+                  checked={acousticEmpathyEnabled}
+                  onChange={(e) => {
+                    if (e.target.checked) setShowDonation(true);
+                    setAcousticEmpathyEnabled(e.target.checked);
+                  }}
+                  className="rounded border border-[var(--hlx-border-warm)] bg-[rgba(240,144,10,0.06)] text-[var(--hlx-amber)] focus:ring-[var(--hlx-amber)] focus:ring-offset-0 focus:ring-opacity-50 w-3.5 h-3.5"
+                />
+                <span className="flex items-center gap-1.5">
+                  <svg className="w-3.5 h-3.5 text-[var(--hlx-amber)] opacity-70 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  Enable Dynamic Tube Feel (Supporters Only)
+                </span>
+              </label>
+            </div>
 
             {/* Suggestion cards — 2×3 grid */}
             <SuggestionChips
@@ -1131,6 +1153,25 @@ function HomeContent() {
             rigAnalyzed={!!rigIntent}
             inputRef={inputRef}
           />
+          <div className="w-full max-w-3xl mx-auto mt-3 px-6 flex justify-end">
+            <label className="flex items-center gap-2 text-[0.75rem] text-[var(--hlx-text-sub)] cursor-pointer hover:text-[var(--hlx-text)] transition-colors group select-none">
+              <input
+                type="checkbox"
+                checked={acousticEmpathyEnabled}
+                onChange={(e) => {
+                  if (e.target.checked) setShowDonation(true);
+                  setAcousticEmpathyEnabled(e.target.checked);
+                }}
+                className="rounded border border-[var(--hlx-border-warm)] bg-[rgba(240,144,10,0.06)] text-[var(--hlx-amber)] focus:ring-[var(--hlx-amber)] focus:ring-offset-0 focus:ring-opacity-50 w-3.5 h-3.5"
+              />
+              <span className="flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5 text-[var(--hlx-amber)] opacity-70 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                Enable Dynamic Tube Feel (Supporters Only)
+              </span>
+            </label>
+          </div>
         </div>
       )}
       {/* Phase 50: Fixed donation card — triggered by Support link (header/footer) */}

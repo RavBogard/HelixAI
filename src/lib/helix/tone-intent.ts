@@ -33,15 +33,39 @@ function buildToneIntentSchema(
   });
 
   return z.object({
+    // Phase 3: Semantic Anchor Support
+    anchorId: z.enum([
+      "anchor_american_clean",
+      "anchor_edge_of_breakup",
+      "anchor_classic_crunch",
+      "anchor_modern_metal",
+      "anchor_ambient_wash"
+    ]).optional(),
+    userTweaks: z.object({
+      amp: z.record(z.string(), z.number()).optional(),
+      cab: z.record(z.string(), z.number()).optional(),
+    }).optional(),
+
     instrument: z.enum(["guitar", "bass"]).optional(),
-    ampName: z.enum(ampNames),
-    cabName: z.enum(cabNames),
+    ampName: z.enum(ampNames).optional(), // Optional if anchorId handles it
+    cabName: z.enum(cabNames).optional(), // Optional if anchorId handles it
     secondAmpName: z.enum(ampNames).optional(),
     secondCabName: z.enum(cabNames).optional(),
-    guitarType: z.enum(["single_coil", "humbucker", "p90"]),
+    guitarType: z.enum(["single_coil", "humbucker", "p90"]).default("humbucker"),
     genreHint: z.string().optional(),
-    effects: z.array(effectSchema).max(10), // Raised from 6 to accommodate Stadium 8 effects with headroom
+    feelHint: z.enum([
+      "modern_metal",
+      "texas_blues",
+      "classic_rock",
+      "ambient",
+      "studio",
+    ]).optional(),
+    effects: z.array(effectSchema).max(10).default([]),
     snapshots: z.array(SnapshotIntentSchema).min(3).max(8),
+    snapshotTweaks: z.record(
+      z.string().max(10),
+      z.record(z.string(), z.number().int().min(-100).max(100))
+    ).optional(),
     tempoHint: z.number().int().min(60).max(200).optional(),
     delaySubdivision: z.enum(["quarter", "dotted_eighth", "eighth", "triplet"]).optional(),
     presetName: z.string().max(32).optional(),
@@ -51,6 +75,9 @@ function buildToneIntentSchema(
   }).refine(
     (data) => !data.secondAmpName || data.secondCabName,
     { message: "secondCabName is required when secondAmpName is provided", path: ["secondCabName"] }
+  ).refine(
+    (data) => data.anchorId || (data.ampName && data.cabName),
+    { message: "Must provide either an anchorId OR explicitly provide ampName and cabName", path: ["anchorId"] }
   );
 }
 

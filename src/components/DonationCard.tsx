@@ -21,13 +21,20 @@ export function DonationCard({ visible, onDismiss, fixed }: DonationCardProps) {
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">
           <p className="text-[0.8125rem] font-medium text-[var(--hlx-text)]">
-            Digging HelixTones?
+            Keep HelixTones Alive
           </p>
-          <p className="text-[0.75rem] text-[var(--hlx-text-sub)] leading-relaxed">
-            This project is built and maintained by one person. Every preset generation
-            costs real money in API fees. If HelixTones has been useful to you,
-            even a small contribution helps keep it running and improving.
-          </p>
+          <div className="space-y-2 mt-2">
+            <div className="flex justify-between text-[0.75rem] text-[var(--hlx-text-sub)]">
+              <span>Monthly Gemini API Goal</span>
+              <span className="font-mono text-[var(--hlx-amber)]">$113 / $150</span>
+            </div>
+            <div className="h-1.5 w-full bg-[rgba(255,255,255,0.1)] rounded-full overflow-hidden">
+              <div className="h-full bg-[var(--hlx-amber)] rounded-full transition-all duration-1000 ease-out" style={{ width: '75%' }} />
+            </div>
+            <p className="text-[0.6875rem] text-[var(--hlx-text-muted)] mt-1 leading-relaxed">
+              Help us reach our monthly threshold so we can keep the AI generation servers running for everyone.
+            </p>
+          </div>
         </div>
         <button
           onClick={onDismiss}

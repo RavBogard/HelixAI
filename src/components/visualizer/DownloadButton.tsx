@@ -9,6 +9,7 @@ import { useVisualizerStore } from "@/lib/visualizer/store";
 import { calculateStateDiff } from "@/lib/visualizer/state-diff";
 import { isPodGo, isStadium } from "@/lib/helix/types";
 import type { DeviceTarget } from "@/lib/helix/types";
+import { toast } from "sonner";
 
 /**
  * Parse filename from Content-Disposition header.
@@ -113,6 +114,20 @@ export function DownloadButton() {
       anchor.click();
       document.body.removeChild(anchor);
       URL.revokeObjectURL(url);
+
+      // Phase 9.1: Moment of Euphoria Toast
+      toast.success("Preset downloaded successfully!", {
+        description: "If this saved you an hour of tweaking, consider throwing a $5 tip in the jar to help cover our Gemini API server costs.",
+        duration: 8000,
+        action: {
+          label: "Support the Project",
+          onClick: () => {
+            // Locate the Support button in the header/footer and click it to open the DonationModal
+            const supportBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent?.includes('Support'));
+            if (supportBtn) supportBtn.click();
+          },
+        },
+      });
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Download failed";

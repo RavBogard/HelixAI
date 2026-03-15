@@ -25,6 +25,9 @@ import {
   CAB_MODELS,
 } from "./models";
 import type { HelixModel } from "./models";
+import { ANCHORS } from "./catalogs/anchors";
+import type { PresetAnchor } from "./catalogs/anchors";
+import { SEMANTIC_AMPS } from "./catalogs/semantic-dictionary";
 
 // ============================================================
 // CATEGORY DEFAULT LOOKUP TABLES
@@ -278,17 +281,32 @@ export function resolveParameters(
   intent: ToneIntent,
   caps: DeviceCapabilities,
 ): BlockSpec[] {
-  // Device-aware amp lookup with Stadium HD2→Agoura fallback (mirrors chain-rules.ts).
+  // Check for Semantic Anchor (Phase 3)
+  const anchor: PresetAnchor | undefined = intent.anchorId ? ANCHORS[intent.anchorId] : undefined;
+  
+  // Strategy: If anchor is present, we must resolve the semantic amp to the device's catalog.
+  // Otherwise, we use the explicitly provided ampName from ToneIntent.
+  let targetAmpName = intent.ampName;
+  if (anchor) {
+     const semanticAmpMap = SEMANTIC_AMPS[anchor.coreAmp];
+     if (!semanticAmpMap) throw new Error(`Invalid anchor semantic amp: ${anchor.coreAmp}`);
+     targetAmpName = caps.ampCatalogEra === "agoura" ? semanticAmpMap.stadiumKey : semanticAmpMap.hd2Key;
+  }
+  
+  if (!targetAmpName) throw new Error("No ampName provided in intent, and no valid anchorId found.");
+
+  // We use targetAmpName to guarantee it falls back to the anchor's coreAmp
+  // if intent.ampName was omitted in favor of an anchorId.
   const isAgouraEra = caps.ampCatalogEra === "agoura";
   let ampModel: HelixModel | undefined = isAgouraEra
-    ? STADIUM_AMPS[intent.ampName]
-    : AMP_MODELS[intent.ampName];
+    ? STADIUM_AMPS[targetAmpName]
+    : AMP_MODELS[targetAmpName];
 
   if (!ampModel && isAgouraEra) {
-    const hd2Model = AMP_MODELS[intent.ampName];
+    const hd2Model = AMP_MODELS[targetAmpName];
     if (hd2Model) {
       // Strategy 1: Name word overlap (mirrors chain-rules.ts fallback)
-      const hd2Words = intent.ampName.toLowerCase().split(/\s+/);
+      const hd2Words = targetAmpName.toLowerCase().split(/\s+/);
       let bestMatch: [string, HelixModel] | undefined;
       let bestScore = 0;
       for (const entry of Object.entries(STADIUM_AMPS)) {
@@ -309,7 +327,7 @@ export function resolveParameters(
   }
 
   if (!ampModel) {
-    throw new Error(`Unknown amp model: "${intent.ampName}" — not found in ${isAgouraEra ? "STADIUM_AMPS" : "AMP_MODELS"}`);
+    throw new Error(`Unknown amp model: "${targetAmpName}" — not found in ${isAgouraEra ? "STADIUM_AMPS" : "AMP_MODELS"}`);
   }
 
   const ampCategory: AmpCategory = ampModel.ampCategory ?? "clean";
@@ -336,8 +354,20 @@ export function resolveParameters(
 
     return {
       ...block,
-      // Thread caps, tempoHint, delaySubdivision, and guitarType through to resolveBlockParams
-      parameters: resolveBlockParams(block, effectiveCategory, effectiveTopology, genreProfile, caps, tempoHint, delaySubdivision, guitarType),
+      // Thread context through to resolveBlockParams, including anchor and userTweaks overrides
+      parameters: resolveBlockParams(
+        block, 
+        effectiveCategory, 
+        effectiveTopology, 
+        genreProfile, 
+        caps, 
+        tempoHint, 
+        delaySubdivision, 
+        guitarType,
+        anchor,
+        intent.userTweaks,
+        intent.feelHint
+      ),
     } satisfies BlockSpec;
   });
 
@@ -350,6 +380,8 @@ export function resolveParameters(
  * The tempoHint parameter enables tempo-synced delay Time for delay blocks (FX-03).
  * The delaySubdivision parameter selects note value (quarter, dotted_eighth, eighth, triplet).
  * The guitarType parameter enables guitar-type EQ curve adjustments for HD2_EQParametric (FX-01).
+ * The anchor parameter injects expertly tuned template values (Phase 3).
+ * The userTweaks parameter applies final LLM-directed overrides (Phase 3).
  */
 function resolveBlockParams(
   block: BlockSpec,
@@ -360,26 +392,56 @@ function resolveBlockParams(
   tempoHint?: number,
   delaySubdivision?: string,
   guitarType?: string,
+  anchor?: PresetAnchor,
+  userTweaks?: NonNullable<ToneIntent["userTweaks"]>,
+  feelHint?: string,
 ): Record<string, number | boolean> {
+  let params: Record<string, number | boolean> = {};
+
   switch (block.type) {
     case "amp":
-      return resolveAmpParams(block, ampCategory, topology);
+      params = resolveAmpParams(block, ampCategory, topology, feelHint);
+      if (anchor?.ampParams) params = { ...params, ...anchor.ampParams };
+      if (userTweaks?.amp) params = { ...params, ...userTweaks.amp };
+      break;
     case "cab":
       // STAD-06 fix: pass caps to resolveCabParams so Stadium gets all 10 cab params
-      return resolveCabParams(ampCategory, caps);
+      params = resolveCabParams(ampCategory, caps);
+      if (anchor?.cabParams) params = { ...params, ...anchor.cabParams };
+      if (userTweaks?.cab) params = { ...params, ...userTweaks.cab };
+      break;
     case "distortion":
-      return resolveDistortionParams(block, ampCategory);
+      params = resolveDistortionParams(block, ampCategory);
+      break;
     case "eq":
-      return resolveEqParams(block, ampCategory, guitarType);
+      params = resolveEqParams(block, ampCategory, guitarType);
+      break;
     case "dynamics":
-      return resolveDynamicsParams(block);
+      params = resolveDynamicsParams(block);
+      break;
     case "volume":
-      return resolveVolumeParams(block);
+      params = resolveVolumeParams(block);
+      break;
     default:
       // delay, reverb, modulation, wah, pitch, send_return:
       // Use model defaults, then apply genre overrides, then tempo override for delay (FX-03)
-      return resolveDefaultParams(block, genreProfile, tempoHint, delaySubdivision);
+      params = resolveDefaultParams(block, genreProfile, tempoHint, delaySubdivision);
+      break;
   }
+
+  // Anchor specific effect overrides (if this block's model matches an anchor mandatory/enhancement effect)
+  // This is a naive implementation that could be hardened with proper semantic matching down the line
+  if (anchor) {
+    // Check mandatory
+    const matchingMandatory = anchor.mandatoryEffects.find(e => block.modelName.includes(e.semanticId));
+    if (matchingMandatory) params = { ...params, ...matchingMandatory.params };
+    
+    // Check enhancement
+    const matchingEnhancement = anchor.enhancementEffects.find(e => block.modelName.includes(e.semanticId));
+    if (matchingEnhancement) params = { ...params, ...matchingEnhancement.params };
+  }
+
+  return params;
 }
 
 /**
@@ -398,6 +460,7 @@ function resolveAmpParams(
   block: BlockSpec,
   ampCategory: AmpCategory,
   topology: TopologyTag,
+  feelHint?: string,
 ): Record<string, number | boolean> {
   // Layer 1: Start with the model's own defaults
   const stadiumModel = STADIUM_AMPS[block.modelName];
@@ -430,6 +493,23 @@ function resolveAmpParams(
   if (model?.paramOverrides) {
     for (const [key, value] of Object.entries(model.paramOverrides)) {
       params[key] = value;
+    }
+  }
+
+  // Layer 5: Acoustic Empathy Engine (feelHint offsets)
+  if (feelHint) {
+    const clamp = (v: number) => Math.max(0.0, Math.min(1.0, v));
+    const adjust = (key: string, pctDelta: number) => {
+      if (typeof params[key] === "number") {
+         params[key] = clamp((params[key] as number) * (1 + (pctDelta / 100)));
+      }
+    };
+    switch (feelHint) {
+      case "modern_metal": adjust("Sag", -40); adjust("Ripple", -50); adjust("Bias", -20); break;
+      case "texas_blues":  adjust("Sag", 30);  adjust("Ripple", 25);  adjust("Bias", 15);  break;
+      case "classic_rock": adjust("Sag", 10);  adjust("Ripple", 15);  adjust("Bias", 5);   break;
+      case "ambient":      adjust("Sag", 15);  adjust("Ripple", -20); adjust("Bias", 20);  break;
+      case "studio":       adjust("Sag", -15); adjust("Ripple", -40); break;
     }
   }
 
@@ -504,8 +584,18 @@ function resolveEqParams(
   ampCategory: AmpCategory,
   guitarType?: string,
 ): Record<string, number | boolean> {
+  // Phase 4.3 (Berklee): Pre-Amp EQ mud cut for high-gain tightness
+  if (block.slot === "pre_amp_eq") {
+    // Mimic the low-end roll-off of a Tube Screamer (approx 150-200Hz base cut)
+    return {
+      LowCut: 0.1, // Approx 150-200Hz mapped to 0-1
+      HighCut: 0.85, // Gently reign in the top end fizziness before distortion
+      Level: 0.0,
+    };
+  }
+
   // Parametric EQ: use category-specific expert values with optional guitar-type adjustment
-  if (block.modelId === "HD2_EQParametric") {
+  if (block.modelId === "HD2_EQParametric" || block.modelId === "HD2_EQParametric7Band") {
     const base = { ...EQ_PARAMS[ampCategory] };
     if (guitarType && EQ_GUITAR_TYPE_ADJUST[guitarType]) {
       const adj = EQ_GUITAR_TYPE_ADJUST[guitarType];
@@ -529,6 +619,15 @@ function resolveDynamicsParams(block: BlockSpec): Record<string, number | boolea
   // Horizon Gate: expert-tuned gate values
   if (block.modelId === "HD2_GateHorizonGate") {
     return { ...HORIZON_GATE_PARAMS };
+  }
+
+  // Phase 4.3 (Berklee): Post-Reverb Mastering Compressor
+  if (block.slot === "mastering_comp") {
+    return {
+      PeakReduction: 0.6, // Approx 60%
+      Gain: 0.5, // Unity gain
+      Mix: 1.0,
+    };
   }
 
   // Other dynamics models: use model defaultParams

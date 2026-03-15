@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthButton } from "@/components/auth/AuthButton";
 import { ChatSidebar } from "@/components/sidebar/ChatSidebar";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { Toaster } from "sonner";
 
 // Display + body font — geometric, technical, studio-console feel
 const spaceGrotesk = Space_Grotesk({
@@ -76,6 +77,21 @@ export default async function RootLayout({
             {children}
           </main>
         </div>
+
+        {/* Global Toaster */}
+        <Toaster 
+          position="bottom-center"
+          toastOptions={{
+            style: {
+              background: "var(--hlx-elevated)",
+              border: "1px solid var(--hlx-border-warm)",
+              color: "var(--hlx-text)",
+              fontFamily: "var(--font-primary)",
+              boxShadow: "0 10px 40px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)"
+            },
+            className: "text-[0.85rem]",
+          }}
+        />
       </body>
     </html>
   );

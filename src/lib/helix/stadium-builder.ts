@@ -4,15 +4,15 @@
 // Format verified against real .hsp files from C:/Users/dsbog/Downloads/NH_STADIUM_AURA_REFLECTIONS/
 //   Reference: Agoura_Bassman.hsp — field-by-field comparison used for format verification.
 //
+//   Reference: Agoura_Bassman.hsp — field-by-field comparison used for format verification.
+//
 // .hsp format: 8-byte magic header "rpshnosj" + JSON.stringify({ meta, preset })
-// Block format: slot-based ({ slot: [{ model, params: { K: { value: X } } }] })
-//   NOT flat-style ({ @model, ParamKey: value }) like .hlx
-//   NO access field — real files use { "value": X } only (Phase 53 fix, STAD-03)
+// Block format: slot-based ({ slot: [{ model, params: { K: { value: X, access: "enabled" } } }] })
 //
 // Public API: buildHspFile(spec) -> { magic, json, serialized }
 //             summarizeStadiumPreset(spec) -> string
 
-import type { PresetSpec, BlockSpec, SnapshotSpec } from "./types";
+import type { PresetSpec, BlockSpec, SnapshotSpec, AmpCategory } from "./types";
 import { DEVICE_IDS } from "./types";
 import { STADIUM_CONFIG } from "./config";
 
@@ -257,7 +257,8 @@ function buildStadiumMeta(spec: PresetSpec): StadiumMeta {
 // ---------------------------------------------------------------------------
 
 function buildStadiumPreset(spec: PresetSpec): StadiumPreset {
-  const flow = buildStadiumFlow(spec);
+  const ampCategory = spec.ampCategory ?? "clean";
+  const flow = buildStadiumFlow(spec, ampCategory);
   const snapshots = buildStadiumSnapshots(spec);
   const sources = buildStadiumSources();
 
@@ -311,7 +312,7 @@ function buildStadiumPreset(spec: PresetSpec): StadiumPreset {
  * Amp and cab blocks are linked via `linkedblock`.
  * Per-snapshot bypass states are stored in each block's @enabled.snapshots array.
  */
-function buildStadiumFlow(spec: PresetSpec): Array<Record<string, unknown>> {
+function buildStadiumFlow(spec: PresetSpec, ampCategory: AmpCategory): Array<Record<string, unknown>> {
   // Sort signal chain blocks by their logical position
   const sortedChain = [...spec.signalChain].sort((a, b) => a.position - b.position);
 
@@ -347,7 +348,7 @@ function buildStadiumFlow(spec: PresetSpec): Array<Record<string, unknown>> {
   const blockKeyMap: Map<number, string> = new Map();
 
   // Input block at b00 (fixed)
-  flow0["b00"] = buildInputBlock();
+  flow0["b00"] = buildInputBlock(ampCategory);
   // Note: input block doesn't go in blockKeyMap since it's not in signalChain
 
   // Pre-amp effect blocks at b01-b04 — STAD-07: mono channel mode
@@ -402,7 +403,7 @@ function buildStadiumFlow(spec: PresetSpec): Array<Record<string, unknown>> {
   // Build Flow 1 (empty path — required by firmware)
   const flow1: Record<string, unknown> = {};
   flow1["@enabled"] = { value: true };
-  flow1["b00"] = buildEmptyInputBlock();
+  flow1["b00"] = buildEmptyInputBlock(ampCategory);
   flow1["b13"] = buildOutputBlock();
 
   return [flow0, flow1];
@@ -517,12 +518,12 @@ function buildFlowBlock(
         }
       }
       if (hasOverride) {
-        slotParams[key] = { value, snapshots: snapValues };
+        slotParams[key] = { value, access: "enabled", snapshots: snapValues };
       } else {
-        slotParams[key] = { value };
+        slotParams[key] = { value, access: "enabled" };
       }
     } else {
-      slotParams[key] = { value };
+      slotParams[key] = { value, access: "enabled" };
     }
   }
 
@@ -546,12 +547,7 @@ function buildFlowBlock(
           {
             "@enabled": { value: true },
             model: "HD2_CabMicIr_NoCab",
-            params: {
-              IrData: { value: 0 },
-              Level: { value: 0 },
-              LowCut: { value: 19.9 },
-              HighCut: { value: 20100.0 },
-            },
+            params: null,
             version: 0,
           },
         ]
@@ -645,18 +641,15 @@ function buildBlockEnabled(
  * Amp blocks get additional params (EvtIdx, bypass, upper).
  * Cab blocks get params (EvtIdx, bypass, dual, upper).
  * Other blocks get a minimal harness.
- *
- * STAD-03 fix: harness params use { value: X } format — NO access field.
- * Real .hsp files have zero occurrences of "access" in harness params.
  */
 function buildHarness(block: BlockSpec): Record<string, unknown> {
   if (AMP_TYPES.has(block.type)) {
     return {
       "@enabled": { value: true },
       params: {
-        EvtIdx: { value: -1 },
-        bypass: { value: false },
-        upper: { value: true },
+        EvtIdx: { value: -1, access: "enabled" },
+        bypass: { value: false, access: "enabled" },
+        upper: { value: true, access: "enabled" },
       },
     };
   }
@@ -665,24 +658,23 @@ function buildHarness(block: BlockSpec): Record<string, unknown> {
     return {
       "@enabled": { value: true },
       params: {
-        EvtIdx: { value: -1 },
-        bypass: { value: false },
-        dual: { value: true },
-        upper: { value: true },
+        EvtIdx: { value: -1, access: "enabled" },
+        bypass: { value: false, access: "enabled" },
+        dual: { value: true, access: "enabled" },
+        upper: { value: true, access: "enabled" },
       },
     };
   }
 
-  // All effect blocks require EvtIdx + bypass + upper in harness — confirmed from all 11 real .hsp files
-  // Delay/reverb also get Trails param in harness
+  // All effect blocks require EvtIdx + bypass + upper in harness
   const isDelayOrReverb = block.type === "delay" || block.type === "reverb";
   return {
     "@enabled": { value: true },
     params: {
-      EvtIdx: { value: -1 },
-      ...(isDelayOrReverb ? { Trails: { value: true } } : {}),
-      bypass: { value: false },
-      upper: { value: true },
+      EvtIdx: { value: -1, access: "enabled" },
+      ...(isDelayOrReverb ? { Trails: { value: true, access: "enabled" } } : {}),
+      bypass: { value: false, access: "enabled" },
+      upper: { value: true, access: "enabled" },
     },
   };
 }
@@ -691,7 +683,7 @@ function buildHarness(block: BlockSpec): Record<string, unknown> {
  * Build the input block at position b00.
  * STAD-03 fix: all slot params use { value: X } format — no access field.
  */
-function buildInputBlock(): Record<string, unknown> {
+function buildInputBlock(ampCategory: AmpCategory): Record<string, unknown> {
   return {
     "@enabled": { value: true },
     endpoint: "b13",
@@ -704,11 +696,11 @@ function buildInputBlock(): Record<string, unknown> {
         "@enabled": { value: true },
         model: STADIUM_CONFIG.STADIUM_INPUT_MODEL,
         params: {
-          Pad: { value: 1 },
-          Trim: { value: 0.0 },
-          decay: { value: 0.1 },
-          noiseGate: { value: false },
-          threshold: { value: -48.0 },
+          Pad: { value: 1, access: "enabled" },
+          Trim: { value: 0.0, access: "enabled" },
+          decay: { value: 0.1, access: "enabled" },
+          noiseGate: { value: false, access: "enabled" },
+          threshold: { value: ampCategory === "high_gain" ? -36.0 : -48.0, access: "enabled" },
         },
         version: 0,
       },
@@ -734,8 +726,8 @@ function buildOutputBlock(): Record<string, unknown> {
         "@enabled": { value: true },
         model: STADIUM_CONFIG.STADIUM_OUTPUT_MODEL,
         params: {
-          gain: { value: 0.0 },
-          pan: { value: 0.5 },
+          gain: { value: 0.0, access: "enabled" },
+          pan: { value: 0.5, access: "enabled" },
         },
         version: 0,
       },
@@ -748,7 +740,7 @@ function buildOutputBlock(): Record<string, unknown> {
  * Build the empty input block for Flow 1 (InputNone).
  * STAD-03 fix: all slot params use { value: X } format — no access field.
  */
-function buildEmptyInputBlock(): Record<string, unknown> {
+function buildEmptyInputBlock(ampCategory: AmpCategory): Record<string, unknown> {
   return {
     "@enabled": { value: true },
     endpoint: "b13",
@@ -761,10 +753,10 @@ function buildEmptyInputBlock(): Record<string, unknown> {
         "@enabled": { value: true },
         model: STADIUM_CONFIG.STADIUM_INPUT_NONE_MODEL,
         params: {
-          Trim: { value: 0.0 },
-          decay: { value: 0.1 },
-          noiseGate: { value: false },
-          threshold: { value: -48.0 },
+          Trim: { value: 0.0, access: "enabled" },
+          decay: { value: 0.1, access: "enabled" },
+          noiseGate: { value: false, access: "enabled" },
+          threshold: { value: ampCategory === "high_gain" ? -36.0 : -48.0, access: "enabled" },
         },
         version: 0,
       },

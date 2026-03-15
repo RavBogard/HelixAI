@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { getAllModels, STADIUM_AMPS } from "./models";
 import type { PresetSpec } from "./types";
 import type { DeviceCapabilities } from "./device-family";
@@ -240,6 +241,64 @@ function validateDspOrdering(spec: PresetSpec, caps: DeviceCapabilities): void {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Strict Zod Schemas for PresetSpec Sanitization
+// ---------------------------------------------------------------------------
+
+const baseBlockSchema = z.object({
+  type: z.enum(["amp", "cab", "distortion", "delay", "reverb", "modulation", "dynamics", "eq", "wah", "pitch", "volume", "send_return"]),
+  modelId: z.string(),
+  modelName: z.string(),
+  dsp: z.union([z.literal(0), z.literal(1)]),
+  position: z.number().int().min(0),
+  path: z.number().int().min(0),
+  enabled: z.boolean(),
+  stereo: z.boolean(),
+  trails: z.boolean().optional(),
+  intentRole: z.enum(["always_on", "toggleable", "ambient"]).optional(),
+  slot: z.string().optional(),
+  parameters: z.record(z.string(), z.union([z.number(), z.boolean()])),
+}).superRefine((block, ctx) => {
+  // Strip hallucinated parameters not found in models.ts
+  const models = getAllModels();
+  
+  // Try to find the exact model, or base model if suffixed
+  let modelObj = Object.values(models).find(m => m.id === block.modelId);
+  if (!modelObj) {
+    // Check if it's a model with 'Mono' or 'Stereo' suffix
+    const baseId = block.modelId.replace(/(Mono|Stereo)$/, "");
+    modelObj = Object.values(models).find(m => m.id === baseId);
+  }
+
+  if (modelObj && modelObj.defaultParams) {
+    const validKeys = new Set(Object.keys(modelObj.defaultParams));
+    for (const key of Object.keys(block.parameters)) {
+      if (!validKeys.has(key)) {
+        // Hallucinated parameter — delete it
+        delete block.parameters[key];
+      }
+    }
+  }
+});
+
+const snapshotSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  ledColor: z.number().int(),
+  blockStates: z.record(z.string(), z.boolean()),
+  parameterOverrides: z.record(z.string(), z.record(z.string(), z.union([z.number(), z.boolean()]))),
+});
+
+export const presetSpecSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  tempo: z.number().min(20).max(300),
+  guitarNotes: z.string().optional(),
+  variaxModel: z.string().optional(),
+  signalChain: z.array(baseBlockSchema),
+  snapshots: z.array(snapshotSchema),
+});
+
 export interface ValidationResult {
   valid: boolean;
   errors: string[];
@@ -252,8 +311,16 @@ export function validateAndFixPresetSpec(spec: PresetSpec): ValidationResult {
   const errors: string[] = [];
   let fixed = false;
 
-  // Deep clone so we don't mutate the original
-  const fixedSpec: PresetSpec = JSON.parse(JSON.stringify(spec));
+  // 0. Zod Schema Sanitization
+  // Deep clone so we don't mutate the original directly until validation passes
+  let fixedSpec: PresetSpec;
+  try {
+    fixedSpec = presetSpecSchema.parse(JSON.parse(JSON.stringify(spec)));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    errors.push(`Zod Schema Validation Failed: ${message}`);
+    return { valid: false, errors, fixed: false };
+  }
 
   // 1. Validate all model IDs exist in our database
   for (const block of fixedSpec.signalChain) {

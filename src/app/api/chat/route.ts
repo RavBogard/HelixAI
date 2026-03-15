@@ -1,23 +1,71 @@
 import { NextRequest } from "next/server";
+import { z } from "zod";
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
 import { createGeminiClient, getModelId, isPremiumKey } from "@/lib/gemini";
 import { getFamilyChatPrompt } from "@/lib/prompt-router";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { logUsage, estimateGeminiCost } from "@/lib/usage-logger";
 import type { DeviceTarget } from "@/lib/helix";
 
+// Phase 5: EDOS Prevention & Validation
+const chatRequestSchema = z.object({
+  messages: z.array(z.object({
+    role: z.string(),
+    content: z.string().max(3000, "Message content exceeds maximum allowed length of 3000 characters")
+  })).min(1, "At least one message is required").max(30, "Maximum of 30 messages allowed in context window"),
+  device: z.string().optional(),
+  premiumKey: z.string().optional(),
+  conversationId: z.string().optional()
+});
+
+// Configure Rate Limiter (Gracefully falls back if no Upstash credentials exist)
+const ratelimit = (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN)
+  ? new Ratelimit({
+      redis: Redis.fromEnv(),
+      limiter: Ratelimit.slidingWindow(20, "1 h"), // 20 req max per hour per IP/User
+      analytics: true,
+    })
+  : null;
+
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const { messages, premiumKey, conversationId } = body;
+  try {
+    const jsonBody = await req.json();
 
-  // Input validation: messages must be a non-empty array
-  if (!Array.isArray(messages) || messages.length === 0) {
-    return new Response(JSON.stringify({ error: "messages is required and must be a non-empty array" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+    // strict payload validation
+    const parsedBody = chatRequestSchema.safeParse(jsonBody);
+    if (!parsedBody.success) {
+      return new Response(JSON.stringify({ error: "Invalid payload", details: parsedBody.error.format() }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
-  const device: DeviceTarget = body.device ?? "helix_lt";
+    const body = parsedBody.data;
+    const { messages, premiumKey, conversationId } = body;
+
+    // Rate Limiting execution
+    if (ratelimit) {
+      const identifier = conversationId ?? req.headers.get("x-forwarded-for") ?? "anonymous_session";
+      const { success, limit, reset, remaining } = await ratelimit.limit(identifier);
+      
+      if (!success) {
+        return new Response(JSON.stringify({ 
+          error: "Rate limit exceeded. Please try again later or upgrade to a premium key.",
+          limit, remaining, reset 
+        }), {
+          status: 429,
+          headers: { 
+            "Content-Type": "application/json",
+            "X-RateLimit-Limit": limit.toString(),
+            "X-RateLimit-Remaining": remaining.toString(),
+            "X-RateLimit-Reset": reset.toString()
+          },
+        });
+      }
+    }
+
+  const device: DeviceTarget = (body.device as DeviceTarget) ?? "helix_lt";
   const premium = isPremiumKey(premiumKey);
 
   // --- Persistence: save user message BEFORE streaming ---
@@ -162,8 +210,8 @@ export async function POST(req: NextRequest) {
         // --- End persistence post-stream ---
 
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Unknown error";
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: message })}\n\n`));
+        console.error("Stream processing error:", error);
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: "An unexpected error occurred during chat processing." })}\n\n`));
         controller.close();
       }
     },
@@ -176,4 +224,11 @@ export async function POST(req: NextRequest) {
       Connection: "keep-alive",
     },
   });
+  } catch (error) {
+    console.error("Chat API error:", error);
+    return new Response(JSON.stringify({ error: "Internal Server Error" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 }

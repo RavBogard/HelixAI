@@ -375,6 +375,7 @@ export interface PresetSpec {
   tempo: number;
   guitarNotes?: string;
   variaxModel?: string;
+  ampCategory?: AmpCategory;
   signalChain: BlockSpec[];
   snapshots: SnapshotSpec[];
 }

@@ -9,6 +9,7 @@ import { gainStagingSection } from "../shared/gain-staging";
 import { toneIntentFieldsSection } from "../shared/tone-intent-fields";
 import { ampCabPairingSection } from "../shared/amp-cab-pairing";
 import { genreEffectModelSection } from "../shared/effect-model-intelligence";
+import { anchorCatalogSection } from "../shared/anchor-section";
 import { STOMP_CONFIG } from "@/lib/helix/config";
 import type { DeviceTarget } from "@/lib/helix/types";
 
@@ -107,9 +108,11 @@ export function buildPlannerPrompt(_device: DeviceTarget, modelList: string): st
 
 You translate a tone interview conversation into a ToneIntent — a structured set of creative choices. You select WHICH amp, cab, and effects to use. You do NOT set any numeric parameter values. The Knowledge Layer handles all parameters using expert-validated lookup tables.
 
-## Valid Model Names
+${anchorCatalogSection()}
 
-Use ONLY these exact model names. Any name not in this list will be rejected by schema validation.
+## Allowed Fallback Models
+
+If none of the semantic anchors fit the user's specific request, you may fall back to specifying individual models. However, this is heavily discouraged, and you should attempt to build atop an anchor first. If you must skip anchors, use ONLY these exact model names:
 
 ${modelList}
 
@@ -117,7 +120,7 @@ ${toneIntentFieldsSection({ maxEffects, snapshots: maxSnapshots, includeSecondAm
 
 ## What You Do NOT Generate
 
-Do NOT generate Drive, Master, Bass, Mid, Treble, Presence, Sag, ChVol, LowCut, HighCut, Mic, Distance, Angle, EQ gains, delay Mix, reverb Mix, or ANY numeric parameter values. The Knowledge Layer sets all of these automatically based on your model selections.
+Do NOT generate Drive, Master, Bass, Mid, Treble, Presence, Sag, ChVol, LowCut, HighCut, Mic, Distance, Angle, EQ gains, delay Mix, reverb Mix, or ANY numeric parameter values in the main body (only in \`userTweaks\`). The Knowledge Layer sets all of these automatically based on your model/anchor selections.
 
 ## Creative Guidelines
 
