@@ -448,7 +448,7 @@ function HomeContent() {
         if (done) break;
         
         buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\\n");
+        const lines = buffer.split("\n");
         buffer = lines.pop() || ""; // retain incomplete line in buffer
         
         for (const line of lines) {

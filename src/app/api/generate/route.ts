@@ -44,13 +44,13 @@ export async function POST(req: NextRequest) {
     const readable = new ReadableStream({
       async start(controller) {
         function emitStatus(msg: string) {
-          controller.enqueue(encoder.encode(JSON.stringify({ type: "status", message: msg }) + "\\n"));
+          controller.enqueue(encoder.encode(JSON.stringify({ type: "status", message: msg }) + "\n"));
         }
         function emitResult(payload: any) {
-          controller.enqueue(encoder.encode(JSON.stringify({ type: "result", payload }) + "\\n"));
+          controller.enqueue(encoder.encode(JSON.stringify({ type: "result", payload }) + "\n"));
         }
         function emitError(msg: string) {
-          controller.enqueue(encoder.encode(JSON.stringify({ error: msg }) + "\\n"));
+          controller.enqueue(encoder.encode(JSON.stringify({ error: msg }) + "\n"));
         }
 
         try {
