@@ -138,7 +138,12 @@ export async function callGeminiPlanner(
   const modelId = getModelId(false); // standard tier for planner
   const jsonSchema = buildGeminiJsonSchema(resolvedFamily);
 
-  const response = await ai.models.generateContent({
+  const MAX_RETRIES = 3;
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const response = await ai.models.generateContent({
     model: modelId,
     contents: finalUserContent,
     config: {
@@ -149,67 +154,65 @@ export async function callGeminiPlanner(
     },
   });
 
-  // Token usage logging
-  const usage = response.usageMetadata;
-  const inputTokens = usage?.promptTokenCount ?? 0;
-  const outputTokens = usage?.candidatesTokenCount ?? 0;
-  const cachedTokens = usage?.cachedContentTokenCount ?? 0;
-  const totalTokens = usage?.totalTokenCount ?? (inputTokens + outputTokens);
-  const costUsd = estimateGeminiCost(usage ?? {}, modelId);
-  const cacheHit = cachedTokens > 0;
+      // Token usage logging
+      const usage = response.usageMetadata;
+      const inputTokens = usage?.promptTokenCount ?? 0;
+      const outputTokens = usage?.candidatesTokenCount ?? 0;
+      const cachedTokens = usage?.cachedContentTokenCount ?? 0;
+      const totalTokens = usage?.totalTokenCount ?? (inputTokens + outputTokens);
+      const costUsd = estimateGeminiCost(usage ?? {}, modelId);
+      const cacheHit = cachedTokens > 0;
 
-  // Always log to console — Vercel captures this in function logs
-  console.log(
-    `[planner] model=${modelId} tokens=${inputTokens}in/${outputTokens}out` +
-    ` cache=${cacheHit ? "HIT" : "MISS"}(cached=${cachedTokens})` +
-    ` cost=$${costUsd.toFixed(4)} device=${effectiveDevice}`
-  );
+      // Always log to console — Vercel captures this in function logs
+      console.log(
+        `[planner] attempt=${attempt} model=${modelId} tokens=${inputTokens}in/${outputTokens}out` +
+        ` cache=${cacheHit ? "HIT" : "MISS"}(cached=${cachedTokens})` +
+        ` cost=$${costUsd.toFixed(4)} device=${effectiveDevice}`
+      );
 
-  logUsage({
-    timestamp: new Date().toISOString(),
-    endpoint: "generate",
-    model: modelId,
-    input_tokens: inputTokens,
-    output_tokens: outputTokens,
-    cache_creation_input_tokens: null,
-    cache_read_input_tokens: cachedTokens || null,
-    total_tokens: totalTokens,
-    cost_usd: costUsd,
-    cache_hit: cacheHit,
-    device: effectiveDevice,
-  });
+      logUsage({
+        timestamp: new Date().toISOString(),
+        endpoint: "generate",
+        model: modelId,
+        input_tokens: inputTokens,
+        output_tokens: outputTokens,
+        cache_creation_input_tokens: null,
+        cache_read_input_tokens: cachedTokens || null,
+        total_tokens: totalTokens,
+        cost_usd: costUsd,
+        cache_hit: cacheHit,
+        device: effectiveDevice,
+      });
 
-  // Extract text from response
-  const text = response.text;
-  if (!text) {
-    throw new Error("Gemini returned no text content");
+      const text = response.text;
+      if (!text) {
+        throw new Error("Gemini returned no text content");
+      }
+
+      const raw = JSON.parse(text);
+
+      if (Array.isArray(raw.snapshots)) {
+        raw.snapshots = raw.snapshots.map((s: { name?: string; toneRole?: string }) => ({
+          ...s,
+          name: typeof s.name === "string" ? s.name.slice(0, 10) : s.name,
+        }));
+      }
+
+      if (raw.variaxModel && !VARIAX_MODEL_NAMES.includes(raw.variaxModel)) {
+        delete raw.variaxModel;
+      }
+
+      return getToneIntentSchema(family ?? "helix").parse(raw);
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      console.error(`Gemini generation failed on attempt ${attempt}/${MAX_RETRIES}:`, lastError.message);
+      if (attempt === MAX_RETRIES) {
+        throw lastError;
+      }
+      // Brief backoff before next attempt
+      await new Promise(res => setTimeout(res, 1000 * attempt));
+    }
   }
 
-  // Sanitize before Zod validation.
-  // Structured output may not enforce string length limits. We truncate
-  // snapshot names here to avoid Zod rejecting valid-intent-but-too-long names.
-  let raw;
-  try {
-    raw = JSON.parse(text);
-  } catch (parseError) {
-    const errObj = parseError instanceof Error ? parseError : new Error(String(parseError));
-    console.error("Gemini JSON Parse Error! Raw output was:", text);
-    throw new Error(`JSON synthesis failed: ${errObj.message}. Raw text length: ${text.length}`);
-  }
-
-  if (Array.isArray(raw.snapshots)) {
-    raw.snapshots = raw.snapshots.map((s: { name?: string; toneRole?: string }) => ({
-      ...s,
-      name: typeof s.name === "string" ? s.name.slice(0, 10) : s.name,
-    }));
-  }
-
-  // Strip invalid variaxModel before Zod validation — model occasionally
-  // hallucinates model names (e.g., "Strat" instead of "Spank")
-  if (raw.variaxModel && !VARIAX_MODEL_NAMES.includes(raw.variaxModel)) {
-    delete raw.variaxModel;
-  }
-
-  // Belt-and-suspenders: Zod validates all remaining constraints
-  return getToneIntentSchema(family ?? "helix").parse(raw);
+  throw lastError;
 }
