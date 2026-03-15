@@ -28,6 +28,8 @@ const ratelimit = (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_RED
     })
   : null;
 
+export const maxDuration = 60; // Extend Vercel Hobby serverless timeout for long-running streaming completions
+
 export async function POST(req: NextRequest) {
   try {
     const jsonBody = await req.json();

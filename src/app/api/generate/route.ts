@@ -26,6 +26,8 @@ import type { RigIntent } from "@/lib/helix";
 import { mapRigToSubstitutions, parseRigText } from "@/lib/rig-mapping";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
+export const maxDuration = 60; // Prevent Vercel hobby 15s truncating the Gemini connection mid-stream
+
 export async function POST(req: NextRequest) {
   try {
     // Auth gate: require a valid session to prevent unauthenticated AI cost exposure
