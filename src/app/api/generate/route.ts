@@ -100,11 +100,6 @@ export async function POST(req: NextRequest) {
     // Pass toneContext so planner prioritizes rig-matched models (Phase 20)
     const toneIntent = await callGeminiPlanner(messages, deviceTarget, deviceFamily, toneContext);
 
-    // Phase 9.1: Gate Acoustic Empathy behind Supporter boolean
-    if (!acousticEmpathyEnabled) {
-      delete toneIntent.feelHint;
-    }
-
     // Step 2: Knowledge Layer pipeline (deterministic)
     // Resolve capabilities once, pass to all Knowledge Layer functions (KLAYER-04)
     const caps = getCapabilities(deviceTarget);

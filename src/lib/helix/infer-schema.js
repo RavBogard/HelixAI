@@ -1,3 +1,4 @@
+/* eslint-disable */
 const fs = require('fs');
 const params = require('./extracted-params.json');
 

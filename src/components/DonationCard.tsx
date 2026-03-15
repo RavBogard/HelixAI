@@ -21,7 +21,7 @@ export function DonationCard({ visible, onDismiss, fixed }: DonationCardProps) {
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">
           <p className="text-[0.8125rem] font-medium text-[var(--hlx-text)]">
-            Keep HelixTones Alive
+            A message from the developer
           </p>
           <div className="space-y-2 mt-2">
             <div className="flex justify-between text-[0.75rem] text-[var(--hlx-text-sub)]">
@@ -32,7 +32,7 @@ export function DonationCard({ visible, onDismiss, fixed }: DonationCardProps) {
               <div className="h-full bg-[var(--hlx-amber)] rounded-full transition-all duration-1000 ease-out" style={{ width: '75%' }} />
             </div>
             <p className="text-[0.6875rem] text-[var(--hlx-text-muted)] mt-1 leading-relaxed">
-              Help us reach our monthly threshold so we can keep the AI generation servers running for everyone.
+              HelixTones AI is an independent passion project built by a solo developer, and generating these tones costs real money in AI server fees. To ensure everyone gets the absolute best tones possible, I don&apos;t hide any features behind paywalls. If you find this tool valuable, please consider buying me a coffee to help keep the servers running!
             </p>
           </div>
         </div>

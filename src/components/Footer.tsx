@@ -39,7 +39,7 @@ export function Footer() {
         >
           Daniel Bogard
         </a>
-        {" "}&middot; Powered by Gemini &middot; Claude &middot; Line 6 Helix
+        {" "}&middot; Powered by Gemini &middot; Line 6 Helix
       </p>
     </footer>
   );
