@@ -289,7 +289,7 @@ export async function callGeminiHistorian(
     .map((msg) => `${msg.role}: ${msg.content}`)
     .join("\n\n");
 
-  /* const jsonSchema = {
+  const jsonSchema = {
     type: "object",
     properties: {
       songTarget: { type: "string" },
@@ -307,15 +307,15 @@ export async function callGeminiHistorian(
       historianNotes: { type: "string" },
     },
     required: ["songTarget", "ampEra", "mandatoryCoreEffects", "optionalSweeteners", "requiredSchemas", "bpm", "delaySubdivision", "historianNotes"],
-  }; */
+  };
 
   const response = await ai.models.generateContent({
     model: modelId,
     contents: conversationText,
     config: {
       systemInstruction: HISTORIAN_SYSTEM_PROMPT,
-      // Entirely bypassing structured outputs due to truncation bugs in preview
-      // Omit maxOutputTokens to investigate MAX_TOKENS bug in preview model
+      responseMimeType: "application/json",
+      responseSchema: jsonSchema,
     },
   });
 
