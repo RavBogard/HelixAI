@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
         function emitStatus(msg: string) {
           controller.enqueue(encoder.encode(JSON.stringify({ type: "status", message: msg }) + "\n"));
         }
-        function emitResult(payload: any) {
+        function emitResult(payload: unknown) {
           controller.enqueue(encoder.encode(JSON.stringify({ type: "result", payload }) + "\n"));
         }
         function emitError(msg: string) {
@@ -75,13 +75,22 @@ export async function POST(req: NextRequest) {
 }
 
 async function runGenerationProcess(
-  body: any, 
-  authUser: any, 
+  body: unknown, 
+  authUser: unknown, 
   emitStatus: (msg: string) => void, 
-  emitResult: (payload: any) => void
+  emitResult: (payload: unknown) => void
 ) {
 
-    const { messages, device, rigIntent, rigText, conversationId, premiumKey, acousticEmpathyEnabled } = body;
+    const typedBody = body as Record<string, unknown>;
+    const { messages, device, rigIntent, rigText, conversationId, premiumKey, acousticEmpathyEnabled } = typedBody as {
+      messages: Array<{ role: string; content: string }>;
+      device: string;
+      rigIntent: unknown;
+      rigText: string;
+      conversationId: string;
+      premiumKey: string;
+      acousticEmpathyEnabled: boolean;
+    };
 
     emitStatus("Translating tone intent...");
 

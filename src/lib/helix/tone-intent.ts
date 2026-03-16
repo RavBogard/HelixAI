@@ -65,7 +65,7 @@ function buildToneIntentSchema(
     effects: z.array(effectSchema).max(10).default([]),
     snapshots: z.array(SnapshotIntentSchema).min(3).max(8),
     snapshotTweaks: z.record(
-      z.string().max(10),
+      z.string().max(20),
       z.record(z.string(), z.number().int().min(-100).max(100))
     ).optional(),
     tempoHint: z.number().int().min(60).max(200).optional(),

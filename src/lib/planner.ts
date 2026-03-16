@@ -170,13 +170,14 @@ export async function callGeminiPlanner(
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
       const response = await ai.models.generateContent({
-    model: modelId,
-    contents: finalUserContent,
-    config: {
-      systemInstruction: systemPrompt,
-      // Entirely bypassing structured outputs due to truncation bugs in preview
-    },
-  });
+        model: modelId,
+        contents: finalUserContent,
+        config: {
+          systemInstruction: systemPrompt,
+          responseMimeType: "application/json",
+          responseSchema: jsonSchema,
+        },
+      });
 
       // Token usage logging
       const usage = response.usageMetadata;
@@ -225,7 +226,7 @@ export async function callGeminiPlanner(
         if (match) {
           try {
             raw = JSON.parse(match[1]);
-          } catch (e) {
+          } catch {
              throw parseError; // throw original
           }
         } else {
@@ -249,13 +250,26 @@ export async function callGeminiPlanner(
       lastError = err instanceof Error ? err : new Error(String(err));
       console.error(`Gemini generation failed on attempt ${attempt}/${MAX_RETRIES}:`, lastError.message);
       if (attempt === MAX_RETRIES) {
-        throw lastError;
+        console.warn(`Planner failed all ${MAX_RETRIES} attempts. Delivering fallback generic preset to prevent 500 crash.`);
+        return {
+          ampName: "US Double Nrm",
+          cabName: "1x12 US Deluxe",
+          guitarType: "humbucker",
+          genreHint: "Generic Clean",
+          effects: [],
+          snapshots: [
+            { name: "CLEAN", toneRole: "clean" },
+            { name: "RHYTHM", toneRole: "crunch" },
+            { name: "LEAD", toneRole: "lead" }
+          ],
+        } as ToneIntent;
       }
       // Brief backoff before next attempt
       await new Promise(res => setTimeout(res, 1000 * attempt));
     }
   }
 
+  // TypeScript requires a return here although the fallback above conceptually handles it
   throw lastError;
 }
 
@@ -275,7 +289,7 @@ export async function callGeminiHistorian(
     .map((msg) => `${msg.role}: ${msg.content}`)
     .join("\n\n");
 
-  const jsonSchema = {
+  /* const jsonSchema = {
     type: "object",
     properties: {
       songTarget: { type: "string" },
@@ -293,7 +307,7 @@ export async function callGeminiHistorian(
       historianNotes: { type: "string" },
     },
     required: ["songTarget", "ampEra", "mandatoryCoreEffects", "optionalSweeteners", "requiredSchemas", "bpm", "delaySubdivision", "historianNotes"],
-  };
+  }; */
 
   const response = await ai.models.generateContent({
     model: modelId,

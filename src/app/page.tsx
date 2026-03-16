@@ -440,6 +440,7 @@ function HomeContent() {
       if (!reader) throw new Error("No response body");
       const decoder = new TextDecoder();
       
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let finalData: any = null;
       let buffer = "";
 

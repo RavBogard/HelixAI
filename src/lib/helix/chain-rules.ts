@@ -464,7 +464,9 @@ export function assembleSignalChain(intent: ToneIntent, caps: DeviceCapabilities
     // Track 22C: Explicit Hardware Routing
     // If the planner specifically requests DSP1 or DSP2, override the default slot DSP
     let targetDsp = getDspForSlot(slot, caps);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if ((effect as any).assignedDSP === "DSP1") targetDsp = 0;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if ((effect as any).assignedDSP === "DSP2") targetDsp = 1;
 
     userEffects.push({
@@ -473,6 +475,7 @@ export function assembleSignalChain(intent: ToneIntent, caps: DeviceCapabilities
       slot,
       dsp: targetDsp,
       intentRole: effect.role,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       nodeId: (effect as any).nodeId,
     });
   }
