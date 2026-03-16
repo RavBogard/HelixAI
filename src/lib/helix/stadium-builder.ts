@@ -350,7 +350,7 @@ function buildStadiumFlow(spec: PresetSpec, ampCategory: AmpCategory): Array<Rec
   flow0["b00"] = buildInputBlock(ampCategory);
   // Note: input block doesn't go in blockKeyMap since it's not in signalChain
 
-  let currentSlot = 1;
+  const currentSlot = 1;
 
   // Pre-amp effect blocks — STAD-07: mono channel mode
   let fxCounter = 0; // Tracks the sequential footswitch index (0 to 11) for Flow 0
@@ -453,19 +453,27 @@ function resolveStadiumModelId(
     baseId = STADIUM_MODEL_BASE_OVERRIDES[baseId];
   }
 
-  // Step 2: Append Mono/Stereo suffix (only if not already suffixed)
-  if (!baseId.endsWith("Mono") && !baseId.endsWith("Stereo")) {
-    let suffix = STADIUM_EFFECT_SUFFIX[block.type] || "Mono";
-    
-    // Stanford PhD DSP Optimization: 
-    // If block is pre-amp (`channelMode` is "mono"), force it to Mono to save DSP. 
-    // The mono amp block collapses the stereo field anyway, so Stereo is wasted here.
-    if (channelMode === "mono") {
-      suffix = "Mono";
-    }
-    
-    baseId = baseId + suffix;
+  // Step 2: Safely strip any existing Mono/Stereo suffix the AI might have hallucinated
+  if (baseId.endsWith("Mono")) {
+    baseId = baseId.slice(0, -4);
+  } else if (baseId.endsWith("Stereo")) {
+    baseId = baseId.slice(0, -6);
   }
+
+  // Step 3: Append the strictly validated Mono/Stereo suffix
+  let suffix = STADIUM_EFFECT_SUFFIX[block.type] || "Mono";
+  
+  // Stanford PhD DSP Optimization & Signal Path Integrity:
+  // If block is pre-amp (`channelMode` is "mono"), force it to Mono.
+  // If block is post-amp (`channelMode` is "stereo"), force it to Stereo.
+  // Setting a Mono DSP node in a Stereo-allocated hardware slot triggers a panic.
+  if (channelMode === "mono") {
+    suffix = "Mono";
+  } else if (channelMode === "stereo") {
+    suffix = "Stereo";
+  }
+  
+  baseId = baseId + suffix;
 
   return baseId;
 }

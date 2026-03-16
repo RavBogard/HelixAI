@@ -891,6 +891,48 @@ describe("STAD-07: Mono/Stereo suffix application", () => {
     expect(model.endsWith("Stereo")).toBe(false);
   });
 
+  it("post-amp effect blocks (even EQ and Gate) get Stereo suffix to prevent DSP panic in Dual layout", () => {
+    const fixture = makeStadiumFixture();
+    
+    // Move gate from pre-amp to post-amp to test coercion
+    const gateBlock = fixture.signalChain.find(b => b.type === "dynamics")!;
+    gateBlock.position = 10; // Post-amp position
+    
+    // Add an EQ block post-amp
+    fixture.signalChain.push({
+      type: "eq",
+      modelId: "HD2_EQParametric",
+      modelName: "Parametric EQ",
+      dsp: 0,
+      position: 11,
+      path: 0,
+      enabled: true,
+      stereo: false, // Intent asked for mono
+      parameters: {},
+    });
+
+    const result = buildHspFile(fixture);
+    const flow0 = result.json.preset.flow[0] as Record<string, unknown>;
+
+    // Find the Gate block — should now be post-amp and Stereo
+    const gateFlow = Object.values(flow0).find(b => {
+      const slot = (b as Record<string, unknown>)["slot"] as Array<Record<string, unknown>>;
+      return slot && (slot[0]["model"] as string).includes("Gate");
+    }) as Record<string, unknown>;
+    expect(gateFlow).toBeDefined();
+    const gateSlot = (gateFlow["slot"] as Array<Record<string, unknown>>)[0];
+    expect((gateSlot["model"] as string).endsWith("Stereo")).toBe(true);
+
+    // Find the EQ block — should be post-amp and Stereo
+    const eqFlow = Object.values(flow0).find(b => {
+      const slot = (b as Record<string, unknown>)["slot"] as Array<Record<string, unknown>>;
+      return slot && (slot[0]["model"] as string).includes("EQParametric");
+    }) as Record<string, unknown>;
+    expect(eqFlow).toBeDefined();
+    const eqSlot = (eqFlow["slot"] as Array<Record<string, unknown>>)[0];
+    expect((eqSlot["model"] as string).endsWith("Stereo")).toBe(true);
+  });
+
   it("HD2_GateHorizonGate overridden to HX2_GateHorizonGate prefix in Stadium", () => {
     // Build a fixture where Horizon Gate is used as a post-amp effect
     // to verify the HD2→HX2 prefix override works with Stereo suffix
