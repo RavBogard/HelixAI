@@ -75,8 +75,8 @@ function buildTone(spec: PresetSpec, device: DeviceTarget = "helix_lt"): HlxTone
   const dsp0Amps = dsp0Blocks.filter(b => b.type === "amp");
   const isDualAmp = dsp0Amps.length > 1 && dsp0Amps.some(a => a.path === 1);
 
-  // Variax: use Multi input (@input=3) when variaxModel is set on a supported device (VARIAX-04)
-  const useVariaxInput = !!(spec.variaxModel && isVariaxSupported(device));
+  // Variax: safely check for non-empty string to avoid boolean truthiness on "" (VARIAX-04)
+  const useVariaxInput = !!(spec.variaxModel && spec.variaxModel !== "" && isVariaxSupported(device));
 
   const dsp1HasBlocks = dsp1Blocks.length > 0;
   const ampCategory = spec.ampCategory ?? "clean";
@@ -204,7 +204,7 @@ function buildDsp(blocks: BlockSpec[], dspIndex: number, isDualAmp?: boolean, us
 
   const dsp: HlxDsp = {
     inputA: {
-      "@input": dsp1Input !== undefined ? dsp1Input : ((dspIndex === 0 && useVariaxInput) ? 3 : 1),
+      "@input": dsp1Input !== undefined ? dsp1Input : (dspIndex === 0 ? 0 : 1),
       "@model": "HD2_AppDSPFlow1Input",  // Always Flow1Input on BOTH DSPs (confirmed from reference presets)
       noiseGate: dspIndex === 0,
       decay: dspIndex === 0 ? 0.5 : 0.1,

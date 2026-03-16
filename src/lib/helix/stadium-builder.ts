@@ -59,6 +59,23 @@ const STADIUM_MODEL_BASE_OVERRIDES: Record<string, string> = {
   "HD2_EQParametric": "HX2_EQParametric",
 };
 
+/**
+ * Maps block type to the mandatory Mono/Stereo suffix for Stadium effect models.
+ * Replicates the proven Pod Go compatibility matrix.
+ */
+const STADIUM_EFFECT_SUFFIX: Record<string, "Mono" | "Stereo"> = {
+  distortion: "Mono",
+  dynamics: "Mono",
+  eq: "Mono",
+  pitch: "Mono",
+  delay: "Stereo",
+  reverb: "Stereo",
+  modulation: "Stereo",
+  wah: "Stereo",
+  volume: "Stereo",
+  send_return: "Mono",
+};
+
 // ---------------------------------------------------------------------------
 // STAD-04: Slot-grid block key allocation
 // Key formula: key = 'b' + String(position).padStart(2, '0')
@@ -431,7 +448,15 @@ function resolveStadiumModelId(
 
   // Step 2: Append Mono/Stereo suffix (only if not already suffixed)
   if (!baseId.endsWith("Mono") && !baseId.endsWith("Stereo")) {
-    const suffix = channelMode === "mono" ? "Mono" : "Stereo";
+    let suffix = STADIUM_EFFECT_SUFFIX[block.type] || "Mono";
+    
+    // Stanford PhD DSP Optimization: 
+    // If block is pre-amp (`channelMode` is "mono"), force it to Mono to save DSP. 
+    // The mono amp block collapses the stereo field anyway, so Stereo is wasted here.
+    if (channelMode === "mono") {
+      suffix = "Mono";
+    }
+    
     baseId = baseId + suffix;
   }
 
