@@ -28,7 +28,7 @@ import type { RigIntent } from "@/lib/helix";
 import { mapRigToSubstitutions, parseRigText } from "@/lib/rig-mapping";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-export const maxDuration = 60; // Prevent Vercel hobby 15s truncating the Gemini connection mid-stream
+export const maxDuration = 300; // Phase 19+ (3-Agent pipeline) requires up to 90s. Next.js kills it at 60 otherwise.
 
 export async function POST(req: NextRequest) {
   try {

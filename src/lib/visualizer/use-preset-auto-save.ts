@@ -37,6 +37,7 @@ export function usePresetAutoSave(conversationId: string | null) {
     }
 
     if (!conversationId) return; // Cannot save if not bound to a DB row
+    if (state.baseBlocks.length === 0) return; // Do not wipe DB with an empty unhydrated preset
 
     // Reconstruct the PresetSpec from sliced Zustand state
     const currentSpec: PresetSpec = {
