@@ -23,9 +23,34 @@ import {
   STADIUM_CAB_NAMES,
   STADIUM_EFFECT_NAMES,
 } from "@/lib/helix";
-import type { ToneIntent, DeviceTarget, DeviceFamily } from "@/lib/helix";
+import type { ToneIntent, DeviceTarget, DeviceFamily, GearBlueprint } from "@/lib/helix";
 import { logUsage, estimateGeminiCost } from "@/lib/usage-logger";
 import { getFamilyPlannerPrompt } from "@/lib/prompt-router";
+import { HISTORIAN_SYSTEM_PROMPT } from "@/lib/families/shared/historian-prompt";
+
+/**
+ * Repairs broken JSON where Gemini outputs unescaped literal newlines inside a string value.
+ */
+function escapeLiteralNewlinesInJson(str: string): string {
+  let insideString = false;
+  let result = "";
+  for (let i = 0; i < str.length; i++) {
+    const char = str[i];
+    // Toggle state when we see an unescaped double quote
+    if (char === '"' && (i === 0 || str[i - 1] !== '\\')) {
+      insideString = !insideString;
+    }
+    
+    if (insideString && char === '\n') {
+      result += '\\n';
+    } else if (insideString && char === '\r') {
+      // Just drop carriage returns inside strings to avoid weird formatting
+    } else {
+      result += char;
+    }
+  }
+  return result;
+}
 
 function getCatalogNames(family: string): { ampNames: string[]; cabNames: string[]; effectNames: string[] } {
   switch (family) {
@@ -148,9 +173,7 @@ export async function callGeminiPlanner(
     contents: finalUserContent,
     config: {
       systemInstruction: systemPrompt,
-      responseMimeType: "application/json",
-      responseJsonSchema: jsonSchema as Record<string, unknown>,
-      maxOutputTokens: 2048, // ToneIntent JSON ~300-500 tokens; 2048 gives 4x safety margin
+      // Entirely bypassing structured outputs due to truncation bugs in preview
     },
   });
 
@@ -189,8 +212,25 @@ export async function callGeminiPlanner(
       if (!text) {
         throw new Error("Gemini returned no text content");
       }
-
-      const raw = JSON.parse(text);
+      
+      let raw;
+      try {
+        const sanitized = escapeLiteralNewlinesInJson(text);
+        raw = JSON.parse(sanitized);
+      } catch (parseError) {
+        console.error("JSON PARSE FAILED. RAW TEXT:", text);
+        // Fallback: attempted regex extraction for unescaped gemini markdown wrappers
+        const match = text.match(/```(?:json)?\r?\n([\s\S]*?)\r?\n```/);
+        if (match) {
+          try {
+            raw = JSON.parse(match[1]);
+          } catch (e) {
+             throw parseError; // throw original
+          }
+        } else {
+          throw parseError; // throw original
+        }
+      }
 
       if (Array.isArray(raw.snapshots)) {
         raw.snapshots = raw.snapshots.map((s: { name?: string; toneRole?: string }) => ({
@@ -216,4 +256,79 @@ export async function callGeminiPlanner(
   }
 
   throw lastError;
+}
+
+export async function callGeminiHistorian(
+  messages: Array<{ role: string; content: string }>
+): Promise<GearBlueprint> {
+  const ai = createGeminiClient();
+  const modelId = "gemini-3-flash-preview"; // Reverting to 3-flash-preview per user request
+
+  // Window conversation: take the last 4 messages to keep token usage lean for the Historian
+  const MAX_HISTORIAN_MESSAGES = 4;
+  const windowed = messages.length > MAX_HISTORIAN_MESSAGES
+    ? messages.slice(-MAX_HISTORIAN_MESSAGES)
+    : messages;
+
+  const conversationText = windowed
+    .map((msg) => `${msg.role}: ${msg.content}`)
+    .join("\n\n");
+
+  const jsonSchema = {
+    type: "object",
+    properties: {
+      songTarget: { type: "string" },
+      ampEra: { type: "string" },
+      keyEffects: { type: "array", items: { type: "string" } },
+      bpm: { type: "integer" },
+      delaySubdivision: { type: "string", enum: ["quarter", "eighth", "dotted_eighth", "triplet", "none"] },
+      historianNotes: { type: "string" },
+    },
+    required: ["songTarget", "ampEra", "keyEffects", "bpm", "delaySubdivision", "historianNotes"],
+  };
+
+  const response = await ai.models.generateContent({
+    model: modelId,
+    contents: conversationText,
+    config: {
+      systemInstruction: HISTORIAN_SYSTEM_PROMPT,
+      // Entirely bypassing structured outputs due to truncation bugs in preview
+      // Omit maxOutputTokens to investigate MAX_TOKENS bug in preview model
+    },
+  });
+
+  const usage = response.usageMetadata;
+  const costUsd = estimateGeminiCost(usage ?? {}, modelId);
+  console.log(
+    `[historian] model=${modelId} finish=${response.candidates?.[0]?.finishReason} tokens=${usage?.promptTokenCount ?? 0}in/${usage?.candidatesTokenCount ?? 0}out` +
+    ` cost=$${costUsd.toFixed(4)}`
+  );
+
+  const text = response.text;
+  if (!text) throw new Error("Historian returned no text content");
+  
+  console.log("=== STRINGIFIED HISTORIAN TEXT ===");
+  console.log(JSON.stringify(text));
+  console.log("==================================");
+
+  let raw;
+  try {
+    const sanitized = escapeLiteralNewlinesInJson(text);
+    raw = JSON.parse(sanitized);
+  } catch (parseError) {
+    console.warn("Historian JSON parse failed, attempting regex extraction...");
+    const match = text.match(/```(?:json)?\r?\n([\s\S]*?)\r?\n```/);
+    if (match) {
+      try {
+        raw = JSON.parse(match[1]);
+      } catch (e) {
+        console.error("Regex extracted text also failed to parse:", match[1]);
+        throw e;
+      }
+    } else {
+      throw parseError; // Rethrow if regex fails
+    }
+  }
+
+  return raw as GearBlueprint;
 }

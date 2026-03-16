@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { callGeminiPlanner } from "@/lib/planner";
+import { callGeminiPlanner, callGeminiHistorian } from "@/lib/planner";
 import { createGeminiClient, getModelId, isPremiumKey } from "@/lib/gemini";
 import { getMasteringCriticPrompt } from "@/lib/prompt-router";
 import {
@@ -134,16 +134,34 @@ async function runGenerationProcess(
     // Build toneContext string only when substitutionMap has entries.
     // An empty substitutionMap produces a context string with no bullet points —
     // avoid sending that to the planner as it adds noise without information.
-    if (substitutionMap && substitutionMap.length > 0) {
-      toneContext = buildToneContext(substitutionMap);
-    }
+    emitStatus("Tone Historian analyzing original recording...");
+    const historianBlueprint = await callGeminiHistorian(messages);
 
-    // Step 1: Gemini Planner generates ToneIntent (creative choices only)
-    // Pass device target so planner filters model list for Pod Go (PGMOD-04)
-    // Pass toneContext so planner prioritizes rig-matched models (Phase 20)
-    const toneIntent = await callGeminiPlanner(messages, deviceTarget, deviceFamily, toneContext);
+    const historianPromptInject = `HISTORIAN RESEARCH OVERRIDE:
+The Historian Agent has analyzed the request and determined the following:
+Song/Artist: ${historianBlueprint.songTarget}
+Amp Era: ${historianBlueprint.ampEra}
+Historically Accurate Effects: ${historianBlueprint.keyEffects.join(", ")}
+Notes: ${historianBlueprint.historianNotes}
+
+You MUST utilize this historical context. Act as the device-specialized audio engineer: pick the specific Line 6 models that best match this gear, and use your DSP limits to filter the list to only the essentials that fit on the board.`;
+
+    const combinedContext = toneContext 
+        ? `${toneContext}\n\n${historianPromptInject}` 
+        : historianPromptInject;
 
     emitStatus("Structuring signal chain...");
+    
+    // Step 1: Gemini Planner generates ToneIntent (creative choices only)
+    // Pass device target so planner filters model list for Pod Go (PGMOD-04)
+    // Pass combined context so planner prioritizes rig-matched and historian-matched models
+    const toneIntent = await callGeminiPlanner(messages, deviceTarget, deviceFamily, combinedContext);
+
+    // Force injection of Historian tempo data to guarantee zero hallucination
+    toneIntent.tempoHint = historianBlueprint.bpm;
+    toneIntent.delaySubdivision = historianBlueprint.delaySubdivision;
+
+    emitStatus("Resolving parameter engine...");
     
     // Step 2: Knowledge Layer pipeline (deterministic)
     // Resolve capabilities once, pass to all Knowledge Layer functions (KLAYER-04)

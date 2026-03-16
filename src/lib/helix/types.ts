@@ -403,3 +403,13 @@ export interface SnapshotSpec {
   blockStates: Record<string, boolean>; // blockKey -> enabled
   parameterOverrides: Record<string, Record<string, number | boolean>>; // blockKey -> paramName -> value
 }
+
+// --- Historian Stage Output Schema ---
+export interface GearBlueprint {
+  songTarget: string; // The identified song/artist
+  ampEra: string; // e.g., "Vox AC30 Top Boost"
+  keyEffects: string[]; // Specific pedals/gear (e.g., "Korg A3 Envelope Filter")
+  bpm: number; // The exact original tempo of the song (e.g. 99)
+  delaySubdivision: "quarter" | "eighth" | "dotted_eighth" | "triplet" | "none"; 
+  historianNotes: string; // Deep factual breakdown of the studio gear
+}

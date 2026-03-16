@@ -8,7 +8,7 @@ export { STADIUM_AMPS, STADIUM_EQ_MODELS } from "./models";
 export { buildHspFile, summarizeStadiumPreset } from "./stadium-builder";
 export type { HspFile } from "./stadium-builder";
 export { validatePresetSpec, validateAndFixPresetSpec } from "./validate";
-export type { PresetSpec, BlockSpec, SnapshotSpec, HlxFile, DeviceTarget } from "./types";
+export type { PresetSpec, BlockSpec, SnapshotSpec, HlxFile, DeviceTarget, GearBlueprint } from "./types";
 export type { AmpCategory, TopologyTag, CabSize, HlxCab } from "./types";
 export { DEVICE_IDS, isHelix, isPodGo, isStadium, isStomp, isVariaxSupported } from "./types";
 export { BLOCK_TYPES_PODGO, POD_GO_IO, POD_GO_SNAPSHOT_CONTROLLER, POD_GO_STOMP_FS_INDICES, POD_GO_MAX_USER_EFFECTS, POD_GO_TOTAL_BLOCKS } from "./types";
