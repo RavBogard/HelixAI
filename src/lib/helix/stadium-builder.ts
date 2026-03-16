@@ -353,43 +353,45 @@ function buildStadiumFlow(spec: PresetSpec, ampCategory: AmpCategory): Array<Rec
   let currentSlot = 1;
 
   // Pre-amp effect blocks — STAD-07: mono channel mode
+  let fxCounter = 0; // Tracks the sequential footswitch index (0 to 11) for Flow 0
+
+  let preAmpSlot = 1; // b01 to b04
   for (const { block, originalIndex } of preAmpBlocks) {
-    if (currentSlot > 12) break;
-    const slotPos = currentSlot++;
+    if (preAmpSlot > 4) break; // Hardware enforces max 4 pre-amp slots
+    const slotPos = preAmpSlot++;
     const blockKey = makeBlockKey(slotPos);
     blockKeyMap.set(originalIndex, blockKey);
-    flow0[blockKey] = buildFlowBlock(block, slotPos, spec, originalIndex, "mono");
+    const usesController = getStadiumBlockType(block.type) === "fx";
+    flow0[blockKey] = buildFlowBlock(block, slotPos, spec, originalIndex, "mono", usesController ? fxCounter++ : undefined);
   }
 
-  // Amp — no channel suffix
+  // Amp — always canonical slot 5 (b05)
   let ampBlockKey: string | null = null;
   if (ampBlock && ampOriginalIndex >= 0) {
-    if (currentSlot <= 12) {
-      const ampSlotPos = currentSlot++;
-      ampBlockKey = makeBlockKey(ampSlotPos);
-      blockKeyMap.set(ampOriginalIndex, ampBlockKey);
-      flow0[ampBlockKey] = buildFlowBlock(ampBlock, ampSlotPos, spec, ampOriginalIndex, "none");
-    }
+    const ampSlotPos = 5;
+    ampBlockKey = makeBlockKey(ampSlotPos);
+    blockKeyMap.set(ampOriginalIndex, ampBlockKey);
+    flow0[ampBlockKey] = buildFlowBlock(ampBlock, ampSlotPos, spec, ampOriginalIndex, "none", undefined);
   }
 
-  // Cab — no channel suffix (uses WithPan)
+  // Cab — always canonical slot 6 (b06)
   let cabBlockKey: string | null = null;
   if (cabBlock && cabOriginalIndex >= 0) {
-    if (currentSlot <= 12) {
-      const cabSlotPos = currentSlot++;
-      cabBlockKey = makeBlockKey(cabSlotPos);
-      blockKeyMap.set(cabOriginalIndex, cabBlockKey);
-      flow0[cabBlockKey] = buildFlowBlock(cabBlock, cabSlotPos, spec, cabOriginalIndex, "none");
-    }
+    const cabSlotPos = 6;
+    cabBlockKey = makeBlockKey(cabSlotPos);
+    blockKeyMap.set(cabOriginalIndex, cabBlockKey);
+    flow0[cabBlockKey] = buildFlowBlock(cabBlock, cabSlotPos, spec, cabOriginalIndex, "none", undefined);
   }
 
   // Post-amp effect blocks — STAD-07: stereo channel mode
+  let postAmpSlot = 7; // b07 to b12
   for (const { block, originalIndex } of postAmpBlocks) {
-    if (currentSlot > 12) break;
-    const slotPos = currentSlot++;
+    if (postAmpSlot > 12) break; // Hardware enforces max 6 post-amp slots
+    const slotPos = postAmpSlot++;
     const blockKey = makeBlockKey(slotPos);
     blockKeyMap.set(originalIndex, blockKey);
-    flow0[blockKey] = buildFlowBlock(block, slotPos, spec, originalIndex, "stereo");
+    const usesController = getStadiumBlockType(block.type) === "fx";
+    flow0[blockKey] = buildFlowBlock(block, slotPos, spec, originalIndex, "stereo", usesController ? fxCounter++ : undefined);
   }
 
   // Wire up amp ↔ cab linked blocks
@@ -493,10 +495,12 @@ function buildFlowBlock(
   originalIndex: number,
   /** STAD-07: "mono" for pre-amp effects, "stereo" for post-amp effects, "none" for amp/cab/io */
   channelMode: "mono" | "stereo" | "none" = "none",
+  /** The assigned valid sequential Footswitch source index for this effect block. */
+  fxIndex?: number,
 ): Record<string, unknown> {
   // Build @enabled with optional per-snapshot bypass states and footswitch controller
   const blockType = getStadiumBlockType(block.type);
-  const enabledObj = buildBlockEnabled(block, spec, originalIndex, blockType, flowPosition);
+  const enabledObj = buildBlockEnabled(block, spec, originalIndex, blockType, fxIndex);
 
   // STAD-03 fix: Build slot params using { value: X } format — NO access field
   // Real .hsp files use only { "value": X } — zero occurrences of "access" anywhere
@@ -575,8 +579,8 @@ function buildBlockEnabled(
   originalIndex: number,
   /** Stadium block type: "fx", "amp", "cab", etc. */
   stadiumBlockType: string = "fx",
-  /** Block's flow position (for computing footswitch source ID) */
-  flowPosition: number = 0,
+  /** The assigned valid sequential Footswitch source index for this effect block. */
+  fxIndex?: number,
 ): Record<string, unknown> {
   const enabledObj: Record<string, unknown> = {
     value: block.enabled,
@@ -614,11 +618,11 @@ function buildBlockEnabled(
   }
 
   // Add footswitch controller for effect blocks only (not amp/cab)
-  // Source ID = 0x01010100 + flowPosition (Flow 0 footswitch source)
-  if (stadiumBlockType === "fx") {
+  // Source ID = 0x01010100 + fxIndex (sequentially mapped Flow 0 footswitch source)
+  if (stadiumBlockType === "fx" && fxIndex !== undefined && fxIndex < 12) {
     enabledObj.controller = {
       type: "targetbypass",
-      source: 0x01010100 + flowPosition,
+      source: 0x01010100 + fxIndex,
       behavior: "latching",
       min: false,
       max: true,
