@@ -136,8 +136,8 @@ describe("helix/getSystemPrompt", () => {
   });
 
   it("contains structured READY_TO_GENERATE format", () => {
-    expect(prompt).toContain("**Amp:**");
-    expect(prompt).toContain("**Effects:**");
+    expect(prompt).toContain("**Amp Style:**");
+    expect(prompt).toContain("**Effects Approach:**");
     expect(prompt).toContain("**Snapshots:**");
   });
 

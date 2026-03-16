@@ -155,6 +155,15 @@ export function validatePresetSpec(spec: PresetSpec, caps: DeviceCapabilities): 
         if (Number.isInteger(value) && value >= 0 && value <= 16) continue;
       }
 
+      // HD2 Cab Distance: 1.0-12.0 inches
+      if (block.type === "cab" && block.modelId.startsWith("HD2_Cab") && key === "Distance") {
+        if (value >= 1.0 && value <= 12.0) {
+          continue;
+        } else {
+          throw new Error(`Parameter '${key}' value ${value} out of range for block '${block.modelName}' (expected 1.0-12.0 inches)`);
+        }
+      }
+
       // All other params: 0.0-1.0 normalized
       if (value < 0.0 || value > 1.0) {
         throw new Error(`Parameter '${key}' value ${value} out of range for block '${block.modelName}' (expected 0.0-1.0)`);
@@ -448,6 +457,18 @@ export function validateAndFixPresetSpec(spec: PresetSpec): ValidationResult {
       }
       if (key === "Mode" || key === "SyncSelect1" || key === "SyncSelect2") {
         if (typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 16) continue;
+      }
+
+      // HD2 Cab Distance: 1.0-12.0 inches
+      if (block.type === "cab" && block.modelId?.startsWith("HD2_Cab") && key === "Distance") {
+        if (typeof value === "number") {
+          if (value < 1.0 || value > 12.0) {
+            console.warn(`[validate] Cab Distance=${value} out of bounds, clamping to 1.0-12.0`);
+            block.parameters[key] = Math.max(1.0, Math.min(12.0, value));
+            fixed = true;
+          }
+          continue;
+        }
       }
 
       if (typeof value === "number" && (value < 0 || value > 1)) {

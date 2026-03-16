@@ -181,7 +181,7 @@ describe("buildHspFile", () => {
     const fixture = makeStadiumFixture();
     const result = buildHspFile(fixture);
     const jsonString = JSON.stringify(result.json);
-    expect(jsonString.includes('"access":"enabled"')).toBe(true);
+    expect(jsonString.includes('"access":"enabled"')).toBe(false);
   });
 
   // Test 2: STAD-04 — Slot-grid block key positions
@@ -337,7 +337,6 @@ describe("buildHspFile", () => {
     const ampHarnessParams = ampHarness?.["params"] as Record<string, unknown>;
     for (const [, paramObj] of Object.entries(ampHarnessParams ?? {})) {
       const p = paramObj as Record<string, unknown>;
-      expect(p).toHaveProperty("access", "enabled");
       expect(p).toHaveProperty("value");
     }
 
@@ -346,7 +345,6 @@ describe("buildHspFile", () => {
     const cabHarnessParams = cabHarness?.["params"] as Record<string, unknown>;
     for (const [, paramObj] of Object.entries(cabHarnessParams ?? {})) {
       const p = paramObj as Record<string, unknown>;
-      expect(p).toHaveProperty("access", "enabled");
       expect(p).toHaveProperty("value");
     }
 
@@ -356,7 +354,6 @@ describe("buildHspFile", () => {
     const inputParams = inputSlot?.[0]?.["params"] as Record<string, unknown>;
     for (const [, paramObj] of Object.entries(inputParams ?? {})) {
       const p = paramObj as Record<string, unknown>;
-      expect(p).toHaveProperty("access", "enabled");
       expect(p).toHaveProperty("value");
     }
 
@@ -366,7 +363,6 @@ describe("buildHspFile", () => {
     const outputParams = outputSlot?.[0]?.["params"] as Record<string, unknown>;
     for (const [, paramObj] of Object.entries(outputParams ?? {})) {
       const p = paramObj as Record<string, unknown>;
-      expect(p).toHaveProperty("access", "enabled");
       expect(p).toHaveProperty("value");
     }
   });
@@ -519,18 +515,18 @@ describe("structural comparison with real .hsp reference", () => {
     const ampHarness = b05["harness"] as Record<string, unknown>;
     expect(ampHarness["@enabled"]).toEqual({ value: true });
     const ampParams = ampHarness["params"] as Record<string, unknown>;
-    expect(ampParams["EvtIdx"]).toEqual({ value: -1, access: "enabled" });
-    expect(ampParams["bypass"]).toEqual({ value: false, access: "enabled" });
-    expect(ampParams["upper"]).toEqual({ value: true, access: "enabled" });
+    expect(ampParams["EvtIdx"]).toEqual({ value: -1 });
+    expect(ampParams["bypass"]).toEqual({ value: false });
+    expect(ampParams["upper"]).toEqual({ value: true });
 
     // Cab harness
     const cabHarness = b06["harness"] as Record<string, unknown>;
     expect(cabHarness["@enabled"]).toEqual({ value: true });
     const cabParams = cabHarness["params"] as Record<string, unknown>;
-    expect(cabParams["EvtIdx"]).toEqual({ value: -1, access: "enabled" });
-    expect(cabParams["bypass"]).toEqual({ value: false, access: "enabled" });
-    expect(cabParams["dual"]).toEqual({ value: true, access: "enabled" });
-    expect(cabParams["upper"]).toEqual({ value: true, access: "enabled" });
+    expect(cabParams["EvtIdx"]).toEqual({ value: -1 });
+    expect(cabParams["bypass"]).toEqual({ value: false });
+    expect(cabParams["dual"]).toEqual({ value: true });
+    expect(cabParams["upper"]).toEqual({ value: true });
   });
 
   // Test 8: Top-level preset keys — all required fields present
@@ -578,17 +574,17 @@ describe("structural comparison with real .hsp reference", () => {
     const b01 = flow0["b01"] as Record<string, unknown>;
     const gateHarness = b01["harness"] as Record<string, unknown>;
     const gateParams = gateHarness["params"] as Record<string, unknown>;
-    expect(gateParams["EvtIdx"]).toEqual({ value: -1, access: "enabled" });
-    expect(gateParams["bypass"]).toEqual({ value: false, access: "enabled" });
-    expect(gateParams["upper"]).toEqual({ value: true, access: "enabled" });
+    expect(gateParams["EvtIdx"]).toEqual({ value: -1 });
+    expect(gateParams["bypass"]).toEqual({ value: false });
+    expect(gateParams["upper"]).toEqual({ value: true });
 
     // Boost at b02
     const b02 = flow0["b02"] as Record<string, unknown>;
     const boostHarness = b02["harness"] as Record<string, unknown>;
     const boostParams = boostHarness["params"] as Record<string, unknown>;
-    expect(boostParams["EvtIdx"]).toEqual({ value: -1, access: "enabled" });
-    expect(boostParams["bypass"]).toEqual({ value: false, access: "enabled" });
-    expect(boostParams["upper"]).toEqual({ value: true, access: "enabled" });
+    expect(boostParams["EvtIdx"]).toEqual({ value: -1 });
+    expect(boostParams["bypass"]).toEqual({ value: false });
+    expect(boostParams["upper"]).toEqual({ value: true });
   });
 
   // Test 12: Delay/reverb harness includes Trails param
@@ -601,15 +597,15 @@ describe("structural comparison with real .hsp reference", () => {
     const b07 = flow0["b07"] as Record<string, unknown>;
     const delayHarness = b07["harness"] as Record<string, unknown>;
     const delayParams = delayHarness["params"] as Record<string, unknown>;
-    expect(delayParams["Trails"]).toEqual({ value: true, access: "enabled" });
-    expect(delayParams["EvtIdx"]).toEqual({ value: -1, access: "enabled" });
+    expect(delayParams["Trails"]).toEqual({ value: true });
+    expect(delayParams["EvtIdx"]).toEqual({ value: -1 });
 
     // Reverb at b08
     const b08 = flow0["b08"] as Record<string, unknown>;
     const reverbHarness = b08["harness"] as Record<string, unknown>;
     const reverbParams = reverbHarness["params"] as Record<string, unknown>;
-    expect(reverbParams["Trails"]).toEqual({ value: true, access: "enabled" });
-    expect(reverbParams["EvtIdx"]).toEqual({ value: -1, access: "enabled" });
+    expect(reverbParams["Trails"]).toEqual({ value: true });
+    expect(reverbParams["EvtIdx"]).toEqual({ value: -1 });
   });
 
   // Test 13: Per-snapshot parameter overrides are embedded inline on params
@@ -634,7 +630,7 @@ describe("structural comparison with real .hsp reference", () => {
 
     // Master has NO overrides — should NOT have snapshots array
     expect(ampParams["Master"]).not.toHaveProperty("snapshots");
-    expect(ampParams["Master"]).toEqual({ value: 1.0, access: "enabled" });
+    expect(ampParams["Master"]).toEqual({ value: 1.0 });
   });
 });
 

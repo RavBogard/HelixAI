@@ -518,12 +518,12 @@ function buildFlowBlock(
         }
       }
       if (hasOverride) {
-        slotParams[key] = { value, access: "enabled", snapshots: snapValues };
+        slotParams[key] = { value, snapshots: snapValues };
       } else {
-        slotParams[key] = { value, access: "enabled" };
+        slotParams[key] = { value };
       }
     } else {
-      slotParams[key] = { value, access: "enabled" };
+      slotParams[key] = { value };
     }
   }
 
@@ -536,29 +536,14 @@ function buildFlowBlock(
     harness: buildHarness(block),
     path: 0,
     position: flowPosition,  // Must match bNN key (invariant: key bNN implies position: NN)
-    slot: CAB_TYPES.has(block.type)
-      ? [
-          {
-            "@enabled": { value: true },
-            model: modelId,
-            params: slotParams,
-            version: 0,
-          },
-          {
-            "@enabled": { value: true },
-            model: "HD2_CabMicIr_NoCab",
-            params: null,
-            version: 0,
-          },
-        ]
-      : [
-          {
-            "@enabled": { value: true },
-            model: modelId,
-            params: slotParams,
-            version: 0,
-          },
-        ],
+    slot: [
+      {
+        "@enabled": { value: true },
+        model: modelId,
+        params: slotParams,
+        version: 0,
+      },
+    ],
     // STAD-05 fix: Map all effect types to "fx" — only amp/cab/input/output/split/join/looper retain named types
     type: getStadiumBlockType(block.type),
   };
@@ -647,9 +632,9 @@ function buildHarness(block: BlockSpec): Record<string, unknown> {
     return {
       "@enabled": { value: true },
       params: {
-        EvtIdx: { value: -1, access: "enabled" },
-        bypass: { value: false, access: "enabled" },
-        upper: { value: true, access: "enabled" },
+        EvtIdx: { value: -1 },
+        bypass: { value: false },
+        upper: { value: true },
       },
     };
   }
@@ -658,10 +643,10 @@ function buildHarness(block: BlockSpec): Record<string, unknown> {
     return {
       "@enabled": { value: true },
       params: {
-        EvtIdx: { value: -1, access: "enabled" },
-        bypass: { value: false, access: "enabled" },
-        dual: { value: true, access: "enabled" },
-        upper: { value: true, access: "enabled" },
+        EvtIdx: { value: -1 },
+        bypass: { value: false },
+        dual: { value: true },
+        upper: { value: true },
       },
     };
   }
@@ -671,10 +656,10 @@ function buildHarness(block: BlockSpec): Record<string, unknown> {
   return {
     "@enabled": { value: true },
     params: {
-      EvtIdx: { value: -1, access: "enabled" },
-      ...(isDelayOrReverb ? { Trails: { value: true, access: "enabled" } } : {}),
-      bypass: { value: false, access: "enabled" },
-      upper: { value: true, access: "enabled" },
+      EvtIdx: { value: -1 },
+      ...(isDelayOrReverb ? { Trails: { value: true } } : {}),
+      bypass: { value: false },
+      upper: { value: true },
     },
   };
 }
@@ -696,11 +681,11 @@ function buildInputBlock(ampCategory: AmpCategory): Record<string, unknown> {
         "@enabled": { value: true },
         model: STADIUM_CONFIG.STADIUM_INPUT_MODEL,
         params: {
-          Pad: { value: 1, access: "enabled" },
-          Trim: { value: 0.0, access: "enabled" },
-          decay: { value: 0.1, access: "enabled" },
-          noiseGate: { value: false, access: "enabled" },
-          threshold: { value: ampCategory === "high_gain" ? -36.0 : -48.0, access: "enabled" },
+          Pad: { value: 1 },
+          Trim: { value: 0.0 },
+          decay: { value: 0.1 },
+          noiseGate: { value: false },
+          threshold: { value: ampCategory === "high_gain" ? -36.0 : -48.0 },
         },
         version: 0,
       },
@@ -726,8 +711,8 @@ function buildOutputBlock(): Record<string, unknown> {
         "@enabled": { value: true },
         model: STADIUM_CONFIG.STADIUM_OUTPUT_MODEL,
         params: {
-          gain: { value: 0.0, access: "enabled" },
-          pan: { value: 0.5, access: "enabled" },
+          gain: { value: 0.0 },
+          pan: { value: 0.5 },
         },
         version: 0,
       },
@@ -753,10 +738,10 @@ function buildEmptyInputBlock(ampCategory: AmpCategory): Record<string, unknown>
         "@enabled": { value: true },
         model: STADIUM_CONFIG.STADIUM_INPUT_NONE_MODEL,
         params: {
-          Trim: { value: 0.0, access: "enabled" },
-          decay: { value: 0.1, access: "enabled" },
-          noiseGate: { value: false, access: "enabled" },
-          threshold: { value: ampCategory === "high_gain" ? -36.0 : -48.0, access: "enabled" },
+          Trim: { value: 0.0 },
+          decay: { value: 0.1 },
+          noiseGate: { value: false },
+          threshold: { value: ampCategory === "high_gain" ? -36.0 : -48.0 },
         },
         version: 0,
       },
