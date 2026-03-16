@@ -104,7 +104,7 @@ export function auditIntentFidelity(
     // --- Effects check ---
     const effectsAudit: EffectAuditEntry[] = [];
     const intentEffects = toneIntent.effects ?? [];
-    let missingEffectNames: string[] = [];
+    const missingEffectNames: string[] = [];
     for (const effect of intentEffects) {
       const found = chain.some(
         (b) => normalizeModelName(b.modelName) === normalizeModelName(effect.modelName),
