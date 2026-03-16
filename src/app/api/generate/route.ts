@@ -182,7 +182,7 @@ You MUST utilize this historical context. Act as the device-specialized audio en
     const caps = getCapabilities(deviceTarget);
     const chain = assembleSignalChain(toneIntent, caps);
     const parameterized = resolveParameters(chain, toneIntent, caps);
-    const snapshots = buildSnapshots(parameterized, toneIntent.snapshots, toneIntent.genreHint, toneIntent.snapshotTweaks);
+    const snapshots = buildSnapshots(parameterized, toneIntent.snapshots, toneIntent.genreHint, toneIntent.snapshotTweaks).slice(0, caps.maxSnapshots);
 
     // Step 3: Build PresetSpec
     const safeAmpName = toneIntent.ampName || "US Double Nrm";

@@ -733,7 +733,7 @@ describe("Stadium full pipeline (STADIUM-E2E)", () => {
     const intent = stadiumIntent();
     const chain = assembleSignalChain(intent, stadiumCaps);
     const parameterized = resolveParameters(chain, intent, stadiumCaps);
-    const snapshots = buildSnapshots(parameterized, intent.snapshots);
+    const snapshots = buildSnapshots(parameterized, intent.snapshots).slice(0, stadiumCaps.maxSnapshots);
     const spec: PresetSpec = {
       name: "Classic Rock Stadium",
       description: "Stadium E2E test preset",
@@ -755,18 +755,17 @@ describe("Stadium full pipeline (STADIUM-E2E)", () => {
     expect(chain.every(b => b.dsp === 0)).toBe(true);
   });
 
-  it("STADIUM-E2E-03: Stadium has 8 snapshots", () => {
+  it("STADIUM-E2E-03: Stadium has 1 snapshot", () => {
     const intent = stadiumIntent();
     const chain = assembleSignalChain(intent, stadiumCaps);
     const parameterized = resolveParameters(chain, intent, stadiumCaps);
-    const snapshots = buildSnapshots(parameterized, intent.snapshots);
-    expect(snapshots.length).toBe(4); // 4 from intent (clean/crunch/lead/ambient)
+    const snapshots = buildSnapshots(parameterized, intent.snapshots).slice(0, stadiumCaps.maxSnapshots);
+    expect(snapshots.length).toBe(1); // Hardware limits to 1
 
     const spec: PresetSpec = {
       name: "Test", description: "Test", tempo: 120,
       signalChain: parameterized, snapshots,
     };
-    // Stadium supports up to 8, so 4 should be fine
     expect(() => validatePresetSpec(spec, stadiumCaps)).not.toThrow();
   });
 
@@ -779,7 +778,7 @@ describe("Stadium full pipeline (STADIUM-E2E)", () => {
     const intent = stadiumIntent();
     const chain = assembleSignalChain(intent, stadiumCaps);
     const parameterized = resolveParameters(chain, intent, stadiumCaps);
-    const snapshots = buildSnapshots(parameterized, intent.snapshots);
+    const snapshots = buildSnapshots(parameterized, intent.snapshots).slice(0, stadiumCaps.maxSnapshots);
     const spec: PresetSpec = {
       name: "Quality Test", description: "Test", tempo: 120,
       signalChain: parameterized, snapshots,

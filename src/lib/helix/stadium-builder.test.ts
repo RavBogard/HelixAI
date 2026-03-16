@@ -185,7 +185,7 @@ describe("buildHspFile", () => {
   });
 
   // Test 2: STAD-04 — Slot-grid block key positions
-  it("STAD-04: input at b00/pos:0, amp at b05/pos:5, cab at b06/pos:6, output at b13/pos:13", () => {
+  it("STAD-04: input at b00/pos:0, amp at b03/pos:3, cab at b04/pos:4, output at b13/pos:13", () => {
     const fixture = makeStadiumFixture();
     const result = buildHspFile(fixture);
     const flow0 = result.json.preset.flow[0] as Record<string, unknown>;
@@ -196,17 +196,17 @@ describe("buildHspFile", () => {
     expect(b00["position"]).toBe(0);
     expect(b00["type"]).toBe("input");
 
-    // Amp must be at b05 position 5
-    const b05 = flow0["b05"] as Record<string, unknown>;
-    expect(b05).toBeDefined();
-    expect(b05["position"]).toBe(5);
-    expect(b05["type"]).toBe("amp");
+    // Amp must be at b03 position 3
+    const b03 = flow0["b03"] as Record<string, unknown>;
+    expect(b03).toBeDefined();
+    expect(b03["position"]).toBe(3);
+    expect(b03["type"]).toBe("amp");
 
-    // Cab must be at b06 position 6
-    const b06 = flow0["b06"] as Record<string, unknown>;
-    expect(b06).toBeDefined();
-    expect(b06["position"]).toBe(6);
-    expect(b06["type"]).toBe("cab");
+    // Cab must be at b04 position 4
+    const b04 = flow0["b04"] as Record<string, unknown>;
+    expect(b04).toBeDefined();
+    expect(b04["position"]).toBe(4);
+    expect(b04["type"]).toBe("cab");
 
     // Output at b13 position 13
     const b13 = flow0["b13"] as Record<string, unknown>;
@@ -280,11 +280,11 @@ describe("buildHspFile", () => {
     const result = buildHspFile(fixture);
     const flow0 = result.json.preset.flow[0] as Record<string, unknown>;
 
-    const b06 = flow0["b06"] as Record<string, unknown>;
-    expect(b06).toBeDefined();
-    expect(b06["type"]).toBe("cab");
+    const b04 = flow0["b04"] as Record<string, unknown>;
+    expect(b04).toBeDefined();
+    expect(b04["type"]).toBe("cab");
 
-    const slot = b06["slot"] as Array<Record<string, unknown>>;
+    const slot = b04["slot"] as Array<Record<string, unknown>>;
     expect(slot).toBeDefined();
     expect(slot.length).toBeGreaterThan(0);
 
@@ -324,11 +324,11 @@ describe("buildHspFile", () => {
     const result = buildHspFile(fixture);
     const flow0 = result.json.preset.flow[0] as Record<string, unknown>;
 
-    const b05 = flow0["b05"] as Record<string, unknown>;
-    const b06 = flow0["b06"] as Record<string, unknown>;
+    const b03 = flow0["b03"] as Record<string, unknown>;
+    const b04 = flow0["b04"] as Record<string, unknown>;
 
     // Amp harness params
-    const ampHarness = b05?.["harness"] as Record<string, unknown>;
+    const ampHarness = b03?.["harness"] as Record<string, unknown>;
     const ampHarnessParams = ampHarness?.["params"] as Record<string, unknown>;
     for (const [, paramObj] of Object.entries(ampHarnessParams ?? {})) {
       const p = paramObj as Record<string, unknown>;
@@ -336,7 +336,7 @@ describe("buildHspFile", () => {
     }
 
     // Cab harness params
-    const cabHarness = b06?.["harness"] as Record<string, unknown>;
+    const cabHarness = b04?.["harness"] as Record<string, unknown>;
     const cabHarnessParams = cabHarness?.["params"] as Record<string, unknown>;
     for (const [, paramObj] of Object.entries(cabHarnessParams ?? {})) {
       const p = paramObj as Record<string, unknown>;
@@ -427,22 +427,22 @@ describe("structural comparison with real .hsp reference", () => {
     }
   });
 
-  // Test 4: Amp-cab linking — amp at b05 → linkedblock b06; cab at b06 → linkedblock b05
-  it("amp block at b05 has linkedblock pointing to b06, cab at b06 has linkedblock pointing to b05", () => {
+  // Test 4: Amp-cab linking — amp at b03 → linkedblock b04; cab at b04 → linkedblock b03
+  it("amp block at b03 has linkedblock pointing to b04, cab at b04 has linkedblock pointing to b03", () => {
     const fixture = makeStadiumFixture();
     const result = buildHspFile(fixture);
     const flow0 = result.json.preset.flow[0] as Record<string, unknown>;
 
-    const b05 = flow0["b05"] as Record<string, unknown>;
-    const b06 = flow0["b06"] as Record<string, unknown>;
+    const b03 = flow0["b03"] as Record<string, unknown>;
+    const b04 = flow0["b04"] as Record<string, unknown>;
 
-    expect(b05).toBeDefined();
-    expect(b06).toBeDefined();
+    expect(b03).toBeDefined();
+    expect(b04).toBeDefined();
 
     // Amp must point to cab
-    expect(b05["linkedblock"]).toEqual({ block: "b06", flow: 0 });
+    expect(b03["linkedblock"]).toEqual({ block: "b04", flow: 0 });
     // Cab must point back to amp
-    expect(b06["linkedblock"]).toEqual({ block: "b05", flow: 0 });
+    expect(b04["linkedblock"]).toEqual({ block: "b03", flow: 0 });
   });
 
   // Test 5: Snapshots array has exactly 8 entries
@@ -453,8 +453,8 @@ describe("structural comparison with real .hsp reference", () => {
 
     expect(snapshots).toHaveLength(8);
 
-    // Fixture has 2 valid snapshots ("Clean" and "Drive") → indices 0..1 are valid
-    const validIndices = [0, 1];
+    // Snapshot 0 is valid.
+    const validIndices = [0];
     for (const i of validIndices) {
       const snap = snapshots[i]!;
       expect(snap["valid"]).toBe(true);
@@ -465,8 +465,8 @@ describe("structural comparison with real .hsp reference", () => {
       expect(snap).toHaveProperty("tempo");
     }
 
-    // Remaining 6 snapshots are invalid — must NOT have "color" field, expsw: -1
-    for (let i = 2; i < 8; i++) {
+    // Remaining 7 snapshots are invalid — must NOT have "color" field, expsw: -1
+    for (let i = 1; i < 8; i++) {
       const snap = snapshots[i]!;
       expect(snap["valid"]).toBe(false);
       expect(snap).not.toHaveProperty("color");
@@ -503,11 +503,11 @@ describe("structural comparison with real .hsp reference", () => {
     const result = buildHspFile(fixture);
     const flow0 = result.json.preset.flow[0] as Record<string, unknown>;
 
-    const b05 = flow0["b05"] as Record<string, unknown>;
-    const b06 = flow0["b06"] as Record<string, unknown>;
+    const b03 = flow0["b03"] as Record<string, unknown>;
+    const b04 = flow0["b04"] as Record<string, unknown>;
 
     // Amp harness
-    const ampHarness = b05["harness"] as Record<string, unknown>;
+    const ampHarness = b03["harness"] as Record<string, unknown>;
     expect(ampHarness["@enabled"]).toEqual({ value: true });
     const ampParams = ampHarness["params"] as Record<string, unknown>;
     expect(ampParams["EvtIdx"]).toEqual({ value: -1 });
@@ -515,7 +515,7 @@ describe("structural comparison with real .hsp reference", () => {
     expect(ampParams["upper"]).toEqual({ value: true });
 
     // Cab harness
-    const cabHarness = b06["harness"] as Record<string, unknown>;
+    const cabHarness = b04["harness"] as Record<string, unknown>;
     expect(cabHarness["@enabled"]).toEqual({ value: true });
     const cabParams = cabHarness["params"] as Record<string, unknown>;
     expect(cabParams["EvtIdx"]).toEqual({ value: -1 });
@@ -554,8 +554,8 @@ describe("structural comparison with real .hsp reference", () => {
     // Fixture uses "HD2_CabMicIr_4x10TweedP10R" (no WithPan) — builder must add it
     const result = buildHspFile(fixture);
     const flow0 = result.json.preset.flow[0] as Record<string, unknown>;
-    const b06 = flow0["b06"] as Record<string, unknown>;
-    const slot = b06["slot"] as Array<Record<string, unknown>>;
+    const b04 = flow0["b04"] as Record<string, unknown>;
+    const slot = b04["slot"] as Array<Record<string, unknown>>;
     expect(slot[0]["model"]).toBe("HD2_CabMicIr_4x10TweedP10RWithPan");
   });
 
@@ -588,16 +588,16 @@ describe("structural comparison with real .hsp reference", () => {
     const result = buildHspFile(fixture);
     const flow0 = result.json.preset.flow[0] as Record<string, unknown>;
 
-    // Delay at b07
-    const b07 = flow0["b07"] as Record<string, unknown>;
-    const delayHarness = b07["harness"] as Record<string, unknown>;
+    // Delay at b05
+    const b05 = flow0["b05"] as Record<string, unknown>;
+    const delayHarness = b05["harness"] as Record<string, unknown>;
     const delayParams = delayHarness["params"] as Record<string, unknown>;
     expect(delayParams["Trails"]).toEqual({ value: true });
     expect(delayParams["EvtIdx"]).toEqual({ value: -1 });
 
-    // Reverb at b08
-    const b08 = flow0["b08"] as Record<string, unknown>;
-    const reverbHarness = b08["harness"] as Record<string, unknown>;
+    // Reverb at b06
+    const b06 = flow0["b06"] as Record<string, unknown>;
+    const reverbHarness = b06["harness"] as Record<string, unknown>;
     const reverbParams = reverbHarness["params"] as Record<string, unknown>;
     expect(reverbParams["Trails"]).toEqual({ value: true });
     expect(reverbParams["EvtIdx"]).toEqual({ value: -1 });
@@ -610,18 +610,17 @@ describe("structural comparison with real .hsp reference", () => {
     const result = buildHspFile(fixture);
     const flow0 = result.json.preset.flow[0] as Record<string, unknown>;
 
-    // Amp at b05
-    const b05 = flow0["b05"] as Record<string, unknown>;
-    const ampSlot = (b05["slot"] as Array<Record<string, unknown>>)[0]!;
+    // Amp at b03
+    const b03 = flow0["b03"] as Record<string, unknown>;
+    const ampSlot = (b03["slot"] as Array<Record<string, unknown>>)[0]!;
     const ampParams = ampSlot["params"] as Record<string, Record<string, unknown>>;
 
-    // Bass has overrides in both snapshots (0.40, 0.70) — should have snapshots array
+    // Bass has overrides in the first snapshot — should have snapshots array
     expect(ampParams["Bass"]).toHaveProperty("snapshots");
     const bassSnaps = ampParams["Bass"]["snapshots"] as (number | null)[];
     expect(bassSnaps[0]).toBe(0.40);  // Clean snapshot override
-    expect(bassSnaps[1]).toBe(0.70);  // Drive snapshot override
-    // Remaining 6 snapshot slots should be null (no snapshot defined)
-    expect(bassSnaps.slice(2)).toEqual([null, null, null, null, null, null]);
+    // Remaining 7 snapshot slots should be null (no snapshot defined for stadium)
+    expect(bassSnaps.slice(1)).toEqual([null, null, null, null, null, null, null]);
 
     // Master has NO overrides — should NOT have snapshots array
     expect(ampParams["Master"]).not.toHaveProperty("snapshots");
@@ -853,17 +852,17 @@ describe("STAD-07: Mono/Stereo suffix application", () => {
     const result = buildHspFile(fixture);
     const flow0 = result.json.preset.flow[0] as Record<string, unknown>;
 
-    // Delay at b07 is post-amp — HD2_DelayDual → HD2_DelayDualStereo
-    const b07 = flow0["b07"] as Record<string, unknown>;
-    expect(b07).toBeDefined();
-    const b07Slot = (b07["slot"] as Array<Record<string, unknown>>)[0];
-    expect(b07Slot["model"]).toBe("HD2_DelayDualStereo");
+    // Delay at b05 is post-amp — HD2_DelayDual → HD2_DelayDualStereo
+    const b05 = flow0["b05"] as Record<string, unknown>;
+    expect(b05).toBeDefined();
+    const b05Slot = (b05["slot"] as Array<Record<string, unknown>>)[0];
+    expect(b05Slot["model"]).toBe("HD2_DelayDualStereo");
 
-    // Reverb at b08 is post-amp — HD2_RevPlate140 → HD2_RevPlate140Stereo
-    const b08 = flow0["b08"] as Record<string, unknown>;
-    expect(b08).toBeDefined();
-    const b08Slot = (b08["slot"] as Array<Record<string, unknown>>)[0];
-    expect(b08Slot["model"]).toBe("HD2_RevPlate140Stereo");
+    // Reverb at b06 is post-amp — HD2_RevPlate140 → HD2_RevPlate140Stereo
+    const b06 = flow0["b06"] as Record<string, unknown>;
+    expect(b06).toBeDefined();
+    const b06Slot = (b06["slot"] as Array<Record<string, unknown>>)[0];
+    expect(b06Slot["model"]).toBe("HD2_RevPlate140Stereo");
   });
 
   it("amp block does NOT get Mono/Stereo suffix", () => {
@@ -871,8 +870,8 @@ describe("STAD-07: Mono/Stereo suffix application", () => {
     const result = buildHspFile(fixture);
     const flow0 = result.json.preset.flow[0] as Record<string, unknown>;
 
-    const b05 = flow0["b05"] as Record<string, unknown>;
-    const ampSlot = (b05["slot"] as Array<Record<string, unknown>>)[0];
+    const b03 = flow0["b03"] as Record<string, unknown>;
+    const ampSlot = (b03["slot"] as Array<Record<string, unknown>>)[0];
     const model = ampSlot["model"] as string;
     expect(model).toBe("Agoura_AmpUSTweedman");
     expect(model.endsWith("Mono")).toBe(false);
@@ -884,8 +883,8 @@ describe("STAD-07: Mono/Stereo suffix application", () => {
     const result = buildHspFile(fixture);
     const flow0 = result.json.preset.flow[0] as Record<string, unknown>;
 
-    const b06 = flow0["b06"] as Record<string, unknown>;
-    const cabSlot = (b06["slot"] as Array<Record<string, unknown>>)[0];
+    const b04 = flow0["b04"] as Record<string, unknown>;
+    const cabSlot = (b04["slot"] as Array<Record<string, unknown>>)[0];
     const model = cabSlot["model"] as string;
     expect(model).toBe("HD2_CabMicIr_4x10TweedP10RWithPan");
     expect(model.endsWith("Mono")).toBe(false);

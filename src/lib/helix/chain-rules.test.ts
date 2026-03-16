@@ -568,9 +568,6 @@ describe("assembleSignalChain", () => {
           ampName: "Agoura German Xtra Red",
           cabName: "4x12 Cali V30",
           effects: [
-            { modelName: "Simple Delay", role: "toggleable" },
-            { modelName: "Hall", role: "toggleable" },
-            { modelName: "70s Chorus", role: "toggleable" },
             { modelName: "Teemah!", role: "toggleable" },
           ],
         }),
@@ -616,11 +613,11 @@ describe("assembleSignalChain", () => {
           !mandatoryNames.has(b.modelName)
       );
       // It requested 8 user effects + 2 acoustic (LA Comp & Pre-Amp EQ) = 10.
-      // Stadium caps at 8 toggleable/user effects.
+      // Stadium caps at 4 toggleable/user effects.
       // If Pre-Amp EQ fell back to Stadium Parametric EQ (mandatoryName), we filter it.
-      // So length will be either 7 or 8.
-      expect(userEffects.length).toBeLessThanOrEqual(8);
-      expect(userEffects.length).toBeGreaterThanOrEqual(6);
+      // So length will be either 3 or 4.
+      expect(userEffects.length).toBeLessThanOrEqual(4);
+      expect(userEffects.length).toBeGreaterThanOrEqual(2);
     });
   });
 

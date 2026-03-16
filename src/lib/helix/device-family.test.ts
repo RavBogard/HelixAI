@@ -172,8 +172,8 @@ describe("getCapabilities", () => {
       expect(getCapabilities("helix_stadium").dualAmpSupported).toBe(false);
     });
 
-    it("maxSnapshots === 8", () => {
-      expect(getCapabilities("helix_stadium").maxSnapshots).toBe(8);
+    it("maxSnapshots === 1", () => {
+      expect(getCapabilities("helix_stadium").maxSnapshots).toBe(1);
     });
   });
 
@@ -230,8 +230,8 @@ describe("getCapabilities", () => {
       expect(getCapabilities("pod_go").maxEffectsPerDsp).toBe(4);
     });
 
-    it("helix_stadium maxEffectsPerDsp === 8", () => {
-      expect(getCapabilities("helix_stadium").maxEffectsPerDsp).toBe(8);
+    it("helix_stadium maxEffectsPerDsp === 4", () => {
+      expect(getCapabilities("helix_stadium").maxEffectsPerDsp).toBe(4);
     });
   });
 

@@ -204,7 +204,7 @@ function buildDsp(blocks: BlockSpec[], dspIndex: number, isDualAmp?: boolean, us
 
   const dsp: HlxDsp = {
     inputA: {
-      "@input": dsp1Input !== undefined ? dsp1Input : (dspIndex === 0 ? 0 : 1),
+      "@input": dsp1Input !== undefined ? dsp1Input : (dspIndex === 0 ? 1 : 1),
       "@model": "HD2_AppDSPFlow1Input",  // Always Flow1Input on BOTH DSPs (confirmed from reference presets)
       noiseGate: dspIndex === 0,
       decay: dspIndex === 0 ? 0.5 : 0.1,

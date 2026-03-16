@@ -183,9 +183,9 @@ const POD_GO_CAPABILITIES: DeviceCapabilities = {
 const STADIUM_CAPABILITIES: DeviceCapabilities = {
   family: "stadium",
   dspCount: 1,
-  maxBlocksPerDsp: 48,
-  maxBlocksTotal: 48,
-  maxSnapshots: STADIUM_CONFIG.STADIUM_MAX_SNAPSHOTS,
+  maxBlocksPerDsp: 7, // 7 slots on POD Express: Amp, Cab, Dist, Mod, Delay, Reverb, Gate/Comp
+  maxBlocksTotal: 7,
+  maxSnapshots: 1, // Only 1 valid snapshot supported
   dualAmpSupported: false, // Stadium prompt uses includeSecondAmp: false; chain-rules dual-amp path uses HD2-only AMP_MODELS lookup
   pathCount: 4,
   variaxSupported: false,
@@ -194,8 +194,8 @@ const STADIUM_CAPABILITIES: DeviceCapabilities = {
   fileFormat: "hsp",
   ampCatalogEra: "agoura",
   availableBlockTypes: ALL_BLOCK_TYPES,
-  maxEffectsPerDsp: 8, // 12 slots - amp(1) - cab(1) - EQ(1) - volume(1) = 8 user effects
-  mandatoryBlockTypes: ["eq", "volume"] as const,
+  maxEffectsPerDsp: 4, // 4 effects MAX (Distortion, Modulation, Delay, Reverb)
+  mandatoryBlockTypes: [] as const,
   modelSuffix: null,
 } as const;
 

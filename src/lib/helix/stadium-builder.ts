@@ -353,9 +353,8 @@ function buildStadiumFlow(spec: PresetSpec, ampCategory: AmpCategory): Array<Rec
   let currentSlot = 1;
 
   // Pre-amp effect blocks — STAD-07: mono channel mode
-  // Hardware UI Constraint: Pre-amp block slots must be placed from b01 to b04.
   for (const { block, originalIndex } of preAmpBlocks) {
-    if (currentSlot >= 5) break; // Cannot exceed b04 for pre-amp
+    if (currentSlot > 12) break;
     const slotPos = currentSlot++;
     const blockKey = makeBlockKey(slotPos);
     blockKeyMap.set(originalIndex, blockKey);
@@ -363,30 +362,30 @@ function buildStadiumFlow(spec: PresetSpec, ampCategory: AmpCategory): Array<Rec
   }
 
   // Amp — no channel suffix
-  // Hardware UI Constraint: Amp MUST be explicitly anchored to b05.
   let ampBlockKey: string | null = null;
   if (ampBlock && ampOriginalIndex >= 0) {
-    const ampSlotPos = 5;
-    ampBlockKey = makeBlockKey(ampSlotPos);
-    blockKeyMap.set(ampOriginalIndex, ampBlockKey);
-    flow0[ampBlockKey] = buildFlowBlock(ampBlock, ampSlotPos, spec, ampOriginalIndex, "none");
+    if (currentSlot <= 12) {
+      const ampSlotPos = currentSlot++;
+      ampBlockKey = makeBlockKey(ampSlotPos);
+      blockKeyMap.set(ampOriginalIndex, ampBlockKey);
+      flow0[ampBlockKey] = buildFlowBlock(ampBlock, ampSlotPos, spec, ampOriginalIndex, "none");
+    }
   }
 
   // Cab — no channel suffix (uses WithPan)
-  // Hardware UI Constraint: Cab MUST be explicitly anchored to b06.
   let cabBlockKey: string | null = null;
   if (cabBlock && cabOriginalIndex >= 0) {
-    const cabSlotPos = 6;
-    cabBlockKey = makeBlockKey(cabSlotPos);
-    blockKeyMap.set(cabOriginalIndex, cabBlockKey);
-    flow0[cabBlockKey] = buildFlowBlock(cabBlock, cabSlotPos, spec, cabOriginalIndex, "none");
+    if (currentSlot <= 12) {
+      const cabSlotPos = currentSlot++;
+      cabBlockKey = makeBlockKey(cabSlotPos);
+      blockKeyMap.set(cabOriginalIndex, cabBlockKey);
+      flow0[cabBlockKey] = buildFlowBlock(cabBlock, cabSlotPos, spec, cabOriginalIndex, "none");
+    }
   }
 
   // Post-amp effect blocks — STAD-07: stereo channel mode
-  // Hardware UI Constraint: Post-amp block slots must be placed from b07 to b12.
-  currentSlot = 7;
   for (const { block, originalIndex } of postAmpBlocks) {
-    if (currentSlot >= 13) break; // Hardware bounds safety (max 13 slots)
+    if (currentSlot > 12) break;
     const slotPos = currentSlot++;
     const blockKey = makeBlockKey(slotPos);
     blockKeyMap.set(originalIndex, blockKey);
@@ -518,7 +517,8 @@ function buildFlowBlock(
       const snapValues: (number | boolean | null)[] = [];
       let hasOverride = false;
       for (let i = 0; i < STADIUM_CONFIG.STADIUM_MAX_SNAPSHOTS; i++) {
-        const snap: SnapshotSpec | undefined = spec.snapshots[i];
+        // STAD-08: Stadium supports exactly 1 valid snapshot (index 0).
+        const snap: SnapshotSpec | undefined = i === 0 ? spec.snapshots[i] : undefined;
         if (snap?.parameterOverrides?.[blockStateKey]?.[key] !== undefined) {
           snapValues.push(snap.parameterOverrides[blockStateKey][key]);
           hasOverride = true;
@@ -598,7 +598,8 @@ function buildBlockEnabled(
     let hasAnyState = false;
 
     for (let i = 0; i < STADIUM_CONFIG.STADIUM_MAX_SNAPSHOTS; i++) {
-      const snap: SnapshotSpec | undefined = spec.snapshots[i];
+      // STAD-08: Stadium supports exactly 1 valid snapshot (index 0).
+      const snap: SnapshotSpec | undefined = i === 0 ? spec.snapshots[i] : undefined;
       if (snap && snap.blockStates && blockStateKey in snap.blockStates) {
         snapshotStates.push(snap.blockStates[blockStateKey]);
         hasAnyState = true;
@@ -780,7 +781,8 @@ function buildStadiumSnapshots(spec: PresetSpec): StadiumSnapshotEntry[] {
   const snapshots: StadiumSnapshotEntry[] = [];
 
   for (let i = 0; i < STADIUM_CONFIG.STADIUM_MAX_SNAPSHOTS; i++) {
-    const specSnapshot: SnapshotSpec | undefined = spec.snapshots[i];
+    // STAD-08 fix: Stadium supports exactly 1 valid snapshot (index 0). The rest must be dummy entries.
+    const specSnapshot: SnapshotSpec | undefined = i === 0 ? spec.snapshots[i] : undefined;
     if (specSnapshot) {
       snapshots.push({
         color: "auto",

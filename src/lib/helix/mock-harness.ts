@@ -46,7 +46,7 @@ export function runScenario(scenario: MockScenario): HarnessResult {
     // Knowledge Layer pipeline (deterministic)
     const chain = assembleSignalChain(intent, caps);
     const parameterized = resolveParameters(chain, intent, caps);
-    const snapshots = buildSnapshots(parameterized, intent.snapshots, intent.genreHint);
+    const snapshots = buildSnapshots(parameterized, intent.snapshots, intent.genreHint).slice(0, caps.maxSnapshots);
 
     const presetSpec: PresetSpec = {
       name: intent.presetName || `${intent.ampName} ${intent.genreHint || "Preset"}`.slice(0, 32),
@@ -66,7 +66,7 @@ export function runScenario(scenario: MockScenario): HarnessResult {
     const qualityWarnings = qualityResult.map((w: { message: string }) => w.message);
 
     // Intent fidelity audit
-    const intentAudit = auditIntentFidelity(intent, presetSpec);
+    const intentAudit = auditIntentFidelity(intent, presetSpec, caps);
 
     // Musical intelligence validation
     const musicalAudit = validateMusicalIntelligence(intent, presetSpec);

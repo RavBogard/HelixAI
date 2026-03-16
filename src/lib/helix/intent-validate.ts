@@ -47,6 +47,8 @@ function normalizeModelName(name: string): string {
 // Public API
 // ---------------------------------------------------------------------------
 
+import type { DeviceCapabilities } from "./device-family";
+
 /**
  * Audit intent fidelity — compare ToneIntent choices against final PresetSpec.
  *
@@ -56,6 +58,7 @@ function normalizeModelName(name: string): string {
 export function auditIntentFidelity(
   toneIntent: ToneIntent,
   presetSpec: PresetSpec,
+  caps?: DeviceCapabilities,
 ): IntentAudit {
   const warnings: string[] = [];
 
@@ -101,6 +104,7 @@ export function auditIntentFidelity(
     // --- Effects check ---
     const effectsAudit: EffectAuditEntry[] = [];
     const intentEffects = toneIntent.effects ?? [];
+    let missingEffectNames: string[] = [];
     for (const effect of intentEffects) {
       const found = chain.some(
         (b) => normalizeModelName(b.modelName) === normalizeModelName(effect.modelName),
@@ -111,7 +115,19 @@ export function auditIntentFidelity(
         matched: found,
       });
       if (!found) {
-        warnings.push(`Missing effect: "${effect.modelName}" (role: ${effect.role})`);
+        missingEffectNames.push(effect.modelName);
+      }
+    }
+    
+    // Forgive missing effects if we hit the hardware effect block ceiling
+    if (missingEffectNames.length > 0) {
+      const nonCabCount = chain.filter(b => b.type !== "cab" && b.dsp === 0).length;
+      if (caps && nonCabCount >= caps.maxEffectsPerDsp) {
+        // Hardware limit reached, omission is expected.
+      } else {
+        for (const missing of missingEffectNames) {
+          warnings.push(`Missing effect: "${missing}"`);
+        }
       }
     }
 
@@ -143,7 +159,8 @@ export function auditIntentFidelity(
     // --- Snapshot count check ---
     const snapshotsRequested = toneIntent.snapshots?.length ?? 0;
     const snapshotsActual = presetSpec.snapshots?.length ?? 0;
-    const snapshotsMatched = snapshotsActual >= snapshotsRequested;
+    // Forgive snapshot truncation if it perfectly matches the hardware limit constraint
+    const snapshotsMatched = snapshotsActual >= snapshotsRequested || !!(caps && snapshotsActual === caps.maxSnapshots);
     if (!snapshotsMatched) {
       warnings.push(
         `Snapshot count: requested ${snapshotsRequested}, got ${snapshotsActual}`,
