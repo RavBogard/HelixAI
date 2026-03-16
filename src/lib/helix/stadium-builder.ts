@@ -61,27 +61,9 @@ const STADIUM_MODEL_BASE_OVERRIDES: Record<string, string> = {
 
 // ---------------------------------------------------------------------------
 // STAD-04: Slot-grid block key allocation
-// Canonical positions matching real .hsp files (Agoura_Bassman, Agoura_Hiwatt reference)
 // Key formula: key = 'b' + String(position).padStart(2, '0')
 // Invariant: key bNN implies "position": NN inside the block JSON
 // ---------------------------------------------------------------------------
-
-const STADIUM_SLOT_ALLOCATION: Record<string, number> = {
-  input:         0,   // b00 — always fixed
-  pre_gate:      1,   // b01 — first pre-amp dynamics/gate slot
-  pre_boost:     2,   // b02 — first pre-amp distortion/boost slot
-  pre_effect_1:  3,   // b03 — second pre-amp effect slot
-  pre_effect_2:  4,   // b04 — third pre-amp effect slot
-  amp:           5,   // b05 — canonical amp position
-  cab:           6,   // b06 — always follows amp (amp + 1)
-  post_gate:     7,   // b07 — first post-cab slot
-  post_eq:       8,   // b08
-  post_effect_1: 9,   // b09
-  post_effect_2: 10,  // b10
-  post_effect_3: 11,  // b11
-  post_gain:     12,  // b12
-  output:        13,  // b13 — always fixed
-};
 
 /** Returns the bNN key for a slot position. */
 function makeBlockKey(slotPosition: number): string {
@@ -351,42 +333,41 @@ function buildStadiumFlow(spec: PresetSpec, ampCategory: AmpCategory): Array<Rec
   flow0["b00"] = buildInputBlock(ampCategory);
   // Note: input block doesn't go in blockKeyMap since it's not in signalChain
 
-  // Pre-amp effect blocks at b01-b04 — STAD-07: mono channel mode
-  for (const { block, originalIndex, slotName } of preAmpBlocks) {
-    const slotPos = STADIUM_SLOT_ALLOCATION[slotName];
-    if (slotPos !== undefined) {
-      const blockKey = makeBlockKey(slotPos);
-      blockKeyMap.set(originalIndex, blockKey);
-      flow0[blockKey] = buildFlowBlock(block, slotPos, spec, originalIndex, "mono");
-    }
+  let currentSlot = 1;
+
+  // Pre-amp effect blocks — STAD-07: mono channel mode
+  for (const { block, originalIndex } of preAmpBlocks) {
+    const slotPos = currentSlot++;
+    const blockKey = makeBlockKey(slotPos);
+    blockKeyMap.set(originalIndex, blockKey);
+    flow0[blockKey] = buildFlowBlock(block, slotPos, spec, originalIndex, "mono");
   }
 
-  // Amp at b05 (fixed canonical position) — no channel suffix
+  // Amp — no channel suffix
   let ampBlockKey: string | null = null;
   if (ampBlock && ampOriginalIndex >= 0) {
-    const ampSlotPos = STADIUM_SLOT_ALLOCATION["amp"]!;
+    const ampSlotPos = currentSlot++;
     ampBlockKey = makeBlockKey(ampSlotPos);
     blockKeyMap.set(ampOriginalIndex, ampBlockKey);
     flow0[ampBlockKey] = buildFlowBlock(ampBlock, ampSlotPos, spec, ampOriginalIndex, "none");
   }
 
-  // Cab at b06 (fixed canonical position — always follows amp) — no channel suffix (uses WithPan)
+  // Cab — no channel suffix (uses WithPan)
   let cabBlockKey: string | null = null;
   if (cabBlock && cabOriginalIndex >= 0) {
-    const cabSlotPos = STADIUM_SLOT_ALLOCATION["cab"]!;
+    const cabSlotPos = currentSlot++;
     cabBlockKey = makeBlockKey(cabSlotPos);
     blockKeyMap.set(cabOriginalIndex, cabBlockKey);
     flow0[cabBlockKey] = buildFlowBlock(cabBlock, cabSlotPos, spec, cabOriginalIndex, "none");
   }
 
-  // Post-amp effect blocks at b07-b12 — STAD-07: stereo channel mode
-  for (const { block, originalIndex, slotName } of postAmpBlocks) {
-    const slotPos = STADIUM_SLOT_ALLOCATION[slotName];
-    if (slotPos !== undefined) {
-      const blockKey = makeBlockKey(slotPos);
-      blockKeyMap.set(originalIndex, blockKey);
-      flow0[blockKey] = buildFlowBlock(block, slotPos, spec, originalIndex, "stereo");
-    }
+  // Post-amp effect blocks — STAD-07: stereo channel mode
+  for (const { block, originalIndex } of postAmpBlocks) {
+    if (currentSlot >= 13) break; // Hardware bounds safety (max 13 slots)
+    const slotPos = currentSlot++;
+    const blockKey = makeBlockKey(slotPos);
+    blockKeyMap.set(originalIndex, blockKey);
+    flow0[blockKey] = buildFlowBlock(block, slotPos, spec, originalIndex, "stereo");
   }
 
   // Wire up amp ↔ cab linked blocks
