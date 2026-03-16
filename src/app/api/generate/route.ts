@@ -137,11 +137,10 @@ async function runGenerationProcess(
     emitStatus("Tone Historian analyzing original recording...");
     const historianBlueprint = await callGeminiHistorian(messages);
 
-    const historianPromptInject = `HISTORIAN RESEARCH OVERRIDE:
-The Historian Agent has analyzed the request and determined the following:
-Song/Artist: ${historianBlueprint.songTarget}
-Amp Era: ${historianBlueprint.ampEra}
-Historically Accurate Effects: ${historianBlueprint.keyEffects.join(", ")}
+    const historianPromptInject = `[HISTORIAN REPORT]
+- Recommended Amp: ${historianBlueprint.recommendedAmp}
+- Mandatory Core Effects: ${historianBlueprint.mandatoryCoreEffects.join(", ")}
+- Optional Sweeteners: ${historianBlueprint.optionalSweeteners.join(", ")}${historianBlueprint.recommendedCab ? `\n- Recommended Cab: ${historianBlueprint.recommendedCab}` : ""}
 Notes: ${historianBlueprint.historianNotes}
 
 You MUST utilize this historical context. Act as the device-specialized audio engineer: pick the specific Line 6 models that best match this gear, and use your DSP limits to filter the list to only the essentials that fit on the board.`;
@@ -155,7 +154,13 @@ You MUST utilize this historical context. Act as the device-specialized audio en
     // Step 1: Gemini Planner generates ToneIntent (creative choices only)
     // Pass device target so planner filters model list for Pod Go (PGMOD-04)
     // Pass combined context so planner prioritizes rig-matched and historian-matched models
-    const toneIntent = await callGeminiPlanner(messages, deviceTarget, deviceFamily, combinedContext);
+    const toneIntent = await callGeminiPlanner(
+      messages, 
+      deviceTarget, 
+      deviceFamily, 
+      combinedContext,
+      historianBlueprint.requiredSchemas
+    );
 
     // Force injection of Historian tempo data to guarantee zero hallucination
     toneIntent.tempoHint = historianBlueprint.bpm;
@@ -219,21 +224,40 @@ You MUST utilize this historical context. Act as the device-specialized audio en
     });
 
     const criticResponse = await criticChat.sendMessage({
-      message: `User Request: ${messages[messages.length - 1]?.content}\\n\\nInitial Generated PresetSpec JSON:\\n${JSON.stringify(presetSpec, null, 2)}`
+      message: `User Request: ${messages[messages.length - 1]?.content}\n\nInitial Generated PresetSpec JSON:\n${JSON.stringify(presetSpec, null, 2)}`
     });
 
     if (criticResponse.text) {
       // Extract the JSON block using a regex in case The LLM wraps it in markdown
-      const match = criticResponse.text.match(/```json\\n([\\s\\S]*?)\\n```/);
-      const rawJson = match ? match[1] : criticResponse.text.replace(/```.*?\\n/g, "").replace(/```/g, "");
+      const match = criticResponse.text.match(/```json\n([\s\S]*?)\n```/);
+      const rawJson = match ? match[1] : criticResponse.text.replace(/```.*?\n/g, "").replace(/```/g, "");
       
       try {
-        const masteredSpec = JSON.parse(rawJson);
-        // Safely overwrite the signalChain and snapshots
-        if (masteredSpec.signalChain) presetSpec.signalChain = masteredSpec.signalChain;
-        if (masteredSpec.snapshots) presetSpec.snapshots = masteredSpec.snapshots;
+        const patches = JSON.parse(rawJson);
+        if (Array.isArray(patches) && patches.length > 0) {
+          console.log(`[tone-critic] Applying ${patches.length} parameter patches...`);
+          for (const patch of patches) {
+            if (!patch.targetNodeId || !patch.paramToChange) continue;
+            
+            // Find the block in the signal chain
+            const block = presetSpec.signalChain.find(b => b.nodeId === patch.targetNodeId);
+            if (block && block.parameters) {
+              // Ensure we aren't creating a new parameter that doesn't exist for this model
+              if (patch.paramToChange in block.parameters) {
+                console.log(`[tone-critic] Patching [${block.modelName}]: ${patch.paramToChange} -> ${patch.newValue}`);
+                block.parameters[patch.paramToChange] = patch.newValue;
+              } else {
+                console.warn(`[tone-critic] parameter ${patch.paramToChange} not found on block ${block.modelName}`);
+              }
+            } else {
+              // Track 22D: To modify snapshot tweaks, we would need to map the targetNodeId and find the snapshot
+              // Right now, we focus on base parameters.
+              console.warn(`[tone-critic] nodeId ${patch.targetNodeId} not found in signal chain.`);
+            }
+          }
+        }
       } catch (err) {
-        console.warn("[tone-critic] Failed to parse Mastering Critic JSON, falling back to primary output.", err);
+        console.warn("[tone-critic] Failed to parse Mastering Critic JSON patch array.", err);
       }
     }
 

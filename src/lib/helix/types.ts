@@ -382,6 +382,7 @@ export interface PresetSpec {
 
 export interface BlockSpec {
   _id?: string;
+  nodeId?: string;
   type: "amp" | "cab" | "distortion" | "delay" | "reverb" | "modulation" | "dynamics" | "eq" | "wah" | "pitch" | "volume" | "send_return";
   modelId: string;
   modelName: string;
@@ -408,7 +409,11 @@ export interface SnapshotSpec {
 export interface GearBlueprint {
   songTarget: string; // The identified song/artist
   ampEra: string; // e.g., "Vox AC30 Top Boost"
-  keyEffects: string[]; // Specific pedals/gear (e.g., "Korg A3 Envelope Filter")
+  recommendedAmp?: string; // e.g. "Essex A30"
+  recommendedCab?: string; // e.g. "1x12 Blue Bell"
+  mandatoryCoreEffects: string[]; // Specific pedals/gear (e.g., "Korg A3 Envelope Filter")
+  optionalSweeteners: string[];
+  requiredSchemas: string[];
   bpm: number; // The exact original tempo of the song (e.g. 99)
   delaySubdivision: "quarter" | "eighth" | "dotted_eighth" | "triplet" | "none"; 
   historianNotes: string; // Deep factual breakdown of the studio gear

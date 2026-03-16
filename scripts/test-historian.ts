@@ -12,7 +12,7 @@ async function run() {
 The Historian Agent has analyzed the request and determined the following:
 Song/Artist: ${bp.songTarget}
 Amp Era: ${bp.ampEra}
-Historically Accurate Effects: ${bp.keyEffects.join(", ")}
+Historically Accurate Effects: ${bp.mandatoryCoreEffects.join(", ")}
 Notes: ${bp.historianNotes}
 
 You MUST utilize this historical context. Act as the device-specialized audio engineer: pick the specific Line 6 models that best match this gear, and use your DSP limits to filter the list to only the essentials that fit on the board.`;

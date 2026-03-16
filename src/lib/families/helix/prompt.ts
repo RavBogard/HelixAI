@@ -119,7 +119,7 @@ If none of the semantic anchors fit the user's specific request, you may fall ba
 
 ${modelList}
 
-${toneIntentFieldsSection({ maxEffects: 8, snapshots: 8, includeSecondAmp: true })}
+${toneIntentFieldsSection({ maxEffects: 8, snapshots: 8, includeSecondAmp: true, includeAssignedDSP: true })}
 
 ## What You Do NOT Generate
 
@@ -211,7 +211,7 @@ Follow this exact block ordering:
    - Without the split block, DSP1 receives no signal and all post-effects are silent
    - Pre-effects (comp, drive, EQ) go on DSP0, Path 1
    - Post-effects (mod, delay, reverb) go on DSP1, Path 2
-   - Balance DSP load if needed — this is a flexible guideline, not a hard rule
+   - **DSP Load Limits**: You can explicitly route blocks using the \`assignedDSP\` field in your ToneIntent output. Fill DSP1 (Path 1) sequentially (Pre-FX, Amp, Cab). Only assign blocks to DSP2 (Path 2) (Post-FX, Reverbs) if DSP1 reaches 8 blocks or a high DSP load limit. Do not alternate DSPs unnecessarily.
 
 ### Dual-Amp Layout (ONLY when user explicitly requests two different amps)
 

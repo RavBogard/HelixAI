@@ -166,9 +166,13 @@ When instrument is "bass": use bass amp-cab pairings, apply bass gain staging, a
 
 ${genreEffectModelSection("stomp")}
 
-## Effect Discipline by Genre (HX Stomp family — ${maxBlocks} block slots)
+## Effect Discipline & DSP Physics (HX Stomp family — ${maxBlocks} block slots)
 
-HX Stomp family has ${maxBlocks} block slots total (including amp + cab). After amp + cab + boost + optional gate = up to 4 infrastructure blocks, a maximum of 4 user-effect slots remain. Use them — every slot should earn its place, but do NOT leave slots empty when the genre benefits from more effects.
+HX Stomp family has ${maxBlocks} block slots total (including amp + cab). After amp + cab + boost + optional gate = up to 4 infrastructure blocks, a maximum of 4 user-effect slots remain. Use them — every slot should earn its place.
+
+**CRITICAL DEVICE CONSTRAINTS:**
+1. **Mandatory vs Optional**: The Historian provides you with "Mandatory Core Effects" and "Optional Sweeteners". With only 4 effects blocks available, you MUST prioritize the Mandatory effects. Only use Optional effects if you have remaining slots.
+2. **DSP Budget Reality**: The HX Stomp has a severe single-DSP processing ceiling. Polyphonic Pitch blocks (like Poly Wham) use up to 40% of the DSP. If you include a Poly Pitch block, you CANNOT include a Shimmer Reverb or dual delays. You must simplify other blocks or drop them to prevent an overload error.
 
 - **Metal / hard rock**: 3-4 effects. Drive is mandatory; add delay (low mix), optional gate or wah.
   Priority: drive > delay > gate > wah

@@ -15,6 +15,8 @@ export interface ToneIntentFieldsOptions {
   includeSecondAmp: boolean;
   /** Maximum snapshot name length (default 10) */
   maxSnapNameLength?: number;
+  /** Whether to include assignedDSP field (true for Helix only) */
+  includeAssignedDSP?: boolean;
 }
 
 /**
@@ -42,8 +44,9 @@ ${secondAmpFields}- **guitarType**: "single_coil", "humbucker", or "p90" — bas
 - **genreHint**: Optional genre or style description (e.g., "blues rock", "modern metal")
 - **feelHint**: (OPTIONAL) The psychoacoustic "feel" or string tracking of the tubes. Choose "modern_metal" (tight/fast/cold), "texas_blues" (spongy/warm/vintage), "classic_rock" (slight crunch/complex), "ambient" (smooth/warm/lush), or "studio" (clear/articulate).
 - **effects**: Array of up to ${opts.maxEffects} effects, each with:
+  - nodeId: a unique, short, human-readable ID you invent for this block (e.g., "delay_vintage_1", "screamer", "spring_verb"). Must be unique across all effects in the preset.
   - modelName: exact name from DISTORTION, DELAY, REVERB, MODULATION, or DYNAMICS lists
-  - role: "always_on" (core tone), "toggleable" (switched per snapshot), or "ambient" (pads/textures)
+  - role: "always_on" (core tone), "toggleable" (switched per snapshot), or "ambient" (pads/textures)${opts.includeAssignedDSP ? `\n  - assignedDSP: (OPTIONAL) "DSP1" or "DSP2". Use this to explicitly place the block on Path 1 or Path 2 to balance processing power. Fill DSP1 sequentially (Pre-FX, Amp, Cab). Only assign blocks to DSP2 (Post-FX, Reverbs) if DSP1 reaches 8 blocks or a high DSP load limit. Do not alternate DSPs unnecessarily.` : ""}
 - **snapshots**: Exactly ${opts.snapshots} snapshots, each with:
   - name: display name (max ${maxSnapLen} characters, e.g., "CLEAN", "RHYTHM", "LEAD", "AMBIENT")
   - toneRole: "clean", "crunch", "lead", or "ambient"

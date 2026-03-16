@@ -18,6 +18,19 @@ The Primary AI just built a preset JSON for the user. Your job is to audit and f
 - **Controller/Snapshot Logic:** Ensure snapshots actually change parameters correctly (e.g. Lead snapshot should increase channel volume or drive; Clean snapshot should lower drive).
 
 ## 🚀 Output Format
-You must output ONLY the corrected JSON payload wrapped in \`\`\`json markdown blocks. 
-Do not include any conversational text. Do not explain your changes. Just output the fixed JSON block.`;
+You must output ONLY a JSON array of patch operations wrapped in \`\`\`json markdown blocks. 
+Do not output the full preset. Do not include any conversational text or explanations.
+If no changes are needed, output an empty array: \`[]\`
+
+**Patch Schema:**
+\`\`\`json
+[
+  {
+    "targetNodeId": "amp_12345", // The exact nodeId from the provided PresetSpec
+    "paramToChange": "Drive",    // The exact parameter key to modify
+    "newValue": 4.5              // The new numeric or boolean value
+  }
+]
+\`\`\`
+`;
 }

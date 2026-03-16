@@ -218,6 +218,7 @@ interface PendingBlock {
   slot: ChainSlot;
   dsp: 0 | 1;
   intentRole?: "always_on" | "toggleable" | "ambient";
+  nodeId?: string;
 }
 
 function buildBlockSpec(
@@ -242,6 +243,7 @@ function buildBlockSpec(
     parameters: {},
     ...(pending.intentRole ? { intentRole: pending.intentRole } : {}),
     ...(pending.slot ? { slot: pending.slot } : {}), // COHERE-03: propagate chain slot for boost disambiguation
+    nodeId: pending.nodeId || `${pending.blockType}_${position}`,
   };
 }
 
@@ -458,12 +460,20 @@ export function assembleSignalChain(intent: ToneIntent, caps: DeviceCapabilities
     const resolved = resolveEffectModel(effect.modelName, caps);
     const slot = classifyEffectSlot(resolved, effect.modelName);
     userEffectNames.add(effect.modelName);
+
+    // Track 22C: Explicit Hardware Routing
+    // If the planner specifically requests DSP1 or DSP2, override the default slot DSP
+    let targetDsp = getDspForSlot(slot, caps);
+    if ((effect as any).assignedDSP === "DSP1") targetDsp = 0;
+    if ((effect as any).assignedDSP === "DSP2") targetDsp = 1;
+
     userEffects.push({
       model: resolved.model,
       blockType: resolved.blockType,
       slot,
-      dsp: getDspForSlot(slot, caps),
+      dsp: targetDsp,
       intentRole: effect.role,
+      nodeId: (effect as any).nodeId,
     });
   }
 

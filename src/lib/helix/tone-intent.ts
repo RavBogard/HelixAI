@@ -28,8 +28,10 @@ function buildToneIntentSchema(
   effectNames: [string, ...string[]],
 ) {
   const effectSchema = z.object({
+    nodeId: z.string().optional(),
     modelName: z.enum(effectNames),
     role: z.enum(["always_on", "toggleable", "ambient"]),
+    assignedDSP: z.enum(["DSP1", "DSP2"]).optional(),
   });
 
   return z.object({
@@ -87,8 +89,10 @@ function buildToneIntentSchema(
 
 /** An effect block the AI has chosen to include (backwards compat — uses helix effect set). */
 export const EffectIntentSchema = z.object({
+  nodeId: z.string().describe("A unique 1-2 word identifier for this block (e.g. 'fuzz_face_1' or 'delay_vintage'). Required for Critic patching."),
   modelName: z.enum(HELIX_EFFECT_NAMES),
   role: z.enum(["always_on", "toggleable", "ambient"]),
+  assignedDSP: z.enum(["DSP1", "DSP2"]).optional().describe("Helix only. Force block to Path 1 or Path 2."),
 });
 
 /** A snapshot the AI wants in the preset. */

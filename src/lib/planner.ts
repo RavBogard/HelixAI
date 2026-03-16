@@ -121,11 +121,12 @@ export async function callGeminiPlanner(
   device?: DeviceTarget,
   family?: DeviceFamily,
   toneContext?: string,
+  requiredSchemas?: string[]
 ): Promise<ToneIntent> {
   const ai = createGeminiClient();
   const effectiveDevice = device ?? "helix_lt";
   const caps = getCapabilities(effectiveDevice);
-  const modelList = getModelListForPrompt(caps);
+  const modelList = getModelListForPrompt(caps, requiredSchemas);
   const systemPrompt = getFamilyPlannerPrompt(effectiveDevice, modelList);
 
   // Window conversation to bound input tokens on long sessions.
@@ -279,12 +280,19 @@ export async function callGeminiHistorian(
     properties: {
       songTarget: { type: "string" },
       ampEra: { type: "string" },
-      keyEffects: { type: "array", items: { type: "string" } },
+      recommendedAmp: { type: "string" },
+      recommendedCab: { type: "string" },
+      mandatoryCoreEffects: { type: "array", items: { type: "string" } },
+      optionalSweeteners: { type: "array", items: { type: "string" } },
+      requiredSchemas: { 
+        type: "array", 
+        items: { type: "string", enum: ["distortion", "dynamics", "eq", "modulation", "delay", "reverb", "pitch", "filter", "wah", "volume_pan"] } 
+      },
       bpm: { type: "integer" },
       delaySubdivision: { type: "string", enum: ["quarter", "eighth", "dotted_eighth", "triplet", "none"] },
       historianNotes: { type: "string" },
     },
-    required: ["songTarget", "ampEra", "keyEffects", "bpm", "delaySubdivision", "historianNotes"],
+    required: ["songTarget", "ampEra", "mandatoryCoreEffects", "optionalSweeteners", "requiredSchemas", "bpm", "delaySubdivision", "historianNotes"],
   };
 
   const response = await ai.models.generateContent({

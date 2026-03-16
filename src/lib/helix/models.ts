@@ -1893,21 +1893,32 @@ export function getAllModels(): Record<string, HelixModel> {
 
 // Build a condensed model list string for the system prompt
 // Uses DeviceCapabilities to determine which catalog to serve
-export function getModelListForPrompt(caps: DeviceCapabilities): string {
+export function getModelListForPrompt(caps: DeviceCapabilities, requiredSchemas?: string[]): string {
+  const isRequired = (key: string) => {
+    if (!requiredSchemas || requiredSchemas.length === 0) return true;
+    if (key === "amp" || key === "cab") return true; // Core components always included
+    return requiredSchemas.includes(key);
+  };
+
   // Agoura-era path: return Stadium-specific catalog (Agoura amps + HD2 effects + Stadium EQ)
   if (caps.ampCatalogEra === "agoura") {
-    const sections = [
-      { title: "AMPS", models: STADIUM_AMPS },
-      { title: "CABS", models: CAB_MODELS },
-      { title: "DISTORTION/OVERDRIVE", models: DISTORTION_MODELS },
-      { title: "DELAY", models: DELAY_MODELS },
-      { title: "REVERB", models: REVERB_MODELS },
-      { title: "MODULATION", models: MODULATION_MODELS },
-      { title: "DYNAMICS", models: DYNAMICS_MODELS },
-      { title: "EQ", models: STADIUM_EQ_MODELS },
-      { title: "WAH", models: WAH_MODELS },
-      { title: "VOLUME", models: VOLUME_MODELS },
+    const rawSections = [
+      { key: "amp", title: "AMPS", models: STADIUM_AMPS },
+      { key: "cab", title: "CABS", models: CAB_MODELS },
+      { key: "distortion", title: "DISTORTION/OVERDRIVE", models: DISTORTION_MODELS },
+      { key: "delay", title: "DELAY", models: DELAY_MODELS },
+      { key: "reverb", title: "REVERB", models: REVERB_MODELS },
+      { key: "modulation", title: "MODULATION", models: MODULATION_MODELS },
+      { key: "dynamics", title: "DYNAMICS", models: DYNAMICS_MODELS },
+      { key: "eq", title: "EQ", models: STADIUM_EQ_MODELS },
+      { key: "wah", title: "WAH", models: WAH_MODELS },
+      { key: "volume_pan", title: "VOLUME", models: VOLUME_MODELS },
+      { key: "pitch", title: "PITCH/SYNTH", models: {} }, // Handled via generic blocks
+      { key: "filter", title: "FILTER", models: {} },
     ];
+    
+    const sections = rawSections.filter(s => isRequired(s.key) && Object.keys(s.models).length > 0);
+
     return sections.map(s => {
       const entries = Object.entries(s.models)
         .map(([name, m]) => `  - ${name} (${m.id}) — based on ${m.basedOn}`)
@@ -1929,18 +1940,22 @@ export function getModelListForPrompt(caps: DeviceCapabilities): string {
     return filtered;
   };
 
-  const sections = [
-    { title: "AMPS", models: filterModels(AMP_MODELS) },
-    { title: "CABS", models: filterModels(CAB_MODELS) },
-    { title: "DISTORTION/OVERDRIVE", models: filterModels(DISTORTION_MODELS) },
-    { title: "DELAY", models: filterModels(DELAY_MODELS) },
-    { title: "REVERB", models: filterModels(REVERB_MODELS) },
-    { title: "MODULATION", models: filterModels(MODULATION_MODELS) },
-    { title: "DYNAMICS", models: filterModels(DYNAMICS_MODELS) },
-    { title: "EQ", models: filterModels(EQ_MODELS) },
-    { title: "WAH", models: filterModels(WAH_MODELS) },
-    { title: "VOLUME", models: filterModels(VOLUME_MODELS) },
+  const rawSections = [
+    { key: "amp", title: "AMPS", models: filterModels(AMP_MODELS) },
+    { key: "cab", title: "CABS", models: filterModels(CAB_MODELS) },
+    { key: "distortion", title: "DISTORTION/OVERDRIVE", models: filterModels(DISTORTION_MODELS) },
+    { key: "delay", title: "DELAY", models: filterModels(DELAY_MODELS) },
+    { key: "reverb", title: "REVERB", models: filterModels(REVERB_MODELS) },
+    { key: "modulation", title: "MODULATION", models: filterModels(MODULATION_MODELS) },
+    { key: "dynamics", title: "DYNAMICS", models: filterModels(DYNAMICS_MODELS) },
+    { key: "eq", title: "EQ", models: filterModels(EQ_MODELS) },
+    { key: "wah", title: "WAH", models: filterModels(WAH_MODELS) },
+    { key: "volume_pan", title: "VOLUME", models: filterModels(VOLUME_MODELS) },
+    { key: "pitch", title: "PITCH/SYNTH", models: {} },
+    { key: "filter", title: "FILTER", models: {} },
   ];
+
+  const sections = rawSections.filter(s => isRequired(s.key) && Object.keys(s.models).length > 0);
 
   return sections.map(s => {
     const entries = Object.entries(s.models)

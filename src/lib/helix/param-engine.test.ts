@@ -498,32 +498,32 @@ describe("FX-03: tempo-synced delay Time", () => {
     ];
   }
 
-  it("FX-03-1: tempoHint=120 produces delay Time=0.5 (quarter note at 120 BPM)", () => {
+  it("FX-03-1: tempoHint=120 produces delay Time=0.25 (eighth note at 120 BPM)", () => {
     const chain = makeDelayChain();
     const intent = makeIntent({ tempoHint: 120 });
     const result = resolveParameters(chain, intent, defaultCaps);
     const delay = result[1];
-    // 60 / 120 = 0.5 seconds (quarter note)
-    expect(delay.parameters.Time).toBeCloseTo(0.5, 3);
+    // 60 / 120 = 0.5 seconds (quarter note), eighth = 0.25
+    expect(delay.parameters.Time).toBeCloseTo(0.25, 3);
   });
 
-  it("FX-03-2: tempoHint=80 produces delay Time=0.75 (quarter note at 80 BPM)", () => {
+  it("FX-03-2: tempoHint=80 produces delay Time=0.375 (eighth note at 80 BPM)", () => {
     const chain = makeDelayChain();
     const intent = makeIntent({ tempoHint: 80 });
     const result = resolveParameters(chain, intent, defaultCaps);
     const delay = result[1];
-    // 60 / 80 = 0.75 seconds (quarter note)
-    expect(delay.parameters.Time).toBeCloseTo(0.75, 3);
+    // 60 / 80 = 0.75 seconds (quarter note), eighth = 0.375
+    expect(delay.parameters.Time).toBeCloseTo(0.375, 3);
   });
 
-  it("FX-03-3: tempoHint=120 with Dual Delay produces Left Time=0.5, Right Time=0.375", () => {
+  it("FX-03-3: tempoHint=120 with Dual Delay produces Left Time=0.25, Right Time=0.375", () => {
     const chain = makeDelayChain("Dual Delay", "HD2_DelayDualDelay");
     const intent = makeIntent({ tempoHint: 120 });
     const result = resolveParameters(chain, intent, defaultCaps);
     const delay = result[1];
-    // Left Time = 60/120 = 0.5 (quarter note)
+    // Left Time = 60/120 * 0.5 = 0.25 (eighth note default)
     // Right Time = 0.5 * 0.75 = 0.375 (dotted-eighth offset)
-    expect(delay.parameters["Left Time"]).toBeCloseTo(0.5, 3);
+    expect(delay.parameters["Left Time"]).toBeCloseTo(0.25, 3);
     expect(delay.parameters["Right Time"]).toBeCloseTo(0.375, 3);
   });
 
@@ -548,8 +548,8 @@ describe("FX-03: tempo-synced delay Time", () => {
     const result = resolveParameters(chain, intent, defaultCaps);
     const delay = result[1];
     const reverb = result[2];
-    // Delay Time must be tempo-synced to 0.5 (quarter note at 120 BPM)
-    expect(delay.parameters.Time).toBeCloseTo(0.5, 3);
+    // Delay Time must be tempo-synced to 0.25 (eighth note at 120 BPM default)
+    expect(delay.parameters.Time).toBeCloseTo(0.25, 3);
     // Reverb DecayTime must remain at blues genre default (0.4) — NOT affected by tempoHint
     expect(reverb.parameters.DecayTime).toBeCloseTo(0.4, 3);
   });
@@ -581,7 +581,7 @@ describe("FX-03: tempo-synced delay Time", () => {
     expect(delay.parameters.Time).toBeCloseTo(0.1667, 3);
   });
 
-  it("FX-03-9: delaySubdivision=quarter (explicit) at 120 BPM produces same as no subdivision", () => {
+  it("FX-03-9: delaySubdivision=quarter (explicit) at 120 BPM produces 0.5 (overriding eighth default)", () => {
     const chain = makeDelayChain();
     const intent = makeIntent({ tempoHint: 120, delaySubdivision: "quarter" as const });
     const result = resolveParameters(chain, intent, defaultCaps);
