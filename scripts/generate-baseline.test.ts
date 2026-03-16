@@ -63,8 +63,13 @@ describe("generate-baseline", () => {
         const spec: PresetSpec = content.presetSpec;
 
         expect(spec.signalChain.length).toBeGreaterThan(0);
-        expect(spec.snapshots.length).toBeGreaterThanOrEqual(3);
-        expect(spec.snapshots.length).toBeLessThanOrEqual(8);
+        
+        if (device === "helix_stadium") {
+          expect(spec.snapshots.length).toBe(1);
+        } else {
+          expect(spec.snapshots.length).toBeGreaterThanOrEqual(3);
+          expect(spec.snapshots.length).toBeLessThanOrEqual(8);
+        }
       }
     }
   });

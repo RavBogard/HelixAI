@@ -295,6 +295,7 @@ const MAX_SNAPSHOTS: Partial<Record<DeviceTarget, number>> = {
   helix_stomp: 3,
   helix_stomp_xl: 4,
   pod_go: 4,
+  helix_stadium: 1,
 };
 
 // ---------------------------------------------------------------------------

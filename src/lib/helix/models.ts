@@ -1317,7 +1317,7 @@ export const EQ_MODELS: Record<string, HelixModel> = {
   "Parametric EQ": { id: "HD2_EQParametric", name: "Parametric EQ", basedOn: "Line 6 Original", category: "parametric", blockType: BLOCK_TYPES.EQ, defaultParams: { LowFreq: 0.18, LowGain: 0.50, MidFreq: 0.40, MidGain: 0.50, Q: 0.50, HighFreq: 0.75, HighGain: 0.50, Level: 0.0 } },
   "Simple EQ": { id: "HD2_EQSimple3Band", name: "Simple EQ", basedOn: "Line 6 Original 3-Band", category: "simple", blockType: BLOCK_TYPES.EQ, defaultParams: { Bass: 0.50, Mid: 0.50, Treble: 0.50, Level: 0.0 } },
   "Cali Q Graphic": { id: "HD2_CaliQ", name: "Cali Q Graphic", basedOn: "Mesa/Boogie 5-Band Graphic", category: "graphic", blockType: BLOCK_TYPES.EQ, defaultParams: { "80Hz": 0.50, "240Hz": 0.50, "750Hz": 0.50, "2200Hz": 0.50, "6600Hz": 0.50, Level: 0.0 } },
-  "10 Band Graphic": { id: "HD2_EQGraphic10Band", name: "10 Band Graphic", basedOn: "MXR 10-Band Graphic EQ", category: "graphic", blockType: BLOCK_TYPES.EQ, defaultParams: { Level: 0.0 } },
+  "10 Band Graphic": { id: "HD2_EQGraphic10Band", name: "10 Band Graphic", basedOn: "MXR 10-Band Graphic EQ", category: "graphic", blockType: BLOCK_TYPES.EQ, defaultParams: { "31.25Hz": 0.50, "62.5Hz": 0.50, "125Hz": 0.50, "250Hz": 0.50, "500Hz": 0.50, "1kHz": 0.50, "2kHz": 0.50, "4kHz": 0.50, "8kHz": 0.50, "16kHz": 0.50, Level: 0.0 } },
   "Low and High Cut": { id: "HD2_EQLowCutHighCut", name: "Low and High Cut", basedOn: "Line 6 Original", category: "cut", blockType: BLOCK_TYPES.EQ, defaultParams: { LowCut: 0.10, HighCut: 0.85, Level: 0.0 } },
   "Tilt EQ": { id: "HD2_EQSimpleTilt", name: "Tilt EQ", basedOn: "Line 6 Original Tilt", category: "tilt", blockType: BLOCK_TYPES.EQ, defaultParams: { CenterFreq: 0.50, Tilt: 0.50, Level: 0.0 } },
 };
