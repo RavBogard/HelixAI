@@ -54,8 +54,10 @@ export const STADIUM_CONFIG = {
   STADIUM_INPUT_MODEL: "P35_InputInst1",
   /** Input model for unused paths (no input) */
   STADIUM_INPUT_NONE_MODEL: "P35_InputNone",
-  /** Output model (matrix output) */
-  STADIUM_OUTPUT_MODEL: "P35_OutputMatrix",
+  /** Output model for Flow 0 active path (verified: Badonkulous.hsp factory preset) */
+  STADIUM_OUTPUT_MODEL: "P35_OutputPath2A",
+  /** Output model for Flow 1 empty path (verified: Badonkulous.hsp factory preset) */
+  STADIUM_OUTPUT_MATRIX_MODEL: "P35_OutputMatrix",
 } as const;
 
 /**

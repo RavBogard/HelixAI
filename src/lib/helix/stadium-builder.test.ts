@@ -380,14 +380,20 @@ describe("structural comparison with real .hsp reference", () => {
     expect(flow1b13["type"]).toBe("output");
   });
 
-  // Test 2: Flow 1 has ONLY @enabled, b00, and b13 — no other blocks
-  it("flow 1 has only @enabled, b00 (InputNone), and b13 (OutputMatrix) — no other blocks", () => {
+  // Test 2: Flow 1 has @enabled, b00 (InputNone), b12 (Looper), and b13 (OutputMatrix)
+  it("flow 1 has @enabled, b00 (InputNone), b12 (Looper), and b13 (OutputMatrix) — factory verified", () => {
     const fixture = makeStadiumFixture();
     const result = buildHspFile(fixture);
     const flow1 = result.json.preset.flow[1] as Record<string, unknown>;
 
     const flow1Keys = Object.keys(flow1).sort();
-    expect(flow1Keys).toEqual(["@enabled", "b00", "b13"]);
+    expect(flow1Keys).toEqual(["@enabled", "b00", "b12", "b13"]);
+
+    // Verify looper model
+    const b12 = flow1["b12"] as Record<string, unknown>;
+    const slot = b12["slot"] as Array<Record<string, unknown>>;
+    expect(slot[0]["model"]).toBe("P35_LooperHelixStereo");
+    expect(b12["type"]).toBe("looper");
   });
 
   // Test 3: Block key-position invariant — every bNN key has position: NN
@@ -939,10 +945,13 @@ describe("STAD-07: Mono/Stereo suffix application", () => {
     expect(params["inst1Z"]).toBe("FirstEnabled");
   });
 
-  it("every effect model ID in flow0 ends with Mono or Stereo (no bare IDs)", () => {
+  it("every effect model ID in flow0 ends with Mono or Stereo unless it is a known no-suffix model", () => {
     const fixture = makeStadiumFixture();
     const result = buildHspFile(fixture);
     const flow0 = result.json.preset.flow[0] as Record<string, unknown>;
+
+    // Known no-suffix models (non-HD2/HX2 naming convention)
+    const noSuffixModels = new Set(["TapeEater"]);
 
     // Collect all effect blocks (not input/output/amp/cab)
     const effectBlocks: Array<{ key: string; model: string; type: string }> = [];
@@ -965,6 +974,7 @@ describe("STAD-07: Mono/Stereo suffix application", () => {
     expect(effectBlocks.length).toBeGreaterThan(0);
 
     for (const { key, model } of effectBlocks) {
+      if (noSuffixModels.has(model)) continue;
       const hasSuffix = model.endsWith("Mono") || model.endsWith("Stereo");
       expect(hasSuffix).toBe(true);
     }

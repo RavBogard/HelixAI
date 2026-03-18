@@ -63,6 +63,15 @@ const STADIUM_MODEL_BASE_OVERRIDES: Record<string, string> = {
  * Maps block type to the mandatory Mono/Stereo suffix for Stadium effect models.
  * Replicates the proven Pod Go compatibility matrix.
  */
+/**
+ * Models that must NOT receive a Mono/Stereo suffix.
+ * These are non-HD2/HX2 models that use their own naming convention.
+ * Verified against Badonkulous.hsp factory preset (e.g., TapeEater at b09).
+ */
+const NO_SUFFIX_MODELS = new Set([
+  "TapeEater",
+]);
+
 const STADIUM_EFFECT_SUFFIX: Record<string, "Mono" | "Stereo"> = {
   distortion: "Mono",
   dynamics: "Mono",
@@ -317,29 +326,39 @@ function buildStadiumFlow(spec: PresetSpec, ampCategory: AmpCategory): Array<Rec
   // Sort signal chain blocks by their logical position
   const sortedChain = [...spec.signalChain].sort((a, b) => a.position - b.position);
 
-  // Classify blocks into pre-amp (before amp) and post-amp (after amp)
-  const ampIndex = sortedChain.findIndex(b => b.type === "amp");
+  // Classify blocks into pre-amp, amp(s), cab, and post-amp
+  // Dual-amp support: factory presets can have 2 amps (b05 + b06) with cab at b07
+  const ampBlocks = sortedChain.filter(b => b.type === "amp");
+  const firstAmpIndex = sortedChain.findIndex(b => b.type === "amp");
+  const lastAmpIndex = ampBlocks.length > 1
+    ? sortedChain.lastIndexOf(ampBlocks[ampBlocks.length - 1]!)
+    : firstAmpIndex;
 
-  // Pre-amp effect blocks: dynamics/distortion/etc. that appear before amp
+  // Pre-amp effect blocks: everything before first amp that isn't a cab
   const preAmpBlocks = sortedChain
-    .filter((_, i) => i < ampIndex && sortedChain[i]!.type !== "cab")
+    .filter((_, i) => i < firstAmpIndex && sortedChain[i]!.type !== "cab")
     .map((block, i) => ({ block, originalIndex: spec.signalChain.indexOf(block), slotName: i === 0 ? "pre_gate" : i === 1 ? "pre_boost" : i === 2 ? "pre_effect_1" : "pre_effect_2" }));
 
-  const ampBlock = ampIndex >= 0 ? sortedChain[ampIndex] : undefined;
+  const ampBlock = firstAmpIndex >= 0 ? sortedChain[firstAmpIndex] : undefined;
   const ampOriginalIndex = ampBlock ? spec.signalChain.indexOf(ampBlock) : -1;
+  const amp2Block = ampBlocks.length > 1 ? ampBlocks[1] : undefined;
+  const amp2OriginalIndex = amp2Block ? spec.signalChain.indexOf(amp2Block) : -1;
 
-  // Cab block: follows amp
+  // Cab block: follows amp(s)
   const cabBlock = sortedChain.find(b => b.type === "cab");
   const cabOriginalIndex = cabBlock ? spec.signalChain.indexOf(cabBlock) : -1;
 
-  // Post-amp effect blocks: everything after amp that is not the cab
+  // Post-amp effect blocks: everything after the last amp/cab that is not amp/cab
+  const postAmpStartIndex = lastAmpIndex >= 0 ? lastAmpIndex : firstAmpIndex;
   const postAmpBlocks = sortedChain
-    .filter((_, i) => i > ampIndex && sortedChain[i]!.type !== "cab")
+    .filter((_, i) => i > postAmpStartIndex && sortedChain[i]!.type !== "cab" && sortedChain[i]!.type !== "amp")
     .map((block, i) => ({
       block,
       originalIndex: spec.signalChain.indexOf(block),
       slotName: i === 0 ? "post_gate" : i === 1 ? "post_eq" : i === 2 ? "post_effect_1" : i === 3 ? "post_effect_2" : i === 4 ? "post_effect_3" : "post_gain",
     }));
+
+  const isDualAmp = ampBlocks.length >= 2;
 
   // Build Flow 0 (active path)
   const flow0: Record<string, unknown> = {};
@@ -367,7 +386,7 @@ function buildStadiumFlow(spec: PresetSpec, ampCategory: AmpCategory): Array<Rec
     flow0[blockKey] = buildFlowBlock(block, slotPos, spec, originalIndex, "mono", usesController ? fxCounter++ : undefined);
   }
 
-  // Amp — always canonical slot 5 (b05)
+  // Amp 1 — always canonical slot 5 (b05)
   let ampBlockKey: string | null = null;
   if (ampBlock && ampOriginalIndex >= 0) {
     const ampSlotPos = 5;
@@ -376,17 +395,26 @@ function buildStadiumFlow(spec: PresetSpec, ampCategory: AmpCategory): Array<Rec
     flow0[ampBlockKey] = buildFlowBlock(ampBlock, ampSlotPos, spec, ampOriginalIndex, "none", undefined);
   }
 
-  // Cab — always canonical slot 6 (b06)
+  // Amp 2 (dual-amp topology) — slot 6 (b06)
+  let amp2BlockKey: string | null = null;
+  if (isDualAmp && amp2Block && amp2OriginalIndex >= 0) {
+    const amp2SlotPos = 6;
+    amp2BlockKey = makeBlockKey(amp2SlotPos);
+    blockKeyMap.set(amp2OriginalIndex, amp2BlockKey);
+    flow0[amp2BlockKey] = buildFlowBlock(amp2Block, amp2SlotPos, spec, amp2OriginalIndex, "none", undefined);
+  }
+
+  // Cab — slot 6 (single-amp) or slot 7 (dual-amp)
   let cabBlockKey: string | null = null;
   if (cabBlock && cabOriginalIndex >= 0) {
-    const cabSlotPos = 6;
+    const cabSlotPos = isDualAmp ? 7 : 6;
     cabBlockKey = makeBlockKey(cabSlotPos);
     blockKeyMap.set(cabOriginalIndex, cabBlockKey);
     flow0[cabBlockKey] = buildFlowBlock(cabBlock, cabSlotPos, spec, cabOriginalIndex, "none", undefined);
   }
 
   // Post-amp effect blocks — STAD-07: stereo channel mode
-  let postAmpSlot = 7; // b07 to b12
+  let postAmpSlot = isDualAmp ? 8 : 7; // Starts after cab
   for (const { block, originalIndex } of postAmpBlocks) {
     if (postAmpSlot > 12) break; // Hardware enforces max 6 post-amp slots
     const slotPos = postAmpSlot++;
@@ -397,7 +425,13 @@ function buildStadiumFlow(spec: PresetSpec, ampCategory: AmpCategory): Array<Rec
   }
 
   // Wire up amp ↔ cab linked blocks
-  if (ampBlockKey && cabBlockKey) {
+  // Dual-amp: only amp2 links to cab (factory verified: amp1 has no linkedblock)
+  if (isDualAmp && amp2BlockKey && cabBlockKey) {
+    const amp2BlockObj = flow0[amp2BlockKey] as Record<string, unknown>;
+    const cabBlockObj = flow0[cabBlockKey] as Record<string, unknown>;
+    amp2BlockObj["linkedblock"] = { block: cabBlockKey, flow: 0 };
+    cabBlockObj["linkedblock"] = { block: amp2BlockKey, flow: 0 };
+  } else if (ampBlockKey && cabBlockKey) {
     const ampBlockObj = flow0[ampBlockKey] as Record<string, unknown>;
     const cabBlockObj = flow0[cabBlockKey] as Record<string, unknown>;
     ampBlockObj["linkedblock"] = { block: cabBlockKey, flow: 0 };
@@ -405,13 +439,15 @@ function buildStadiumFlow(spec: PresetSpec, ampCategory: AmpCategory): Array<Rec
   }
 
   // Output block at b13 (fixed)
-  flow0["b13"] = buildOutputBlock();
+  flow0["b13"] = buildOutputBlock(0);
 
   // Build Flow 1 (empty path — required by firmware)
+  // Factory verified: Flow 1 has InputNone at b00, Looper at b12, OutputMatrix at b13
   const flow1: Record<string, unknown> = {};
   flow1["@enabled"] = { value: true };
   flow1["b00"] = buildEmptyInputBlock(ampCategory);
-  flow1["b13"] = buildOutputBlock();
+  flow1["b12"] = buildLooperBlock();
+  flow1["b13"] = buildOutputBlock(1);
 
   return [flow0, flow1];
 }
@@ -450,6 +486,12 @@ function resolveStadiumModelId(
   }
 
   // Effect blocks: apply STAD-07 overrides and Mono/Stereo suffix
+
+  // Step 0: Some models must NOT receive any suffix (non-HD2/HX2 naming convention)
+  if (NO_SUFFIX_MODELS.has(baseId)) {
+    return baseId;
+  }
+
   // Step 1: Check if this model has a Stadium-specific base ID override
   if (STADIUM_MODEL_BASE_OVERRIDES[baseId]) {
     baseId = STADIUM_MODEL_BASE_OVERRIDES[baseId];
@@ -722,7 +764,9 @@ function buildInputBlock(ampCategory: AmpCategory): Record<string, unknown> {
  * Build the output block at position b13.
  * STAD-03 fix: all slot params use { value: X } format — no access field.
  */
-function buildOutputBlock(): Record<string, unknown> {
+function buildOutputBlock(flow: 0 | 1 = 0): Record<string, unknown> {
+  // Factory .hsp verified: Flow 0 uses P35_OutputPath2A (gain: 6), Flow 1 uses P35_OutputMatrix (gain: 0)
+  const isFlow0 = flow === 0;
   return {
     "@enabled": { value: true },
     endpoint: "b00",
@@ -733,9 +777,9 @@ function buildOutputBlock(): Record<string, unknown> {
     slot: [
       {
         "@enabled": { value: true },
-        model: STADIUM_CONFIG.STADIUM_OUTPUT_MODEL,
+        model: isFlow0 ? STADIUM_CONFIG.STADIUM_OUTPUT_MODEL : STADIUM_CONFIG.STADIUM_OUTPUT_MATRIX_MODEL,
         params: {
-          gain: { value: 0.0 },
+          gain: { value: isFlow0 ? 6 : 0.0 },
           pan: { value: 0.5 },
         },
         version: 0,
@@ -771,6 +815,63 @@ function buildEmptyInputBlock(ampCategory: AmpCategory): Record<string, unknown>
       },
     ],
     type: "input",
+  };
+}
+
+/**
+ * Build the looper block at position b12 in Flow 1.
+ * Factory verified: Badonkulous.hsp has P35_LooperHelixStereo at flow1.b12
+ * with controller, bypass snapshots, and cab-style harness (EvtIdx/bypass/upper).
+ */
+function buildLooperBlock(): Record<string, unknown> {
+  // All 8 snapshots show looper enabled
+  const snapshotStates = Array(STADIUM_CONFIG.STADIUM_MAX_SNAPSHOTS).fill(true);
+
+  return {
+    "@enabled": {
+      controller: {
+        behavior: "latching",
+        bypassed: false,
+        curve: "linear",
+        delay: 0,
+        goid: 0,
+        max: true,
+        midisource: 0,
+        min: false,
+        source: 0x0101020A,  // Flow 1 footswitch source 10
+        threshold: 0,
+        type: "targetbypass",
+      },
+      snapshots: snapshotStates,
+      value: true,
+    },
+    favorite: 0,
+    harness: {
+      "@enabled": { value: true },
+      params: {
+        EvtIdx: { value: -1 },
+        bypass: { value: false },
+        upper: { value: true },
+      },
+    },
+    path: 0,
+    position: 12,
+    slot: [
+      {
+        "@enabled": { value: true },
+        model: "P35_LooperHelixStereo",
+        params: {
+          Clear: { value: 0 },
+          ForwardReverse: { value: 0 },
+          FullHalfSpeed: { value: 0 },
+          Overdub: { value: 0 },
+          PlayStop: { value: 0 },
+          UndoRedo: { value: 0 },
+        },
+        version: 0,
+      },
+    ],
+    type: "looper",
   };
 }
 
