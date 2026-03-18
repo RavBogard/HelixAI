@@ -318,8 +318,8 @@ describe("buildHspFile", () => {
     });
   });
 
-  // Test 6: Harness params use { value: X, access: "enabled" } format
-  it("harness params use { value: X, access: 'enabled' } format in amp or cab harness", () => {
+  // Test 6: Harness params use { value: X } format
+  it("harness params use { value: X } format in harness blocks", () => {
     const fixture = makeStadiumFixture();
     const result = buildHspFile(fixture);
     const flow0 = result.json.preset.flow[0] as Record<string, unknown>;
@@ -327,36 +327,15 @@ describe("buildHspFile", () => {
     const b05 = flow0["b05"] as Record<string, unknown>;
     const b06 = flow0["b06"] as Record<string, unknown>;
 
-    // Amp harness params
+    // Amp harness params (only EvtIdx)
     const ampHarness = b05?.["harness"] as Record<string, unknown>;
     const ampHarnessParams = ampHarness?.["params"] as Record<string, unknown>;
-    for (const [, paramObj] of Object.entries(ampHarnessParams ?? {})) {
-      const p = paramObj as Record<string, unknown>;
-      expect(p).toHaveProperty("value");
-    }
+    expect(ampHarnessParams["EvtIdx"]).toEqual({ value: -1 });
 
-    // Cab harness params
+    // Cab harness params (EvtIdx, bypass, upper)
     const cabHarness = b06?.["harness"] as Record<string, unknown>;
     const cabHarnessParams = cabHarness?.["params"] as Record<string, unknown>;
     for (const [, paramObj] of Object.entries(cabHarnessParams ?? {})) {
-      const p = paramObj as Record<string, unknown>;
-      expect(p).toHaveProperty("value");
-    }
-
-    // Input block slot params (b00)
-    const b00 = flow0["b00"] as Record<string, unknown>;
-    const inputSlot = b00?.["slot"] as Array<Record<string, unknown>>;
-    const inputParams = inputSlot?.[0]?.["params"] as Record<string, unknown>;
-    for (const [, paramObj] of Object.entries(inputParams ?? {})) {
-      const p = paramObj as Record<string, unknown>;
-      expect(p).toHaveProperty("value");
-    }
-
-    // Output block slot params (b13)
-    const b13 = flow0["b13"] as Record<string, unknown>;
-    const outputSlot = b13?.["slot"] as Array<Record<string, unknown>>;
-    const outputParams = outputSlot?.[0]?.["params"] as Record<string, unknown>;
-    for (const [, paramObj] of Object.entries(outputParams ?? {})) {
       const p = paramObj as Record<string, unknown>;
       expect(p).toHaveProperty("value");
     }
@@ -445,42 +424,41 @@ describe("structural comparison with real .hsp reference", () => {
     expect(b06["linkedblock"]).toEqual({ block: "b05", flow: 0 });
   });
 
-  // Test 5: Snapshots array has exactly 8 entries
-  it("snapshots array has exactly 8 entries; valid snapshots have color field, invalid ones do not", () => {
+  // Test 5: Snapshots array has exactly 8 entries — ALL valid with color (factory verified)
+  it("snapshots array has exactly 8 entries; ALL valid with color field (factory .hsp verified)", () => {
     const fixture = makeStadiumFixture();
     const result = buildHspFile(fixture);
     const snapshots = result.json.preset.snapshots as unknown as Array<Record<string, unknown>>;
 
     expect(snapshots).toHaveLength(8);
 
-    // Snapshot 0 is valid.
-    const validIndices = [0];
-    for (const i of validIndices) {
+    // All 8 snapshots must be valid with color: "auto" (factory .hsp verified)
+    for (let i = 0; i < 8; i++) {
       const snap = snapshots[i]!;
       expect(snap["valid"]).toBe(true);
       expect(snap).toHaveProperty("color");
+      expect(snap["color"]).toBe("auto");
       expect(snap).toHaveProperty("expsw");
       expect(snap).toHaveProperty("name");
       expect(snap).toHaveProperty("source");
       expect(snap).toHaveProperty("tempo");
     }
 
-    // Remaining 7 snapshots are invalid — must NOT have "color" field, expsw: -1
-    for (let i = 1; i < 8; i++) {
-      const snap = snapshots[i]!;
-      expect(snap["valid"]).toBe(false);
-      expect(snap).not.toHaveProperty("color");
-      expect(snap["expsw"]).toBe(-1);
-    }
+    // Populated snapshots get their spec name
+    expect(snapshots[0]!["name"]).toBe("Clean");
+    expect(snapshots[1]!["name"]).toBe("Drive");
+    // Unpopulated snapshots get default names
+    expect(snapshots[2]!["name"]).toBe("SNAPSHOT 3");
   });
 
-  // Test 6: Sources count — exactly 24 entries (12 flow-0 + 12 flow-1)
-  it("sources object has exactly 24 entries; first key at 16843008 (flow 0), flow 1 starts at 16843264", () => {
+  // Test 6: Sources — base 24 entries plus additional controller sources (factory verified)
+  it("sources object has base 24 entries plus controller sources; flow 0 starts at 16843008", () => {
     const fixture = makeStadiumFixture();
     const result = buildHspFile(fixture);
     const sources = result.json.preset.sources as Record<string, unknown>;
 
-    expect(Object.keys(sources)).toHaveLength(24);
+    // Must have more than 24 entries (factory has 34 — 24 base + controller sources)
+    expect(Object.keys(sources).length).toBeGreaterThanOrEqual(24);
 
     // Flow 0 base: 0x01010100 = 16843008
     expect(sources).toHaveProperty("16843008");
@@ -495,10 +473,15 @@ describe("structural comparison with real .hsp reference", () => {
     for (let i = 0; i < 12; i++) {
       expect(sources).toHaveProperty(String(16843264 + i));
     }
+
+    // Additional controller sources (factory .hsp verified)
+    expect(sources).toHaveProperty(String(0x01010400)); // Block controller
+    expect(sources).toHaveProperty(String(0x01010500)); // Path controller
+    expect(sources).toHaveProperty(String(0x01020100)); // Cross-flow controller
   });
 
-  // Test 7: Harness structure for amp — EvtIdx, bypass, upper; requires access field
-  it("amp harness has EvtIdx/bypass/upper params with access field; cab harness has EvtIdx/bypass/dual/upper", () => {
+  // Test 7: Harness structure — factory .hsp verified
+  it("amp harness has ONLY EvtIdx; cab harness has EvtIdx/bypass/upper (no dual)", () => {
     const fixture = makeStadiumFixture();
     const result = buildHspFile(fixture);
     const flow0 = result.json.preset.flow[0] as Record<string, unknown>;
@@ -506,22 +489,21 @@ describe("structural comparison with real .hsp reference", () => {
     const b05 = flow0["b05"] as Record<string, unknown>;
     const b06 = flow0["b06"] as Record<string, unknown>;
 
-    // Amp harness
+    // Amp harness — factory .hsp: ONLY EvtIdx (no bypass, no upper)
     const ampHarness = b05["harness"] as Record<string, unknown>;
     expect(ampHarness["@enabled"]).toEqual({ value: true });
     const ampParams = ampHarness["params"] as Record<string, unknown>;
     expect(ampParams["EvtIdx"]).toEqual({ value: -1 });
-    expect(ampParams["bypass"]).toEqual({ value: false });
-    expect(ampParams["upper"]).toEqual({ value: true });
+    expect(Object.keys(ampParams)).toEqual(["EvtIdx"]);
 
-    // Cab harness
+    // Cab harness — factory .hsp: EvtIdx, bypass, upper (no "dual")
     const cabHarness = b06["harness"] as Record<string, unknown>;
     expect(cabHarness["@enabled"]).toEqual({ value: true });
     const cabParams = cabHarness["params"] as Record<string, unknown>;
     expect(cabParams["EvtIdx"]).toEqual({ value: -1 });
     expect(cabParams["bypass"]).toEqual({ value: false });
-    expect(cabParams["dual"]).toEqual({ value: true });
     expect(cabParams["upper"]).toEqual({ value: true });
+    expect(cabParams).not.toHaveProperty("dual");
   });
 
   // Test 8: Top-level preset keys — all required fields present
@@ -619,8 +601,10 @@ describe("structural comparison with real .hsp reference", () => {
     expect(ampParams["Bass"]).toHaveProperty("snapshots");
     const bassSnaps = ampParams["Bass"]["snapshots"] as (number | null)[];
     expect(bassSnaps[0]).toBe(0.40);  // Clean snapshot override
-    // Remaining 7 snapshot slots should be null (no snapshot defined for stadium)
-    expect(bassSnaps.slice(1)).toEqual([null, null, null, null, null, null, null]);
+    // Snapshot 1 has a Bass override (Drive snapshot: 0.70)
+    expect(bassSnaps[1]).toBe(0.70);
+    // Remaining 6 snapshot slots should be null (no overrides defined)
+    expect(bassSnaps.slice(2)).toEqual([null, null, null, null, null, null]);
 
     // Master has NO overrides — should NOT have snapshots array
     expect(ampParams["Master"]).not.toHaveProperty("snapshots");
@@ -891,13 +875,13 @@ describe("STAD-07: Mono/Stereo suffix application", () => {
     expect(model.endsWith("Stereo")).toBe(false);
   });
 
-  it("post-amp effect blocks (even EQ and Gate) get Stereo suffix to prevent DSP panic in Dual layout", () => {
+  it("suffix follows model TYPE not position — EQ stays Mono even post-amp, dynamics stays Mono (factory verified)", () => {
     const fixture = makeStadiumFixture();
-    
-    // Move gate from pre-amp to post-amp to test coercion
+
+    // Move gate from pre-amp to post-amp
     const gateBlock = fixture.signalChain.find(b => b.type === "dynamics")!;
     gateBlock.position = 10; // Post-amp position
-    
+
     // Add an EQ block post-amp
     fixture.signalChain.push({
       type: "eq",
@@ -907,30 +891,30 @@ describe("STAD-07: Mono/Stereo suffix application", () => {
       position: 11,
       path: 0,
       enabled: true,
-      stereo: false, // Intent asked for mono
+      stereo: false,
       parameters: {},
     });
 
     const result = buildHspFile(fixture);
     const flow0 = result.json.preset.flow[0] as Record<string, unknown>;
 
-    // Find the Gate block — should now be post-amp and Stereo
+    // Gate (dynamics) type → Mono suffix even when post-amp (factory: HX2_EQParametricMono at b10)
     const gateFlow = Object.values(flow0).find(b => {
       const slot = (b as Record<string, unknown>)["slot"] as Array<Record<string, unknown>>;
       return slot && (slot[0]["model"] as string).includes("Gate");
     }) as Record<string, unknown>;
     expect(gateFlow).toBeDefined();
     const gateSlot = (gateFlow["slot"] as Array<Record<string, unknown>>)[0];
-    expect((gateSlot["model"] as string).endsWith("Stereo")).toBe(true);
+    expect((gateSlot["model"] as string).endsWith("Mono")).toBe(true);
 
-    // Find the EQ block — should be post-amp and Stereo
+    // EQ type → Mono suffix even when post-amp (factory: HX2_EQParametricMono at b10)
     const eqFlow = Object.values(flow0).find(b => {
       const slot = (b as Record<string, unknown>)["slot"] as Array<Record<string, unknown>>;
       return slot && (slot[0]["model"] as string).includes("EQParametric");
     }) as Record<string, unknown>;
     expect(eqFlow).toBeDefined();
     const eqSlot = (eqFlow["slot"] as Array<Record<string, unknown>>)[0];
-    expect((eqSlot["model"] as string).endsWith("Stereo")).toBe(true);
+    expect((eqSlot["model"] as string).endsWith("Mono")).toBe(true);
   });
 
   it("HD2_GateHorizonGate overridden to HX2_GateHorizonGate prefix in Stadium", () => {

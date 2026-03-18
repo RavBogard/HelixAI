@@ -132,6 +132,7 @@ interface HspJson {
 }
 
 interface StadiumMeta {
+  color: string;
   device_id: number;
   device_version: number;
   info: string;
@@ -244,6 +245,7 @@ export function summarizeStadiumPreset(spec: PresetSpec): string {
 
 function buildStadiumMeta(spec: PresetSpec): StadiumMeta {
   return {
+    color: "auto",
     device_id: DEVICE_IDS.helix_stadium,
     device_version: STADIUM_CONFIG.STADIUM_DEVICE_VERSION,
     info: "",
@@ -460,19 +462,10 @@ function resolveStadiumModelId(
     baseId = baseId.slice(0, -6);
   }
 
-  // Step 3: Append the strictly validated Mono/Stereo suffix
-  let suffix = STADIUM_EFFECT_SUFFIX[block.type] || "Mono";
-  
-  // Stanford PhD DSP Optimization & Signal Path Integrity:
-  // If block is pre-amp (`channelMode` is "mono"), force it to Mono.
-  // If block is post-amp (`channelMode` is "stereo"), force it to Stereo.
-  // Setting a Mono DSP node in a Stereo-allocated hardware slot triggers a panic.
-  if (channelMode === "mono") {
-    suffix = "Mono";
-  } else if (channelMode === "stereo") {
-    suffix = "Stereo";
-  }
-  
+  // Step 3: Append suffix based on effect TYPE (not position).
+  // Factory .hsp files show EQ is always Mono even when post-amp.
+  // The suffix follows the model's inherent channel mode from STADIUM_EFFECT_SUFFIX.
+  const suffix = STADIUM_EFFECT_SUFFIX[block.type] || "Mono";
   baseId = baseId + suffix;
 
   return baseId;
@@ -529,14 +522,11 @@ function buildFlowBlock(
       const snapValues: (number | boolean | null)[] = [];
       let hasOverride = false;
       for (let i = 0; i < STADIUM_CONFIG.STADIUM_MAX_SNAPSHOTS; i++) {
-        // STAD-08: Stadium supports exactly 1 valid snapshot (index 0).
-        const snap: SnapshotSpec | undefined = i === 0 ? spec.snapshots[i] : undefined;
+        // Factory .hsp files: ALL 8 snapshots can have param overrides.
+        const snap: SnapshotSpec | undefined = spec.snapshots[i];
         if (snap?.parameterOverrides?.[blockStateKey]?.[key] !== undefined) {
           snapValues.push(snap.parameterOverrides[blockStateKey][key]);
           hasOverride = true;
-        } else if (snap && snap.blockStates && blockStateKey in snap.blockStates) {
-          // Valid snapshot but no override for this param — use base value
-          snapValues.push(value as number);
         } else {
           snapValues.push(null);
         }
@@ -554,20 +544,24 @@ function buildFlowBlock(
   // STAD-07: Resolve the correct Stadium model ID with appropriate suffix
   const modelId = resolveStadiumModelId(block, channelMode);
 
+  // Build slot array — cabs require dual slots (dual-mic), everything else has 1 slot
+  const primarySlot = {
+    "@enabled": { value: true },
+    model: modelId,
+    params: slotParams,
+    version: 0,
+  };
+  const slots = block.type === "cab"
+    ? [primarySlot, { ...primarySlot, params: { ...slotParams } }]  // Dual-slot cab (dual mic)
+    : [primarySlot];
+
   const obj: Record<string, unknown> = {
     "@enabled": enabledObj,
     favorite: 0,
     harness: buildHarness(block),
     path: 0,
     position: flowPosition,  // Must match bNN key (invariant: key bNN implies position: NN)
-    slot: [
-      {
-        "@enabled": { value: true },
-        model: modelId,
-        params: slotParams,
-        version: 0,
-      },
-    ],
+    slot: slots,
     // STAD-05 fix: Map all effect types to "fx" — only amp/cab/input/output/split/join/looper retain named types
     type: getStadiumBlockType(block.type),
   };
@@ -610,13 +604,19 @@ function buildBlockEnabled(
     let hasAnyState = false;
 
     for (let i = 0; i < STADIUM_CONFIG.STADIUM_MAX_SNAPSHOTS; i++) {
-      // STAD-08: Stadium supports exactly 1 valid snapshot (index 0).
-      const snap: SnapshotSpec | undefined = i === 0 ? spec.snapshots[i] : undefined;
+      // Factory .hsp files: ALL 8 snapshots have bypass states on every block.
+      const snap: SnapshotSpec | undefined = spec.snapshots[i];
       if (snap && snap.blockStates && blockStateKey in snap.blockStates) {
         snapshotStates.push(snap.blockStates[blockStateKey]);
         hasAnyState = true;
+      } else if (snap) {
+        // Valid snapshot but no explicit state — use the block's base enabled state
+        snapshotStates.push(block.enabled);
+        hasAnyState = true;
       } else {
-        snapshotStates.push(null);
+        // No snapshot defined for this slot — use base enabled state for consistency
+        snapshotStates.push(block.enabled);
+        hasAnyState = true;
       }
     }
 
@@ -654,23 +654,22 @@ function buildBlockEnabled(
  */
 function buildHarness(block: BlockSpec): Record<string, unknown> {
   if (AMP_TYPES.has(block.type)) {
+    // Factory .hsp files: amp harness has ONLY EvtIdx (no bypass/upper)
     return {
       "@enabled": { value: true },
       params: {
         EvtIdx: { value: -1 },
-        bypass: { value: false },
-        upper: { value: true },
       },
     };
   }
 
   if (CAB_TYPES.has(block.type)) {
+    // Factory .hsp files: cab harness has EvtIdx, bypass, upper (no "dual")
     return {
       "@enabled": { value: true },
       params: {
         EvtIdx: { value: -1 },
         bypass: { value: false },
-        dual: { value: true },
         upper: { value: true },
       },
     };
@@ -793,12 +792,13 @@ function buildStadiumSnapshots(spec: PresetSpec): StadiumSnapshotEntry[] {
   const snapshots: StadiumSnapshotEntry[] = [];
 
   for (let i = 0; i < STADIUM_CONFIG.STADIUM_MAX_SNAPSHOTS; i++) {
-    // STAD-08 fix: Stadium supports exactly 1 valid snapshot (index 0). The rest must be dummy entries.
-    const specSnapshot: SnapshotSpec | undefined = i === 0 ? spec.snapshots[i] : undefined;
+    // Factory .hsp files: ALL 8 snapshots are valid with color: "auto".
+    // Populated snapshots get their name from spec; unused slots get default names.
+    const specSnapshot: SnapshotSpec | undefined = spec.snapshots[i];
     if (specSnapshot) {
       snapshots.push({
         color: "auto",
-        expsw: 1,
+        expsw: i === 0 ? 1 : -1,
         name: specSnapshot.name.substring(0, 24),
         source: 0,
         tempo: spec.tempo,
@@ -806,11 +806,12 @@ function buildStadiumSnapshots(spec: PresetSpec): StadiumSnapshotEntry[] {
       });
     } else {
       snapshots.push({
+        color: "auto",
         expsw: -1,
         name: `SNAPSHOT ${i + 1}`,
         source: 0,
         tempo: spec.tempo,
-        valid: false,
+        valid: true,
       });
     }
   }
@@ -834,7 +835,7 @@ function buildStadiumSnapshots(spec: PresetSpec): StadiumSnapshotEntry[] {
 function buildStadiumSources(): Record<string, unknown> {
   const sources: Record<string, unknown> = {};
 
-  // Flow 0: 12 footswitch sources
+  // Flow 0: 12 footswitch sources (0x01010100-0x0101010B)
   const flow0Base = 0x01010100; // 16843008
   for (let i = 0; i < 12; i++) {
     sources[String(flow0Base + i)] = {
@@ -845,16 +846,26 @@ function buildStadiumSources(): Record<string, unknown> {
     };
   }
 
-  // Flow 1: 12 footswitch sources
+  // Flow 1: 12 footswitch sources (0x01010200-0x0101020B)
   const flow1Base = 0x01010200; // 16843264
   for (let i = 0; i < 12; i++) {
     sources[String(flow1Base + i)] = {
-      bypass: false,
       fs_color: "auto",
       fs_label: "",
       fs_topidx: 0,
     };
   }
+
+  // Additional controller sources required by firmware (verified from factory .hsp files):
+  // Block controller sources (0x01010400-0x01010409) — amp/cab/effect bypass controllers
+  for (let i = 0; i <= 9; i++) {
+    sources[String(0x01010400 + i)] = { bypass: false };
+  }
+  // Path controller source (0x01010500)
+  sources[String(0x01010500)] = { bypass: false };
+  // Cross-flow controller sources (0x01020100-0x01020101)
+  sources[String(0x01020100)] = { bypass: false };
+  sources[String(0x01020101)] = { bypass: false };
 
   return sources;
 }
