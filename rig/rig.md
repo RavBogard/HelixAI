@@ -17,6 +17,14 @@ building anything.
   `tests/test_native.py`): `helixtone tune ...` renders through it with no
   window and nobody at the keyboard. How, and what to do when it stops:
   `.claude/skills/helix-tone/references/native-setup.md`.
+- **How he plays a preset** (Daniel, 2026-11-22): snapshots for a few
+  different main sounds, and each stomp switchable on and off while playing.
+  On the LT that is the Snap/Stomp layout (Global Settings > Footswitches >
+  Preset Mode Switches: four snapshots on one row, four stomps on the other).
+  So every preset for him gets at most four snapshots that are whole sounds,
+  and its effects on stomp switches. Not recorded yet: whether his unit is
+  set to Snap/Stomp or Stomp/Snap, and whether a stomp he turns on should
+  stay on when he changes snapshot.
 - **Computer:** Windows.
 
 ## David
