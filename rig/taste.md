@@ -8,6 +8,8 @@ made twice.
 
 - Nothing recorded yet. The two presets in `tones/daniel-lt/` are first drafts
   that have not been loaded or heard.
+- To check on first load: that the toe switch swaps wah and volume as expected,
+  and what the pedal controls in a snapshot that turns the wah on ("Wah Lead").
 
 ## David (POD Go)
 

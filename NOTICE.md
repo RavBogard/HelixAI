@@ -10,6 +10,7 @@ blocks observed in presets.
 | Helix LT model catalog (HX Edit 3.82) | [retr0h/toneharness](https://github.com/retr0h/toneharness) | MIT |
 | POD Go model catalog (POD Go Edit 2.50), blank POD Go preset, real `.pgp` files used to observe block types | [fargraph/pod-go-presets](https://github.com/fargraph/pod-go-presets) | MIT |
 | Line 6 factory setlists as exported by Helix Native, used for block types, the blank Helix preset and per-block factory settings | [GhostNote17/HelixNativePresets](https://github.com/GhostNote17/HelixNativePresets) | MIT (the presets themselves are Line 6's) |
+| Names of a control's discrete choices (note divisions, microphones, modes) | [ociadi/helix-model-catalog](https://github.com/ociadi/helix-model-catalog) | none stated |
 | Extra `.pgp` files used only to observe block types | [Ultchad/open-podgoedit](https://github.com/Ultchad/open-podgoedit), [Zavsek/POD_GO-Helix_converter](https://github.com/Zavsek/POD_GO-Helix_converter) | MIT / none stated |
 
 POD Go format notes were cross-checked against the documentation in

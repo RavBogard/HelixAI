@@ -39,53 +39,84 @@ def load(path: str) -> list[dict]:
 
 
 def chain(tone: dict) -> list[tuple[str, str, dict]]:
-    """Blocks in signal order as (dsp key, block key, block). Parallel paths are flattened by position."""
+    """Blocks as (dsp key, block key, block): per processor, path A in order, then path B."""
     out = []
     for dsp in ("dsp0", "dsp1"):
         blks = [(k, b) for k, b in (tone.get(dsp) or {}).items()
                 if k.startswith("block") and isinstance(b, dict) and "@model" in b]
-        blks.sort(key=lambda kb: (kb[1].get("@position", 0), kb[1].get("@path", 0)))
+        blks.sort(key=lambda kb: (kb[1].get("@path", 0), kb[1].get("@position", 0)))
         out += [(dsp, k, b) for k, b in blks]
     return out
 
 
+def linked_cab(tone: dict, dsp: str, blk: dict) -> dict | None:
+    """The cab entry a block points at: an amp's own cab, or the second half of a dual cab."""
+    ref = blk.get("@cab")
+    return (tone.get(dsp) or {}).get(ref) if ref else None
+
+
+def topology(tone: dict, dsp: str) -> str:
+    return tone.get("global", {}).get(f"@topology{dsp[-1]}", "A")
+
+
 def is_single_path(tone: dict) -> bool:
-    g = tone.get("global", {})
-    if g.get("@topology0", "A") != "A" or g.get("@topology1", "A") != "A":
-        return False
-    return not any(k.startswith("cab") for d in ("dsp0", "dsp1") for k in (tone.get(d) or {}))
+    return topology(tone, "dsp0") == "A" and topology(tone, "dsp1") == "A"
 
 
-def to_spec(preset: dict, device: str | None = None) -> dict:
-    """Best-effort spec for a preset: blocks, non-default settings, pedal and switch assignments.
+def _settings(blk: dict, defaults: dict) -> dict:
+    return {k: v for k, v in blk.items()
+            if (not k.startswith("@") or k == "@mic") and k in defaults and v != defaults[k]}
 
-    Snapshots come back as on/off lists. Snapshot-controlled values and anything on a
-    second path are not carried, so treat the result as a starting point to edit.
+
+def to_spec(preset: dict, device: str | None = None, full: bool = False, trace: list | None = None) -> dict:
+    """Best-effort spec for a preset: blocks, settings, splits, dual cabs, pedal and switch assignments.
+
+    Snapshots come back as on/off lists; snapshot-controlled values are not carried,
+    and paths with their own inputs or outputs are flattened. Treat the result as a
+    starting point to edit. `full` keeps every setting, not only what differs from default.
+    `trace`, if given, receives (spec id, dsp key, block key or None, source block) per entry,
+    which is how the tests line a rebuild up against its original.
     """
     tone = preset["tone"]
     source = DEVICE_BY_ID.get(preset["device"], "helix_lt")
     device = device or source
     cat = catmod.get(device)
     source_toe = 9 if source == "pod_go" else 13
-    spec_chain, ids, keymap = [], {}, {}
-    for dsp, key, blk in chain(tone):
+    ids, keymap = {}, {}
+
+    def new_id(category):
+        ids[category] = ids.get(category, 0) + 1
+        return category if ids[category] == 1 else f"{category}{ids[category]}"
+
+    def name_of(mid):
+        info = cat.blocks[mid]
+        return info["name"] if cat.resolve_or_none(info["name"]) == mid else mid
+
+    def entry_for(dsp, key, blk):
+        """Return a list of spec entries for one block (an amp with its own cab gives two)."""
         mid = blk["@model"]
+        second = linked_cab(tone, dsp, blk)
+        is_dual = second is not None and blk.get("@type") == 4
         try:
-            if mid not in cat.blocks or not cat.selectable(mid):
+            if is_dual and device == "helix_lt":
+                if mid not in cat.blocks:
+                    raise catmod.CatalogError(mid)
+            elif mid not in cat.blocks or not cat.selectable(mid):
                 mid = cat.resolve(mid)
         except catmod.CatalogError:
             # keep it in the chain so the build names it, rather than dropping it quietly
-            spec_chain.append({"model": blk["@model"], "note": f"no such model on {device}; pick a replacement"})
-            continue
+            return [{"model": blk["@model"], "note": f"no such model on {device}; pick a replacement"}]
         info = cat.blocks[mid]
-        base = info["category"]
-        ids[base] = ids.get(base, 0) + 1
-        bid = base if ids[base] == 1 else f"{base}{ids[base]}"
+        bid = new_id(info["category"])
         keymap[(dsp, key)] = bid
         defaults = cat.defaults(mid)
-        params = {k: v for k, v in blk.items()
-                  if (not k.startswith("@") or k == "@mic") and k in defaults and v != defaults[k]}
-        entry = {"id": bid, "model": info["name"] if len(cat._by_name.get(catmod._norm(info["name"]), [])) == 1 else mid}
+        params = {k: v for k, v in blk.items() if (not k.startswith("@") or k == "@mic") and k in defaults} \
+            if full else _settings(blk, defaults)
+        model_ref = name_of(mid)
+        if is_dual:
+            plain = mid[:-7] if mid.endswith("WithPan") else mid
+            model_ref = name_of(plain) if plain in cat.blocks else mid
+        entry = {"id": bid, "model": model_ref}
         if not blk.get("@enabled", True):
             entry["enabled"] = False
         if params:
@@ -94,18 +125,76 @@ def to_spec(preset: dict, device: str | None = None) -> dict:
             entry["stereo"] = blk["@stereo"]
         if blk.get("@trails"):
             entry["trails"] = True
-        for ctl, c in ((tone.get("controller") or {}).get(dsp, {}).get(key, {})).items():
-            if c.get("@controller") in (1, 2) and ctl in info["params"]:
-                entry["pedal"] = {"control": ctl, "source": f"exp{c['@controller']}", "min": c["@min"], "max": c["@max"]}
+        pedals = [{"control": ctl, "source": f"exp{c['@controller']}", "min": c["@min"], "max": c["@max"]}
+                  for ctl, c in ((tone.get("controller") or {}).get(dsp, {}).get(key, {})).items()
+                  if c.get("@controller") in (1, 2) and ctl in info["params"]]
+        if pedals:
+            entry["pedal"] = pedals[0] if len(pedals) == 1 else pedals
         fs = (tone.get("footswitch") or {}).get(dsp, {}).get(key)
         if fs:
+            sw = None
             if fs.get("@fs_index") == source_toe:
-                entry["footswitch"] = "toe"
+                sw = "toe"
             elif device == source:
-                entry["footswitch"] = fs.get("@fs_index")
+                sw = fs.get("@fs_index")
             else:
                 entry["note"] = f"was on footswitch {fs.get('@fs_index')} on the source device; assign one here"
-        spec_chain.append(entry)
+            if sw is not None:
+                entry["footswitch"] = {"switch": sw, "momentary": True} if fs.get("@fs_momentary") else sw
+        out = [entry]
+        if trace is not None:
+            trace.append((bid, dsp, key, blk))
+        if second is not None and second.get("@model") in cat.blocks:
+            m2 = second["@model"]
+            d2 = cat.defaults(m2)
+            p2 = {k: v for k, v in second.items() if (not k.startswith("@") or k == "@mic") and k in d2} \
+                if full else _settings(second, d2)
+            if is_dual:
+                plain2 = m2[:-7] if m2.endswith("WithPan") else m2
+                entry["dual"] = {"model": name_of(plain2) if plain2 in cat.blocks else m2}
+                if p2:
+                    entry["dual"]["params"] = p2
+            else:
+                # an amp carrying its own cab: we write the cab as the next block
+                cab = {"id": new_id("cab"), "model": name_of(m2)}
+                if p2:
+                    cab["params"] = p2
+                out.append(cab)
+                if trace is not None:
+                    trace.append((cab["id"], dsp, None, second))
+        return out
+
+    spec_chain = []
+    for dsp in ("dsp0", "dsp1"):
+        blks = [(k, b) for d, k, b in chain(tone) if d == dsp]
+        a = [(k, b) for k, b in blks if b.get("@path", 0) == 0]
+        b_path = [(k, b) for k, b in blks if b.get("@path", 0) == 1]
+        if not b_path or "S" not in topology(tone, dsp) or device != "helix_lt":
+            for k, b in a + b_path:
+                spec_chain += entry_for(dsp, k, b)
+            continue
+        sp, jn = tone[dsp]["split"], tone[dsp]["join"]
+        kind = {v: k for k, v in SPLIT_KINDS.items()}.get(sp.get("@model"), "y")
+        before = [(k, b) for k, b in a if b["@position"] < sp["@position"]]
+        inside = [(k, b) for k, b in a if sp["@position"] <= b["@position"] < jn["@position"]]
+        after = [(k, b) for k, b in a if b["@position"] >= jn["@position"]]
+        for k, b in before:
+            spec_chain += entry_for(dsp, k, b)
+        section = {"split": kind, "a": [], "b": []}
+        sd, jd = cat.defaults(sp["@model"]), cat.defaults("HD2_AppDSPFlowJoin")
+        sparams = {k: v for k, v in sp.items() if k in sd and (full or v != sd[k])}
+        jparams = {k: v for k, v in jn.items() if k in jd and (full or v != jd[k])}
+        if sparams:
+            section["params"] = sparams
+        if jparams:
+            section["join"] = jparams
+        for k, b in inside:
+            section["a"] += entry_for(dsp, k, b)
+        for k, b in b_path:
+            section["b"] += entry_for(dsp, k, b)
+        spec_chain.append(section)
+        for k, b in after:
+            spec_chain += entry_for(dsp, k, b)
 
     snaps = []
     n = 0
@@ -135,6 +224,9 @@ def to_spec(preset: dict, device: str | None = None) -> dict:
     return spec
 
 
+SPLIT_KINDS = {"y": "HD2_AppDSPFlowSplitY", "ab": "HD2_AppDSPFlowSplitAB", "crossover": "HD2_AppDSPFlowSplitXOver"}
+
+
 def describe(preset: dict) -> str:
     tone = preset["tone"]
     device = DEVICE_BY_ID.get(preset["device"], "helix_lt")
@@ -154,6 +246,11 @@ def describe(preset: dict) -> str:
             diff = {k: v for k, v in blk.items() if k in d and v != d[k]}
             changed = "  " + ", ".join(f"{k}={_fmt(v)}" for k, v in diff.items())
         lines.append(f"  {where}{state} {name:<22}{changed}")
+        second = linked_cab(tone, dsp, blk)
+        if second is not None:
+            n2 = cat.blocks.get(second.get("@model"), {}).get("name", second.get("@model"))
+            kind = "second cab" if blk.get("@type") == 4 else "its cab"
+            lines.append(f"  {'':<{len(where)}}    + {kind}: {n2}")
     return "\n".join(lines)
 
 

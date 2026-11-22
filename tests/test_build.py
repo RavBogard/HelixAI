@@ -95,7 +95,72 @@ class HelixBuild(unittest.TestCase):
         self.assertIn("unknown block 'fuzz'", str(ctx.exception))
 
 
+class HelixRicher(unittest.TestCase):
+    def test_named_choices(self):
+        res = build(helix([{"id": "amp", "model": "US Deluxe Nrm"},
+                           {"id": "cab", "model": "1x12 US Deluxe", "params": {"Mic": "121 Ribbon"}},
+                           {"id": "dly", "model": "Simple Delay",
+                            "params": {"TempoSync1": True, "SyncSelect1": "1/8 dotted"}}]))
+        dsp = res.preset["data"]["tone"]["dsp0"]
+        self.assertEqual(dsp["block1"]["Mic"], 5)
+        self.assertEqual((dsp["block2"]["TempoSync1"], dsp["block2"]["SyncSelect1"]), (True, 8))
+        with self.assertRaises(BuildError) as ctx:
+            build(helix([{"model": "Simple Delay", "params": {"SyncSelect1": "1/5"}}]))
+        self.assertIn("1/8 Dotted", str(ctx.exception))
+
+    def test_split_two_amps(self):
+        res = build(helix([
+            {"id": "od", "model": "Minotaur"},
+            {"split": "y", "join": {"A Pan": 0.3, "B Pan": 0.7},
+             "a": [{"id": "amp_a", "model": "US Deluxe Nrm"}, {"id": "cab_a", "model": "1x12 US Deluxe"}],
+             "b": [{"id": "amp_b", "model": "Essex A30"}]},
+            {"id": "verb", "model": "Plate"}],
+            snapshots=[{"name": "Both"}, {"name": "Vox only", "off": ["amp_a", "cab_a"]}]))
+        tone = res.preset["data"]["tone"]
+        d = tone["dsp0"]
+        self.assertEqual(tone["global"]["@topology0"], "SABJ")
+        self.assertEqual((d["split"]["@position"], d["join"]["@position"]), (1, 3))
+        self.assertEqual(d["join"]["A Pan"], 0.3)
+        layout = {k: (b["@model"], b["@path"], b["@position"]) for k, b in d.items() if k.startswith("block")}
+        self.assertEqual(layout["block3"], ("HD2_ReverbPlate", 0, 3))          # after the join
+        self.assertEqual(layout["block4"], ("HD2_AmpEssexA30", 1, 1))          # path B is numbered last
+        self.assertTrue(tone["snapshot0"]["blocks"]["dsp0"]["split"])
+        self.assertFalse(tone["snapshot1"]["blocks"]["dsp0"]["block1"])
+
+    def test_dual_cab(self):
+        res = build(helix([{"id": "amp", "model": "Brit Plexi Jump"},
+                           {"id": "cab", "model": "4x12 Greenback 25", "params": {"Mic": "57 Dynamic", "Pan": 0.3},
+                            "dual": {"model": "4x12 Greenback 20", "params": {"Mic": "121 Ribbon", "Pan": 0.7}}}]))
+        d = res.preset["data"]["tone"]["dsp0"]
+        cab = d["block1"]
+        self.assertEqual((cab["@type"], cab["@cab"], cab["@model"]), (4, "cab0", "HD2_CabMicIr_4x12Greenback25WithPan"))
+        self.assertEqual((d["cab0"]["@model"], d["cab0"]["Mic"], d["cab0"]["Pan"]),
+                         ("HD2_CabMicIr_4x12Greenback20WithPan", 5, 0.7))
+        self.assertEqual(sorted(k for k in d["cab0"] if k.startswith("@")), ["@enabled", "@model"])
+
+    def test_momentary_switch_and_two_pedal_controls(self):
+        res = build(helix([{"id": "dly", "model": "Simple Delay", "footswitch": {"switch": 9, "momentary": True},
+                            "pedal": [{"control": "Mix", "source": "exp2", "min": 0, "max": 0.5},
+                                      {"control": "Feedback", "source": "exp2"}]}]))
+        tone = res.preset["data"]["tone"]
+        self.assertTrue(tone["footswitch"]["dsp0"]["block0"]["@fs_momentary"])
+        self.assertEqual(sorted(tone["controller"]["dsp0"]["block0"]), ["Feedback", "Mix"])
+        self.assertEqual(tone["controller"]["dsp0"]["block0"]["Mix"]["@max"], 0.5)
+
+    def test_third_split_is_refused(self):
+        sec = lambda n: {"split": "y", "a": [{"id": f"a{n}", "model": "Plate"}], "b": [{"id": f"b{n}", "model": "Plate"}]}
+        with self.assertRaises(BuildError) as ctx:
+            build(helix([sec(1), sec(2), sec(3)]))
+        self.assertIn("one split fits on each processor", str(ctx.exception))
+
+
 class PodGoBuild(unittest.TestCase):
+    def test_no_splits_or_dual_cabs(self):
+        with self.assertRaises(BuildError) as ctx:
+            build(podgo([{"id": "amp", "model": "US Deluxe Nrm"}, {"id": "cab", "model": "1x12 US Deluxe"},
+                         {"split": "y", "a": [], "b": [{"model": "Plate"}]}]))
+        self.assertIn("single path", str(ctx.exception))
+
     def test_builtins_are_added_and_slots_filled(self):
         res = build(podgo([{"id": "amp", "model": "US Deluxe Nrm"}, {"id": "cab", "model": "1x12 US Deluxe"},
                            {"model": "Simple Delay"}, {"model": "Plate"}]))

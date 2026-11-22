@@ -34,9 +34,9 @@ Needs Python 3.10 or newer and nothing else.
 
 ## How far to trust a preset
 
-- **Structure:** the builder was checked by rebuilding 93 Line 6 factory
-  presets and 52 real POD Go presets from their own settings and comparing
-  every block. That is strong evidence the files are well-formed. No file from
+- **Structure:** the builder was checked by rebuilding 185 Line 6 factory
+  presets (44 with parallel paths, 57 with dual cabs) and 52 real POD Go
+  presets from their own settings and comparing every block. That is strong evidence the files are well-formed. No file from
   this tool has been loaded on a unit yet; the first import is the real test.
 - **Sound:** nothing here can listen. A new preset is a first draft from gear
   knowledge and Line 6's factory settings. Expect to adjust by ear and tell
@@ -47,8 +47,8 @@ Needs Python 3.10 or newer and nothing else.
 
 ## Not built yet
 
-Parallel paths, dual cabs, impulse responses, Helix send/return blocks,
-command and momentary switches, and measuring audio through Helix Native
+Impulse responses, Helix send/return blocks, command switches, a second
+instrument on its own path, and measuring audio through Helix Native
 (`tools/native_probe.py` is the first step).
 
 Data sources and licences are in [NOTICE.md](NOTICE.md).

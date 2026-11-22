@@ -50,8 +50,8 @@ wah if the two fight; a Uni-Vibe or Phase 90 in front of a cranked amp is the
   block, or the result is a cab on top of a cab. `rig/rig.md` says which
   applies; if it does not say, ask.
 - Mic choice moves the top end more than most EQ: a 57 is bright and forward,
-  a 121 ribbon is dark and smooth (`helixtone mics` for legacy cabs; the newer
-  cabs list their own in `show`).
+  a 121 ribbon is dark and smooth. `show` lists each cab's microphones by
+  name, and a spec can use the name.
 
 ## Effects, by job
 

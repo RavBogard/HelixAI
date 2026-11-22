@@ -35,16 +35,8 @@ UNIT_HELP = {
     "pan": "0..1, 0.5 is centre",
     "sync_note": "note-division index, used when TempoSync1 is true",
     "cab_mic_distance": "inches",
-    "mic": "microphone index, see `helixtone mics`",
     "percent_braced": "0..1 shown as 0..100%",
 }
-
-LEGACY_MICS = [
-    "57 Dynamic", "409 Dynamic", "421 Dynamic", "30 Dynamic", "20 Dynamic", "121 Ribbon",
-    "160 Ribbon", "4038 Ribbon", "414 Cond", "84 Cond", "67 Cond", "87 Cond", "47 Cond",
-    "112 Dynamic", "12 Dynamic", "7 Dynamic",
-]
-
 
 class CatalogError(ValueError):
     pass
@@ -116,6 +108,12 @@ class Catalog:
         hint = f" Close: {', '.join(near)}." if near else ""
         raise CatalogError(f"no model {ref!r} on {self.device}.{hint} Try `helixtone search`.")
 
+    def resolve_or_none(self, ref: str) -> str | None:
+        try:
+            return self.resolve(ref)
+        except CatalogError:
+            return None
+
     def search(self, query: str = "", category: str | None = None) -> list[str]:
         words = [w for w in re.split(r"\s+", query.lower().strip()) if w]
         out = []
@@ -153,6 +151,12 @@ class Catalog:
                 f"Controls: {', '.join(params)}." + (f" Did you mean {near[0]}?" if near else ""))
         p = params[key]
         typ, lo, hi = p["type"], p["min"], p["max"]
+        if isinstance(value, str) and p.get("choices"):
+            want = _norm(value)
+            for i, label in enumerate(p["choices"]):
+                if _norm(label) == want:
+                    return lo + i
+            raise CatalogError(f"{mid}.{key} has no choice {value!r}. Choices: {', '.join(p['choices'])}")
         if typ == "bool":
             if not isinstance(value, bool):
                 raise CatalogError(f"{mid}.{key} is on/off: use true or false, not {value!r}")
@@ -172,6 +176,13 @@ class Catalog:
         if isinstance(hi, (int, float)) and not isinstance(hi, bool) and value > hi + slack:
             raise CatalogError(f"{mid}.{key} = {value} is above its maximum {hi} ({p['unit']})")
         return value
+
+    def choice_name(self, mid: str, key: str, value) -> str | None:
+        p = self.blocks[mid]["params"].get(key) or {}
+        ch = p.get("choices")
+        if ch and isinstance(value, int) and not isinstance(value, bool) and 0 <= value - p["min"] < len(ch):
+            return ch[value - p["min"]]
+        return None
 
     def defaults(self, mid: str) -> dict:
         return {k: p["default"] for k, p in self.blocks[mid]["params"].items()}

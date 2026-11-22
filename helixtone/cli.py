@@ -65,7 +65,12 @@ def cmd_show(a) -> int:
     for key, p in b["params"].items():
         rng = f"{p['min']}..{p['max']}"
         help_ = catmod.UNIT_HELP.get(p["unit"], p["unit"] or "")
-        print(f"  {key:<18} {p['type']:<6} {rng:<18} default {_show_value(p, p['default']):<22} {help_}")
+        dflt = _show_value(p, p["default"])
+        if p.get("choices"):
+            dflt = f"{p['default']} ({cat.choice_name(mid, key, p['default'])})"
+            shown = p["choices"] if len(p["choices"]) <= 20 else p["choices"][:20] + ["..."]
+            help_ = "one of: " + ", ".join(shown) + "  (use the name or its number)"
+        print(f"  {key:<18} {p['type']:<6} {rng:<18} default {dflt:<22} {help_}")
     ex = catmod.exemplars_for(cat, mid)
     if ex:
         print(f"\nhow Line 6 set it in {len(ex)} factory preset(s) (only what differs from default):")
@@ -92,11 +97,17 @@ def _print_result(res: buildmod.Result) -> None:
             tags.append(f"{ctl} on {src.upper()}")
         if b.auto:
             tags.append("built-in, added")
-        where = f"path {b.dsp + 1}, slot " if res.device.key == "helix_lt" else "slot "
+        lane = "B" if b.path else "A"
+        where = f"{b.dsp + 1}{lane} col " if res.device.key == "helix_lt" else "slot "
         state = "on " if res.snapshots[0]["state"][b.id] else "off"
         cost = cat.load(b.model, bool(b.stereo))
+        if b.dual:
+            cost += cat.load(b.dual["model"])
+            tags.append(f"dual with {b.dual['info']['name']}")
+        if b.momentary:
+            tags.append("momentary")
         print(f"  {where}{b.position}  {state} {b.id:<10} {b.info['name']:<22} {cost:5.1f}%  {', '.join(tags)}")
-    names = {"dsp0": "path 1" if res.device.key == "helix_lt" else "total", "dsp1": "path 2"}
+    names = {"dsp0": "processor 1" if res.device.key == "helix_lt" else "total", "dsp1": "processor 2"}
     print("  DSP: " + ", ".join(f"{names[k]} {v:.0f}%" for k, v in res.loads.items() if v))
     if len(res.snapshots) > 1:
         for i, s in enumerate(res.snapshots):
@@ -155,16 +166,10 @@ def cmd_inspect(a) -> int:
             print(json.dumps(reader.to_spec(p, a.device), indent=2))
         else:
             print(reader.describe(p))
-            if not reader.is_single_path(p["tone"]):
-                print("  (uses a second path or a linked cab; shown flattened)")
+            topo = {reader.topology(p["tone"], d) for d in ("dsp0", "dsp1")}
+            if topo - {"A", "SABJ"}:
+                print("  (has paths with their own input or output; --spec flattens those)")
         print()
-    return 0
-
-
-def cmd_mics(a) -> int:
-    print("legacy cab microphones (the '@mic' control), in the order the Helix manual lists them:")
-    for i, m in enumerate(catmod.LEGACY_MICS):
-        print(f"  {i:>2}  {m}")
     return 0
 
 
@@ -196,9 +201,6 @@ def main(argv=None) -> int:
     s.add_argument("--spec", action="store_true", help="print as a tone spec to edit")
     s.add_argument("-d", "--device", choices=sorted(catmod.DEVICE_FILES), help="target device for --spec")
     s.set_defaults(fn=cmd_inspect)
-
-    s = sub.add_parser("mics", help="list legacy cab microphone numbers")
-    s.set_defaults(fn=cmd_mics)
 
     a = ap.parse_args(argv)
     return a.fn(a)

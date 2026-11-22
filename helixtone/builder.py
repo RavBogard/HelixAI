@@ -1,13 +1,14 @@
 """Turn a tone spec into a preset file for the Helix LT (.hlx) or POD Go (.pgp).
 
-Everything about the file format here was checked against real files: 239 Line 6
-factory presets for the Helix side and 129 POD Go presets (including POD Go
+Everything about the file format here was checked against real files: Line 6's
+factory presets for the Helix side and a library of real POD Go presets (including POD Go
 Edit's own blank preset) for the POD Go side. tests/ rebuilds the factory presets
 from their own settings and compares the blocks, so a format mistake shows up
 there before it reaches a device.
 
-Out of scope for now, and refused rather than guessed: parallel paths, dual
-cabs, impulse-response blocks, send/return blocks on the Helix, command switches.
+Out of scope for now, and refused rather than guessed: impulse-response blocks,
+send/return blocks on the Helix, command switches, more than one split per
+processor, and paths with their own inputs or outputs.
 """
 from __future__ import annotations
 
@@ -79,6 +80,9 @@ class Block:
     position: int = 0
     forced_dsp: int | None = None
     auto: bool = False
+    path: int = 0                 # 0 is path A, 1 is path B inside a split
+    momentary: bool = False
+    dual: dict | None = None      # second cab of a dual cab: {"model", "info", "params"}
 
     @property
     def key(self) -> str:
@@ -121,85 +125,171 @@ def _podgo_role(b: Block) -> str | None:
 
 # ------------------------------------------------------------------ resolve
 
-def resolve_chain(spec: dict, cat: Catalog, dev: Device, problems: list[str], warnings: list[str]) -> list[Block]:
-    blocks: list[Block] = []
-    used_ids: dict[str, int] = {}
-    for i, raw in enumerate(spec["chain"]):
-        where = f"chain[{i}] ({raw['model']})"
+SPLIT_MODELS = {"y": "HD2_AppDSPFlowSplitY", "ab": "HD2_AppDSPFlowSplitAB", "crossover": "HD2_AppDSPFlowSplitXOver"}
+JOIN_MODEL = "HD2_AppDSPFlowJoin"
+
+
+def _resolve_block(raw: dict, where: str, cat: Catalog, dev: Device, used_ids: dict,
+                   problems: list[str], warnings: list[str]) -> Block | None:
+    try:
+        mid = cat.resolve(raw["model"])
+    except CatalogError as exc:
+        problems.append(f"{where}: {exc}")
+        return None
+    info = cat.blocks[mid]
+    if mid.startswith("HD2_ImpulseResponse"):
+        problems.append(f"{where}: impulse-response blocks are not supported yet (they need the IR's id from your device)")
+        return None
+    if dev.key == "helix_lt" and info["family"] == "sendreturn":
+        problems.append(f"{where}: {info['family']} blocks are not supported yet")
+        return None
+
+    dual = None
+    if "dual" in raw:
+        second = raw["dual"] if isinstance(raw["dual"], dict) else {"model": raw["dual"]}
+        if dev.key != "helix_lt" or info["category"] != "cab":
+            problems.append(f"{where}: 'dual' is for cab blocks on the Helix")
+            return None
         try:
-            mid = cat.resolve(raw["model"])
+            mid2 = cat.resolve(second["model"], "cab")
+        except CatalogError as exc:
+            problems.append(f"{where}: second cab: {exc}")
+            return None
+        if cat.blocks[mid2]["family"] != info["family"]:
+            problems.append(f"{where}: both cabs of a dual cab must be the same kind (both current, or both legacy)")
+            return None
+        if info["family"] == "cabmicirs":
+            # the two halves of a dual cab use the WithPan ids, which add Pan and Delay
+            mid, mid2 = mid + "WithPan", mid2 + "WithPan"
+            if mid not in cat.blocks or mid2 not in cat.blocks:
+                problems.append(f"{where}: no dual version of that cab in the catalog")
+                return None
+            info = cat.blocks[mid]
+        params2 = cat.defaults(mid2)
+        for key, value in (second.get("params") or {}).items():
+            try:
+                params2[key] = cat.check_param(mid2, key, value)
+            except CatalogError as exc:
+                problems.append(f"{where}: second cab: {exc}")
+        dual = {"model": mid2, "info": cat.blocks[mid2], "params": params2}
+
+    params = cat.defaults(mid)
+    for key, value in raw.get("params", {}).items():
+        try:
+            params[key] = cat.check_param(mid, key, value)
         except CatalogError as exc:
             problems.append(f"{where}: {exc}")
-            continue
-        info = cat.blocks[mid]
-        if mid.startswith("HD2_ImpulseResponse"):
-            problems.append(f"{where}: impulse-response blocks are not supported yet (they need the IR's id from your device)")
-            continue
-        if dev.key == "helix_lt" and info["family"] == "sendreturn":
-            problems.append(f"{where}: {info['family']} blocks are not supported yet")
-            continue
-        params = cat.defaults(mid)
-        for key, value in raw.get("params", {}).items():
+    base = raw.get("id") or info["category"]
+    if "id" in raw and base in used_ids:
+        problems.append(f"{where}: id {base!r} is used twice")
+    used_ids[base] = used_ids.get(base, 0) + 1
+    bid = base if used_ids[base] == 1 else f"{base}{used_ids[base]}"
+    blk = Block(id=bid, model=mid, info=info, enabled=bool(raw.get("enabled", True)), params=params, dual=dual)
+
+    if "stereo" in raw:
+        if cat.has_width_choice(mid):
+            blk.stereo = bool(raw["stereo"])
+        elif dev.key == "pod_go":
+            problems.append(f"{where}: on the POD Go a model's width is fixed, drop 'stereo'")
+        else:
+            problems.append(f"{where}: {info['name']} comes in one width only, drop 'stereo'")
+    if "trails" in raw:
+        if info["category"] in ("delay", "reverb"):
+            blk.trails = bool(raw["trails"])
+        else:
+            problems.append(f"{where}: 'trails' only applies to delays and reverbs")
+    if "dsp" in raw:
+        if dev.key != "helix_lt" or raw["dsp"] not in (0, 1):
+            problems.append(f"{where}: 'dsp' is 0 or 1 and Helix only")
+        else:
+            blk.forced_dsp = raw["dsp"]
+
+    pedals = raw.get("pedal")
+    for pedal in ([] if pedals is None else pedals if isinstance(pedals, list) else [pedals]):
+        assign = {"control": "Pedal", "source": pedal} if isinstance(pedal, str) else dict(pedal)
+        ctl, src = assign.get("control", "Pedal"), assign.get("source")
+        if src not in EXP_SOURCES:
+            problems.append(f"{where}: pedal source must be exp1 or exp2, got {src!r}")
+        elif ctl not in info["params"]:
+            problems.append(f"{where}: no control {ctl!r} to put on the pedal. Controls: {', '.join(info['params'])}")
+        elif info["params"][ctl]["type"] not in ("float", "int"):
+            problems.append(f"{where}: {ctl} is not a continuous control")
+        elif any(a[0] == ctl for a in blk.assigns):
+            problems.append(f"{where}: {ctl} is put on the pedal twice")
+        else:
+            p = info["params"][ctl]
             try:
-                params[key] = cat.check_param(mid, key, value)
+                lo = cat.check_param(mid, ctl, assign.get("min", p["min"]))
+                hi = cat.check_param(mid, ctl, assign.get("max", p["max"]))
+                blk.assigns.append((ctl, src, lo, hi))
             except CatalogError as exc:
-                problems.append(f"{where}: {exc}")
-        base = raw.get("id") or info["category"]
-        if "id" in raw and base in used_ids:
-            problems.append(f"{where}: id {base!r} is used twice")
-        used_ids[base] = used_ids.get(base, 0) + 1
-        bid = base if used_ids[base] == 1 else f"{base}{used_ids[base]}"
-        blk = Block(id=bid, model=mid, info=info, enabled=bool(raw.get("enabled", True)), params=params)
+                problems.append(f"{where}: pedal range: {exc}")
 
-        if "stereo" in raw:
-            if cat.has_width_choice(mid):
-                blk.stereo = bool(raw["stereo"])
-            elif dev.key == "pod_go":
-                problems.append(f"{where}: on the POD Go a model's width is fixed, drop 'stereo'")
-            else:
-                problems.append(f"{where}: {info['name']} comes in one width only, drop 'stereo'")
-        if "trails" in raw:
-            if info["category"] in ("delay", "reverb"):
-                blk.trails = bool(raw["trails"])
-            else:
-                problems.append(f"{where}: 'trails' only applies to delays and reverbs")
-        if "dsp" in raw:
-            if dev.key != "helix_lt" or raw["dsp"] not in (0, 1):
-                problems.append(f"{where}: 'dsp' is 0 or 1 and Helix only")
-            else:
-                blk.forced_dsp = raw["dsp"]
+    fs = raw.get("footswitch")
+    if isinstance(fs, dict):
+        blk.momentary = bool(fs.get("momentary", False))
+        fs = fs.get("switch")
+        if fs is None:
+            problems.append(f"{where}: footswitch needs a 'switch'")
+    if fs is not None:
+        if fs == "toe":
+            blk.footswitch = dev.toe_index
+        elif isinstance(fs, int) and not isinstance(fs, bool) and fs in dev.switches:
+            blk.footswitch = fs
+            if dev.key == "helix_lt" and fs in (1, 7):
+                warnings.append(f"{blk.id}: footswitch {fs} is a stomp switch only in 10-switch mode")
+        else:
+            problems.append(f"{where}: footswitch must be one of {list(dev.switches)} or \"toe\", got {fs!r}")
+    return blk
 
-        pedal = raw.get("pedal")
-        if pedal is not None:
-            assign = {"control": "Pedal", "source": pedal} if isinstance(pedal, str) else dict(pedal)
-            ctl, src = assign.get("control", "Pedal"), assign.get("source")
-            if src not in EXP_SOURCES:
-                problems.append(f"{where}: pedal source must be exp1 or exp2, got {src!r}")
-            elif ctl not in info["params"]:
-                problems.append(f"{where}: no control {ctl!r} to put on the pedal. Controls: {', '.join(info['params'])}")
-            elif info["params"][ctl]["type"] not in ("float", "int"):
-                problems.append(f"{where}: {ctl} is not a continuous control")
-            else:
-                p = info["params"][ctl]
+
+def resolve_chain(spec: dict, cat: Catalog, dev: Device, problems: list[str], warnings: list[str]):
+    """Return (blocks in signal order, chain items). An item is a Block or a split section dict."""
+    blocks: list[Block] = []
+    items: list = []
+    explicit: dict = {}
+    used_ids: dict[str, int] = {}
+
+    def one(raw, where, path=0):
+        blk = _resolve_block(raw, where, cat, dev, used_ids, problems, warnings)
+        if blk:
+            blk.path = path
+            blocks.append(blk)
+            explicit[blk.id] = raw
+        return blk
+
+    for i, raw in enumerate(spec["chain"]):
+        if "split" not in raw:
+            blk = one(raw, f"chain[{i}] ({raw['model']})")
+            if blk:
+                items.append(blk)
+            continue
+        where = f"chain[{i}] (split)"
+        if dev.key != "helix_lt":
+            problems.append(f"{where}: the POD Go has a single path, no splits")
+            continue
+        kind = str(raw["split"]).lower()
+        if kind not in SPLIT_MODELS:
+            problems.append(f"{where}: split must be one of {sorted(SPLIT_MODELS)}, got {raw['split']!r}")
+            continue
+        section = {"model": SPLIT_MODELS[kind], "params": cat.defaults(SPLIT_MODELS[kind]),
+                   "join": cat.defaults(JOIN_MODEL), "a": [], "b": []}
+        for target, model, given in (("params", SPLIT_MODELS[kind], raw.get("params") or {}),
+                                     ("join", JOIN_MODEL, raw.get("join") or {})):
+            for key, value in given.items():
                 try:
-                    lo = cat.check_param(mid, ctl, assign.get("min", p["min"]))
-                    hi = cat.check_param(mid, ctl, assign.get("max", p["max"]))
-                    blk.assigns.append((ctl, src, lo, hi))
+                    section[target][key] = cat.check_param(model, key, value)
                 except CatalogError as exc:
-                    problems.append(f"{where}: pedal range: {exc}")
-
-        fs = raw.get("footswitch")
-        if fs is not None:
-            if fs == "toe":
-                blk.footswitch = dev.toe_index
-            elif isinstance(fs, int) and not isinstance(fs, bool) and fs in dev.switches:
-                blk.footswitch = fs
-                if dev.key == "helix_lt" and fs in (1, 7):
-                    warnings.append(f"{blk.id}: footswitch {fs} is a stomp switch only in 10-switch mode")
-            else:
-                problems.append(f"{where}: footswitch must be one of {list(dev.switches)} or \"toe\", got {fs!r}")
-        blocks.append(blk)
-    return blocks
+                    problems.append(f"{where}: {exc}")
+        for lane, path in (("a", 0), ("b", 1)):
+            for j, sub in enumerate(raw.get(lane) or []):
+                blk = one(sub, f"chain[{i}].{lane}[{j}] ({sub['model']})", path)
+                if blk:
+                    section[lane].append(blk)
+        if not section["b"]:
+            problems.append(f"{where}: path 'b' is empty; a split needs at least one block on the second path")
+        items.append(section)
+    return blocks, items, explicit
 
 
 def _default_pedals(blocks: list[Block], dev: Device, explicit: dict) -> None:
@@ -225,31 +315,58 @@ def _default_widths(blocks: list[Block], cat: Catalog) -> None:
 
 # ---------------------------------------------------------------- placement
 
-def place_helix(blocks: list[Block], cat: Catalog, dev: Device, problems: list[str], warnings: list[str]) -> dict:
+def _cost(b: Block, cat: Catalog) -> float:
+    cost = cat.load(b.model, bool(b.stereo))
+    if b.dual:
+        cost += cat.load(b.dual["model"])
+    return cost
+
+
+def place_helix(items: list, blocks: list[Block], cat: Catalog, dev: Device, problems: list[str], warnings: list[str]):
+    """Lay the chain out on the two processors. Returns (loads, {dsp: section})."""
     loads = {0: 0.0, 1: 0.0}
-    counts = {0: 0, 1: 0}
+    col = {0: 0, 1: 0}                     # next free column on path A
+    sections: dict[int, dict] = {}
     dsp = 0
-    for b in blocks:
-        cost = cat.load(b.model, bool(b.stereo))
-        if b.forced_dsp is not None:
-            if b.forced_dsp < dsp:
-                problems.append(f"{b.id}: asked for processor 0 but an earlier block is already on processor 1")
-            dsp = max(dsp, b.forced_dsp)
-        if dsp == 0 and (counts[0] >= HELIX_BLOCKS_PER_DSP or loads[0] + cost > dev.dsp_limit):
+    for item in items:
+        members = [item] if isinstance(item, Block) else item["a"] + item["b"]
+        cost = sum(_cost(b, cat) for b in members)
+        width = 1 if isinstance(item, Block) else max(len(item["a"]), len(item["b"]))
+        forced = [b.forced_dsp for b in members if b.forced_dsp is not None]
+        if forced:
+            if min(forced) < dsp:
+                problems.append(f"{members[0].id}: asked for processor 0 but an earlier block is already on processor 1")
+            dsp = max(dsp, max(forced))
+        needs_move = col[0] + width > HELIX_BLOCKS_PER_DSP or loads[0] + cost > dev.dsp_limit
+        if not isinstance(item, Block) and 0 in sections:
+            needs_move = True              # one split per processor
+        if dsp == 0 and needs_move:
             dsp = 1
-        b.dsp, b.position, b.slot = dsp, counts[dsp], counts[dsp]
-        counts[dsp] += 1
+        if isinstance(item, Block):
+            item.dsp, item.position = dsp, col[dsp]
+        else:
+            if dsp in sections:
+                problems.append("only one split fits on each processor, and this chain needs a third")
+            sections[dsp] = item
+            item["dsp"], item["split_pos"], item["join_pos"] = dsp, col[dsp], col[dsp] + width
+            for lane in ("a", "b"):
+                for i, b in enumerate(item[lane]):
+                    b.dsp, b.position = dsp, col[dsp] + i
+        col[dsp] += width
         loads[dsp] += cost
     for d in (0, 1):
-        if counts[d] > HELIX_BLOCKS_PER_DSP:
-            problems.append(f"processor {d + 1} has {counts[d]} blocks; a path holds {HELIX_BLOCKS_PER_DSP}")
+        on = sorted((b for b in blocks if b.dsp == d), key=lambda b: (b.path, b.position))
+        for n, b in enumerate(on):      # path A blocks are numbered first, then path B, as in Line 6's files
+            b.slot = n
+        if col[d] > HELIX_BLOCKS_PER_DSP:
+            problems.append(f"processor {d + 1} needs {col[d]} columns; a path holds {HELIX_BLOCKS_PER_DSP}")
         if loads[d] > dev.dsp_limit:
-            heavy = sorted((b for b in blocks if b.dsp == d), key=lambda b: -cat.load(b.model, bool(b.stereo)))[:3]
-            listing = ", ".join(f"{b.info['name']} {cat.load(b.model, bool(b.stereo)):.0f}%" for b in heavy)
+            heavy = sorted(on, key=lambda b: -_cost(b, cat))[:3]
+            listing = ", ".join(f"{b.info['name']} {_cost(b, cat):.0f}%" for b in heavy)
             problems.append(f"processor {d + 1} is at {loads[d]:.0f}% of its DSP. Heaviest: {listing}")
         elif loads[d] > 90:
             warnings.append(f"processor {d + 1} is at {loads[d]:.0f}% DSP: it should load, but there is little room to add anything")
-    return {f"dsp{d}": round(loads[d], 2) for d in (0, 1)}
+    return {f"dsp{d}": round(loads[d], 2) for d in (0, 1)}, sections
 
 
 def place_podgo(blocks: list[Block], cat: Catalog, dev: Device, problems: list[str], warnings: list[str]) -> tuple[list[Block], dict]:
@@ -381,8 +498,8 @@ def plan_snapshots(spec: dict, blocks: list[Block], cat: Catalog, dev: Device, p
 def _block_json(b: Block, dev: Device) -> dict:
     out = {"@model": b.model, "@position": b.position}
     if dev.key == "helix_lt":
-        out["@path"] = 0
-    out["@type"] = b.info["type"]
+        out["@path"] = b.path
+    out["@type"] = 4 if b.dual else b.info["type"]
     out["@enabled"] = b.enabled
     out["@no_snapshot_bypass"] = False
     if b.stereo is not None:
@@ -395,7 +512,8 @@ def _block_json(b: Block, dev: Device) -> dict:
     return out
 
 
-def _assemble(spec, blocks, plans, controlled, cat: Catalog, dev: Device) -> dict:
+def _assemble(spec, blocks, plans, controlled, cat: Catalog, dev: Device, sections: dict | None = None) -> dict:
+    sections = sections or {}
     sk = copy.deepcopy(cat.skeleton)
     blank_snapshot = sk.pop("snapshot")
     tone = {k: v for k, v in sk.items() if k not in ("controller", "footswitch")}
@@ -405,9 +523,18 @@ def _assemble(spec, blocks, plans, controlled, cat: Catalog, dev: Device) -> dic
     for d in (0, 1):
         key = f"dsp{d}"
         tone[key] = {k: v for k, v in (sk.get(key) or {}).items() if not k.startswith("block")}
+        cabs = 0
         for b in blocks:
             if b.dsp == d:
                 tone[key][b.key] = _block_json(b, dev)
+                if b.dual:
+                    tone[key][b.key]["@cab"] = f"cab{cabs}"
+                    tone[key][f"cab{cabs}"] = {"@enabled": True, "@model": b.dual["model"], **b.dual["params"]}
+                    cabs += 1
+        if d in sections:
+            sec = sections[d]
+            tone[key]["split"] = {"@enabled": True, "@model": sec["model"], "@position": sec["split_pos"], **sec["params"]}
+            tone[key]["join"] = {"@enabled": True, "@model": JOIN_MODEL, "@position": sec["join_pos"], **sec["join"]}
     if dev.key == "pod_go":
         for n in range(PODGO_SLOTS):
             tone["dsp0"].setdefault(f"block{n}", {"@position": n})
@@ -438,7 +565,7 @@ def _assemble(spec, blocks, plans, controlled, cat: Catalog, dev: Device) -> dic
         if b.footswitch is None:
             continue
         entry = {"@fs_enabled": b.enabled, "@fs_index": b.footswitch, "@fs_label": b.info["name"][:16],
-                 "@fs_ledcolor": cat.fs_colour.get(b.category, 65408), "@fs_momentary": False}
+                 "@fs_ledcolor": cat.fs_colour.get(b.category, 65408), "@fs_momentary": b.momentary}
         if dev.key == "pod_go" and not _is_volume_pedal(b):
             entry["@fs_primary"] = True
         footswitch.setdefault(f"dsp{b.dsp}", {})[b.key] = entry
@@ -460,6 +587,8 @@ def _assemble(spec, blocks, plans, controlled, cat: Catalog, dev: Device) -> dic
         if dev.key == "pod_go":
             for k in range(PODGO_SLOTS):
                 states["dsp0"].setdefault(f"block{k}", True)
+        for d in sections:
+            states.setdefault(f"dsp{d}", {})["split"] = True
         snap["blocks"] = states
         values: dict = {}
         for b in blocks:
@@ -502,7 +631,8 @@ def _assemble(spec, blocks, plans, controlled, cat: Catalog, dev: Device) -> dic
     if dev.key == "pod_go":
         g["@cursor_group"] = amp.key
     else:
-        g["@topology0"] = g["@topology1"] = "A"
+        g["@topology0"] = "SABJ" if 0 in sections else "A"
+        g["@topology1"] = "SABJ" if 1 in sections else "A"
         # presets with blocks carry the cursor as a block key; the blank one uses path/position
         g.pop("@cursor_path", None)
         g.pop("@cursor_position", None)
@@ -534,16 +664,16 @@ def build(spec: dict) -> Result:
     problems: list[str] = []
     warnings: list[str] = []
 
-    blocks = resolve_chain(spec, cat, dev, problems, warnings)
+    blocks, items, explicit = resolve_chain(spec, cat, dev, problems, warnings)
     if problems:
         raise BuildError(problems)
-    explicit = {b.id: raw for raw, b in zip(spec["chain"], blocks)}
 
+    sections: dict = {}
     if dev.key == "pod_go":
         blocks, loads = place_podgo(blocks, cat, dev, problems, warnings)
     else:
         _default_widths(blocks, cat)
-        loads = place_helix(blocks, cat, dev, problems, warnings)
+        loads, sections = place_helix(items, blocks, cat, dev, problems, warnings)
     if problems:
         raise BuildError(problems)
     _default_pedals(blocks, dev, explicit)
@@ -556,6 +686,6 @@ def build(spec: dict) -> Result:
     plans, controlled = plan_snapshots(spec, blocks, cat, dev, problems, warnings)
     if problems:
         raise BuildError(problems)
-    preset = _assemble(spec, blocks, plans, controlled, cat, dev)
+    preset = _assemble(spec, blocks, plans, controlled, cat, dev, sections)
     return Result(device=dev, name=spec["name"], preset=preset, blocks=blocks, loads=loads,
                   warnings=warnings, snapshots=plans)

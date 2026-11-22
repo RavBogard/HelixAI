@@ -27,43 +27,54 @@ def same(a, b):
     return a == b
 
 
+def settings(blk):
+    return {k: v for k, v in blk.items() if not k.startswith("@")}
+
+
 def compare(original_tone, device):
     """Return a list of differences between a real preset and our rebuild of it."""
     preset = {"name": "Roundtrip", "device": 2162692 if device == "helix_lt" else 2162695,
               "device_version": 0, "tone": original_tone}
-    spec = reader.to_spec(preset, device)
+    trace = []
+    spec = reader.to_spec(preset, device, full=True, trace=trace)
     spec["name"] = "Roundtrip"
-    # carry every setting, not only the ones that differ from today's defaults
-    cat = catmod.get(device)
-    originals = reader.chain(original_tone)
-    for entry, (_dsp, _key, blk) in zip(spec["chain"], originals):
-        entry["params"] = {k: v for k, v in blk.items()
-                           if (not k.startswith("@") or k == "@mic") and k in cat.blocks[cat.resolve(blk["@model"])]["params"]}
-    built = build(spec).preset["data"]["tone"]
-    rebuilt = [b for b in reader.chain(built)]
-    if device == "pod_go":
-        # built-ins we add when the original left them out are not part of the comparison
-        have = {b["@model"] for _d, _k, b in originals}
-        rebuilt = [x for x in rebuilt if x[2]["@model"] in have]
+    res = build(spec)
+    built = res.preset["data"]["tone"]
+    by_id = {b.id: b for b in res.blocks}
     diffs = []
-    if len(rebuilt) != len(originals):
-        return [f"block count {len(originals)} -> {len(rebuilt)}"]
-    for (odsp, okey, ob), (ndsp, nkey, nb) in zip(originals, rebuilt):
-        linked = "@cab" in ob      # amp with a cab linked to it: type 3 there, 1 as its own block
+    for bid, odsp, okey, ob in trace:
+        if bid not in by_id:
+            diffs.append(f"{ob['@model']}: not in the rebuild")
+            continue
+        nbk = by_id[bid]
+        ndsp, nkey = f"dsp{nbk.dsp}", nbk.key
+        nb = built[ndsp][nkey]
+        cab_of_amp = okey is None          # the original kept this cab inside its amp block
+        amp_with_cab = "@cab" in ob and ob.get("@type") == 3
         for a in ATTRS:
-            if linked and a == "@type":
+            if (cab_of_amp or amp_with_cab) and a in ("@type", "@no_snapshot_bypass"):
                 continue
             if (a in ob) != (a in nb):
                 diffs.append(f"{ob['@model']}: {a} {'missing' if a in ob else 'added'}")
             elif a in ob and not same(ob[a], nb[a]):
                 diffs.append(f"{ob['@model']}: {a} {ob[a]!r} -> {nb[a]!r}")
-        for k, v in ob.items():
-            if k.startswith("@"):
-                continue
+        for k, v in settings(ob).items():
             if k not in nb:
                 diffs.append(f"{ob['@model']}: control {k} dropped")
             elif not same(v, nb[k]):
                 diffs.append(f"{ob['@model']}: {k} {v!r} -> {nb[k]!r}")
+        if ob.get("@type") == 4 and "@cab" in ob:      # dual cab: the second half
+            o2 = original_tone[odsp][ob["@cab"]]
+            n2 = built[ndsp].get(nb.get("@cab", ""), {})
+            if o2.get("@model") != n2.get("@model"):
+                diffs.append(f"dual cab second: {o2.get('@model')} -> {n2.get('@model')}")
+            if set(k for k in o2 if k.startswith("@")) != set(k for k in n2 if k.startswith("@")):
+                diffs.append(f"dual cab second attrs: {sorted(o2)} -> {sorted(n2)}")
+            for k, v in settings(o2).items():
+                if not same(v, n2.get(k)):
+                    diffs.append(f"dual cab second: {k} {v!r} -> {n2.get(k)!r}")
+        if okey is None:
+            continue
         # expression pedal assignments and footswitches survive
         oc = (original_tone.get("controller") or {}).get(odsp, {}).get(okey, {})
         nc = (built.get("controller") or {}).get(ndsp, {}).get(nkey, {})
@@ -78,21 +89,40 @@ def compare(original_tone, device):
         if of and not nf:
             diffs.append(f"{ob['@model']}: footswitch dropped")
         elif of and nf:
-            for k in ("@fs_index",):
+            for k in ("@fs_index", "@fs_momentary"):
                 if of.get(k) != nf.get(k):
                     diffs.append(f"{ob['@model']}: footswitch {k} {of.get(k)!r} -> {nf.get(k)!r}")
             # real files disagree on whether the volume pedal carries @fs_primary
             optional = {"@fs_customlabel", "@fs_customcolor", "@cc", "@fs_primary"}
             if set(of) - optional != set(nf) - optional:
                 diffs.append(f"{ob['@model']}: footswitch keys {sorted(of)} -> {sorted(nf)}")
+    if len(trace) != len([b for b in res.blocks if not b.auto]):
+        diffs.append(f"block count {len(trace)} -> {len(res.blocks)}")
+
+    # splits and joins, in order
+    if device == "helix_lt":
+        osec = [d for d in ("dsp0", "dsp1") if reader.topology(original_tone, d) == "SABJ"]
+        nsec = [d for d in ("dsp0", "dsp1") if reader.topology(built, d) == "SABJ"]
+        if len(osec) != len(nsec):
+            diffs.append(f"splits {len(osec)} -> {len(nsec)}")
+        for od, nd in zip(osec, nsec):
+            for part in ("split", "join"):
+                o, n = original_tone[od][part], built[nd][part]
+                for k, v in o.items():
+                    if k != "@position" and not same(v, n.get(k)):
+                        diffs.append(f"{part}: {k} {v!r} -> {n.get(k)!r}")
+            if not built["snapshot0"]["blocks"][nd].get("split"):
+                diffs.append("snapshot does not list the split")
+            # every path B block sits between the split and the join
+            sp, jn = built[nd]["split"]["@position"], built[nd]["join"]["@position"]
+            for k, blk in built[nd].items():
+                if k.startswith("block") and blk["@path"] == 1 and not sp <= blk["@position"] < jn:
+                    diffs.append(f"path B block at {blk['@position']} outside split {sp}..{jn}")
     return diffs
 
 
 def supported(tone, device):
     if not reader.chain(tone):
-        return False
-    g = tone.get("global", {})
-    if device == "helix_lt" and (g.get("@topology0") != "A" or g.get("@topology1") != "A"):
         return False
     cat = catmod.get(device)
     for dsp, _key, blk in reader.chain(tone):
@@ -101,37 +131,48 @@ def supported(tone, device):
             return False
         if cat.blocks[m]["family"] in ("sendreturn", "io", "fixed") and device == "helix_lt":
             return False
-        if blk.get("@path") == 1 or (blk.get("@type") == 4 and "@cab" in blk):
-            return False   # second path, or a dual cab
     if device == "helix_lt":
-        if any(len([k for k in (tone.get(d) or {}) if k.startswith("block")]) > 8 for d in ("dsp0", "dsp1")):
-            return False
-        o = tone["dsp0"]["outputA"]["@output"]
+        for d in ("dsp0", "dsp1"):
+            topo = reader.topology(tone, d)
+            has_b = any(b.get("@path") == 1 for k, b in tone[d].items() if k.startswith("block"))
+            if topo not in ("A", "SABJ") or (topo == "SABJ") != has_b:
+                return False       # paths with their own input or output, or an empty split
         has1 = any(k.startswith("block") for k in tone["dsp1"])
-        if has1 and o != 2:
-            return False   # two independent chains, e.g. guitar and vocals
+        if has1 and tone["dsp0"]["outputA"]["@output"] != 2:
+            return False           # two independent chains, e.g. guitar and vocals
     return True
 
 
 @unittest.skipUnless(os.path.isdir(os.path.join(SRC, "HelixNativePresets")), "set HELIXTONE_SOURCES")
 class HelixFactory(unittest.TestCase):
     def test_rebuild_matches(self):
-        checked, failures = 0, []
+        checked, failures, no_room, kinds = 0, [], 0, {"split": 0, "dual cab": 0}
         for f in sorted(glob.glob(os.path.join(SRC, "HelixNativePresets", "*.hls"))):
             for p in reader.load(f):
                 if not supported(p["tone"], "helix_lt"):
                     continue
-                checked += 1
                 try:
                     d = compare(p["tone"], "helix_lt")
                 except Exception as exc:
+                    if "footswitch must be one of" in str(exc):
+                        continue    # switches outside the LT's own (external or Floor-only), not built
+                    if "processor" in str(exc):
+                        # we write an amp's cab as its own block, so a full path can come out one too long
+                        no_room += 1
+                        continue
                     d = [f"build failed: {exc}"]
+                checked += 1
+                kinds["split"] += any(reader.topology(p["tone"], x) == "SABJ" for x in ("dsp0", "dsp1"))
+                kinds["dual cab"] += any(b.get("@type") == 4 and "@cab" in b for _d, _k, b in reader.chain(p["tone"]))
                 if d:
                     failures.append((p["name"], d))
-        print(f"\nhelix: {checked} factory presets rebuilt, {len(failures)} differ")
+        print(f"\nhelix: {checked} factory presets rebuilt ({kinds['split']} with a split, {kinds['dual cab']} with a dual cab), "
+              f"{no_room} skipped for room, {len(failures)} differ")
         for name, d in failures[:25]:
             print(" ", name, "|", "; ".join(d[:4]))
-        self.assertGreater(checked, 80)
+        self.assertGreater(checked, 150)
+        self.assertGreater(kinds["split"], 20)
+        self.assertGreater(kinds["dual cab"], 20)
         self.assertEqual(failures, [])
 
 

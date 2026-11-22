@@ -54,8 +54,9 @@ Run everything from the repository root with `python -m helixtone`.
   new preset is a first draft from knowledge and factory settings; say that
   plainly, and never describe how it sounds as fact.
 - **Loading is verified by format, not by device, until someone loads it.**
-  The builder reproduces 93 Line 6 factory presets and 52 real POD Go presets
-  block for block, which is strong evidence and not proof. The first time a
+  The builder reproduces 185 Line 6 factory presets (44 with parallel paths,
+  57 with dual cabs) and 52 real POD Go presets block for block, which is
+  strong evidence and not proof. The first time a
   kind of preset goes onto a unit, ask the player to confirm it loaded and say
   so in `rig/taste.md`.
 - **Do not commit other people's presets.** A player's own exports go in
@@ -86,9 +87,30 @@ Read `references/craft.md` before designing a chain. The short version:
   the usual starting point through full-range speakers.
 - **Time effects after the cab, in stereo; drives, wah and compressor before
   the amp.** Uni-Vibe and phaser before the amp for vintage sounds.
-- **Tempo-synced delays:** set `Time` in seconds from the tempo
-  (quarter = 60/bpm, dotted eighth = 0.75 × that, eighth = 0.5 ×) and leave
-  `TempoSync1` false. The note-division index table has not been confirmed.
+- **Delays that follow tap tempo:** set `"TempoSync1": true` and
+  `"SyncSelect1"` to the note value by name (`"1/8 Dotted"`, `"1/4"`). For a
+  fixed time instead, leave sync off and set `Time` in seconds.
+- **Named choices:** any control `show` lists as "one of: ..." takes the name
+  (`"Mic": "121 Ribbon"`, `"Ratio": "4:1"`) or its number.
+
+## Richer layouts (Helix LT only)
+
+Use these when the sound calls for them, not by default: each costs DSP and
+makes the preset harder to adjust.
+
+- **Dual cab:** add `"dual": {"model": ..., "params": {...}}` to a cab block
+  to blend two cabs or two mics (a 57 with a ribbon is the classic pair). Use
+  `Pan` on each half to spread them or keep both at 0.5.
+- **Parallel paths:** a chain entry `{"split": "y", "a": [...], "b": [...],
+  "join": {...}}` runs two paths side by side and joins them again: two amps,
+  or a dry path beside a wet one. `"ab"` sends everything to one side
+  (`RouteTo`), `"crossover"` splits by frequency. One split per processor.
+  Balance the two sides with the join's `A Level` and `B Level`.
+- **Momentary switch:** `"footswitch": {"switch": 9, "momentary": true}` for
+  an effect that is on only while the switch is held.
+- **Several controls on the pedal:** `"pedal"` takes a list of assignments.
+- **Volume pedal:** add a `Volume` block and it goes on EXP 2 with the wah on
+  EXP 1; the toe switch swaps which one is active.
 
 ## Reading existing presets
 
@@ -100,7 +122,8 @@ the other device and tells you what does not.
 
 ## Not built yet
 
-Parallel paths, dual cabs, impulse responses, the Helix's send/return blocks,
-command switches, momentary switches, and measuring audio (see
-`tools/native_probe.py` for the first step toward that). If a tone needs one of
+Impulse responses, the Helix's send/return blocks, command switches, paths
+with their own input or output (a second instrument), more than one split per
+processor, and measuring audio (see `tools/native_probe.py` for the first step
+toward that). If a tone needs one of
 these, say so rather than approximating silently.

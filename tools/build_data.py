@@ -14,6 +14,9 @@ Expected under that directory:
         model catalog extracted from POD Go Edit 2.50, real .pgp presets
     HelixNativePresets/ github.com/GhostNote17/HelixNativePresets (MIT)
         Line 6 factory setlists as exported by Helix Native (.hls)
+    helix-model-catalog/ github.com/ociadi/helix-model-catalog (no licence stated)
+        used only for the names of a control's discrete choices (note
+        divisions, microphones, modes), which the other catalogs leave out
     open-podgoedit/     github.com/Ultchad/open-podgoedit    (MIT)  [optional]
     POD_GO-Helix_converter/                                  [optional]
         a few more real .pgp files, used only to observe block types
@@ -261,6 +264,35 @@ def build_podgo(src):
     return n
 
 
+def add_choices(src):
+    """Attach the names of discrete choices ("1/8 Dotted", "57 Dynamic") to the controls that have them."""
+    path = os.path.join(src, "helix-model-catalog/helix-full-catalog.json")
+    if not os.path.exists(path):
+        print("no helix-model-catalog: choices not added")
+        return
+    labels = {}
+    for m in json.load(open(path))["models"]:
+        for p in m["params"]:
+            fmt = (p.get("display") or {}).get("format")
+            if isinstance(fmt, list) and all(isinstance(x, str) for x in fmt) and isinstance(p.get("minimum"), int) and isinstance(p.get("maximum"), int) \
+                    and len(fmt) == p["maximum"] - p["minimum"] + 1 and len(set(fmt)) == len(fmt):
+                labels[(m["symbolic_id"], p["symbolic_id"])] = (p["minimum"], fmt)
+
+    def rd(n):
+        return json.load(gzip.open(os.path.join(OUT, n)))
+    for name in ("helix_lt.json.gz", "pod_go.json.gz"):
+        doc, n = rd(name), 0
+        for mid, b in doc["blocks"].items():
+            twin = b.get("helix_id", mid)
+            for key, p in b["params"].items():
+                hit = labels.get((twin, key)) or labels.get((re.sub(r"WithPan$", "", twin), key))
+                if hit and p["type"] == "int" and hit[0] == p["min"] and hit[0] + len(hit[1]) - 1 == p["max"]:
+                    p["choices"] = hit[1]
+                    n += 1
+        print(f"{name}: {n} controls with named choices")
+        dump(name, doc)
+
+
 def backfill_based_on():
     """POD Go Edit's catalog has no 'based on' text; borrow it from the Helix one."""
     def rd(n):
@@ -283,3 +315,4 @@ if __name__ == "__main__":
     print("helix factory presets read:", build_helix(sys.argv[1]))
     print("pod go presets read:", build_podgo(sys.argv[1]))
     backfill_based_on()
+    add_choices(sys.argv[1])

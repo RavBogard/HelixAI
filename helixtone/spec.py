@@ -32,9 +32,28 @@ Block fields:
   trails      delays and reverbs: let the tail ring out when bypassed
   pedal       "exp1" or "exp2": the expression pedal sweeps this block's
               Pedal control (wah, volume). {"control": "Mix", "source": "exp1",
-              "min": 0, "max": 0.6} assigns any other control.
-  footswitch  a stomp switch number, or "toe" for the expression pedal's toe switch
+              "min": 0, "max": 0.6} assigns any other control; a list of those
+              puts several controls on the pedal.
+  footswitch  a stomp switch number, or "toe" for the expression pedal's toe switch;
+              {"switch": 9, "momentary": true} for a switch that is on only while held
+  dual        Helix cab blocks only: a second cab mixed with this one,
+              {"model": "4x12 Greenback 25", "params": {"Mic": "121 Ribbon", "Pan": 0.7}}
   dsp         Helix only: force the block onto processor 0 or 1
+
+Controls with named choices take the name or the number:
+  "SyncSelect1": "1/8 Dotted", "Mic": "57 Dynamic". For a delay that follows tap
+  tempo set "TempoSync1": true and "SyncSelect1" to the note value.
+
+Parallel paths (Helix only). In place of a block, a chain entry can be a split:
+
+    {"split": "y",                       # "y", "ab" or "crossover"
+     "params": {"BalanceA": 0.5},        # the split's own controls
+     "a": [ ...blocks on path A... ],
+     "b": [ ...blocks on path B... ],
+     "join": {"B Level": -3, "A Pan": 0.3, "B Pan": 0.7}}
+
+The paths join again before the next chain entry. One split fits on each
+processor. Typical uses: two amps, two cabs, or a dry path beside a wet one.
 """
 from __future__ import annotations
 
@@ -43,7 +62,8 @@ import json
 DEVICES = ("helix_lt", "pod_go")
 NAME_MAX = 16
 
-BLOCK_KEYS = {"id", "model", "enabled", "params", "stereo", "trails", "pedal", "footswitch", "dsp", "note"}
+BLOCK_KEYS = {"id", "model", "enabled", "params", "stereo", "trails", "pedal", "footswitch", "dsp", "dual", "note"}
+SPLIT_KEYS = {"split", "params", "join", "a", "b", "note"}
 SNAP_KEYS = {"name", "on", "off", "set", "colour", "note"}
 TOP_KEYS = {"name", "device", "tempo", "notes", "chain", "snapshots", "firmware", "variant"}
 
@@ -81,14 +101,27 @@ def check_shape(spec: dict) -> None:
         raise SpecError(f"name {name!r} is {len(name)} characters; the device shows {NAME_MAX}")
     if not isinstance(spec["chain"], list) or not spec["chain"]:
         raise SpecError("chain must be a non-empty list of blocks")
-    for i, blk in enumerate(spec["chain"]):
+    def check_block(blk, where):
         if not isinstance(blk, dict) or "model" not in blk:
-            raise SpecError(f"chain[{i}] must be an object with a 'model'")
+            raise SpecError(f"{where} must be an object with a 'model'")
         extra = set(blk) - BLOCK_KEYS
         if extra:
-            raise SpecError(f"chain[{i}] ({blk['model']}): unknown field(s) {sorted(extra)}")
+            raise SpecError(f"{where} ({blk['model']}): unknown field(s) {sorted(extra)}")
         if not isinstance(blk.get("params", {}), dict):
-            raise SpecError(f"chain[{i}] ({blk['model']}): params must be an object")
+            raise SpecError(f"{where} ({blk['model']}): params must be an object")
+
+    for i, blk in enumerate(spec["chain"]):
+        if isinstance(blk, dict) and "split" in blk:
+            extra = set(blk) - SPLIT_KEYS
+            if extra:
+                raise SpecError(f"chain[{i}] (split): unknown field(s) {sorted(extra)}")
+            for lane in ("a", "b"):
+                if not isinstance(blk.get(lane, []), list):
+                    raise SpecError(f"chain[{i}] (split): '{lane}' must be a list of blocks")
+                for j, sub in enumerate(blk.get(lane, [])):
+                    check_block(sub, f"chain[{i}].{lane}[{j}]")
+        else:
+            check_block(blk, f"chain[{i}]")
     snaps = spec.get("snapshots", [])
     if not isinstance(snaps, list):
         raise SpecError("snapshots must be a list")

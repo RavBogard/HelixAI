@@ -9,12 +9,9 @@ building anything.
   - Firmware version: **not recorded yet.** Presets are written as 3.80. If
     HX Edit warns about a version mismatch on import, note the unit's version
     here and set `"firmware"` in the spec.
-- **Amplification:** Line 6 "212 +", taken to be the Powercab 212 Plus.
-  **To confirm:** that it is the Powercab, whether it is connected by L6 LINK
-  or analog, and whether it runs in flat (full-range) mode or with its own
-  speaker models. This decides whether presets keep a cab block. Until
-  confirmed, presets are built **with** a cab block, which is right for flat
-  mode.
+- **Amplification:** Line 6 Powercab 212 Plus, run in **flat / FRFR mode**
+  (confirmed by Daniel, 2026-11-22). Presets therefore **keep a cab block**.
+  Not recorded: whether it is connected by L6 LINK or analog.
 - **Also owns:** Helix Native (same model set; useful for auditioning a
   `.hlx` without the unit).
 - **Computer:** Windows.
@@ -24,4 +21,5 @@ building anything.
 - **Device:** Line 6 POD Go. Firmware not recorded; presets are written as 2.50.
   If it is the POD Go Wireless, say so here: its device id differs.
 - **Guitar:** Fender Jazzmaster.
-- **Amplification:** not recorded. Presets are built with a cab block.
+- **Amplification:** PA, monitors or headphones (per Daniel, 2026-11-22), so
+  full-range: presets **keep a cab block**.
