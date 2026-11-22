@@ -63,7 +63,48 @@ def snapshot_preset(spec: dict, n: int) -> dict:
     s = copy.deepcopy(spec)
     snaps = s["snapshots"]
     s["snapshots"] = [snaps[n]] + snaps[:n] + snaps[n + 1:]
+    if s["device"] != "helix_lt":
+        s = helix_twin(s)
     return build(s).preset
+
+
+PODGO_TO_HELIX_SWITCH = {1: 2, 2: 3, 3: 4, 4: 5, 5: 8, 6: 9}
+
+
+def helix_twin(spec: dict) -> dict:
+    """The same chain as a Helix LT spec, so a POD Go tone can be measured through Helix Native.
+
+    The two devices run the same models under the same ids. What this cannot
+    show: the POD Go's own input and output stages, and anything in its
+    built-in blocks that the spec left to the builder. Levels found this way
+    are a starting point for the POD Go, and say so wherever they are reported.
+    A model the Helix does not have stops the measurement by name.
+    """
+    src, dst = catmod.get(spec["device"]), catmod.get("helix_lt")
+    out = copy.deepcopy(spec)
+    out["device"] = "helix_lt"
+    out.pop("firmware", None)
+    missing = []
+
+    def walk(entries):
+        for e in entries:
+            mid = src.resolve(e["model"])
+            if mid not in dst.blocks:
+                try:
+                    mid = dst.resolve(src.blocks[mid]["name"])
+                except catmod.CatalogError:
+                    missing.append(src.blocks[mid]["name"])
+                    continue
+            e["model"] = mid
+            fs = e.get("footswitch")
+            if isinstance(fs, dict):
+                fs["switch"] = PODGO_TO_HELIX_SWITCH.get(fs.get("switch"), fs.get("switch"))
+            elif isinstance(fs, int):
+                e["footswitch"] = PODGO_TO_HELIX_SWITCH.get(fs, fs)
+    walk(out["chain"])
+    if missing:
+        raise ValueError("cannot be measured through Helix Native: no Helix model for " + ", ".join(missing))
+    return out
 
 
 def measure(spec: dict, renderer, di: np.ndarray, sr: int) -> list[dict]:
@@ -88,11 +129,21 @@ def _level_target(spec: dict, cat) -> tuple[str, str]:
     raise ValueError("no block with a level control to trim (expected an amp with ChVol)")
 
 
+def _trim_block(spec: dict, cat):
+    """A Gain block (id and its Gain control) to finish levelling with, or None."""
+    for bid, e in blocks_of(spec).items():
+        if cat.resolve(e["model"]) == "HD2_VolPanGain":
+            return bid, cat.blocks["HD2_VolPanGain"]["params"]["Gain"]
+    return None
+
+
 def level_match(spec: dict, renderer, di: np.ndarray, sr: int = audio.SR, offsets: dict | None = None,
-                tolerance: float = 0.3, max_steps: int = 8) -> tuple[dict, list[dict]]:
+                tolerance: float = 0.3, max_steps: int = 8, level: float | None = None) -> tuple[dict, list[dict]]:
     """Trim each snapshot to the same loudness as snapshot 1, plus any offset asked for.
 
     offsets maps a snapshot name to dB relative to snapshot 1, e.g. {"Lead": 2.0}.
+    level, if given, is the loudness snapshot 1 itself is brought to, so that
+    different presets can be made to match each other.
     Returns (new spec, report rows).
     """
     spec = with_ids(spec)
@@ -113,15 +164,16 @@ def level_match(spec: dict, renderer, di: np.ndarray, sr: int = audio.SR, offset
     def assign(n, value):
         spec["snapshots"][n].setdefault("set", {}).setdefault(bid, {})[ctl] = round(float(value), 4)
 
-    reference = loudness(0)
+    measured_first = loudness(0)
+    reference = measured_first if level is None else level
     report = []
     for n, snap in enumerate(spec["snapshots"]):
         target = reference + offsets.get(snap["name"].lower(), 0.0)
-        before = got = reference if n == 0 else loudness(n)
+        before = got = measured_first if n == 0 else loudness(n)
         start = value = current(n)
         steps = 0
         lo, hi = p["min"], p["max"]
-        while abs(got - target) > tolerance and steps < max_steps and n > 0:
+        while abs(got - target) > tolerance and steps < max_steps and (n > 0 or level is not None):
             steps += 1
             # bracket and bisect: the control is monotonic, its law is not known
             if got < target:
@@ -132,6 +184,19 @@ def level_match(spec: dict, renderer, di: np.ndarray, sr: int = audio.SR, offset
             guess = value + (target - got) / 40.0 if steps == 1 else (lo + hi) / 2
             value = min(max(guess, lo + 1e-4), hi - 1e-4) if lo < hi else value
             assign(n, value)
+            got = loudness(n)
+        # Channel Volume has run out (a clean setting on a non-master-volume amp does this):
+        # make up the rest with a Gain block after the amp, if the chain has one
+        trim = _trim_block(spec, cat)
+        tries = 0
+        while trim and abs(got - target) > tolerance and tries < 4:
+            tries += 1
+            tb, tp = trim
+            now = spec["snapshots"][n].get("set", {}).get(tb, {}).get("Gain", blocks_of(spec)[tb].get("params", {}).get("Gain", tp["default"]))
+            want = min(max(now + (target - got), tp["min"]), tp["max"])
+            if abs(want - now) < 0.05:
+                break
+            spec["snapshots"][n].setdefault("set", {}).setdefault(tb, {})["Gain"] = round(float(want), 2)
             got = loudness(n)
         report.append({"snapshot": snap["name"], "before_db": round(before, 2), "after_db": round(got, 2),
                        "target_db": round(target, 2), "control": f"{bid}.{ctl}",
@@ -213,3 +278,98 @@ def match(spec: dict, renderer, di: np.ndarray, target: dict, sr: int = audio.SR
     return spec, {"distance_before": first, "distance_after": best, "renders": evaluations,
                   "moved": {k: (round(start[k], 3), round(end[k], 3)) for k in end if abs(end[k] - start[k]) > 1e-6},
                   "remaining": audio.describe_difference(final, target)}
+
+
+# ------------------------------------------------------------------ stomps
+
+STOMP_LEVEL_CONTROLS = ("Level", "Volume", "Output")
+
+
+def _crunch_index(spec: dict) -> int:
+    names = [s["name"].lower() for s in spec["snapshots"]]
+    return names.index("crunch") if "crunch" in names else 0
+
+
+def _switched(spec: dict) -> dict:
+    return {bid: b for bid, b in blocks_of(spec).items() if b.get("footswitch") not in (None, "toe")}
+
+
+def stomp_steps(spec: dict, renderer, di: np.ndarray, sr: int = audio.SR, snapshot: int | None = None) -> list[dict]:
+    """What switching each stomp does to level, in one snapshot (the one named Crunch, else the first).
+
+    Returns rows of {block, category, on_minus_off_db}. Nothing in the spec is changed.
+    """
+    spec = with_ids(spec)
+    cat = catmod.get(spec["device"])
+    n = _crunch_index(spec) if snapshot is None else snapshot
+    rows = []
+    for bid in _switched(spec):
+        levels = {}
+        for state in (False, True):
+            s = copy.deepcopy(spec)
+            blocks_of(s)[bid]["enabled"] = state
+            levels[state] = audio.features(renderer.render(snapshot_preset(s, n), di, sr), sr)["loudness_db"]
+        rows.append({"block": bid, "category": cat.blocks[cat.resolve(blocks_of(spec)[bid]["model"])]["category"],
+                     "snapshot": spec["snapshots"][n]["name"], "on_minus_off_db": round(levels[True] - levels[False], 2)})
+    return rows
+
+
+def level_stomps(spec: dict, renderer, di: np.ndarray, sr: int = audio.SR, step: float = 1.5, tolerance: float = 0.4,
+                 max_steps: int = 7, snapshot: int | None = None) -> tuple[dict, list[dict]]:
+    """Set each drive stomp's own level so that switching it on lifts the sound by `step` dB.
+
+    A drive that jumps 8 dB when it is stepped on, or drops, is the commonest
+    fault in a preset nobody has played. Measured in the snapshot named Crunch
+    (else the first): on a much cleaner or dirtier snapshot the step will differ.
+    """
+    spec = with_ids(spec)
+    cat = catmod.get(spec["device"])
+    n = _crunch_index(spec) if snapshot is None else snapshot
+    report = []
+    for bid, blk in _switched(spec).items():
+        info = cat.blocks[cat.resolve(blk["model"])]
+        ctl = next((c for c in STOMP_LEVEL_CONTROLS if c in info["params"] and info["params"][c]["type"] == "float"), None)
+        if ctl is None:
+            if info["category"] == "drive":
+                report.append({"block": bid, "control": None, "reached": False, "note": "no level control"})
+            continue
+        p = info["params"][ctl]
+
+        def loud(state, value=None):
+            s = copy.deepcopy(spec)
+            b = blocks_of(s)[bid]
+            b["enabled"] = state
+            if value is not None:
+                b.setdefault("params", {})[ctl] = value
+            return audio.features(renderer.render(snapshot_preset(s, n), di, sr), sr)["loudness_db"]
+
+        off = loud(False)
+        start = value = blk.get("params", {}).get(ctl, p["default"])
+        got = loud(True, value) - off
+        before = got
+        want = step
+        if info["category"] != "drive":
+            # anything else should leave the level where it was; only step in when it plainly does not
+            if abs(got) <= 2.5:
+                continue
+            want = 0.0
+        lo, hi = p["min"], p["max"]
+        steps = 0
+        while abs(got - want) > tolerance and steps < max_steps:
+            steps += 1
+            if got < want:
+                lo = value
+            else:
+                hi = value
+            value = (lo + hi) / 2
+            got = loud(True, value) - off
+        reached = abs(got - want) <= tolerance
+        if not reached:
+            # an amp that is already saturated swallows the extra level: more pedal level
+            # only changes the character. Leave the control where the designer put it.
+            value, got = start, before
+        blocks_of(spec)[bid].setdefault("params", {})[ctl] = round(float(value), 4)
+        report.append({"block": bid, "control": f"{bid}.{ctl}", "from": round(float(start), 3), "to": round(float(value), 3),
+                       "before_db": round(before, 2), "after_db": round(got, 2), "reached": reached,
+                       "snapshot": spec["snapshots"][n]["name"]})
+    return spec, report

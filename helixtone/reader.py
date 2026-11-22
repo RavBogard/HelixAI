@@ -125,6 +125,8 @@ def to_spec(preset: dict, device: str | None = None, full: bool = False, trace: 
             entry["stereo"] = blk["@stereo"]
         if blk.get("@trails"):
             entry["trails"] = True
+        if blk.get("@no_snapshot_bypass") and device == "helix_lt":
+            entry["stays"] = True
         pedals = [{"control": ctl, "source": f"exp{c['@controller']}", "min": c["@min"], "max": c["@max"]}
                   for ctl, c in ((tone.get("controller") or {}).get(dsp, {}).get(key, {})).items()
                   if c.get("@controller") in (1, 2) and ctl in info["params"]]
@@ -205,6 +207,8 @@ def to_spec(preset: dict, device: str | None = None, full: bool = False, trace: 
             continue
         on, off = [], []
         for (dsp, key), bid in keymap.items():
+            if tone[dsp][key].get("@no_snapshot_bypass") and device == "helix_lt":
+                continue    # the device ignores the stored state for these
             state = s["blocks"].get(dsp, {}).get(key)
             base = tone[dsp][key].get("@enabled", True)
             if state is True and not base:

@@ -63,6 +63,8 @@ class SimRenderer:
                 x = x * max(blk.get("ChVol", 0.7), 0.0) ** 2
             elif c == "cab":
                 x = self._eq(x, sr, [(blk.get("LowCut", 20), 0, "lowcut"), (blk.get("HighCut", 20000), 0, "highcut")])
+            elif blk["@model"] == "HD2_VolPanGain":
+                x = x * 10 ** (blk.get("Gain", 0.0) / 20)
             elif c == "comp":
                 env = np.sqrt(np.convolve(x ** 2, np.ones(480) / 480, mode="same")) + 1e-6
                 x = x * np.minimum(1.0, (0.1 / env) ** 0.5) * 1.5

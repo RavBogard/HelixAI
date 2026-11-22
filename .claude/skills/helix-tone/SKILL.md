@@ -10,14 +10,19 @@ preset file. You never write preset JSON by hand, and you never write a model
 id or control name from memory: both come from the catalog, which is the
 editors' own model database.
 
-Run everything from the repository root with `python -m helixtone`.
+Run everything from the repository root with `python -m helixtone`. On
+Daniel's PC the repository is `C:\Users\dsbog\HelixAI`, and this skill is
+linked into his user skills folder, so it can be invoked from any folder:
+change to the repository first. All paths below are relative to it.
 
 ## The loop
 
 1. **Read the rig.** `rig/rig.md` says who plays what into what, and
    `rig/taste.md` records what they liked and rejected before. Both change what
    you build. If the request names a player (Daniel → Helix LT, David → POD Go)
-   use their device; if it is unclear which device, ask.
+   use their device; if it is unclear which device, ask. `rig/players.json`
+   holds each player's layout as data (snapshot roles and order, which switch
+   holds which kind of effect, whether stomps stay put, level): build to it.
 2. **Work out the real gear.** For an artist or song, name the amp, the
    speakers, and the pedals in order, as that player used them. Say which parts
    you are sure of and which are a reasonable stand-in. If you can search the
@@ -37,8 +42,9 @@ Run everything from the repository root with `python -m helixtone`.
 6. **Build.** `helixtone build <spec>` validates, prints the layout with DSP
    use, and writes the `.hlx` or `.pgp` next to the spec. If it refuses, it
    lists every problem by name; fix the spec, do not work around the check.
-7. **Hand it over** with: the file path, what each snapshot and footswitch
-   does, any note the build printed, and what you were unsure about.
+7. **Hand it over** with: the file path, the sheet (`<name>.md`, written by
+   `helixtone check`), any note the build printed, and what you were unsure
+   about.
 8. **Take feedback and record it.** When the player says what is wrong ("too
    fizzy", "the wah is nasal"), change the spec, rebuild, and add one line to
    `rig/taste.md` saying what was changed and why. That file is how the next
@@ -55,9 +61,20 @@ sit through every adjustment. What can be done unattended, and what cannot:
 - **With a working renderer**, after building any tone:
   1. `helixtone tune measure <spec>` and read the numbers. A snapshot that
      clips, or is far louder or quieter than the rest, is a defect: fix it.
-  2. `helixtone tune level <spec> --write`, with `--offset "<lead>=2"` for
-     snapshots meant to be louder. Do this for every tone, every time.
-  3. If there is a recording to aim at (an isolated guitar part, or a preset
+  2. `helixtone tune level <spec> --write`. The level and the snapshots
+     meant to be louder come from `rig/players.json` for the folder the spec
+     is in; `--level` and `--offset "<name>=2"` override. Every tone, every time.
+  3. `helixtone tune stomps <spec> --write` sets each drive stomp's own level
+     so that stepping on it lifts the Crunch snapshot by 1.5 dB, then level
+     again (step 2), since the two interact slightly.
+  4. `helixtone check <spec>`. It reads the player's layout, renders every
+     snapshot and every stomp on and off, and writes the one-page sheet
+     (`<name>.md`) beside the preset. Fix every DEFECT. Read every NOTE and
+     either fix it or say in the spec's notes why it is on purpose. Run it
+     last, so the sheet describes the preset as handed over.
+  A POD Go tone goes through the same steps: it is measured as the same chain
+  on a Helix. Say so when reporting its levels.
+  5. If there is a recording to aim at (an isolated guitar part, or a preset
      the player already likes rendered through the same input),
      `helixtone tune match <spec> --ref <wav> --write` moves the amp and cab
      controls toward its balance. Read what it moved: a control driven to its
@@ -128,9 +145,12 @@ Read `references/craft.md` before designing a chain. The short version:
   for the loudest clean or the base crunch, then add a pedal for the step up.
 - **Level-match snapshots by intent.** A lead should be a little louder, a
   clean should not vanish. Use the amp's `ChVol` (channel volume: level only,
-  no tone change) to trim. This is by reasoning until we can measure.
-- **Cut the cab.** High cut around 8–10 kHz and low cut around 80–100 Hz is
-  the usual starting point through full-range speakers.
+  no tone change) to trim, by measurement (`tune level`).
+- **Cut the cab.** High cut 6.5–8 kHz and low cut 80–100 Hz in the cab block
+  is the starting point through full-range speakers (the cab block's cut is
+  gentle: 8 kHz there is 3 dB down at 8 kHz). For a darker or fuller sound
+  change the mic or its position before reaching for EQ; a 57 with a 121
+  ribbon as a dual cab adds about 2 dB of body below 1 kHz.
 - **Time effects after the cab, in stereo; drives, wah and compressor before
   the amp.** Uni-Vibe and phaser before the amp for vintage sounds.
 - **Delays that follow tap tempo:** set `"TempoSync1": true` and
@@ -152,6 +172,12 @@ makes the preset harder to adjust.
   or a dry path beside a wet one. `"ab"` sends everything to one side
   (`RouteTo`), `"crossover"` splits by frequency. One split per processor.
   Balance the two sides with the join's `A Level` and `B Level`.
+- **A stomp that stays put:** `"stays": true` on a block makes snapshots
+  leave its on/off state alone (Daniel's layout requires it on every switched
+  block). A snapshot cannot then list it under `on` or `off`; give the
+  snapshot its own unswitched block instead. Seen in one real preset (an HX
+  Stomp file), not yet confirmed on the LT: ask the player to check that a
+  stomp survives a snapshot change the first time.
 - **Momentary switch:** `"footswitch": {"switch": 9, "momentary": true}` for
   an effect that is on only while the switch is held.
 - **Several controls on the pedal:** `"pedal"` takes a list of assignments.

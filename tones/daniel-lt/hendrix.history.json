@@ -128,5 +128,1589 @@
     }
    ]
   }
+ },
+ {
+  "when": "2026-11-22T13:34:53",
+  "verdict": "tuned",
+  "note": "level-matched snapshots by measurement",
+  "who": "",
+  "spec": {
+   "name": "Hendrix-ish",
+   "device": "helix_lt",
+   "tempo": 100,
+   "notes": "Hendrix-style rig in his order: Vox wah, Fuzz Face, Octavia, Uni-Vibe, jumped Plexi, greenbacks. The amp is set to clean up when the guitar volume comes down. Bass is pulled well back from the model's default of 9.0. Wah and volume share the pedal (toe switch swaps them). Built for the Powercab in flat mode. First draft, not yet heard on the unit.",
+   "chain": [
+    {
+     "id": "wah",
+     "model": "UK Wah 846",
+     "enabled": false
+    },
+    {
+     "id": "fuzz",
+     "model": "Arbitrator Fuzz",
+     "enabled": false,
+     "footswitch": 8,
+     "params": {
+      "Fuzz": 0.7,
+      "Level": 0.45
+     }
+    },
+    {
+     "id": "octave",
+     "model": "Tycoctavia Fuzz",
+     "enabled": false,
+     "footswitch": 9,
+     "params": {
+      "Fuzz": 0.6,
+      "Level": 0.5
+     }
+    },
+    {
+     "id": "vibe",
+     "model": "Ubiquitous Vibe",
+     "enabled": false,
+     "footswitch": 10,
+     "params": {
+      "Rate": 0.33,
+      "Intensity": 0.8,
+      "Mix": 0.5
+     }
+    },
+    {
+     "id": "vol",
+     "model": "Volume"
+    },
+    {
+     "id": "amp",
+     "model": "Brit Plexi Jump",
+     "params": {
+      "BrtDrive": 0.6,
+      "NrmDrive": 0.5,
+      "Bass": 0.5,
+      "Mid": 0.8,
+      "Treble": 0.65,
+      "Presence": 0.6,
+      "ChVol": 0.6,
+      "Sag": 0.6
+     }
+    },
+    {
+     "id": "cab",
+     "model": "4x12 Greenback 25",
+     "params": {
+      "HighCut": 9000,
+      "LowCut": 80
+     }
+    },
+    {
+     "id": "verb",
+     "model": "Plate",
+     "footswitch": 11,
+     "params": {
+      "Decay": 0.35,
+      "Mix": 0.15
+     },
+     "trails": true
+    }
+   ],
+   "snapshots": [
+    {
+     "name": "Little Wng",
+     "colour": "turquoise",
+     "set": {
+      "amp": {
+       "BrtDrive": 0.38,
+       "NrmDrive": 0.3,
+       "ChVol": 0.7
+      }
+     }
+    },
+    {
+     "name": "Vibe",
+     "colour": "violet",
+     "on": [
+      "vibe"
+     ],
+     "set": {
+      "amp": {
+       "ChVol": 0.6833
+      }
+     }
+    },
+    {
+     "name": "Fuzz",
+     "colour": "light orange",
+     "on": [
+      "fuzz"
+     ],
+     "set": {
+      "amp": {
+       "ChVol": 0.7195
+      }
+     }
+    },
+    {
+     "name": "Octave Ld",
+     "colour": "red",
+     "on": [
+      "fuzz",
+      "octave"
+     ],
+     "set": {
+      "amp": {
+       "ChVol": 0.728
+      }
+     }
+    }
+   ]
+  }
+ },
+ {
+  "when": "2026-11-22T14:21:47",
+  "verdict": "tuned",
+  "note": "level-matched snapshots by measurement",
+  "who": "",
+  "spec": {
+   "name": "Hendrix-ish",
+   "device": "helix_lt",
+   "tempo": 100,
+   "notes": "Hendrix-style rig in his order: Vox wah, Fuzz Face, Octavia, Uni-Vibe, jumped Plexi, greenbacks. Snapshots are the four standing sounds (Clean, Crunch, Lead, Ambient) and change the amp, levels and effect mixes only; every stomp stays as the foot left it. Clean is the Plexi with the drives pulled back, as when the guitar volume comes down. Ambient switches in its own long reverb. Cab is a 57 with a 121 ribbon beside it for body (measured: about 2 dB more below 1 kHz, top unchanged). Bass is pulled well back from the model's default of 9.0. Built for the Powercab in flat mode. Not yet heard on the unit.",
+   "chain": [
+    {
+     "id": "wah",
+     "model": "UK Wah 846",
+     "enabled": false,
+     "stays": true
+    },
+    {
+     "id": "fuzz",
+     "model": "Arbitrator Fuzz",
+     "enabled": false,
+     "footswitch": 8,
+     "stays": true,
+     "params": {
+      "Fuzz": 0.7,
+      "Level": 0.45
+     }
+    },
+    {
+     "id": "octave",
+     "model": "Tycoctavia Fuzz",
+     "enabled": false,
+     "footswitch": 2,
+     "stays": true,
+     "params": {
+      "Fuzz": 0.6,
+      "Level": 0.5
+     }
+    },
+    {
+     "id": "vibe",
+     "model": "Ubiquitous Vibe",
+     "enabled": false,
+     "footswitch": 9,
+     "stays": true,
+     "params": {
+      "Rate": 0.33,
+      "Intensity": 0.8,
+      "Mix": 0.5
+     }
+    },
+    {
+     "id": "vol",
+     "model": "Volume",
+     "stays": true
+    },
+    {
+     "id": "amp",
+     "model": "Brit Plexi Jump",
+     "params": {
+      "BrtDrive": 0.6,
+      "NrmDrive": 0.5,
+      "Bass": 0.5,
+      "Mid": 0.8,
+      "Treble": 0.65,
+      "Presence": 0.6,
+      "ChVol": 0.6,
+      "Sag": 0.6
+     }
+    },
+    {
+     "id": "cab",
+     "model": "4x12 Greenback 25",
+     "params": {
+      "Mic": "57 Dynamic",
+      "HighCut": 7500,
+      "LowCut": 85
+     },
+     "dual": {
+      "model": "4x12 Greenback 25",
+      "params": {
+       "Mic": "121 Ribbon",
+       "HighCut": 7500,
+       "LowCut": 85
+      }
+     }
+    },
+    {
+     "id": "echo",
+     "model": "Transistor Tape",
+     "enabled": false,
+     "footswitch": 10,
+     "stays": true,
+     "trails": true,
+     "params": {
+      "Time": 0.36,
+      "Feedback": 0.3,
+      "Mix": 0.22
+     }
+    },
+    {
+     "id": "verb",
+     "model": "Plate",
+     "footswitch": 11,
+     "stays": true,
+     "trails": true,
+     "params": {
+      "Decay": 0.35,
+      "Mix": 0.15
+     }
+    },
+    {
+     "id": "space",
+     "model": "Glitz",
+     "enabled": false,
+     "trails": true,
+     "params": {
+      "Decay": 0.7,
+      "Mix": 0.3,
+      "HighCut": 6000
+     }
+    }
+   ],
+   "snapshots": [
+    {
+     "name": "Clean",
+     "colour": "turquoise",
+     "set": {
+      "amp": {
+       "BrtDrive": 0.36,
+       "NrmDrive": 0.28,
+       "ChVol": 0.8
+      }
+     }
+    },
+    {
+     "name": "Crunch",
+     "colour": "light orange",
+     "set": {
+      "amp": {
+       "BrtDrive": 0.6,
+       "NrmDrive": 0.5,
+       "ChVol": 0.7
+      }
+     }
+    },
+    {
+     "name": "Lead",
+     "colour": "red",
+     "set": {
+      "amp": {
+       "BrtDrive": 0.78,
+       "NrmDrive": 0.62,
+       "ChVol": 0.7
+      },
+      "echo": {
+       "Mix": 0.18
+      }
+     }
+    },
+    {
+     "name": "Ambient",
+     "colour": "violet",
+     "on": [
+      "space"
+     ],
+     "set": {
+      "amp": {
+       "BrtDrive": 0.36,
+       "NrmDrive": 0.28,
+       "ChVol": 0.8
+      },
+      "echo": {
+       "Mix": 0.35
+      }
+     }
+    }
+   ]
+  }
+ },
+ {
+  "when": "2026-11-22T14:25:41",
+  "verdict": "tuned",
+  "note": "drive stomps set to lift by 1.5 dB, by measurement",
+  "who": "",
+  "spec": {
+   "name": "Hendrix-ish",
+   "device": "helix_lt",
+   "tempo": 100,
+   "notes": "Hendrix-style rig in his order: Vox wah, Fuzz Face, Octavia, Uni-Vibe, jumped Plexi, greenbacks. Snapshots are the four standing sounds (Clean, Crunch, Lead, Ambient) and change the amp, levels and effect mixes only; every stomp stays as the foot left it. Clean is the Plexi with the drives pulled back, as when the guitar volume comes down. Ambient switches in its own long reverb. Cab is a 57 with a 121 ribbon beside it for body (measured: about 2 dB more below 1 kHz, top unchanged). Bass is pulled well back from the model's default of 9.0. Built for the Powercab in flat mode. Not yet heard on the unit.",
+   "chain": [
+    {
+     "id": "wah",
+     "model": "UK Wah 846",
+     "enabled": false,
+     "stays": true
+    },
+    {
+     "id": "fuzz",
+     "model": "Arbitrator Fuzz",
+     "enabled": false,
+     "footswitch": 8,
+     "stays": true,
+     "params": {
+      "Fuzz": 0.7,
+      "Level": 0.45
+     }
+    },
+    {
+     "id": "octave",
+     "model": "Tycoctavia Fuzz",
+     "enabled": false,
+     "footswitch": 2,
+     "stays": true,
+     "params": {
+      "Fuzz": 0.6,
+      "Level": 0.5
+     }
+    },
+    {
+     "id": "vibe",
+     "model": "Ubiquitous Vibe",
+     "enabled": false,
+     "footswitch": 9,
+     "stays": true,
+     "params": {
+      "Rate": 0.33,
+      "Intensity": 0.8,
+      "Mix": 0.5
+     }
+    },
+    {
+     "id": "vol",
+     "model": "Volume",
+     "stays": true
+    },
+    {
+     "id": "amp",
+     "model": "Brit Plexi Jump",
+     "params": {
+      "BrtDrive": 0.6,
+      "NrmDrive": 0.5,
+      "Bass": 0.5,
+      "Mid": 0.8,
+      "Treble": 0.65,
+      "Presence": 0.6,
+      "ChVol": 0.6,
+      "Sag": 0.6
+     }
+    },
+    {
+     "id": "cab",
+     "model": "4x12 Greenback 25",
+     "params": {
+      "Mic": "57 Dynamic",
+      "HighCut": 7500,
+      "LowCut": 85
+     },
+     "dual": {
+      "model": "4x12 Greenback 25",
+      "params": {
+       "Mic": "121 Ribbon",
+       "HighCut": 7500,
+       "LowCut": 85
+      }
+     }
+    },
+    {
+     "id": "echo",
+     "model": "Transistor Tape",
+     "enabled": false,
+     "footswitch": 10,
+     "stays": true,
+     "trails": true,
+     "params": {
+      "Time": 0.36,
+      "Feedback": 0.3,
+      "Mix": 0.22
+     }
+    },
+    {
+     "id": "verb",
+     "model": "Plate",
+     "footswitch": 11,
+     "stays": true,
+     "trails": true,
+     "params": {
+      "Decay": 0.35,
+      "Mix": 0.15
+     }
+    },
+    {
+     "id": "space",
+     "model": "Glitz",
+     "enabled": false,
+     "trails": true,
+     "params": {
+      "Decay": 0.7,
+      "Mix": 0.3,
+      "HighCut": 6000
+     }
+    }
+   ],
+   "snapshots": [
+    {
+     "name": "Clean",
+     "colour": "turquoise",
+     "set": {
+      "amp": {
+       "BrtDrive": 0.36,
+       "NrmDrive": 0.28,
+       "ChVol": 0.7619
+      }
+     }
+    },
+    {
+     "name": "Crunch",
+     "colour": "light orange",
+     "set": {
+      "amp": {
+       "BrtDrive": 0.6,
+       "NrmDrive": 0.5,
+       "ChVol": 0.7255
+      }
+     }
+    },
+    {
+     "name": "Lead",
+     "colour": "red",
+     "set": {
+      "amp": {
+       "BrtDrive": 0.78,
+       "NrmDrive": 0.62,
+       "ChVol": 0.8881
+      },
+      "echo": {
+       "Mix": 0.18
+      }
+     }
+    },
+    {
+     "name": "Ambient",
+     "colour": "violet",
+     "on": [
+      "space"
+     ],
+     "set": {
+      "amp": {
+       "BrtDrive": 0.36,
+       "NrmDrive": 0.28,
+       "ChVol": 0.7139
+      },
+      "echo": {
+       "Mix": 0.35
+      }
+     }
+    }
+   ]
+  }
+ },
+ {
+  "when": "2026-11-22T14:26:36",
+  "verdict": "tuned",
+  "note": "level-matched snapshots by measurement",
+  "who": "",
+  "spec": {
+   "name": "Hendrix-ish",
+   "device": "helix_lt",
+   "tempo": 100,
+   "notes": "Hendrix-style rig in his order: Vox wah, Fuzz Face, Octavia, Uni-Vibe, jumped Plexi, greenbacks. Snapshots are the four standing sounds (Clean, Crunch, Lead, Ambient) and change the amp, levels and effect mixes only; every stomp stays as the foot left it. Clean is the Plexi with the drives pulled back, as when the guitar volume comes down. Ambient switches in its own long reverb. Cab is a 57 with a 121 ribbon beside it for body (measured: about 2 dB more below 1 kHz, top unchanged). Bass is pulled well back from the model's default of 9.0. Built for the Powercab in flat mode. Not yet heard on the unit.",
+   "chain": [
+    {
+     "id": "wah",
+     "model": "UK Wah 846",
+     "enabled": false,
+     "stays": true
+    },
+    {
+     "id": "fuzz",
+     "model": "Arbitrator Fuzz",
+     "enabled": false,
+     "footswitch": 8,
+     "stays": true,
+     "params": {
+      "Fuzz": 0.7,
+      "Level": 0.9957
+     }
+    },
+    {
+     "id": "octave",
+     "model": "Tycoctavia Fuzz",
+     "enabled": false,
+     "footswitch": 2,
+     "stays": true,
+     "params": {
+      "Fuzz": 0.6,
+      "Level": 0.9961
+     }
+    },
+    {
+     "id": "vibe",
+     "model": "Ubiquitous Vibe",
+     "enabled": false,
+     "footswitch": 9,
+     "stays": true,
+     "params": {
+      "Rate": 0.33,
+      "Intensity": 0.8,
+      "Mix": 0.5
+     }
+    },
+    {
+     "id": "vol",
+     "model": "Volume",
+     "stays": true
+    },
+    {
+     "id": "amp",
+     "model": "Brit Plexi Jump",
+     "params": {
+      "BrtDrive": 0.6,
+      "NrmDrive": 0.5,
+      "Bass": 0.5,
+      "Mid": 0.8,
+      "Treble": 0.65,
+      "Presence": 0.6,
+      "ChVol": 0.6,
+      "Sag": 0.6
+     }
+    },
+    {
+     "id": "cab",
+     "model": "4x12 Greenback 25",
+     "params": {
+      "Mic": "57 Dynamic",
+      "HighCut": 7500,
+      "LowCut": 85
+     },
+     "dual": {
+      "model": "4x12 Greenback 25",
+      "params": {
+       "Mic": "121 Ribbon",
+       "HighCut": 7500,
+       "LowCut": 85
+      }
+     }
+    },
+    {
+     "id": "echo",
+     "model": "Transistor Tape",
+     "enabled": false,
+     "footswitch": 10,
+     "stays": true,
+     "trails": true,
+     "params": {
+      "Time": 0.36,
+      "Feedback": 0.3,
+      "Mix": 0.22
+     }
+    },
+    {
+     "id": "verb",
+     "model": "Plate",
+     "footswitch": 11,
+     "stays": true,
+     "trails": true,
+     "params": {
+      "Decay": 0.35,
+      "Mix": 0.15
+     }
+    },
+    {
+     "id": "space",
+     "model": "Glitz",
+     "enabled": false,
+     "trails": true,
+     "params": {
+      "Decay": 0.7,
+      "Mix": 0.3,
+      "HighCut": 6000
+     }
+    }
+   ],
+   "snapshots": [
+    {
+     "name": "Clean",
+     "colour": "turquoise",
+     "set": {
+      "amp": {
+       "BrtDrive": 0.36,
+       "NrmDrive": 0.28,
+       "ChVol": 0.7619
+      }
+     }
+    },
+    {
+     "name": "Crunch",
+     "colour": "light orange",
+     "set": {
+      "amp": {
+       "BrtDrive": 0.6,
+       "NrmDrive": 0.5,
+       "ChVol": 0.7255
+      }
+     }
+    },
+    {
+     "name": "Lead",
+     "colour": "red",
+     "set": {
+      "amp": {
+       "BrtDrive": 0.78,
+       "NrmDrive": 0.62,
+       "ChVol": 0.8881
+      },
+      "echo": {
+       "Mix": 0.18
+      }
+     }
+    },
+    {
+     "name": "Ambient",
+     "colour": "violet",
+     "on": [
+      "space"
+     ],
+     "set": {
+      "amp": {
+       "BrtDrive": 0.36,
+       "NrmDrive": 0.28,
+       "ChVol": 0.7139
+      },
+      "echo": {
+       "Mix": 0.35
+      }
+     }
+    }
+   ]
+  }
+ },
+ {
+  "when": "2026-11-22T14:42:35",
+  "verdict": "tuned",
+  "note": "level-matched snapshots by measurement",
+  "who": "",
+  "spec": {
+   "name": "Hendrix-ish",
+   "device": "helix_lt",
+   "tempo": 100,
+   "notes": "Hendrix-style rig in his order: Vox wah, Fuzz Face, Octavia, Uni-Vibe, jumped Plexi, greenbacks. Snapshots are the four standing sounds (Clean, Crunch, Lead, Ambient) and change the amp, levels and effect mixes only; every stomp stays as the foot left it. Clean is the Plexi with the drives pulled back, as when the guitar volume comes down. Ambient switches in its own long reverb. Cab is a 57 with a 121 ribbon beside it for body (measured: about 2 dB more below 1 kHz, top unchanged). Bass is pulled well back from the model's default of 9.0. Built for the Powercab in flat mode. Not yet heard on the unit.",
+   "chain": [
+    {
+     "id": "wah",
+     "model": "UK Wah 846",
+     "enabled": false,
+     "stays": true
+    },
+    {
+     "id": "fuzz",
+     "model": "Arbitrator Fuzz",
+     "enabled": false,
+     "footswitch": 8,
+     "stays": true,
+     "params": {
+      "Fuzz": 0.7,
+      "Level": 0.45
+     }
+    },
+    {
+     "id": "octave",
+     "model": "Tycoctavia Fuzz",
+     "enabled": false,
+     "footswitch": 2,
+     "stays": true,
+     "params": {
+      "Fuzz": 0.6,
+      "Level": 0.5
+     }
+    },
+    {
+     "id": "vibe",
+     "model": "Ubiquitous Vibe",
+     "enabled": false,
+     "footswitch": 9,
+     "stays": true,
+     "params": {
+      "Rate": 0.33,
+      "Intensity": 0.8,
+      "Mix": 0.5
+     }
+    },
+    {
+     "id": "vol",
+     "model": "Volume",
+     "stays": true
+    },
+    {
+     "id": "amp",
+     "model": "Brit Plexi Jump",
+     "params": {
+      "BrtDrive": 0.27,
+      "NrmDrive": 0.2,
+      "Bass": 0.5,
+      "Mid": 0.8,
+      "Treble": 0.65,
+      "Presence": 0.6,
+      "ChVol": 0.6,
+      "Sag": 0.6
+     }
+    },
+    {
+     "id": "cab",
+     "model": "4x12 Greenback 25",
+     "params": {
+      "Mic": "57 Dynamic",
+      "HighCut": 7500,
+      "LowCut": 85
+     },
+     "dual": {
+      "model": "4x12 Greenback 25",
+      "params": {
+       "Mic": "121 Ribbon",
+       "HighCut": 7500,
+       "LowCut": 85
+      }
+     }
+    },
+    {
+     "id": "echo",
+     "model": "Transistor Tape",
+     "enabled": false,
+     "footswitch": 10,
+     "stays": true,
+     "trails": true,
+     "params": {
+      "Time": 0.36,
+      "Feedback": 0.3,
+      "Mix": 0.22
+     }
+    },
+    {
+     "id": "verb",
+     "model": "Plate",
+     "footswitch": 11,
+     "stays": true,
+     "trails": true,
+     "params": {
+      "Decay": 0.35,
+      "Mix": 0.15
+     }
+    },
+    {
+     "id": "space",
+     "model": "Glitz",
+     "enabled": false,
+     "trails": true,
+     "params": {
+      "Decay": 0.7,
+      "Mix": 0.3,
+      "HighCut": 6000
+     }
+    }
+   ],
+   "snapshots": [
+    {
+     "name": "Clean",
+     "colour": "turquoise",
+     "set": {
+      "amp": {
+       "BrtDrive": 0.15,
+       "NrmDrive": 0.1,
+       "ChVol": 0.7619
+      }
+     }
+    },
+    {
+     "name": "Crunch",
+     "colour": "light orange",
+     "set": {
+      "amp": {
+       "BrtDrive": 0.27,
+       "NrmDrive": 0.2,
+       "ChVol": 0.7255
+      }
+     }
+    },
+    {
+     "name": "Lead",
+     "colour": "red",
+     "set": {
+      "amp": {
+       "BrtDrive": 0.78,
+       "NrmDrive": 0.62,
+       "ChVol": 0.8881
+      },
+      "echo": {
+       "Mix": 0.18
+      }
+     }
+    },
+    {
+     "name": "Ambient",
+     "colour": "violet",
+     "on": [
+      "space"
+     ],
+     "set": {
+      "amp": {
+       "BrtDrive": 0.15,
+       "NrmDrive": 0.1,
+       "ChVol": 0.7139
+      },
+      "echo": {
+       "Mix": 0.35
+      }
+     }
+    }
+   ]
+  }
+ },
+ {
+  "when": "2026-11-22T14:46:30",
+  "verdict": "tuned",
+  "note": "drive stomps set to lift by 1.5 dB, by measurement",
+  "who": "",
+  "spec": {
+   "name": "Hendrix-ish",
+   "device": "helix_lt",
+   "tempo": 100,
+   "notes": "Hendrix-style rig in his order: Vox wah, Fuzz Face, Octavia, Uni-Vibe, jumped Plexi, greenbacks. Snapshots are the four standing sounds (Clean, Crunch, Lead, Ambient) and change the amp, levels and effect mixes only; every stomp stays as the foot left it. Clean is the Plexi with the drives pulled back, as when the guitar volume comes down. Ambient switches in its own long reverb. Cab is a 57 with a 121 ribbon beside it for body (measured: about 2 dB more below 1 kHz, top unchanged). Bass is pulled well back from the model's default of 9.0. Built for the Powercab in flat mode. Not yet heard on the unit.",
+   "chain": [
+    {
+     "id": "wah",
+     "model": "UK Wah 846",
+     "enabled": false,
+     "stays": true
+    },
+    {
+     "id": "fuzz",
+     "model": "Arbitrator Fuzz",
+     "enabled": false,
+     "footswitch": 8,
+     "stays": true,
+     "params": {
+      "Fuzz": 0.7,
+      "Level": 0.45
+     }
+    },
+    {
+     "id": "octave",
+     "model": "Tycoctavia Fuzz",
+     "enabled": false,
+     "footswitch": 2,
+     "stays": true,
+     "params": {
+      "Fuzz": 0.6,
+      "Level": 0.5
+     }
+    },
+    {
+     "id": "vibe",
+     "model": "Ubiquitous Vibe",
+     "enabled": false,
+     "footswitch": 9,
+     "stays": true,
+     "params": {
+      "Rate": 0.33,
+      "Intensity": 0.8,
+      "Mix": 0.5
+     }
+    },
+    {
+     "id": "vol",
+     "model": "Volume",
+     "stays": true
+    },
+    {
+     "id": "amp",
+     "model": "Brit Plexi Jump",
+     "params": {
+      "BrtDrive": 0.27,
+      "NrmDrive": 0.2,
+      "Bass": 0.5,
+      "Mid": 0.8,
+      "Treble": 0.65,
+      "Presence": 0.6,
+      "ChVol": 0.6,
+      "Sag": 0.6
+     }
+    },
+    {
+     "id": "cab",
+     "model": "4x12 Greenback 25",
+     "params": {
+      "Mic": "57 Dynamic",
+      "HighCut": 7500,
+      "LowCut": 85
+     },
+     "dual": {
+      "model": "4x12 Greenback 25",
+      "params": {
+       "Mic": "121 Ribbon",
+       "HighCut": 7500,
+       "LowCut": 85
+      }
+     }
+    },
+    {
+     "id": "echo",
+     "model": "Transistor Tape",
+     "enabled": false,
+     "footswitch": 10,
+     "stays": true,
+     "trails": true,
+     "params": {
+      "Time": 0.36,
+      "Feedback": 0.3,
+      "Mix": 0.22
+     }
+    },
+    {
+     "id": "verb",
+     "model": "Plate",
+     "footswitch": 11,
+     "stays": true,
+     "trails": true,
+     "params": {
+      "Decay": 0.35,
+      "Mix": 0.15
+     }
+    },
+    {
+     "id": "space",
+     "model": "Glitz",
+     "enabled": false,
+     "trails": true,
+     "params": {
+      "Decay": 0.7,
+      "Mix": 0.3,
+      "HighCut": 6000
+     }
+    }
+   ],
+   "snapshots": [
+    {
+     "name": "Clean",
+     "colour": "turquoise",
+     "set": {
+      "amp": {
+       "BrtDrive": 0.15,
+       "NrmDrive": 0.1,
+       "ChVol": 0.9997
+      }
+     }
+    },
+    {
+     "name": "Crunch",
+     "colour": "light orange",
+     "set": {
+      "amp": {
+       "BrtDrive": 0.27,
+       "NrmDrive": 0.2,
+       "ChVol": 0.8249
+      }
+     }
+    },
+    {
+     "name": "Lead",
+     "colour": "red",
+     "set": {
+      "amp": {
+       "BrtDrive": 0.78,
+       "NrmDrive": 0.62,
+       "ChVol": 0.8881
+      },
+      "echo": {
+       "Mix": 0.18
+      }
+     }
+    },
+    {
+     "name": "Ambient",
+     "colour": "violet",
+     "on": [
+      "space"
+     ],
+     "set": {
+      "amp": {
+       "BrtDrive": 0.15,
+       "NrmDrive": 0.1,
+       "ChVol": 0.9994
+      },
+      "echo": {
+       "Mix": 0.35
+      }
+     }
+    }
+   ]
+  }
+ },
+ {
+  "when": "2026-11-22T14:49:23",
+  "verdict": "tuned",
+  "note": "level-matched snapshots by measurement",
+  "who": "",
+  "spec": {
+   "name": "Hendrix-ish",
+   "device": "helix_lt",
+   "tempo": 100,
+   "notes": "Hendrix-style rig in his order: Vox wah, Fuzz Face, Octavia, Uni-Vibe, jumped Plexi, greenbacks. Snapshots are the four standing sounds (Clean, Crunch, Lead, Ambient) and change the amp, levels and effect mixes only; every stomp stays as the foot left it. Clean is the Plexi with the drives pulled back, as when the guitar volume comes down. Ambient switches in its own long reverb. Cab is a 57 with a 121 ribbon beside it for body (measured: about 2 dB more below 1 kHz, top unchanged). Bass is pulled well back from the model's default of 9.0. Built for the Powercab in flat mode. Not yet heard on the unit.",
+   "chain": [
+    {
+     "id": "wah",
+     "model": "UK Wah 846",
+     "enabled": false,
+     "stays": true
+    },
+    {
+     "id": "fuzz",
+     "model": "Arbitrator Fuzz",
+     "enabled": false,
+     "footswitch": 8,
+     "stays": true,
+     "params": {
+      "Fuzz": 0.7,
+      "Level": 0.45
+     }
+    },
+    {
+     "id": "octave",
+     "model": "Tycoctavia Fuzz",
+     "enabled": false,
+     "footswitch": 2,
+     "stays": true,
+     "params": {
+      "Fuzz": 0.6,
+      "Level": 0.5
+     }
+    },
+    {
+     "id": "vibe",
+     "model": "Ubiquitous Vibe",
+     "enabled": false,
+     "footswitch": 9,
+     "stays": true,
+     "params": {
+      "Rate": 0.33,
+      "Intensity": 0.8,
+      "Mix": 0.5
+     }
+    },
+    {
+     "id": "vol",
+     "model": "Volume",
+     "stays": true
+    },
+    {
+     "id": "amp",
+     "model": "Brit Plexi Jump",
+     "params": {
+      "BrtDrive": 0.27,
+      "NrmDrive": 0.2,
+      "Bass": 0.5,
+      "Mid": 0.8,
+      "Treble": 0.65,
+      "Presence": 0.6,
+      "ChVol": 0.6,
+      "Sag": 0.6
+     }
+    },
+    {
+     "id": "cab",
+     "model": "4x12 Greenback 25",
+     "params": {
+      "Mic": "57 Dynamic",
+      "HighCut": 7500,
+      "LowCut": 85
+     },
+     "dual": {
+      "model": "4x12 Greenback 25",
+      "params": {
+       "Mic": "121 Ribbon",
+       "HighCut": 7500,
+       "LowCut": 85
+      }
+     }
+    },
+    {
+     "id": "echo",
+     "model": "Transistor Tape",
+     "enabled": false,
+     "footswitch": 10,
+     "stays": true,
+     "trails": true,
+     "params": {
+      "Time": 0.36,
+      "Feedback": 0.3,
+      "Mix": 0.22
+     }
+    },
+    {
+     "id": "verb",
+     "model": "Plate",
+     "footswitch": 11,
+     "stays": true,
+     "trails": true,
+     "params": {
+      "Decay": 0.35,
+      "Mix": 0.15
+     }
+    },
+    {
+     "id": "space",
+     "model": "Glitz",
+     "enabled": false,
+     "trails": true,
+     "params": {
+      "Decay": 0.7,
+      "Mix": 0.3,
+      "HighCut": 6000
+     }
+    }
+   ],
+   "snapshots": [
+    {
+     "name": "Clean",
+     "colour": "turquoise",
+     "set": {
+      "amp": {
+       "BrtDrive": 0.15,
+       "NrmDrive": 0.1,
+       "ChVol": 0.9997
+      }
+     }
+    },
+    {
+     "name": "Crunch",
+     "colour": "light orange",
+     "set": {
+      "amp": {
+       "BrtDrive": 0.27,
+       "NrmDrive": 0.2,
+       "ChVol": 0.8249
+      }
+     }
+    },
+    {
+     "name": "Lead",
+     "colour": "red",
+     "set": {
+      "amp": {
+       "BrtDrive": 0.78,
+       "NrmDrive": 0.62,
+       "ChVol": 0.8881
+      },
+      "echo": {
+       "Mix": 0.18
+      }
+     }
+    },
+    {
+     "name": "Ambient",
+     "colour": "violet",
+     "on": [
+      "space"
+     ],
+     "set": {
+      "amp": {
+       "BrtDrive": 0.15,
+       "NrmDrive": 0.1,
+       "ChVol": 0.9994
+      },
+      "echo": {
+       "Mix": 0.35
+      }
+     }
+    }
+   ]
+  }
+ },
+ {
+  "when": "2026-11-22T15:10:27",
+  "verdict": "tuned",
+  "note": "drive stomps set to lift by 1.5 dB, by measurement",
+  "who": "",
+  "spec": {
+   "name": "Hendrix-ish",
+   "device": "helix_lt",
+   "tempo": 100,
+   "notes": "Hendrix-style rig in his order: Vox wah, Fuzz Face, Octavia, Uni-Vibe, jumped Plexi, greenbacks. Snapshots are the four standing sounds (Clean, Crunch, Lead, Ambient) and change the amp, levels and effect mixes only; every stomp stays as the foot left it. Clean is the Plexi with the drives pulled back, as when the guitar volume comes down. Ambient switches in its own long reverb. Cab is a 57 with a 121 ribbon beside it for body (measured: about 2 dB more below 1 kHz, top unchanged). Bass is pulled well back from the model's default of 9.0. Built for the Powercab in flat mode. Not yet heard on the unit.",
+   "chain": [
+    {
+     "id": "wah",
+     "model": "UK Wah 846",
+     "enabled": false,
+     "stays": true
+    },
+    {
+     "id": "fuzz",
+     "model": "Arbitrator Fuzz",
+     "enabled": false,
+     "footswitch": 8,
+     "stays": true,
+     "params": {
+      "Fuzz": 0.7,
+      "Level": 0.45
+     }
+    },
+    {
+     "id": "octave",
+     "model": "Tycoctavia Fuzz",
+     "enabled": false,
+     "footswitch": 2,
+     "stays": true,
+     "params": {
+      "Fuzz": 0.6,
+      "Level": 0.5
+     }
+    },
+    {
+     "id": "vibe",
+     "model": "Ubiquitous Vibe",
+     "enabled": false,
+     "footswitch": 9,
+     "stays": true,
+     "params": {
+      "Rate": 0.33,
+      "Intensity": 0.8,
+      "Mix": 0.5
+     }
+    },
+    {
+     "id": "vol",
+     "model": "Volume",
+     "stays": true
+    },
+    {
+     "id": "amp",
+     "model": "Brit Plexi Jump",
+     "params": {
+      "BrtDrive": 0.27,
+      "NrmDrive": 0.2,
+      "Bass": 0.5,
+      "Mid": 0.8,
+      "Treble": 0.65,
+      "Presence": 0.6,
+      "ChVol": 0.6,
+      "Sag": 0.6
+     }
+    },
+    {
+     "id": "cab",
+     "model": "4x12 Greenback 25",
+     "params": {
+      "Mic": "57 Dynamic",
+      "HighCut": 7500,
+      "LowCut": 85
+     },
+     "dual": {
+      "model": "4x12 Greenback 25",
+      "params": {
+       "Mic": "121 Ribbon",
+       "HighCut": 7500,
+       "LowCut": 85
+      }
+     }
+    },
+    {
+     "id": "trim",
+     "model": "Gain"
+    },
+    {
+     "id": "echo",
+     "model": "Transistor Tape",
+     "enabled": false,
+     "footswitch": 10,
+     "stays": true,
+     "trails": true,
+     "params": {
+      "Time": 0.36,
+      "Feedback": 0.3,
+      "Mix": 0.22
+     }
+    },
+    {
+     "id": "verb",
+     "model": "Plate",
+     "footswitch": 11,
+     "stays": true,
+     "trails": true,
+     "params": {
+      "Decay": 0.35,
+      "Mix": 0.15
+     }
+    },
+    {
+     "id": "space",
+     "model": "Glitz",
+     "enabled": false,
+     "trails": true,
+     "params": {
+      "Decay": 0.7,
+      "Mix": 0.3,
+      "HighCut": 6000
+     }
+    }
+   ],
+   "snapshots": [
+    {
+     "name": "Clean",
+     "colour": "turquoise",
+     "set": {
+      "amp": {
+       "BrtDrive": 0.17,
+       "NrmDrive": 0.12,
+       "ChVol": 0.9999
+      }
+     }
+    },
+    {
+     "name": "Crunch",
+     "colour": "light orange",
+     "set": {
+      "amp": {
+       "BrtDrive": 0.27,
+       "NrmDrive": 0.2,
+       "ChVol": 0.8249
+      }
+     }
+    },
+    {
+     "name": "Lead",
+     "colour": "red",
+     "set": {
+      "amp": {
+       "BrtDrive": 0.78,
+       "NrmDrive": 0.62,
+       "ChVol": 0.8881
+      },
+      "echo": {
+       "Mix": 0.18
+      }
+     }
+    },
+    {
+     "name": "Ambient",
+     "colour": "violet",
+     "on": [
+      "space"
+     ],
+     "set": {
+      "amp": {
+       "BrtDrive": 0.17,
+       "NrmDrive": 0.12,
+       "ChVol": 0.9999
+      },
+      "echo": {
+       "Mix": 0.35
+      }
+     }
+    }
+   ]
+  }
+ },
+ {
+  "when": "2026-11-22T15:13:32",
+  "verdict": "tuned",
+  "note": "level-matched snapshots by measurement",
+  "who": "",
+  "spec": {
+   "name": "Hendrix-ish",
+   "device": "helix_lt",
+   "tempo": 100,
+   "notes": "Hendrix-style rig in his order: Vox wah, Fuzz Face, Octavia, Uni-Vibe, jumped Plexi, greenbacks. Snapshots are the four standing sounds (Clean, Crunch, Lead, Ambient) and change the amp, levels and effect mixes only; every stomp stays as the foot left it. Clean is the Plexi with the drives pulled back, as when the guitar volume comes down. Ambient switches in its own long reverb. Cab is a 57 with a 121 ribbon beside it for body (measured: about 2 dB more below 1 kHz, top unchanged). Bass is pulled well back from the model's default of 9.0. Built for the Powercab in flat mode. Not yet heard on the unit.",
+   "chain": [
+    {
+     "id": "wah",
+     "model": "UK Wah 846",
+     "enabled": false,
+     "stays": true
+    },
+    {
+     "id": "fuzz",
+     "model": "Arbitrator Fuzz",
+     "enabled": false,
+     "footswitch": 8,
+     "stays": true,
+     "params": {
+      "Fuzz": 0.7,
+      "Level": 0.45
+     }
+    },
+    {
+     "id": "octave",
+     "model": "Tycoctavia Fuzz",
+     "enabled": false,
+     "footswitch": 2,
+     "stays": true,
+     "params": {
+      "Fuzz": 0.6,
+      "Level": 0.5
+     }
+    },
+    {
+     "id": "vibe",
+     "model": "Ubiquitous Vibe",
+     "enabled": false,
+     "footswitch": 9,
+     "stays": true,
+     "params": {
+      "Rate": 0.33,
+      "Intensity": 0.8,
+      "Mix": 0.5
+     }
+    },
+    {
+     "id": "vol",
+     "model": "Volume",
+     "stays": true
+    },
+    {
+     "id": "amp",
+     "model": "Brit Plexi Jump",
+     "params": {
+      "BrtDrive": 0.27,
+      "NrmDrive": 0.2,
+      "Bass": 0.5,
+      "Mid": 0.8,
+      "Treble": 0.65,
+      "Presence": 0.6,
+      "ChVol": 0.6,
+      "Sag": 0.6
+     }
+    },
+    {
+     "id": "cab",
+     "model": "4x12 Greenback 25",
+     "params": {
+      "Mic": "57 Dynamic",
+      "HighCut": 7500,
+      "LowCut": 85
+     },
+     "dual": {
+      "model": "4x12 Greenback 25",
+      "params": {
+       "Mic": "121 Ribbon",
+       "HighCut": 7500,
+       "LowCut": 85
+      }
+     }
+    },
+    {
+     "id": "trim",
+     "model": "Gain"
+    },
+    {
+     "id": "echo",
+     "model": "Transistor Tape",
+     "enabled": false,
+     "footswitch": 10,
+     "stays": true,
+     "trails": true,
+     "params": {
+      "Time": 0.36,
+      "Feedback": 0.3,
+      "Mix": 0.22
+     }
+    },
+    {
+     "id": "verb",
+     "model": "Plate",
+     "footswitch": 11,
+     "stays": true,
+     "trails": true,
+     "params": {
+      "Decay": 0.35,
+      "Mix": 0.15
+     }
+    },
+    {
+     "id": "space",
+     "model": "Glitz",
+     "enabled": false,
+     "trails": true,
+     "params": {
+      "Decay": 0.7,
+      "Mix": 0.3,
+      "HighCut": 6000
+     }
+    }
+   ],
+   "snapshots": [
+    {
+     "name": "Clean",
+     "colour": "turquoise",
+     "set": {
+      "amp": {
+       "BrtDrive": 0.17,
+       "NrmDrive": 0.12,
+       "ChVol": 0.9999
+      }
+     }
+    },
+    {
+     "name": "Crunch",
+     "colour": "light orange",
+     "set": {
+      "amp": {
+       "BrtDrive": 0.27,
+       "NrmDrive": 0.2,
+       "ChVol": 0.8249
+      }
+     }
+    },
+    {
+     "name": "Lead",
+     "colour": "red",
+     "set": {
+      "amp": {
+       "BrtDrive": 0.78,
+       "NrmDrive": 0.62,
+       "ChVol": 0.8881
+      },
+      "echo": {
+       "Mix": 0.18
+      }
+     }
+    },
+    {
+     "name": "Ambient",
+     "colour": "violet",
+     "on": [
+      "space"
+     ],
+     "set": {
+      "amp": {
+       "BrtDrive": 0.17,
+       "NrmDrive": 0.12,
+       "ChVol": 0.9999
+      },
+      "echo": {
+       "Mix": 0.35
+      }
+     }
+    }
+   ]
+  }
  }
 ]
