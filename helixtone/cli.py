@@ -208,6 +208,72 @@ def cmd_measure(a) -> int:
     return 0
 
 
+def _atlas_or_stop(atlasmod):
+    data = atlasmod.load()
+    if not data["entries"]:
+        raise SystemExit("the atlas is empty: run `python -m helixtone atlas measure` first (about an hour, unattended)")
+    return data
+
+
+def cmd_atlas(a) -> int:
+    from . import atlas as atlasmod, audio
+    if a.what == "measure":
+        r = _renderer(a)
+        data = atlasmod.measure(r)
+        print(f"  {len(data['entries'])} measured, {len(data['failed'])} failed")
+        for key, why in data["failed"].items():
+            print(f"   - {key}: {why}")
+        return 0
+    data = _atlas_or_stop(atlasmod)
+    if a.what == "gain":
+        for crest, name in atlasmod.gain_ranking(data):
+            print(f"  crest {crest:5.1f} dB  {name}")
+        return 0
+    if not a.ref:
+        raise SystemExit("atlas nearest needs a recording")
+    x, sr = audio.read_wav(a.ref)
+    for row in atlasmod.nearest(data, audio.features(x, sr), a.count):
+        print(f"  {row['distance']:5.2f}  {row['amp']} ({row['setting']} drive) + {row['cab']}")
+    print("  predicted from separate measurements of amp and cab: a shortlist to render, not a result")
+    return 0
+
+
+def cmd_auto(a) -> int:
+    from . import atlas as atlasmod, audio, auto, history, tune
+    data = _atlas_or_stop(atlasmod)
+    x, sr = audio.read_wav(a.ref)
+    target = audio.features(x, sr)
+    r = _renderer(a)
+    di, _ = _di(a)
+    name = a.name or os.path.splitext(os.path.basename(a.out))[0].replace("-", " ").title()
+    spec, report = auto.match_recording(target, r, data, di, name=name, shortlist=a.shortlist, refine=a.refine)
+    spec["notes"] = (f"Built by `helixtone auto` toward {os.path.basename(a.ref)}: {report['amp']} + {report['cab']}, "
+                     f"distance {report['distance']} after {report['renders']} renders. Matched on balance and dynamics only; not yet heard.")
+    with open(a.out, "w", encoding="utf-8") as fh:
+        json.dump(spec, fh, indent=2)
+        fh.write("\n")
+    res = buildmod.build(spec)
+    out = os.path.splitext(a.out)[0] + res.device.extension
+    with open(out, "w", encoding="utf-8") as fh:
+        json.dump(res.preset, fh, indent=1)
+    history.record(a.out, spec, "tuned", spec["notes"])
+    print(f"  {report['amp']} + {report['cab']}: distance {report['distance']} in {report['seconds']:.0f} s ({report['renders']} renders)")
+    for line in report["remaining"]:
+        print("   -", line)
+    print(f"  wrote {a.out} and {out}")
+    return 0
+
+
+def cmd_bench(a) -> int:
+    from . import atlas as atlasmod, auto
+    data = _atlas_or_stop(atlasmod)
+    r = _renderer(a)
+    res = auto.bench(r, data, count=a.count, seed=a.seed, label=a.label, log=auto.BENCH_LOG if r.is_real else None)
+    print(f"  mean distance {res['mean_distance']}, worst {res['worst_distance']}, {res['mean_seconds']:.0f} s each, "
+          f"same amp found {res['same_amp']} of {res['count']}")
+    return 0
+
+
 def cmd_signal(a) -> int:
     from . import audio
     audio.write_wav(a.out, audio.test_signal())
@@ -377,6 +443,32 @@ def main(argv=None) -> int:
     s.add_argument("--snapshot", type=int, default=1, help="match: which snapshot to tune (1-based)")
     s.add_argument("--write", action="store_true", help="save the tuned spec and rebuild the preset")
     s.set_defaults(fn=cmd_tune)
+
+    s = sub.add_parser("atlas", help="what every amp, cab and drive measures like through the renderer")
+    s.add_argument("what", choices=["measure", "gain", "nearest"],
+                   help="measure: fill in what is missing (resumable, about an hour from empty); "
+                        "gain: amps from cleanest to most saturated; nearest: amp and cab pairs closest to a recording")
+    s.add_argument("ref", nargs="?", help="nearest: the recording to aim at")
+    s.add_argument("-r", "--renderer", default="native", choices=["native", "sim"])
+    s.add_argument("-n", "--count", type=int, default=10)
+    s.set_defaults(fn=cmd_atlas)
+
+    s = sub.add_parser("auto", help="build a tone toward a recording with nobody listening (needs the atlas)")
+    s.add_argument("ref", help="a recording of the sound wanted, ideally the guitar alone")
+    s.add_argument("out", help="where to write the spec, e.g. tones/daniel-lt/name.json")
+    s.add_argument("--name", help="preset name (default: from the file name)")
+    s.add_argument("--di", help="dry guitar recording to play through candidates (default reference/di.wav, else a test signal)")
+    s.add_argument("-r", "--renderer", default="native", choices=["native", "sim"])
+    s.add_argument("--shortlist", type=int, default=8, help="pairs to render before choosing")
+    s.add_argument("--refine", type=int, default=2, help="how many of the best to tune by moving controls")
+    s.set_defaults(fn=cmd_auto)
+
+    s = sub.add_parser("bench", help="score the auto loop: hide presets, match them from audio alone, record how close it gets")
+    s.add_argument("-n", "--count", type=int, default=5)
+    s.add_argument("--seed", type=int, default=1)
+    s.add_argument("--label", default="", help="what changed since the last run")
+    s.add_argument("-r", "--renderer", default="native", choices=["native", "sim"])
+    s.set_defaults(fn=cmd_bench)
 
     s = sub.add_parser("note", help="record what was heard about a tone")
     s.add_argument("spec")

@@ -192,7 +192,8 @@ class PodGoBuild(unittest.TestCase):
 
 class ShippedTones(unittest.TestCase):
     def test_every_spec_in_tones_builds(self):
-        specs = sorted(glob.glob(os.path.join(ROOT, "tones", "**", "*.json"), recursive=True))
+        specs = sorted(p for p in glob.glob(os.path.join(ROOT, "tones", "**", "*.json"), recursive=True)
+                       if not p.endswith(".history.json"))     # the record tuning keeps beside a spec
         self.assertTrue(specs)
         for path in specs:
             with self.subTest(os.path.basename(path)):
