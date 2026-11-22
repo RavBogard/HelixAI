@@ -21,6 +21,23 @@ python -m helixtone inspect reference/MyPreset.hlx  # read a preset you already 
 
 Needs Python 3.10 or newer and nothing else.
 
+## Tuning by measurement
+
+```
+python -m helixtone tune measure tones/daniel-lt/hendrix.json     # loudness and balance of each snapshot
+python -m helixtone tune level tones/daniel-lt/hendrix.json --offset "Octave Ld=2" --write
+python -m helixtone tune match <spec> --ref target.wav --write    # move amp and cab controls toward a recording
+python -m helixtone note <spec> --verdict change "too bright"     # record what you heard
+python -m helixtone learn reference                               # what your own presets favour
+```
+
+These need `numpy` and a renderer that turns a preset into audio. The Helix
+Native renderer is the intended one and is **not finished**: getting a preset
+into the plugin from a script has to be worked out on a machine that has it.
+`.claude/skills/helix-tone/references/native-setup.md` is that job, written
+for a Claude Code session on your PC. Until then `-r sim` runs the same code on
+a crude stand-in, for testing only.
+
 ## What is in here
 
 | Path | What |
@@ -38,9 +55,10 @@ Needs Python 3.10 or newer and nothing else.
   presets (44 with parallel paths, 57 with dual cabs) and 52 real POD Go
   presets from their own settings and comparing every block. That is strong evidence the files are well-formed. No file from
   this tool has been loaded on a unit yet; the first import is the real test.
-- **Sound:** nothing here can listen. A new preset is a first draft from gear
-  knowledge and Line 6's factory settings. Expect to adjust by ear and tell
-  Claude what you heard.
+- **Sound:** until the Helix Native renderer is finished, a new preset is an
+  unmeasured first draft from gear knowledge and Line 6's factory settings.
+  Once it is, levels and balance are measured; whether you like it is still
+  yours to say.
 - **POD Go snapshots that change a control** (not just on/off) rely on one
   value taken from USB captures rather than from a preset file. The build
   prints a note when a preset uses it.
@@ -48,7 +66,7 @@ Needs Python 3.10 or newer and nothing else.
 ## Not built yet
 
 Impulse responses, Helix send/return blocks, command switches, a second
-instrument on its own path, and measuring audio through Helix Native
-(`tools/native_probe.py` is the first step).
+instrument on its own path, and loading presets into Helix Native from a
+script (see above).
 
 Data sources and licences are in [NOTICE.md](NOTICE.md).

@@ -44,15 +44,45 @@ Run everything from the repository root with `python -m helixtone`.
    `rig/taste.md` saying what was changed and why. That file is how the next
    tone starts closer.
 
+## Working without the player in the room
+
+The aim is to hand over a preset that is already close, not to make the player
+sit through every adjustment. What can be done unattended, and what cannot:
+
+- **Check `rig/rig.md` for whether the Helix Native loop is working.** If it
+  is not, the first job on a machine that has Helix Native is
+  `references/native-setup.md`. Until then every preset is an unmeasured draft.
+- **With a working renderer**, after building any tone:
+  1. `helixtone tune measure <spec>` and read the numbers. A snapshot that
+     clips, or is far louder or quieter than the rest, is a defect: fix it.
+  2. `helixtone tune level <spec> --write`, with `--offset "<lead>=2"` for
+     snapshots meant to be louder. Do this for every tone, every time.
+  3. If there is a recording to aim at (an isolated guitar part, or a preset
+     the player already likes rendered through the same input),
+     `helixtone tune match <spec> --ref <wav> --write` moves the amp and cab
+     controls toward its balance. Read what it moved: a control driven to its
+     limit means the amp or cab choice is wrong, not the setting.
+- **Never keep numbers from the stand-in renderer** (`-r sim`). It exists to
+  test the tuning code.
+- **A closer measurement is not a better tone.** Matching balance and dynamics
+  gets a preset into the right neighbourhood. Feel, the way an amp cleans up,
+  and whether the player likes it are theirs to judge.
+- **Record everything.** `helixtone note <spec> --verdict keep|change|reject
+  "<what they said>"` after any feedback, and `--verdict loaded` or `failed`
+  after a first import. `helixtone history` shows what has been tried;
+  `helixtone learn reference` shows what the player's own presets favour. Read
+  both before designing a new tone.
+
 ## Rules that are not negotiable
 
 - **Never invent a model id, a control name or a value range.** If `search`
   does not find it, it is not on the device; say so and offer the nearest thing.
 - **Values are in the file's units, not the knob's.** Most knobs are 0..1 for
   0..10 on the device; `show` says which unit each control uses.
-- **Nothing here has been heard.** No tool in this repository can listen. A
-  new preset is a first draft from knowledge and factory settings; say that
-  plainly, and never describe how it sounds as fact.
+- **Say what a preset has and has not been through.** Unmeasured: a first
+  draft from knowledge and factory settings. Measured: say what was measured
+  and with which renderer. Never describe how something sounds as fact; no
+  measurement here hears the way a person does.
 - **Loading is verified by format, not by device, until someone loads it.**
   The builder reproduces 185 Line 6 factory presets (44 with parallel paths,
   57 with dual cabs) and 52 real POD Go presets block for block, which is

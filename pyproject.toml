@@ -5,6 +5,11 @@ description = "Build Line 6 Helix LT and POD Go presets from plain tone specs"
 requires-python = ">=3.10"
 dependencies = []
 
+[project.optional-dependencies]
+# measuring and tuning; building presets needs nothing
+measure = ["numpy"]
+native = ["numpy", "pedalboard"]
+
 [project.scripts]
 helixtone = "helixtone.cli:main"
 

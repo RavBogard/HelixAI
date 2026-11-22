@@ -173,6 +173,158 @@ def cmd_inspect(a) -> int:
     return 0
 
 
+# ---------------------------------------------------------------- measuring
+
+def _di(a):
+    from . import audio
+    path = getattr(a, "di", None) or (os.path.join("reference", "di.wav") if os.path.exists(os.path.join("reference", "di.wav")) else None)
+    if path:
+        x, sr = audio.read_wav(path)
+        print(f"  input: {path}")
+        return audio.mono(x), sr
+    print("  input: built-in test signal (synthetic; put a real DI recording at reference/di.wav to use that)")
+    return audio.test_signal(), audio.SR
+
+
+def _show_features(label, f):
+    r = f["regions"]
+    print(f"  {label:<14} loudness {f['loudness_db']:6.1f} dB  peak {f['peak_db']:6.1f}  crest {f['crest_db']:5.1f}  "
+          f"centroid {f['centroid_hz']:6.0f} Hz  low {r['low']:5.1f}  mid {r['mid']:5.1f}  high {r['high']:5.1f}"
+          + ("  CLIPPED" if f["clipped"] else ""))
+
+
+def cmd_measure(a) -> int:
+    from . import audio
+    x, sr = audio.read_wav(a.file)
+    got = audio.features(x, sr)
+    _show_features(os.path.basename(a.file), got)
+    if a.against:
+        y, sr2 = audio.read_wav(a.against)
+        want = audio.features(y, sr2)
+        _show_features(os.path.basename(a.against), want)
+        print(f"  distance {audio.distance(got, want)} (0 is identical in balance and dynamics; level is ignored)")
+        for line in audio.describe_difference(got, want):
+            print("   -", line)
+    return 0
+
+
+def cmd_signal(a) -> int:
+    from . import audio
+    audio.write_wav(a.out, audio.test_signal())
+    print(f"wrote {a.out}")
+    return 0
+
+
+def _renderer(a):
+    from . import render
+    r = render.get(a.renderer, getattr(a, "folder", None))
+    print(f"  renderer: {r.name}")
+    if not r.is_real:
+        print("  NOTE: these numbers are from a stand-in, not the Helix. Use them to test the workflow, not to judge or keep a tone.")
+    return r
+
+
+def _save_tuned(a, path, before, after, what):
+    from . import history
+    if not a.write:
+        print("  (not written; add --write to keep these settings)")
+        return
+    history.record(path, before, "tuned", what)
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(after, fh, indent=2)
+        fh.write("\n")
+    res = buildmod.build(after)
+    out = os.path.splitext(path)[0] + res.device.extension
+    with open(out, "w", encoding="utf-8") as fh:
+        json.dump(res.preset, fh, indent=1)
+    print(f"  wrote {path} and {out}; the previous version is in {os.path.basename(history.path_for(path))}")
+
+
+def cmd_tune(a) -> int:
+    from . import audio, render, tune
+    spec = load_spec(a.spec)
+    try:
+        r = _renderer(a)
+        di, sr = _di(a)
+        if a.what == "measure":
+            ided = tune.with_ids(spec)
+            for snap, f in zip(ided["snapshots"], tune.measure(spec, r, di, sr)):
+                _show_features(snap["name"], f)
+            return 0
+        if a.what == "level":
+            offsets = {}
+            for item in a.offset or []:
+                name, _, db = item.rpartition("=")
+                offsets[name] = float(db)
+            new, report = tune.level_match(spec, r, di, sr, offsets)
+            for row in report:
+                flag = "" if row["reached"] else "   (did not reach the target)"
+                print(f"  {row['snapshot']:<10} {row['before_db']:6.1f} -> {row['after_db']:6.1f} dB (target {row['target_db']:.1f})"
+                      f"   {row['control']} {row['from']} -> {row['to']}{flag}")
+            _save_tuned(a, a.spec, spec, new, "level-matched snapshots by measurement" + ("" if r.is_real else " (stand-in renderer)"))
+            return 0
+        if a.what == "match":
+            if not a.ref:
+                print("match needs --ref <recording.wav> to aim at")
+                return 1
+            y, rsr = audio.read_wav(a.ref)
+            target = audio.features(y, rsr)
+            new, report = tune.match(spec, r, di, target, sr, a.knob or None, snapshot=a.snapshot - 1)
+            print(f"  distance {report['distance_before']} -> {report['distance_after']} in {report['renders']} renders")
+            for k, (was, now) in report["moved"].items():
+                print(f"    {k}: {was} -> {now}")
+            for line in report["remaining"]:
+                print("    still:", line)
+            _save_tuned(a, a.spec, spec, new, f"matched to {os.path.basename(a.ref)}: distance {report['distance_before']} -> {report['distance_after']}"
+                        + ("" if r.is_real else " (stand-in renderer)"))
+            return 0
+    except render.RendererUnavailable as exc:
+        print(f"cannot render: {exc}")
+        return 2
+    except (buildmod.BuildError, ValueError) as exc:
+        print(f"{a.spec}: {exc}")
+        return 1
+    return 1
+
+
+def cmd_note(a) -> int:
+    from . import history
+    spec = load_spec(a.spec)
+    history.record(a.spec, spec, a.verdict, " ".join(a.text), a.who or "")
+    print(f"recorded '{a.verdict}' for {a.spec} ({len(history.load(a.spec))} entries)")
+    return 0
+
+
+def cmd_history(a) -> int:
+    from . import history
+    rows = history.recent(a.root)
+    if not rows:
+        print("no history yet: record what you hear with `helixtone note <spec> --verdict ... <text>`")
+        return 0
+    for name, e in rows:
+        print(f"{e['when'][:16]}  {e['verdict']:<7} {name:<32} {e['note']}")
+    return 0
+
+
+def cmd_learn(a) -> int:
+    import glob
+    from . import history
+    files = [f for ext in ("hlx", "pgp", "hls") for f in glob.glob(os.path.join(a.dir, "**", f"*.{ext}"), recursive=True)]
+    h = history.habits(files)
+    if not h["presets"]:
+        print(f"no presets found in {a.dir}: export some you like from HX Edit or POD Go Edit and put them there")
+        return 1
+    print(f"{h['presets']} preset(s), typically {h['median_blocks']:g} blocks")
+    for c in ("amp", "cab", "drive", "comp", "mod", "delay", "reverb", "wah", "filter"):
+        if h["models"].get(c):
+            print(f"  {c:<7} " + ", ".join(f"{n} x{k}" for n, k in h["models"][c]))
+    if h["settings"]:
+        print("  where the controls usually sit (median) on models used more than once:")
+        for name, ctl in h["settings"].items():
+            print(f"    {name}: " + ", ".join(f"{k}={v:g}" for k, v in ctl.items()))
+    return 0
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="helixtone", description="Build Helix LT and POD Go presets from tone specs.")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -201,6 +353,45 @@ def main(argv=None) -> int:
     s.add_argument("--spec", action="store_true", help="print as a tone spec to edit")
     s.add_argument("-d", "--device", choices=sorted(catmod.DEVICE_FILES), help="target device for --spec")
     s.set_defaults(fn=cmd_inspect)
+
+    s = sub.add_parser("measure", help="measure a recording, optionally against a target recording")
+    s.add_argument("file")
+    s.add_argument("--against", help="a target .wav to compare with")
+    s.set_defaults(fn=cmd_measure)
+
+    s = sub.add_parser("signal", help="write the built-in test signal to a .wav")
+    s.add_argument("out")
+    s.set_defaults(fn=cmd_signal)
+
+    s = sub.add_parser("tune", help="adjust a tone by measurement (needs a renderer)")
+    s.add_argument("what", choices=["measure", "level", "match"],
+                   help="measure: show each snapshot's numbers; level: equalise snapshot loudness; "
+                        "match: move controls toward a reference recording")
+    s.add_argument("spec")
+    s.add_argument("-r", "--renderer", default="native", choices=["native", "folder", "sim"])
+    s.add_argument("--folder", help="hand-off folder for the folder renderer")
+    s.add_argument("--di", help="dry guitar recording to play through the preset (default reference/di.wav, else a test signal)")
+    s.add_argument("--offset", action="append", metavar="NAME=DB", help="level: make a snapshot this much louder than snapshot 1, e.g. Lead=2")
+    s.add_argument("--ref", help="match: the recording to aim at")
+    s.add_argument("--knob", action="append", metavar="BLOCK.CONTROL", help="match: a control to move (repeatable; default amp drive and tone, cab cuts)")
+    s.add_argument("--snapshot", type=int, default=1, help="match: which snapshot to tune (1-based)")
+    s.add_argument("--write", action="store_true", help="save the tuned spec and rebuild the preset")
+    s.set_defaults(fn=cmd_tune)
+
+    s = sub.add_parser("note", help="record what was heard about a tone")
+    s.add_argument("spec")
+    s.add_argument("text", nargs="*")
+    s.add_argument("--verdict", required=True, choices=["keep", "change", "reject", "loaded", "failed"])
+    s.add_argument("--who")
+    s.set_defaults(fn=cmd_note)
+
+    s = sub.add_parser("history", help="recent verdicts across all tones")
+    s.add_argument("root", nargs="?", default="tones")
+    s.set_defaults(fn=cmd_history)
+
+    s = sub.add_parser("learn", help="summarise the presets in a folder: favoured models and settings")
+    s.add_argument("dir", nargs="?", default="reference")
+    s.set_defaults(fn=cmd_learn)
 
     a = ap.parse_args(argv)
     return a.fn(a)

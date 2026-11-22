@@ -63,7 +63,14 @@ def main() -> int:
               f"contains 'L6Preset': {b'L6Preset' in state}")
         with open("native_state.bin", "wb") as fh:
             fh.write(state)
-        print("   saved to native_state.bin (send this back: it shows how a preset is stored)")
+        print("   saved to native_state.bin (it shows how a preset is stored)")
+        head = state[:64]
+        print("   first bytes:", head)
+        for marker, meaning in ((b"<?xml", "XML"), (b"VC2!", "JUCE wrapper"), (b"{", "JSON text"),
+                                (b"\x78\x9c", "zlib stream"), (b"\x78\xda", "zlib stream"), (b"eJ", "base64 of zlib")):
+            at = state.find(marker)
+            if at >= 0:
+                print(f"   looks like {meaning} at byte {at}")
 
     sr = 48000
     t = np.arange(sr) / sr
