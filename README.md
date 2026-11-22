@@ -1,36 +1,54 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# helixtone
 
-## Getting Started
+Describe a guitar sound, get a preset for a Line 6 **Helix LT** or **POD Go**.
 
-First, run the development server:
+It is built to be driven by Claude: you say what you want ("something U2-like
+with a wah", "Fender amp, filters, funky for David's Jazzmaster"), Claude
+writes a small tone spec, and `helixtone` turns that into a `.hlx` or `.pgp`
+you import with HX Edit or POD Go Edit.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Use it
+
+Open this folder in Claude Code and ask for a tone. The `helix-tone` skill
+does the rest. By hand:
+
+```
+python -m helixtone search fender deluxe            # find models by name or the gear they copy
+python -m helixtone show "US Deluxe Vib" -d pod_go  # controls, ranges, Line 6's own settings
+python -m helixtone build tones/daniel-lt/edge-wah.json
+python -m helixtone inspect reference/MyPreset.hlx  # read a preset you already have
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Needs Python 3.10 or newer and nothing else.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## What is in here
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Path | What |
+| --- | --- |
+| `helixtone/` | the engine: catalogs, spec checks, the builders, a preset reader |
+| `tones/` | specs and the presets built from them, one folder per player and device |
+| `rig/` | who plays what into what, and what they have said about past tones |
+| `reference/` | your own exported presets (not committed) |
+| `.claude/skills/helix-tone/` | how Claude goes from a description to a spec |
+| `tools/` | rebuilding the data, and the first Helix Native experiment |
 
-## Learn More
+## How far to trust a preset
 
-To learn more about Next.js, take a look at the following resources:
+- **Structure:** the builder was checked by rebuilding 93 Line 6 factory
+  presets and 52 real POD Go presets from their own settings and comparing
+  every block. That is strong evidence the files are well-formed. No file from
+  this tool has been loaded on a unit yet; the first import is the real test.
+- **Sound:** nothing here can listen. A new preset is a first draft from gear
+  knowledge and Line 6's factory settings. Expect to adjust by ear and tell
+  Claude what you heard.
+- **POD Go snapshots that change a control** (not just on/off) rely on one
+  value taken from USB captures rather than from a preset file. The build
+  prints a note when a preset uses it.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Not built yet
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Parallel paths, dual cabs, impulse responses, Helix send/return blocks,
+command and momentary switches, and measuring audio through Helix Native
+(`tools/native_probe.py` is the first step).
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Data sources and licences are in [NOTICE.md](NOTICE.md).
