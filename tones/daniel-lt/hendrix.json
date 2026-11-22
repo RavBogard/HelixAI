@@ -93,7 +93,12 @@
       "colour": "violet",
       "on": [
         "vibe"
-      ]
+      ],
+      "set": {
+        "amp": {
+          "ChVol": 0.6833
+        }
+      }
     },
     {
       "name": "Fuzz",
@@ -103,7 +108,7 @@
       ],
       "set": {
         "amp": {
-          "ChVol": 0.55
+          "ChVol": 0.7195
         }
       }
     },
@@ -116,7 +121,7 @@
       ],
       "set": {
         "amp": {
-          "ChVol": 0.58
+          "ChVol": 0.728
         }
       }
     }

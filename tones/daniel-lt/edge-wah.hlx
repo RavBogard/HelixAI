@@ -7,7 +7,7 @@
    "application": "HX Edit",
    "appversion": 58720256,
    "build_sha": "",
-   "modifieddate": 1795364487,
+   "modifieddate": 1795370306,
    "name": "Edge-ish + Wah"
   },
   "tone": {
@@ -536,6 +536,10 @@
        }
       },
       "block4": {
+       "ChVol": {
+        "@fs_enabled": false,
+        "@value": 0.8
+       },
        "Drive": {
         "@fs_enabled": false,
         "@value": 0.45
@@ -586,6 +590,10 @@
        }
       },
       "block4": {
+       "ChVol": {
+        "@fs_enabled": false,
+        "@value": 0.7925
+       },
        "Drive": {
         "@fs_enabled": false,
         "@value": 0.45
@@ -636,6 +644,10 @@
        }
       },
       "block4": {
+       "ChVol": {
+        "@fs_enabled": false,
+        "@value": 0.7287
+       },
        "Drive": {
         "@fs_enabled": false,
         "@value": 0.55
@@ -686,6 +698,10 @@
        }
       },
       "block4": {
+       "ChVol": {
+        "@fs_enabled": false,
+        "@value": 0.7251
+       },
        "Drive": {
         "@fs_enabled": false,
         "@value": 0.55
@@ -749,6 +765,12 @@
       }
      },
      "block4": {
+      "ChVol": {
+       "@controller": 19,
+       "@max": 1,
+       "@min": 0,
+       "@snapshot_disable": false
+      },
       "Drive": {
        "@controller": 19,
        "@max": 1,

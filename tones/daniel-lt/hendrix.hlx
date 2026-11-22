@@ -7,7 +7,7 @@
    "application": "HX Edit",
    "appversion": 58720256,
    "build_sha": "",
-   "modifieddate": 1795364487,
+   "modifieddate": 1795370171,
    "name": "Hendrix-ish"
   },
   "tone": {
@@ -554,7 +554,7 @@
        },
        "ChVol": {
         "@fs_enabled": false,
-        "@value": 0.6
+        "@value": 0.6833
        }
       }
      }
@@ -603,7 +603,7 @@
        },
        "ChVol": {
         "@fs_enabled": false,
-        "@value": 0.55
+        "@value": 0.7195
        }
       }
      }
@@ -652,7 +652,7 @@
        },
        "ChVol": {
         "@fs_enabled": false,
-        "@value": 0.58
+        "@value": 0.728
        }
       }
      }
