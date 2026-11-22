@@ -1,0 +1,20 @@
+[project]
+name = "helixtone"
+version = "0.1.0"
+description = "Build Line 6 Helix LT and POD Go presets from plain tone specs"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+# measuring and tuning; building presets needs nothing
+measure = ["numpy"]
+native = ["numpy", "pedalboard", "pywin32"]
+
+[project.scripts]
+helixtone = "helixtone.cli:main"
+
+[tool.setuptools]
+packages = ["helixtone"]
+
+[tool.setuptools.package-data]
+helixtone = ["data/*.gz"]

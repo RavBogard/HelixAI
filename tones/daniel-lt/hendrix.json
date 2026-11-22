@@ -1,0 +1,129 @@
+{
+  "name": "Hendrix-ish",
+  "device": "helix_lt",
+  "tempo": 100,
+  "notes": "Hendrix-style rig in his order: Vox wah, Fuzz Face, Octavia, Uni-Vibe, jumped Plexi, greenbacks. The amp is set to clean up when the guitar volume comes down. Bass is pulled well back from the model's default of 9.0. Wah and volume share the pedal (toe switch swaps them). Built for the Powercab in flat mode. First draft, not yet heard on the unit.",
+  "chain": [
+    {
+      "id": "wah",
+      "model": "UK Wah 846",
+      "enabled": false
+    },
+    {
+      "id": "fuzz",
+      "model": "Arbitrator Fuzz",
+      "enabled": false,
+      "footswitch": 8,
+      "params": {
+        "Fuzz": 0.7,
+        "Level": 0.45
+      }
+    },
+    {
+      "id": "octave",
+      "model": "Tycoctavia Fuzz",
+      "enabled": false,
+      "footswitch": 9,
+      "params": {
+        "Fuzz": 0.6,
+        "Level": 0.5
+      }
+    },
+    {
+      "id": "vibe",
+      "model": "Ubiquitous Vibe",
+      "enabled": false,
+      "footswitch": 10,
+      "params": {
+        "Rate": 0.33,
+        "Intensity": 0.8,
+        "Mix": 0.5
+      }
+    },
+    {
+      "id": "vol",
+      "model": "Volume"
+    },
+    {
+      "id": "amp",
+      "model": "Brit Plexi Jump",
+      "params": {
+        "BrtDrive": 0.6,
+        "NrmDrive": 0.5,
+        "Bass": 0.5,
+        "Mid": 0.8,
+        "Treble": 0.65,
+        "Presence": 0.6,
+        "ChVol": 0.6,
+        "Sag": 0.6
+      }
+    },
+    {
+      "id": "cab",
+      "model": "4x12 Greenback 25",
+      "params": {
+        "HighCut": 9000,
+        "LowCut": 80
+      }
+    },
+    {
+      "id": "verb",
+      "model": "Plate",
+      "footswitch": 11,
+      "params": {
+        "Decay": 0.35,
+        "Mix": 0.15
+      }
+    }
+  ],
+  "snapshots": [
+    {
+      "name": "Little Wng",
+      "colour": "turquoise",
+      "set": {
+        "amp": {
+          "BrtDrive": 0.38,
+          "NrmDrive": 0.3,
+          "ChVol": 0.7
+        }
+      }
+    },
+    {
+      "name": "Vibe",
+      "colour": "violet",
+      "on": [
+        "vibe"
+      ],
+      "set": {
+        "amp": {
+          "ChVol": 0.6833
+        }
+      }
+    },
+    {
+      "name": "Fuzz",
+      "colour": "light orange",
+      "on": [
+        "fuzz"
+      ],
+      "set": {
+        "amp": {
+          "ChVol": 0.7195
+        }
+      }
+    },
+    {
+      "name": "Octave Ld",
+      "colour": "red",
+      "on": [
+        "fuzz",
+        "octave"
+      ],
+      "set": {
+        "amp": {
+          "ChVol": 0.728
+        }
+      }
+    }
+  ]
+}

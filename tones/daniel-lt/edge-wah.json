@@ -1,0 +1,142 @@
+{
+  "name": "Edge-ish + Wah",
+  "device": "helix_lt",
+  "tempo": 120,
+  "notes": "U2-style chime: AC30 top boost on the edge of breakup, compressor, dotted-eighth delay that follows tap tempo, shimmer on a switch, wah and volume on the pedal (toe switch swaps them). Built for the Powercab in flat mode, so it has a cab block. First draft, not yet heard on the unit.",
+  "chain": [
+    {
+      "id": "wah",
+      "model": "Fassel",
+      "enabled": false
+    },
+    {
+      "id": "vol",
+      "model": "Volume"
+    },
+    {
+      "id": "comp",
+      "model": "Deluxe Comp",
+      "params": {
+        "Threshold": -30,
+        "Ratio": 2,
+        "Level": 3,
+        "Mix": 0.75
+      }
+    },
+    {
+      "id": "push",
+      "model": "Minotaur",
+      "enabled": false,
+      "footswitch": 9,
+      "params": {
+        "Gain": 0.25,
+        "Tone": 0.5,
+        "Level": 0.68
+      }
+    },
+    {
+      "id": "amp",
+      "model": "Essex A30",
+      "params": {
+        "Drive": 0.45,
+        "Bass": 0.4,
+        "Treble": 0.6,
+        "Cut": 0.56,
+        "ChVol": 0.8
+      }
+    },
+    {
+      "id": "cab",
+      "model": "2x12 Blue Bell",
+      "params": {
+        "HighCut": 9000,
+        "LowCut": 90
+      }
+    },
+    {
+      "id": "dly",
+      "model": "HD2_DelayVintageDigitalV2",
+      "footswitch": 10,
+      "params": {
+        "Feedback": 0.35,
+        "Mix": 0.3,
+        "Depth": 0.2,
+        "TempoSync1": true,
+        "SyncSelect1": "1/8 Dotted"
+      }
+    },
+    {
+      "id": "shimmer",
+      "model": "Plateaux",
+      "enabled": false,
+      "footswitch": 11,
+      "params": {
+        "Decay": 0.55,
+        "Mix": 0.25,
+        "Pitch1": 12,
+        "Pitch2": 12,
+        "PitchMix": 0.3,
+        "Tone": 0.6
+      }
+    },
+    {
+      "id": "verb",
+      "model": "Plate",
+      "params": {
+        "Decay": 0.4,
+        "Mix": 0.15
+      }
+    }
+  ],
+  "snapshots": [
+    {
+      "name": "Chime",
+      "colour": "blue"
+    },
+    {
+      "name": "Shimmer",
+      "colour": "violet",
+      "on": [
+        "shimmer"
+      ],
+      "set": {
+        "dly": {
+          "Mix": 0.38
+        },
+        "amp": {
+          "ChVol": 0.7925
+        }
+      }
+    },
+    {
+      "name": "Drive",
+      "colour": "light orange",
+      "on": [
+        "push"
+      ],
+      "set": {
+        "amp": {
+          "Drive": 0.55,
+          "ChVol": 0.7287
+        }
+      }
+    },
+    {
+      "name": "Wah Lead",
+      "colour": "red",
+      "on": [
+        "wah",
+        "push"
+      ],
+      "set": {
+        "amp": {
+          "Drive": 0.55,
+          "ChVol": 0.7251
+        },
+        "dly": {
+          "Mix": 0.22
+        }
+      }
+    }
+  ]
+}

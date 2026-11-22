@@ -1,0 +1,24 @@
+{
+  "name": "JM Funk",
+  "device": "pod_go",
+  "tempo": 104,
+  "notes": "For David's Jazzmaster: Deluxe Reverb clean, Dyna Comp squeeze, Mu-Tron style envelope filter and Phase 90 on switches, spring reverb, wah on the pedal. Uses all four free blocks. First draft, not yet heard on the unit.",
+  "chain": [
+    {"id": "wah", "model": "Chrome Custom", "enabled": false},
+    {"id": "comp", "model": "Red Squeeze", "params": {"Sensitivity": 0.4, "Level": 5.4, "Mix": 0.8}},
+    {"id": "filter", "model": "Mutant Filter", "enabled": false, "footswitch": 1,
+     "params": {"Peak": 0.6, "Gain": 0.3, "Mix": 0.85}},
+    {"id": "phase", "model": "Script Mod Phase", "enabled": false, "footswitch": 2,
+     "params": {"Rate": 0.3, "Mix": 0.5}},
+    {"id": "amp", "model": "US Deluxe Vib",
+     "params": {"Drive": 0.3, "Bass": 0.45, "Mid": 0.55, "Treble": 0.55, "ChVol": 0.85}},
+    {"id": "cab", "model": "1x12 US Deluxe", "params": {"HighCut": 10000, "LowCut": 80}},
+    {"id": "spring", "model": "'63 Spring", "footswitch": 3, "params": {"Decay": 0.5, "Mix": 0.28}}
+  ],
+  "snapshots": [
+    {"name": "Clean Funk", "colour": "green"},
+    {"name": "Quack", "colour": "yellow", "on": ["filter"]},
+    {"name": "Phase", "colour": "violet", "on": ["phase"]},
+    {"name": "Wah Solo", "colour": "red", "on": ["wah"], "set": {"amp": {"Drive": 0.45, "ChVol": 0.92}}}
+  ]
+}
