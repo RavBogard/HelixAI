@@ -62,6 +62,22 @@ sit through every adjustment. What can be done unattended, and what cannot:
      `helixtone tune match <spec> --ref <wav> --write` moves the amp and cab
      controls toward its balance. Read what it moved: a control driven to its
      limit means the amp or cab choice is wrong, not the setting.
+- **Choosing models by measurement.** `atlas/helix-native.json` holds what
+  every amp (at three drive settings), cab and drive pedal measures like
+  through Helix Native. `helixtone atlas gain` lists amps from cleanest to
+  most saturated; `helixtone atlas nearest <wav>` lists the amp and cab pairs
+  closest to a recording. Use it instead of guessing which amp is bright or
+  how much gain a setting is. After a Helix Native update, or if the file is
+  missing, `helixtone atlas measure` rebuilds it (about an hour, unattended).
+- **From a recording with nobody listening.**
+  `helixtone auto <wav> tones/<player>/<name>.json` shortlists pairs from the
+  atlas, renders them, tunes the best toward the recording and writes the
+  spec and preset. It gives an amp and a cab only: add the effects, snapshots
+  and switches the tone needs, then measure and level as above.
+- **Changing the loop itself.** `helixtone bench --label "<what changed>"`
+  hides presets, lets the loop match them from audio alone and appends the
+  score to `atlas/bench.jsonl`. A change to the atlas, the shortlist or the
+  search stays only if the score there improves.
 - **Never keep numbers from the stand-in renderer** (`-r sim`). It exists to
   test the tuning code.
 - **A closer measurement is not a better tone.** Matching balance and dynamics
