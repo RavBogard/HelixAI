@@ -154,6 +154,5 @@ the other device and tells you what does not.
 
 Impulse responses, the Helix's send/return blocks, command switches, paths
 with their own input or output (a second instrument), more than one split per
-processor, and measuring audio (see `tools/native_probe.py` for the first step
-toward that). If a tone needs one of
-these, say so rather than approximating silently.
+processor. If a tone needs one of these, say so rather than approximating
+silently.

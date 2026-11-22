@@ -81,10 +81,6 @@ class Tuning(unittest.TestCase):
             tune.match(self.spec, self.r, self.di, audio.features(self.di), knobs=["amp.Sparkle"])
         self.assertIn("amp.Sparkle", str(ctx.exception))
 
-    def test_native_renderer_refuses_rather_than_guessing(self):
-        with self.assertRaises(render.RendererUnavailable):
-            render.NativeRenderer().render({}, self.di, audio.SR)
-
 
 @unittest.skipIf(np is None, "numpy not installed")
 class History(unittest.TestCase):

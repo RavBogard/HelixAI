@@ -1,7 +1,7 @@
 """First experiment for the listening loop: can Helix Native be driven from a script?
 
-NOT YET RUN ON ANY MACHINE. It is here so the first test on a Windows PC with
-Helix Native installed is one command:
+Run on Daniel's PC on 2026-11-22; what it found is in
+.claude/skills/helix-tone/references/native-setup.md. To run it again:
 
     pip install pedalboard
     python tools/native_probe.py
@@ -23,6 +23,7 @@ import os
 import sys
 
 DEFAULT_PATHS = [
+    r"C:\Program Files\Common Files\VST3\Line 6\Helix Native (x64).vst3",
     r"C:\Program Files\Common Files\VST3\Helix Native.vst3",
     r"C:\Program Files\Common Files\VST3\Line 6\Helix Native.vst3",
     "/Library/Audio/Plug-Ins/VST3/Helix Native.vst3",

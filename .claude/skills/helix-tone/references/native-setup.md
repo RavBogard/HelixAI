@@ -1,103 +1,120 @@
-# Connecting Helix Native: the job for the first session on Daniel's PC
+# Helix Native as the renderer
 
 Everything that tunes a tone by measurement calls one function,
-`renderer.render(preset, di, sr)`. The stand-in renderer proves the tuning
-code; the real one, `NativeRenderer` in `helixtone/render.py`, hosts Helix
-Native but stops at `load_preset`, because how a preset gets into the plugin
-was never established: this code was written on a machine without it. Finishing
-that one method is what turns the loop on.
+`renderer.render(preset, di, sr)`. `NativeRenderer` in `helixtone/render.py`
+does it with the real Helix Native. It was connected and accepted on Daniel's
+PC on 2026-11-22 (Helix Native 3.82, Windows 11). This file records how it
+works, what was established to get there, and what to do when it stops.
 
-Do this once, on the Windows PC that has Helix Native installed and licensed.
-
-## 1. Probe
+## Needs
 
 ```
-pip install numpy pedalboard
-python tools/native_probe.py
+pip install numpy pedalboard pywin32
 ```
 
-It reports whether the plugin loads, what parameters it exposes to a host,
-whether it exposes a state blob, what that blob looks like, and whether audio
-passes. It saves the blob as `native_state.bin`. If the plugin cannot be found,
-pass `--vst <path to Helix Native.vst3>`.
+Helix Native installed, signed in and this computer authorised. Windows only:
+the preset loader works the plugin's window with Windows messages.
 
-## 2. Find out how a preset is stored
+## How a preset gets in
 
-Work from evidence, in this order, and stop at the first that works:
+Helix Native does not take a `.hlx` from its host. Established with
+`tools/native_probe.py` and follow-up experiments:
 
-1. **The state blob contains the preset.** Look for preset JSON, or a
-   compressed or base64 form of it, inside `native_state.bin` (the probe says
-   which markers it saw). If so: load a known preset in the plugin by hand once,
-   save the state, and work out the wrapping; then `load_preset` builds the
-   same wrapping around our preset and assigns `plugin.raw_state`.
-2. **A `.vstpreset` file.** If Helix Native loads VST3 preset files, pedalboard
-   has `plugin.load_preset(path)`; find out what such a file must contain.
-3. **Host parameters only.** If neither works, the plugin cannot be given an
-   arbitrary preset from a script. Say so plainly, leave `NativeRenderer`
-   refusing, and use the folder renderer (`--renderer folder`) with a DAW
-   bounce, or look at driving the hardware instead (the LT is a USB audio
-   interface and can re-amp; getting a preset onto it from a script is the
-   open part there).
+- It exposes 167 host parameters, all generic (Knob 01-16, Switch 01-16,
+  master levels, bypass, Snapshot Index, CC 0-127). None can carry a preset.
+- Its saved state is JUCE's wrapper (`VC2!`, then XML
+  `<VST3PluginState><IComponent>`) around JUCE's own base64 of a chunk file:
+  `CMXH`, a length, then chunks of 4-byte tag (stored reversed), version,
+  size, a fourth word, data. Chunks: `PCHR`, `PCLI`, `PCGV` (master levels),
+  `PCTV`, `PCPD` (the preset), `PCDB`, `PCUI`.
+- The preset chunk is not `.hlx`. It is 8 bytes then 46,608 bytes that look
+  encrypted (entropy 8.0; one changed setting changes every byte from a
+  16-byte boundary on). It is deterministic: the same preset always gives the
+  same bytes. Nobody here reads or writes that format, and nobody should try.
+- The plugin's library files
+  (`%APPDATA%\Line 6\Helix Native\#PRESET_LIBRARY\#SETLISTn\#PRESETnnn`)
+  have the same size and header, but putting one into the state does **not**
+  load it (the plugin falls back to an empty preset).
+- What does work: a state captured after the plugin itself loaded a preset
+  can be set on any other instance, and plays that preset.
 
-Do not write a `load_preset` that "probably" works. A renderer that silently
-plays the wrong preset would make every measurement after it meaningless.
+So the only thing that turns a `.hlx` into a loadable state is the plugin's
+own importer, and that is reachable only from its window.
+`helixtone/native_host.py` is a helper process that does it:
 
-## 3. Prove it before trusting it
+1. Opens the plugin window, cloaked (nothing is drawn on screen) and with the
+   keyboard focus handed straight back, so it does not disturb whoever is
+   using the computer.
+2. Selects a scratch slot (Factory 1, 01A), presses IMPORT, fills in the file
+   dialog, answers "overwrite?" with Yes.
+3. Presses EXPORT, so the caller can compare what the plugin took with what
+   was sent. They match in everything under `tone` and in the name; only the
+   device and application fields differ (Native writes its own).
+4. Double-clicks the slot to load it and reads the plugin state.
+5. On exit, puts the scratch slot's library files back as they were.
 
-`load_preset` is accepted when all of these hold, with Helix Native as the
-renderer and the built-in test signal as input:
+`NativeRenderer` keeps each state on disk under
+`~/.helixtone/native-states/`, keyed by the preset's content, so a preset
+costs the detour once (about 6 s) and nothing after that. A render of the 8 s
+test signal takes about 1.5 s.
 
-- Rendering the same preset twice gives the same numbers.
-- A clean preset and a high-gain preset give clearly different crest factors
-  (the high-gain one lower by several dB).
-- Turning a cab's `HighCut` from 20000 down to 3000 lowers the measured top end.
-- A preset with every block bypassed measures close to the input.
-- A change in one snapshot's `ChVol` moves that snapshot's loudness and not
-  the others'.
+Things that were tried and do not work, so nobody repeats them:
 
-Add those as a test that runs only when Helix Native is present, then record
-in `rig/rig.md` that the Native loop is working and on which version.
+- Posted clicks do not operate the plugin's popup menus (so "Open From
+  Disk..." in the preset menu is out of reach); buttons and list rows work.
+  A row needs a real `WM_LBUTTONDBLCLK` to load.
+- A desktop of its own (`CreateDesktop`) hides everything, but the plugin's
+  file dialogs never open there.
+- pedalboard's reset between calls costs about 5 s with this plugin. The
+  renderer avoids it: empty preset, half a second of silence, wanted preset,
+  half a second of silence, then the audio. That is sample-identical whatever
+  was rendered before; skipping the empty preset is not (a modulation's phase
+  then depends on the previous render).
 
-## 4. Then, and only then
+## Acceptance checks
 
-- `python -m helixtone tune level <spec> --write` on each tone in `tones/`.
-- Record a real DI of each player's guitar to `reference/di.wav` (and
-  `reference/di-david.wav`); the synthetic test signal is repeatable but is
-  not a guitar.
-- POD Go presets cannot be rendered in Helix Native directly. Retarget the
-  spec to `helix_lt` to measure it (`inspect --spec -d helix_lt`), tune there,
-  and carry the settings back; models and controls are shared.
+`tests/test_native.py` runs only where Helix Native is usable. It holds the
+renderer to this:
 
-## Findings so far (2026-11-22, Helix Native 3.82, Windows, pedalboard host)
+- The same preset renders to identical samples, whatever came between.
+- A high-gain amp has a crest factor several dB below a clean one.
+- A cab's `HighCut` at 3000 instead of 20000 lowers the measured top end.
+- Every block bypassed measures close to the input.
+- One snapshot's `ChVol` moves that snapshot's loudness and not the others'.
+- The comparison of sent and exported preset catches a changed value.
 
-Established by running the probe and follow-up experiments on Daniel's PC:
+Run it after any change to `helixtone/render.py` or
+`helixtone/native_host.py`, and after a Helix Native update.
 
-- The plugin is at `C:\Program Files\Common Files\VST3\Line 6\Helix Native (x64).vst3`
-  (not one of the paths the probe guessed; pass `--vst`).
-- It loads in pedalboard and exposes 167 host parameters, all generic (Knob
-  01-16, Switch 01-16, master in/out level, bypass, Snapshot Index, CC 0-127).
-  None can carry a preset.
-- `raw_state` is JUCE's wrapper (`VC2!` + XML `<VST3PluginState><IComponent>`)
-  around JUCE-base64 of a chunk file: `HXMC`, then chunks `PCHR` (version),
-  `PCLI`, `PCGV` (master levels), `PCTV`, `PCPD` (the preset), `PCDB`, `PCUI`.
-  Each chunk: 4-byte tag (stored reversed), u32 version, u32 size, u32, data.
-- The preset chunk is not `.hlx` JSON. It is 8 bytes (`14 b6 00 00 05 00 00 00`)
-  plus 46,608 bytes that look encrypted: entropy 8.0, identical across
-  instances, and changing the snapshot index changes every byte from a
-  16-byte boundary to the end. Route 1 as written (wrap our JSON) is out.
-- The plugin keeps its preset library in
-  `%APPDATA%\Line 6\Helix Native\#PRESET_LIBRARY\#SETLISTn\#PRESETnnn`, one
-  46,616-byte file per preset in the same format as the `PCPD` chunk. Not yet
-  tested: whether a library file dropped into `PCPD` loads that preset.
-- Until the computer is authorised the plugin passes audio through untouched
-  (bit-identical, master levels ignored). A measurement taken in that state is
-  the DI, not a tone: `NativeRenderer` must check for this before trusting a
-  render.
-- Open: on this PC the plugin signs in ("Hi, Daniel") but stays on its splash
-  screen with no Authorize or trial panel, so it never processes. This is a
-  known Helix Native problem; the fixes users report are signing in through
-  HX Edit so that it authorises the computer, and removing old or duplicate
-  computer authorisations on the Line 6 account.
-- Still to establish once it processes: how our own `.hlx` gets in. The only
-  route left that does not involve the encrypted format is driving the
-  plugin's own import from its window and capturing the state it produces.
+## When it stops working
+
+- **"loads but is not processing audio"**: the plugin is signed out or the
+  computer is not authorised. In that condition it passes the input through
+  untouched and ignores its own level controls, which the renderer checks for
+  at start-up. Open the window to look:
+  `python -m helixtone.native_host "<path to .vst3>" --show`.
+- **Signed in but stuck on the splash screen** ("Hi, <name>", no Authorize or
+  trial panel). A known Helix Native problem. What cleared it here: signing in
+  through HX Edit, and removing old computer authorisations on the Line 6
+  account.
+- **"editor did not open" or a timeout on a dialog** after a Helix Native
+  update: the window layout may have moved. The click positions are at the
+  top of `native_host.py`; run with `--show` and check them. The state cache
+  is keyed by the plugin file, so an update starts a fresh cache.
+- **"did not take the preset as sent"**: the plugin changed something on
+  import. The two files are left in the cache folder for comparison. This is
+  either a builder mistake (a value the plugin clamps or drops) or a model
+  this version of Native lacks; fix the cause, do not loosen the check.
+- The original library is backed up at
+  `~/.helixtone/native-library-backup-2026-11-22`.
+
+## Limits
+
+- POD Go presets cannot be loaded in Helix Native. Retarget the spec to
+  `helix_lt` to measure it (`inspect --spec -d helix_lt`), tune there, and
+  carry the settings back; models and controls are shared.
+- The built-in test signal is repeatable but is not a guitar. A real DI of
+  each player's guitar belongs in `reference/di.wav` (and
+  `reference/di-david.wav`).
+- Native is not the hardware's output stage or the Powercab. Levels and
+  balance carry over; how it feels in the room does not.

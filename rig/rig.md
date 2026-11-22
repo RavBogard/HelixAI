@@ -12,8 +12,11 @@ building anything.
 - **Amplification:** Line 6 Powercab 212 Plus, run in **flat / FRFR mode**
   (confirmed by Daniel, 2026-11-22). Presets therefore **keep a cab block**.
   Not recorded: whether it is connected by L6 LINK or analog.
-- **Also owns:** Helix Native (same model set; useful for auditioning a
-  `.hlx` without the unit).
+- **Also owns:** Helix Native 3.82, installed and authorised on the Windows PC.
+  **The Native measuring loop works** (accepted 2026-11-22 by
+  `tests/test_native.py`): `helixtone tune ...` renders through it with no
+  window and nobody at the keyboard. How, and what to do when it stops:
+  `.claude/skills/helix-tone/references/native-setup.md`.
 - **Computer:** Windows.
 
 ## David

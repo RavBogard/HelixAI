@@ -8,7 +8,7 @@ dependencies = []
 [project.optional-dependencies]
 # measuring and tuning; building presets needs nothing
 measure = ["numpy"]
-native = ["numpy", "pedalboard"]
+native = ["numpy", "pedalboard", "pywin32"]
 
 [project.scripts]
 helixtone = "helixtone.cli:main"
