@@ -67,3 +67,37 @@ in `rig/rig.md` that the Native loop is working and on which version.
 - POD Go presets cannot be rendered in Helix Native directly. Retarget the
   spec to `helix_lt` to measure it (`inspect --spec -d helix_lt`), tune there,
   and carry the settings back; models and controls are shared.
+
+## Findings so far (2026-11-22, Helix Native 3.82, Windows, pedalboard host)
+
+Established by running the probe and follow-up experiments on Daniel's PC:
+
+- The plugin is at `C:\Program Files\Common Files\VST3\Line 6\Helix Native (x64).vst3`
+  (not one of the paths the probe guessed; pass `--vst`).
+- It loads in pedalboard and exposes 167 host parameters, all generic (Knob
+  01-16, Switch 01-16, master in/out level, bypass, Snapshot Index, CC 0-127).
+  None can carry a preset.
+- `raw_state` is JUCE's wrapper (`VC2!` + XML `<VST3PluginState><IComponent>`)
+  around JUCE-base64 of a chunk file: `HXMC`, then chunks `PCHR` (version),
+  `PCLI`, `PCGV` (master levels), `PCTV`, `PCPD` (the preset), `PCDB`, `PCUI`.
+  Each chunk: 4-byte tag (stored reversed), u32 version, u32 size, u32, data.
+- The preset chunk is not `.hlx` JSON. It is 8 bytes (`14 b6 00 00 05 00 00 00`)
+  plus 46,608 bytes that look encrypted: entropy 8.0, identical across
+  instances, and changing the snapshot index changes every byte from a
+  16-byte boundary to the end. Route 1 as written (wrap our JSON) is out.
+- The plugin keeps its preset library in
+  `%APPDATA%\Line 6\Helix Native\#PRESET_LIBRARY\#SETLISTn\#PRESETnnn`, one
+  46,616-byte file per preset in the same format as the `PCPD` chunk. Not yet
+  tested: whether a library file dropped into `PCPD` loads that preset.
+- Until the computer is authorised the plugin passes audio through untouched
+  (bit-identical, master levels ignored). A measurement taken in that state is
+  the DI, not a tone: `NativeRenderer` must check for this before trusting a
+  render.
+- Open: on this PC the plugin signs in ("Hi, Daniel") but stays on its splash
+  screen with no Authorize or trial panel, so it never processes. This is a
+  known Helix Native problem; the fixes users report are signing in through
+  HX Edit so that it authorises the computer, and removing old or duplicate
+  computer authorisations on the Line 6 account.
+- Still to establish once it processes: how our own `.hlx` gets in. The only
+  route left that does not involve the encrypted format is driving the
+  plugin's own import from its window and capturing the state it produces.
