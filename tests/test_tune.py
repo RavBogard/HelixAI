@@ -54,15 +54,25 @@ class Tuning(unittest.TestCase):
         self.di = audio.test_signal(seconds=4.0)
         self.r = render.SimRenderer()
 
+    def test_a_pod_go_tone_is_measured_as_its_helix_twin(self):
+        with open(os.path.join(ROOT, "tones", "david-podgo", "jm-funk.json"), encoding="utf-8") as fh:
+            pod = json.load(fh)
+        twin = tune.helix_twin(tune.with_ids(pod))
+        self.assertEqual(twin["device"], "helix_lt")
+        self.assertEqual(tune.snapshot_preset(tune.with_ids(pod), 0)["data"]["device"], 2162692)
+        feats = tune.measure(pod, self.r, self.di, audio.SR)
+        self.assertEqual(len(feats), len(pod["snapshots"]))
+
     def test_level_match_reaches_targets(self):
-        new, report = tune.level_match(self.spec, self.r, self.di, offsets={"Octave Ld": 2.0})
+        new, report = tune.level_match(self.spec, self.r, self.di, offsets={"Ambient": 2.0})
         self.assertTrue(all(row["reached"] for row in report))
         feats = tune.measure(new, self.r, self.di, audio.SR)
         base = feats[0]["loudness_db"]
         self.assertAlmostEqual(feats[2]["loudness_db"], base, delta=0.35)
         self.assertAlmostEqual(feats[3]["loudness_db"], base + 2.0, delta=0.35)
         # only the level control moved, and the result still builds
-        self.assertEqual(set(new["snapshots"][2]["set"]["amp"]), {"ChVol"})
+        was, now = self.spec["snapshots"][2]["set"]["amp"], new["snapshots"][2]["set"]["amp"]
+        self.assertEqual({k for k in now if now[k] != was.get(k)} - {"ChVol"}, set())
 
     def test_match_moves_toward_a_known_target(self):
         target_spec = copy.deepcopy(self.spec)

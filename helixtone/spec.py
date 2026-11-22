@@ -36,6 +36,8 @@ Block fields:
               puts several controls on the pedal.
   footswitch  a stomp switch number, or "toe" for the expression pedal's toe switch;
               {"switch": 9, "momentary": true} for a switch that is on only while held
+  stays       Helix only: snapshots leave this block's on/off state alone, so a
+              stomp the player switched stays that way when the snapshot changes
   dual        Helix cab blocks only: a second cab mixed with this one,
               {"model": "4x12 Greenback 25", "params": {"Mic": "121 Ribbon", "Pan": 0.7}}
   dsp         Helix only: force the block onto processor 0 or 1
@@ -62,7 +64,7 @@ import json
 DEVICES = ("helix_lt", "pod_go")
 NAME_MAX = 16
 
-BLOCK_KEYS = {"id", "model", "enabled", "params", "stereo", "trails", "pedal", "footswitch", "dsp", "dual", "note"}
+BLOCK_KEYS = {"id", "model", "enabled", "params", "stereo", "trails", "pedal", "footswitch", "dsp", "dual", "note", "stays"}
 SPLIT_KEYS = {"split", "params", "join", "a", "b", "note"}
 SNAP_KEYS = {"name", "on", "off", "set", "colour", "note"}
 TOP_KEYS = {"name", "device", "tempo", "notes", "chain", "snapshots", "firmware", "variant"}

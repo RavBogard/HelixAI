@@ -210,8 +210,15 @@ def cmd_measure(a) -> int:
 
 def cmd_check(a) -> int:
     from . import check
+    from . import players
     spec = load_spec(a.spec)
-    findings = check.static(spec, full_range=not a.real_cab, max_snapshots=a.snapshots, max_stomps=a.stomps)
+    layout = players.for_spec(a.spec)
+    if a.level is None:
+        a.level = layout.get("level")
+    if not a.offset:
+        a.offset = [f"{k}={v}" for k, v in (layout.get("offsets") or {}).items()]
+    full_range = layout.get("full_range", True) and not a.real_cab
+    findings = check.static(spec, full_range=full_range, max_snapshots=a.snapshots, max_stomps=a.stomps, layout=layout)
     if a.renderer != "none":
         r = _renderer(a)
         di, sr = _di(a)
@@ -226,6 +233,12 @@ def cmd_check(a) -> int:
             print(f"  {snap['name']:<12} loudness {f['loudness_db']:6.1f}  peak {f['peak_db']:6.1f}  crest {f['crest_db']:5.1f}")
     for line in check.describe(findings):
         print(line)
+    from . import sheet
+    measured_kw = {}
+    if a.renderer != "none":
+        measured_kw = {"feats": feats, "stomp_rows": getattr(check.measured, "stomp_rows", []),
+                       "renderer_name": "Helix Native" if r.is_real else "stand-in renderer (numbers mean nothing)"}
+    print(f"  sheet: {sheet.write(a.spec, spec, findings=findings, **measured_kw)}")
     return 1 if any(f["kind"] == "defect" for f in findings) else 0
 
 
@@ -339,6 +352,14 @@ def cmd_tune(a) -> int:
                 _show_features(snap["name"], f)
             return 0
         if a.what == "level":
+            from . import players
+            layout = players.for_spec(a.spec)
+            if a.level is None and layout.get("level") is not None:
+                a.level = layout["level"]
+                print(f"  levelling to {a.level} dB, from rig/players.json")
+            if not a.offset:
+                a.offset = [f"{k}={v}" for k, v in (layout.get("offsets") or {}).items()
+                            if k in [s["name"] for s in spec.get("snapshots", [])]]
             offsets = {}
             for item in a.offset or []:
                 name, _, db = item.rpartition("=")
@@ -349,6 +370,16 @@ def cmd_tune(a) -> int:
                 print(f"  {row['snapshot']:<10} {row['before_db']:6.1f} -> {row['after_db']:6.1f} dB (target {row['target_db']:.1f})"
                       f"   {row['control']} {row['from']} -> {row['to']}{flag}")
             _save_tuned(a, a.spec, spec, new, "level-matched snapshots by measurement" + ("" if r.is_real else " (stand-in renderer)"))
+            return 0
+        if a.what == "stomps":
+            new, report = tune.level_stomps(spec, r, di, sr, step=a.step)
+            for row in report:
+                if row["control"] is None:
+                    print(f"  {row['block']:<10} has no level control; set it by hand")
+                    continue
+                flag = "" if row["reached"] else "   (its level control cannot make that up: left as it was)"
+                print(f"  {row['block']:<10} on in {row['snapshot']}: {row['before_db']:+.1f} -> {row['after_db']:+.1f} dB   {row['control']} {row['from']} -> {row['to']}{flag}")
+            _save_tuned(a, a.spec, spec, new, f"drive stomps set to lift by {a.step} dB, by measurement")
             return 0
         if a.what == "match":
             if not a.ref:
@@ -451,14 +482,16 @@ def main(argv=None) -> int:
     s.set_defaults(fn=cmd_signal)
 
     s = sub.add_parser("tune", help="adjust a tone by measurement (needs a renderer)")
-    s.add_argument("what", choices=["measure", "level", "match"],
+    s.add_argument("what", choices=["measure", "level", "stomps", "match"],
                    help="measure: show each snapshot's numbers; level: equalise snapshot loudness; "
+                        "stomps: make each drive stomp lift the sound by a set step; "
                         "match: move controls toward a reference recording")
     s.add_argument("spec")
     s.add_argument("-r", "--renderer", default="native", choices=["native", "folder", "sim"])
     s.add_argument("--folder", help="hand-off folder for the folder renderer")
     s.add_argument("--di", help="dry guitar recording to play through the preset (default reference/di.wav, else a test signal)")
     s.add_argument("--offset", action="append", metavar="NAME=DB", help="level: make a snapshot this much louder than snapshot 1, e.g. Lead=2")
+    s.add_argument("--step", type=float, default=1.5, metavar="DB", help="stomps: how much louder a drive stomp makes the sound (default 1.5)")
     s.add_argument("--level", type=float, metavar="DB", help="level: bring snapshot 1 to this loudness too, so presets match each other")
     s.add_argument("--ref", help="match: the recording to aim at")
     s.add_argument("--knob", action="append", metavar="BLOCK.CONTROL", help="match: a control to move (repeatable; default amp drive and tone, cab cuts)")

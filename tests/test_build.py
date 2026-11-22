@@ -147,6 +147,20 @@ class HelixRicher(unittest.TestCase):
         self.assertEqual(sorted(tone["controller"]["dsp0"]["block0"]), ["Feedback", "Mix"])
         self.assertEqual(tone["controller"]["dsp0"]["block0"]["Mix"]["@max"], 0.5)
 
+    def test_a_stomp_that_stays_ignores_snapshots(self):
+        chain = [dict(b) for b in BASIC]
+        chain[1]["stays"] = True
+        res = build(helix(chain, snapshots=[{"name": "A"}, {"name": "B", "set": {"amp": {"Drive": 0.7}}}]))
+        tone = res.preset["data"]["tone"]
+        flags = {b["@model"]: b["@no_snapshot_bypass"] for d in ("dsp0", "dsp1") for k, b in tone[d].items() if k.startswith("block")}
+        self.assertEqual([m for m, f in flags.items() if f], ["HD2_DistScream808"])
+        # and it reads back as the same spec field
+        back = reader.to_spec({"name": "T", "device": 2162692, "device_version": 0, "tone": tone}, "helix_lt")
+        self.assertEqual([b["id"] for b in back["chain"] if b.get("stays")], ["drive"])
+        with self.assertRaises(BuildError) as cm:
+            build(helix(chain, snapshots=[{"name": "A"}, {"name": "B", "off": ["od"]}]))
+        self.assertIn("stays", str(cm.exception))
+
     def test_third_split_is_refused(self):
         sec = lambda n: {"split": "y", "a": [{"id": f"a{n}", "model": "Plate"}], "b": [{"id": f"b{n}", "model": "Plate"}]}
         with self.assertRaises(BuildError) as ctx:

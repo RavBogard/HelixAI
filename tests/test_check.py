@@ -52,7 +52,7 @@ class Check(unittest.TestCase):
         self.assertNotIn("from where it should sit", texts(check.measured(level, r, di, audio.SR)[0]))
         loud = copy.deepcopy(level)
         loud["snapshots"][2]["set"]["amp"]["ChVol"] = 1.0
-        self.assertIn("'Fuzz' is +", texts(check.measured(loud, r, di, audio.SR)[0], "defect"))
+        self.assertIn("'Lead' is +", texts(check.measured(loud, r, di, audio.SR)[0], "defect"))
 
     def test_level_brings_presets_to_a_shared_loudness(self):
         r, di = render.SimRenderer(), audio.test_signal(seconds=4.0)
@@ -63,3 +63,24 @@ class Check(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+    def test_layout_is_enforced(self):
+        layout = {"snapshots": ["Clean", "Crunch", "Lead", "Ambient"], "stomps_stay": True,
+                  "stomp_row": {"8": ["drive"], "9": ["mod"], "10": ["delay"], "11": ["reverb"]}, "extra_switches": [2, 3, 4, 5]}
+        self.assertEqual(texts(check.static(self.spec, layout=layout), "defect"), "")
+        s = copy.deepcopy(self.spec)
+        s["snapshots"][0]["name"] = "Little Wng"
+        fuzz = next(b for b in s["chain"] if b.get("id") == "fuzz")
+        fuzz.pop("stays")
+        fuzz["footswitch"] = 10
+        found = texts(check.static(s, layout=layout), "defect")
+        for expected in ("all start Clean, Crunch, Lead, Ambient", 'without "stays"', "this player's delay switch"):
+            self.assertIn(expected, found)
+
+    def test_stomp_step_is_measured_and_trimmed(self):
+        r, di = render.SimRenderer(), audio.test_signal(seconds=4.0)
+        new, report = tune.level_stomps(self.spec, r, di, step=1.5)
+        self.assertTrue(report and all(row["reached"] for row in report if row["control"]))
+        for row in tune.stomp_steps(new, r, di):
+            if row["category"] == "drive":
+                self.assertAlmostEqual(row["on_minus_off_db"], 1.5, delta=0.5)

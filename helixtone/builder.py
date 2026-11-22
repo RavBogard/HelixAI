@@ -82,6 +82,7 @@ class Block:
     auto: bool = False
     path: int = 0                 # 0 is path A, 1 is path B inside a split
     momentary: bool = False
+    stays: bool = False           # snapshots leave its on/off state alone
     dual: dict | None = None      # second cab of a dual cab: {"model", "info", "params"}
 
     @property
@@ -198,6 +199,11 @@ def _resolve_block(raw: dict, where: str, cat: Catalog, dev: Device, used_ids: d
             blk.trails = bool(raw["trails"])
         else:
             problems.append(f"{where}: 'trails' only applies to delays and reverbs")
+    if raw.get("stays"):
+        if dev.key != "helix_lt":
+            problems.append(f"{where}: 'stays' is Helix only")
+        else:
+            blk.stays = True
     if "dsp" in raw:
         if dev.key != "helix_lt" or raw["dsp"] not in (0, 1):
             problems.append(f"{where}: 'dsp' is 0 or 1 and Helix only")
@@ -453,6 +459,8 @@ def plan_snapshots(spec: dict, blocks: list[Block], cat: Catalog, dev: Device, p
             for bid in s.get(flag, []):
                 if bid not in by_id:
                     problems.append(f"{where}: '{flag}' names unknown block {bid!r}. Blocks: {', '.join(by_id)}")
+                elif by_id[bid].stays:
+                    problems.append(f"{where}: {bid} has 'stays', so a snapshot cannot switch it. Drop 'stays' or take it out of '{flag}'")
                 else:
                     state[bid] = value
         both = set(s.get("on", [])) & set(s.get("off", []))
@@ -501,7 +509,7 @@ def _block_json(b: Block, dev: Device) -> dict:
         out["@path"] = b.path
     out["@type"] = 4 if b.dual else b.info["type"]
     out["@enabled"] = b.enabled
-    out["@no_snapshot_bypass"] = False
+    out["@no_snapshot_bypass"] = b.stays
     if b.stereo is not None:
         out["@stereo"] = b.stereo
     if b.category in ("delay", "reverb") and b.info["type"] in (5, 7) or (dev.key == "pod_go" and b.info["type"] == 5):

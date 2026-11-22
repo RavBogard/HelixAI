@@ -1,0 +1,19 @@
+{
+  "daniel-lt": {
+    "player": "Daniel",
+    "device": "helix_lt",
+    "full_range": true,
+    "level": -22,
+    "snapshots": ["Clean", "Crunch", "Lead", "Ambient"],
+    "offsets": {"Lead": 2},
+    "stomps_stay": true,
+    "stomp_row": {"8": ["drive"], "9": ["mod", "filter", "pitch", "drive"], "10": ["delay"], "11": ["reverb"]},
+    "extra_switches": [2, 3, 4, 5]
+  },
+  "david-podgo": {
+    "player": "David",
+    "device": "pod_go",
+    "full_range": true,
+    "level": -22
+  }
+}

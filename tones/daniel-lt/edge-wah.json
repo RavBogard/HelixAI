@@ -2,20 +2,24 @@
   "name": "Edge-ish + Wah",
   "device": "helix_lt",
   "tempo": 120,
-  "notes": "U2-style chime: AC30 top boost on the edge of breakup, compressor, dotted-eighth delay that follows tap tempo, shimmer on a switch, wah and volume on the pedal (toe switch swaps them). Built for the Powercab in flat mode, so it has a cab block. First draft, not yet heard on the unit.",
+  "notes": "U2-style chime: AC30 top boost, compressor, dotted-eighth delay that follows tap tempo, wah and volume on the pedal (toe switch swaps them). Snapshots are the four standing sounds (Clean, Crunch, Lead, Ambient) and change the amp, levels and effect mixes only; every stomp stays as the foot left it. Ambient switches in the shimmer reverb. Cab is a 57 with a 121 ribbon beside it for body. Built for the Powercab in flat mode. Not yet heard on the unit.",
   "chain": [
     {
       "id": "wah",
       "model": "Fassel",
-      "enabled": false
+      "enabled": false,
+      "stays": true
     },
     {
       "id": "vol",
-      "model": "Volume"
+      "model": "Volume",
+      "stays": true
     },
     {
       "id": "comp",
       "model": "Deluxe Comp",
+      "footswitch": 2,
+      "stays": true,
       "params": {
         "Threshold": -30,
         "Ratio": 2,
@@ -27,7 +31,8 @@
       "id": "push",
       "model": "Minotaur",
       "enabled": false,
-      "footswitch": 9,
+      "footswitch": 8,
+      "stays": true,
       "params": {
         "Gain": 0.25,
         "Tone": 0.5,
@@ -49,28 +54,60 @@
       "id": "cab",
       "model": "2x12 Blue Bell",
       "params": {
-        "HighCut": 9000,
+        "Mic": "57 Dynamic",
+        "HighCut": 7500,
         "LowCut": 90
+      },
+      "dual": {
+        "model": "2x12 Blue Bell",
+        "params": {
+          "Mic": "121 Ribbon",
+          "HighCut": 7500,
+          "LowCut": 90
+        }
+      }
+    },
+    {
+      "id": "chorus",
+      "model": "Chorus",
+      "enabled": false,
+      "footswitch": 9,
+      "stays": true,
+      "params": {
+        "Mix": 0.33,
+        "Depth": 0.6
       }
     },
     {
       "id": "dly",
       "model": "HD2_DelayVintageDigitalV2",
       "footswitch": 10,
+      "stays": true,
+      "trails": true,
       "params": {
         "Feedback": 0.35,
         "Mix": 0.3,
         "Depth": 0.2,
         "TempoSync1": true,
         "SyncSelect1": "1/8 Dotted"
-      },
-      "trails": true
+      }
+    },
+    {
+      "id": "verb",
+      "model": "Plate",
+      "footswitch": 11,
+      "stays": true,
+      "trails": true,
+      "params": {
+        "Decay": 0.4,
+        "Mix": 0.15
+      }
     },
     {
       "id": "shimmer",
       "model": "Plateaux",
       "enabled": false,
-      "footswitch": 11,
+      "trails": true,
       "params": {
         "Decay": 0.55,
         "Mix": 0.25,
@@ -78,71 +115,56 @@
         "Pitch2": 12,
         "PitchMix": 0.3,
         "Tone": 0.6
-      },
-      "trails": true
-    },
-    {
-      "id": "verb",
-      "model": "Plate",
-      "params": {
-        "Decay": 0.4,
-        "Mix": 0.15
-      },
-      "trails": true
+      }
     }
   ],
   "snapshots": [
     {
-      "name": "Chime",
+      "name": "Clean",
       "colour": "blue",
       "set": {
         "amp": {
-          "ChVol": 0.7336
+          "Drive": 0.18,
+          "ChVol": 0.9691
         }
       }
     },
     {
-      "name": "Shimmer",
+      "name": "Crunch",
+      "colour": "light orange",
+      "set": {
+        "amp": {
+          "Drive": 0.45,
+          "ChVol": 0.6944
+        }
+      }
+    },
+    {
+      "name": "Lead",
+      "colour": "red",
+      "set": {
+        "amp": {
+          "Drive": 0.8,
+          "ChVol": 0.7
+        },
+        "dly": {
+          "Mix": 0.22
+        }
+      }
+    },
+    {
+      "name": "Ambient",
       "colour": "violet",
       "on": [
         "shimmer"
       ],
       "set": {
+        "amp": {
+          "Drive": 0.18,
+          "ChVol": 0.9644
+        },
         "dly": {
           "Mix": 0.38
-        },
-        "amp": {
-          "ChVol": 0.7234
-        }
-      }
-    },
-    {
-      "name": "Drive",
-      "colour": "light orange",
-      "on": [
-        "push"
-      ],
-      "set": {
-        "amp": {
-          "Drive": 0.55,
-          "ChVol": 0.6386
-        }
-      }
-    },
-    {
-      "name": "Wah Lead",
-      "colour": "red",
-      "on": [
-        "wah",
-        "push"
-      ],
-      "set": {
-        "amp": {
-          "Drive": 0.55,
-          "ChVol": 0.6336
-        },
-        "dly": {
-          "Mix": 0.22
         }
       }
     }
