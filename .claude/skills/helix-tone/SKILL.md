@@ -55,9 +55,14 @@ sit through every adjustment. What can be done unattended, and what cannot:
 - **With a working renderer**, after building any tone:
   1. `helixtone tune measure <spec>` and read the numbers. A snapshot that
      clips, or is far louder or quieter than the rest, is a defect: fix it.
-  2. `helixtone tune level <spec> --write`, with `--offset "<lead>=2"` for
-     snapshots meant to be louder. Do this for every tone, every time.
-  3. If there is a recording to aim at (an isolated guitar part, or a preset
+  2. `helixtone tune level <spec> --level <dB> --write`, with the level
+     `rig/rig.md` gives for that player so presets match each other, and
+     `--offset "<lead>=2"` for snapshots meant to be louder. Do this for
+     every tone, every time.
+  3. `helixtone check <spec>` (with `--snapshots` and `--stomps` from the
+     player's layout in `rig/rig.md`). Fix every DEFECT. Read every NOTE and
+     either fix it or say in the spec's notes why it is on purpose.
+  4. If there is a recording to aim at (an isolated guitar part, or a preset
      the player already likes rendered through the same input),
      `helixtone tune match <spec> --ref <wav> --write` moves the amp and cab
      controls toward its balance. Read what it moved: a control driven to its

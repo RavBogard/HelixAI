@@ -73,7 +73,8 @@
       "params": {
         "Decay": 0.35,
         "Mix": 0.15
-      }
+      },
+      "trails": true
     }
   ],
   "snapshots": [
@@ -84,7 +85,7 @@
         "amp": {
           "BrtDrive": 0.38,
           "NrmDrive": 0.3,
-          "ChVol": 0.7
+          "ChVol": 0.8123
         }
       }
     },
@@ -96,7 +97,7 @@
       ],
       "set": {
         "amp": {
-          "ChVol": 0.6833
+          "ChVol": 0.7693
         }
       }
     },
@@ -108,7 +109,7 @@
       ],
       "set": {
         "amp": {
-          "ChVol": 0.7195
+          "ChVol": 0.8237
         }
       }
     },
@@ -121,7 +122,7 @@
       ],
       "set": {
         "amp": {
-          "ChVol": 0.728
+          "ChVol": 0.9458
         }
       }
     }

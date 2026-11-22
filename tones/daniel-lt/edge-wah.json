@@ -63,7 +63,8 @@
         "Depth": 0.2,
         "TempoSync1": true,
         "SyncSelect1": "1/8 Dotted"
-      }
+      },
+      "trails": true
     },
     {
       "id": "shimmer",
@@ -77,7 +78,8 @@
         "Pitch2": 12,
         "PitchMix": 0.3,
         "Tone": 0.6
-      }
+      },
+      "trails": true
     },
     {
       "id": "verb",
@@ -85,13 +87,19 @@
       "params": {
         "Decay": 0.4,
         "Mix": 0.15
-      }
+      },
+      "trails": true
     }
   ],
   "snapshots": [
     {
       "name": "Chime",
-      "colour": "blue"
+      "colour": "blue",
+      "set": {
+        "amp": {
+          "ChVol": 0.7336
+        }
+      }
     },
     {
       "name": "Shimmer",
@@ -104,7 +112,7 @@
           "Mix": 0.38
         },
         "amp": {
-          "ChVol": 0.7925
+          "ChVol": 0.7234
         }
       }
     },
@@ -117,7 +125,7 @@
       "set": {
         "amp": {
           "Drive": 0.55,
-          "ChVol": 0.7287
+          "ChVol": 0.6386
         }
       }
     },
@@ -131,7 +139,7 @@
       "set": {
         "amp": {
           "Drive": 0.55,
-          "ChVol": 0.7251
+          "ChVol": 0.6336
         },
         "dly": {
           "Mix": 0.22

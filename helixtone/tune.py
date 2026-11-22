@@ -89,10 +89,12 @@ def _level_target(spec: dict, cat) -> tuple[str, str]:
 
 
 def level_match(spec: dict, renderer, di: np.ndarray, sr: int = audio.SR, offsets: dict | None = None,
-                tolerance: float = 0.3, max_steps: int = 8) -> tuple[dict, list[dict]]:
+                tolerance: float = 0.3, max_steps: int = 8, level: float | None = None) -> tuple[dict, list[dict]]:
     """Trim each snapshot to the same loudness as snapshot 1, plus any offset asked for.
 
     offsets maps a snapshot name to dB relative to snapshot 1, e.g. {"Lead": 2.0}.
+    level, if given, is the loudness snapshot 1 itself is brought to, so that
+    different presets can be made to match each other.
     Returns (new spec, report rows).
     """
     spec = with_ids(spec)
@@ -113,15 +115,16 @@ def level_match(spec: dict, renderer, di: np.ndarray, sr: int = audio.SR, offset
     def assign(n, value):
         spec["snapshots"][n].setdefault("set", {}).setdefault(bid, {})[ctl] = round(float(value), 4)
 
-    reference = loudness(0)
+    measured_first = loudness(0)
+    reference = measured_first if level is None else level
     report = []
     for n, snap in enumerate(spec["snapshots"]):
         target = reference + offsets.get(snap["name"].lower(), 0.0)
-        before = got = reference if n == 0 else loudness(n)
+        before = got = measured_first if n == 0 else loudness(n)
         start = value = current(n)
         steps = 0
         lo, hi = p["min"], p["max"]
-        while abs(got - target) > tolerance and steps < max_steps and n > 0:
+        while abs(got - target) > tolerance and steps < max_steps and (n > 0 or level is not None):
             steps += 1
             # bracket and bisect: the control is monotonic, its law is not known
             if got < target:

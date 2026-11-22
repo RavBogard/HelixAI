@@ -25,6 +25,12 @@ building anything.
   and its effects on stomp switches. Not recorded yet: whether his unit is
   set to Snap/Stomp or Stomp/Snap, and whether a stomp he turns on should
   stay on when he changes snapshot.
+- **Preset level:** every preset's first snapshot is levelled to **-22 dB**
+  loudness on the built-in test signal through Helix Native
+  (`helixtone tune level <spec> --level -22 --write`), so presets match each
+  other. Chosen 2026-11-22 as the midpoint of the first two tones; provisional
+  until Daniel has heard them at volume. Leads are level with the rest until
+  he says how much louder he wants them.
 - **Computer:** Windows.
 
 ## David
